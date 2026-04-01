@@ -107,9 +107,9 @@ export default function TaskCard({
     return letter;
   };
 
-  // Project/Area label
+  // Project/Area label (max 15 chars, separator is |)
   const projectAreaLabel = project
-    ? `${project.title.length > 12 ? project.title.slice(0, 12) + '…' : project.title} · ${area?.name ?? 'Inbox'}`
+    ? `${project.title.length > 15 ? project.title.slice(0, 15) + '…' : project.title} | ${area?.name ?? 'Inbox'}`
     : area?.name ?? 'Inbox';
 
   return (

@@ -189,10 +189,9 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
         <Select
           label="Connected To"
           value={connectedTo}
-          onChange={e => setConnectedTo(e.target.value)}
+          onChange={() => {}}
           options={[
-            { value: '', label: 'None' },
-            { value: 'placeholder1', label: 'No connections yet' },
+            { value: '', label: 'No connections yet' },
           ]}
           className="text-xs"
           disabled

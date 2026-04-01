@@ -275,19 +275,10 @@ export default function TasksPage() {
             ))}
           </div>
 
-          {/* Add project */}
-          <button
-            onClick={() => { setEditProject(undefined); openProjectModal(); }}
-            className="w-full flex items-center justify-center gap-2 py-3 mb-4 rounded-xl border-2 border-dashed border-border text-sm text-text-3 hover:border-rise/50 hover:text-rise transition-colors"
-          >
-            <FolderPlus size={15} />
-            New project in {LIFE_AREAS.find(a => a.id === areaTab)?.name}
-          </button>
-
           {areaProjects.length === 0 ? (
             <EmptyState icon={FolderOpen} title="No projects" description={`Create your first ${areaTab} project.`} />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 mb-4">
               {areaProjects.map(project => {
                 const area = LIFE_AREAS.find(a => a.id === project.area);
                 const { active: projectTasks = [], done: doneTasks = [] } =
@@ -379,6 +370,15 @@ export default function TasksPage() {
               })}
             </div>
           )}
+
+          {/* Add project button - below all cards */}
+          <button
+            onClick={() => { setEditProject(undefined); openProjectModal(); }}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm text-text-3 hover:border-rise/50 hover:text-rise transition-colors"
+          >
+            <FolderPlus size={15} />
+            New project in {LIFE_AREAS.find(a => a.id === areaTab)?.name}
+          </button>
         </div>
       )}
 
