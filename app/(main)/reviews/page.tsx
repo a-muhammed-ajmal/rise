@@ -1,0 +1,92 @@
+'use client';
+
+import { useState } from 'react';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { useCollection, addDocument, deleteDocument } from '@/lib/firestore';
+import { Review } from '@/lib/types';
+import Modal from '@/components/ui/Modal';
+import Button from '@/components/ui/Button';
+import { Input, TextArea } from '@/components/ui/Input';
+import EmptyState from '@/components/ui/EmptyState';
+import { cn, formatDate } from '@/lib/utils';
+import { Plus, BookOpen, Trash2, Star } from 'lucide-react';
+
+export default function ReviewsPage() {
+  const { user } = useAuth();
+  const uid = user?.uid;
+  const { data: reviews, loading } = useCollection<Review>('reviews', uid);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [weekStartDate, setWeekStartDate] = useState('');
+  const [rating, setRating] = useState(3);
+  const [wins, setWins] = useState('');
+  const [challenges, setChallenges] = useState('');
+  const [lessons, setLessons] = useState('');
+  const [gps, setGps] = useState('');
+  const [next, setNext] = useState('');
+
+  const handleAdd = async () => {
+    if (!wins.trim() || !user) return;
+    await addDocument('reviews', { weekStartDate, rating, wins, challenges, lessons, gps, next } as Partial<Review>, user.uid);
+    setWins(''); setChallenges(''); setLessons(''); setGps(''); setNext(''); setRating(3);
+    setModalOpen(false);
+  };
+
+  return (
+    <div className="px-4 py-6 lg:px-8 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-extrabold text-text">Weekly Reviews</h1>
+        <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-rise text-white rounded-xl text-sm font-semibold shadow-sm">
+          <Plus size={18} /> New Review
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-4">{[1,2].map(i => <div key={i} className="h-32 rounded-2xl bg-surface-2 animate-pulse" />)}</div>
+      ) : reviews.length === 0 ? (
+        <EmptyState icon={BookOpen} title="No reviews" description="Start your weekly reflection practice" />
+      ) : (
+        <div className="space-y-4">
+          {reviews.map(r => (
+            <div key={r.id} className="bg-surface-2 rounded-2xl p-5 border border-border group">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="text-xs text-text-3 mb-1">Week of {r.weekStartDate ? formatDate(r.weekStartDate) : 'Unknown'}</p>
+                  <div className="flex gap-0.5">{[1,2,3,4,5].map(i => (
+                    <Star key={i} size={16} className={i <= r.rating ? 'text-amber-500 fill-amber-500' : 'text-border'} />
+                  ))}</div>
+                </div>
+                <button onClick={() => deleteDocument('reviews', r.id)} className="opacity-0 group-hover:opacity-100 text-text-3 hover:text-red-500"><Trash2 size={15} /></button>
+              </div>
+              {r.wins && <div className="mb-2"><p className="text-xs font-bold text-green-600 mb-0.5">Wins</p><p className="text-sm text-text-2">{r.wins}</p></div>}
+              {r.challenges && <div className="mb-2"><p className="text-xs font-bold text-orange-500 mb-0.5">Challenges</p><p className="text-sm text-text-2">{r.challenges}</p></div>}
+              {r.lessons && <div><p className="text-xs font-bold text-blue-500 mb-0.5">Lessons</p><p className="text-sm text-text-2">{r.lessons}</p></div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Weekly Review (GPS)" size="lg">
+        <div className="space-y-4">
+          <Input label="Week Start Date" type="date" value={weekStartDate} onChange={e => setWeekStartDate(e.target.value)} />
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-2">Rating</label>
+            <div className="flex gap-1">{[1,2,3,4,5].map(i => (
+              <button key={i} onClick={() => setRating(i)}>
+                <Star size={28} className={cn('transition-colors', i <= rating ? 'text-amber-500 fill-amber-500' : 'text-border hover:text-amber-300')} />
+              </button>
+            ))}</div>
+          </div>
+          <TextArea label="Wins — What went well?" value={wins} onChange={e => setWins(e.target.value)} placeholder="Celebrate your achievements..." />
+          <TextArea label="Challenges — What was hard?" value={challenges} onChange={e => setChallenges(e.target.value)} placeholder="What didn't go as planned..." />
+          <TextArea label="Lessons — What did you learn?" value={lessons} onChange={e => setLessons(e.target.value)} placeholder="Key takeaways..." />
+          <TextArea label="GPS — Goal-Plan-System reflection" value={gps} onChange={e => setGps(e.target.value)} placeholder="Are your goals, plans, and systems aligned?" />
+          <TextArea label="Next — What's next?" value={next} onChange={e => setNext(e.target.value)} placeholder="Actions for next week..." />
+          <div className="flex gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setModalOpen(false)} className="flex-1">Cancel</Button>
+            <Button onClick={handleAdd} disabled={!wins.trim()} className="flex-1">Save Review</Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
