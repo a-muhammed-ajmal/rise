@@ -287,7 +287,7 @@ export default function TasksPage() {
                 const pct = total > 0 ? Math.round((doneTasks.length / total) * 100) : 0;
 
                 return (
-                  <div key={project.id} className="bg-surface rounded-xl border border-border overflow-hidden">
+                  <div key={project.id} className="bg-surface rounded-xl border border-border overflow-visible">
                     {/* Project header */}
                     <div
                       className="flex items-center gap-3 p-4"
@@ -311,12 +311,13 @@ export default function TasksPage() {
                       <div className="relative shrink-0">
                         <button
                           onClick={() => setProjectMenuOpen(projectMenuOpen === project.id ? null : project.id)}
-                          className="p-1.5 text-text-3 hover:text-text rounded-lg transition-colors"
+                          className="p-2 text-text hover:bg-surface-2 rounded-lg transition-colors"
+                          aria-label="Project menu"
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="5" cy="12" r="1.5" />
+                            <circle cx="12" cy="5" r="1.5" />
                             <circle cx="12" cy="12" r="1.5" />
-                            <circle cx="19" cy="12" r="1.5" />
+                            <circle cx="12" cy="19" r="1.5" />
                           </svg>
                         </button>
 
@@ -324,7 +325,7 @@ export default function TasksPage() {
                         {projectMenuOpen === project.id && (
                           <>
                             <div className="fixed inset-0 z-10" onClick={() => setProjectMenuOpen(null)} />
-                            <div className="absolute right-0 top-8 z-20 w-36 bg-surface rounded-lg border border-border shadow-lg py-1">
+                            <div className="absolute right-0 top-10 z-20 w-40 bg-surface rounded-lg border border-border shadow-lg py-1">
                               <button
                                 onClick={() => { setProjectMenuOpen(null); openTaskModal(undefined, { area: project.area, projectId: project.id }); }}
                                 className="w-full px-3 py-2 text-left text-xs text-text hover:bg-surface-2 transition-colors"

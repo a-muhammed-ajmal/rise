@@ -308,10 +308,10 @@ export const LIFE_AREAS: { id: LifeArea; name: string; emoji: string; color: str
 ];
 
 export const PRIORITY_CONFIG: Record<Priority, { label: string; short: string; color: string }> = {
-  P1: { label: 'Urgent & Important',     short: 'P1 Urgent',    color: '#EF4444' },
-  P2: { label: 'Not Urgent & Important', short: 'P2 Important', color: '#10B981' },
-  P3: { label: 'Urgent & Not Important', short: 'P3 Delegate',  color: '#3B82F6' },
-  P4: { label: 'Not Urgent & Not Important', short: 'P4 Later', color: '#6B7280' },
+  P1: { label: 'Urgent & Important',     short: 'P1',    color: '#EF4444' }, // Red
+  P2: { label: 'Not Urgent & Important', short: 'P2', color: '#F59E0B' }, // Orange
+  P3: { label: 'Urgent & Not Important', short: 'P3',  color: '#3B82F6' }, // Blue
+  P4: { label: 'Not Urgent & Not Important', short: 'P4', color: '#6B7280' }, // Grey
 };
 
 export const GTD_CONFIG: Record<GtdContext, { title: string; icon: string; color: string }> = {

@@ -109,7 +109,7 @@ export default function TaskCard({
 
   // Project/Area label (max 15 chars, separator is |)
   const projectAreaLabel = project
-    ? `${project.title.length > 15 ? project.title.slice(0, 15) + '…' : project.title} | ${area?.name ?? 'Inbox'}`
+    ? `${project.title.length > 15 ? project.title.slice(0, 15) + '..' : project.title} | ${area?.name ?? 'Inbox'}`
     : area?.name ?? 'Inbox';
 
   return (
@@ -186,21 +186,21 @@ export default function TaskCard({
         {/* Row 2: Date & Time | Recurring | Project/Area */}
         <div className="flex items-center justify-between text-xs text-text-3">
           {/* Date & Time (left) */}
-          <div className="flex items-center gap-1.5">
-            {task.dueDate && (
-              <span>{formatDate(task.dueDate)}{task.dueTime ? ` · ${task.dueTime}` : ''}</span>
-            )}
-          </div>
+          {task.dueDate && (
+            <span className="truncate flex-1 min-w-0">
+              {formatDate(task.dueDate)}{task.dueTime ? ` · ${task.dueTime}` : ''}
+            </span>
+          )}
 
-          {/* Recurring (center) */}
+          {/* Recurring (center) - minimal letter only */}
           {getRecurringLetter() && (
-            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-surface-2 rounded">
-              <span className="text-[10px] font-medium text-text">{getRecurringLetter()}</span>
-            </div>
+            <span className="text-[10px] font-medium text-text-3 shrink-0 mx-2">
+              {getRecurringLetter()}
+            </span>
           )}
 
           {/* Project/Area (right) */}
-          <div className="flex items-center gap-1 truncate">
+          <div className="flex items-center gap-1 truncate shrink-0 min-w-0 max-w-[40%]">
             <span className="truncate">{projectAreaLabel}</span>
           </div>
         </div>

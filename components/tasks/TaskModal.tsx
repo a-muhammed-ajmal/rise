@@ -8,7 +8,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { useCollection, addDocument, updateDocument } from '@/lib/firestore';
 import {
   Task, Project, LIFE_AREAS, PRIORITY_CONFIG,
-  LifeArea, Priority, Recurrence,
+  LifeArea, Priority, Recurrence, Label,
 } from '@/lib/types';
 import { Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -40,6 +40,13 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
 
   // Projects filtered by the currently selected area (cascading)
   const areaProjects = projects.filter(p => p.area === area);
+
+  // Placeholder connections for Connected To dropdown (future CRM integration)
+  const connections: Label[] = [
+    { id: 'c1', name: 'Alice Johnson', type: 'Close Friend', color: '#EF4444' },
+    { id: 'c2', name: 'Bob Smith', type: 'Colleague', color: '#10B981' },
+    { id: 'c3', name: 'Carol Williams', type: 'Mentor', color: '#3B82F6' },
+  ];
 
   useEffect(() => {
     if (task) {
@@ -91,6 +98,9 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
       order: task?.order ?? Date.now(),
     };
 
+    // Close the modal immediately
+    onClose();
+
     try {
       if (task) {
         await updateDocument('tasks', task.id, data);
@@ -100,7 +110,6 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
         toast('Task created', 'success');
       }
       if (onSaved) onSaved();
-      onClose();
     } catch (error) {
       console.error('Failed to save task:', error);
       toast('Failed to save task', 'error');
@@ -140,7 +149,7 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
           />
         </div>
 
-        {/* Priority - Clean list with colors */}
+        {/* Priority - Clean list with colors (no duplicates) */}
         <div className="space-y-1">
           <label className="text-xs font-medium text-text-2">Priority</label>
           <div className="grid grid-cols-2 gap-1.5">
@@ -161,7 +170,7 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: PRIORITY_CONFIG[p].color }}
                 />
-                {p} — {PRIORITY_CONFIG[p].short}
+                {p}
               </button>
             ))}
           </div>
@@ -189,12 +198,12 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
         <Select
           label="Connected To"
           value={connectedTo}
-          onChange={() => {}}
+          onChange={e => setConnectedTo(e.target.value)}
           options={[
-            { value: '', label: 'No connections yet' },
+            { value: '', label: 'None' },
+            ...connections.map(c => ({ value: c.id, label: c.name })),
           ]}
           className="text-xs"
-          disabled
         />
 
         {/* Recurring */}
