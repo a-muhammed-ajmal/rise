@@ -6,5 +6,6 @@
       "Bash(npm install:*)",
       "Bash(npm list:*)"
     ]
-  }
+  },
+  "skipDangerousModePermissionPrompt": true
 }

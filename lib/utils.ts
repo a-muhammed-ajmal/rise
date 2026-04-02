@@ -30,6 +30,19 @@ export function getGreeting(): string {
   return 'Good evening';
 }
 
+export function formatTime(timeStr: string): string {
+  if (!timeStr) return '';
+  try {
+    const [hour, minute] = timeStr.split(':').map(Number);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const h = hour % 12 || 12;
+    const m = minute?.toString().padStart(2, '0') || '00';
+    return `${h}:${m} ${ampm}`;
+  } catch {
+    return timeStr;
+  }
+}
+
 export function formatCurrency(amount: number): string {
   return `AED ${amount.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

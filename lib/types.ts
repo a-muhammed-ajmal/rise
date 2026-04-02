@@ -116,13 +116,15 @@ export interface Habit {
   id: string;
   userId: string;
   name: string;
+  description?: string;
   icon: string;
   color: string;
+  category: string;
+  time?: string;
   frequency: HabitFrequency;
   customDays?: number[];
   targetCount: number;
   goalId?: string;
-  time?: string;
   trigger?: string;
   completions: Record<string, number>; // date -> count
   streak: number;
@@ -363,4 +365,8 @@ export const PROJECT_COLORS = [
   '#b8255f', '#db4035', '#ff9933', '#fad000', '#7ecc49', '#299438',
   '#6accbc', '#158fad', '#14aaf5', '#96c3eb', '#4073ff', '#884dff',
   '#af38eb', '#eb96eb', '#e05194', '#ff8d85', '#808080', '#b8b8b8',
+] as const;
+
+export const HABIT_CATEGORIES = [
+  'Morning Routine', 'Business Discipline', 'Evening/Growth', 'Health', 'Learning', 'Other'
 ] as const;
