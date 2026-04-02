@@ -43,9 +43,9 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
 
   // Placeholder connections for Connected To dropdown (future CRM integration)
   const connections: Label[] = [
-    { id: 'c1', name: 'Alice Johnson', type: 'Close Friend', color: '#EF4444' },
-    { id: 'c2', name: 'Bob Smith', type: 'Colleague', color: '#10B981' },
-    { id: 'c3', name: 'Carol Williams', type: 'Mentor', color: '#3B82F6' },
+    { id: 'c1', userId: 'placeholder', name: 'Alice Johnson', color: '#EF4444' },
+    { id: 'c2', userId: 'placeholder', name: 'Bob Smith', color: '#10B981' },
+    { id: 'c3', userId: 'placeholder', name: 'Carol Williams', color: '#3B82F6' },
   ];
 
   useEffect(() => {
