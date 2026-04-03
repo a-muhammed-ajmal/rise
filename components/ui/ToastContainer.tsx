@@ -35,8 +35,8 @@ export default function ToastContainer() {
         <div
           key={t.id}
           className={cn(
-            'px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white animate-slide-up',
-            t.type === 'success' ? 'bg-rise' : 'bg-red-500',
+            'px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-slide-up',
+            t.type === 'success' ? 'bg-rise text-[#0A0A0F]' : 'bg-red-500 text-white',
           )}
         >
           {t.message}

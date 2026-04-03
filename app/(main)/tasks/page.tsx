@@ -159,7 +159,7 @@ export default function TasksPage() {
             <h1 className="text-lg font-semibold text-text">Tasks</h1>
             <button
               onClick={() => openTaskModal()}
-              className="flex items-center gap-1.5 px-3 py-2 bg-rise text-white rounded-xl text-sm font-semibold"
+              className="flex items-center gap-1.5 px-3 py-2 bg-rise text-[#0A0A0F] rounded-xl text-sm font-semibold hover:bg-rise-dark transition-colors"
             >
               <Plus size={15} /> New Task
             </button>
@@ -168,14 +168,14 @@ export default function TasksPage() {
       </div>
 
       {/* Main tabs */}
-      <div className="flex gap-1 bg-surface-2 rounded-xl p-1 mb-4 border border-border overflow-x-auto no-scrollbar">
+      <div className="flex gap-1 bg-[#0D0D14] rounded-xl p-1 mb-4 border border-border overflow-x-auto no-scrollbar">
         {tabs.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={cn(
               'flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-colors',
-              tab === t.key ? 'bg-surface text-text shadow-sm' : 'text-text-3',
+              tab === t.key ? 'bg-[#1A1A24] text-text shadow-sm' : 'text-text-3 hover:text-text-2',
             )}
           >
             <t.icon size={12} />
@@ -363,7 +363,7 @@ export default function TasksPage() {
                 const pct = total > 0 ? Math.round((doneTasks.length / total) * 100) : 0;
 
                 return (
-                  <div key={project.id} className="bg-surface rounded-xl border border-border overflow-visible">
+                  <div key={project.id} className="bg-[#111118] rounded-xl border border-border overflow-visible hover:border-[#FF993330] transition-colors">
                     {/* Project header */}
                     <div
                       className="flex items-center gap-3 p-4"
@@ -401,22 +401,22 @@ export default function TasksPage() {
                         {projectMenuOpen === project.id && (
                           <>
                             <div className="fixed inset-0 z-10" onClick={() => setProjectMenuOpen(null)} />
-                            <div className="absolute right-0 top-10 z-20 w-40 bg-surface rounded-lg border border-border shadow-lg py-1">
+                            <div className="absolute right-0 top-10 z-20 w-40 bg-[#111118] rounded-lg border border-[#ffffff1a] shadow-lg shadow-black/60 py-1">
                               <button
                                 onClick={() => { setProjectMenuOpen(null); openTaskModal(undefined, { area: project.area, projectId: project.id }); }}
-                                className="w-full px-3 py-2 text-left text-xs text-text hover:bg-surface-2 transition-colors"
+                                className="w-full px-3 py-2 text-left text-xs text-text hover:bg-white/5 transition-colors"
                               >
                                 Add Task
                               </button>
                               <button
                                 onClick={() => { setProjectMenuOpen(null); openProjectModal(project); }}
-                                className="w-full px-3 py-2 text-left text-xs text-text hover:bg-surface-2 transition-colors"
+                                className="w-full px-3 py-2 text-left text-xs text-text hover:bg-white/5 transition-colors"
                               >
                                 Edit Project
                               </button>
                               <button
                                 onClick={() => { setProjectMenuOpen(null); setProjectToDelete(project); setShowDeleteProjectConfirm(true); }}
-                                className="w-full px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50 transition-colors"
+                                className="w-full px-3 py-2 text-left text-xs text-red-500 hover:bg-red-500/10 transition-colors"
                               >
                                 Delete Project
                               </button>
@@ -463,8 +463,8 @@ export default function TasksPage() {
       {showDeleteProjectConfirm && projectToDelete && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => { setShowDeleteProjectConfirm(false); setProjectToDelete(null); }} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-            <div className="bg-surface rounded-xl border border-border p-4 max-w-[280px] w-[90%] animate-in fade-in zoom-in duration-150">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-[#111118] rounded-xl border border-[#ffffff1a] p-4 max-w-[280px] w-[90%] animate-in fade-in zoom-in duration-150">
               <p className="text-sm text-text mb-4">Are you sure you want to delete this project?</p>
               <div className="flex gap-2">
                 <button

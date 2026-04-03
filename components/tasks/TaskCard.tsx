@@ -158,22 +158,22 @@ export default function TaskCard({
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-6 z-20 w-36 bg-surface rounded-lg border border-border shadow-lg py-1">
+                <div className="absolute right-0 top-6 z-20 w-36 bg-[#111118] rounded-lg border border-[#ffffff1a] shadow-lg shadow-black/60 py-1">
                   <button
                     onClick={() => { setMenuOpen(false); onEdit(task); }}
-                    className="w-full px-3 py-2 text-left text-xs text-text hover:bg-surface-2 transition-colors"
+                    className="w-full px-3 py-2 text-left text-xs text-text hover:bg-white/5 transition-colors"
                   >
                     Edit Task
                   </button>
                   <button
                     onClick={handleDuplicate}
-                    className="w-full px-3 py-2 text-left text-xs text-text hover:bg-surface-2 transition-colors"
+                    className="w-full px-3 py-2 text-left text-xs text-text hover:bg-white/5 transition-colors"
                   >
                     Duplicate Task
                   </button>
                   <button
                     onClick={startDelete}
-                    className="w-full px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50 transition-colors"
+                    className="w-full px-3 py-2 text-left text-xs text-red-500 hover:bg-red-500/10 transition-colors"
                   >
                     Delete Task
                   </button>
@@ -233,8 +233,8 @@ export default function TaskCard({
       {showDeleteConfirm && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowDeleteConfirm(false)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-            <div className="bg-surface rounded-xl border border-border p-4 max-w-[280px] w-[90%] animate-in fade-in zoom-in duration-150">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-[#111118] rounded-xl border border-[#ffffff1a] p-4 max-w-[280px] w-[90%] animate-in fade-in zoom-in duration-150">
               <p className="text-sm text-text mb-4">Are you sure you want to delete this task?</p>
               <div className="flex gap-2">
                 <button

@@ -259,7 +259,7 @@ export default function FinancePage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-extrabold text-text">Finance</h1>
         <button onClick={handleAdd}
-          className="flex items-center gap-2 px-4 py-2.5 bg-rise text-white rounded-xl text-sm font-semibold shadow-sm">
+          className="flex items-center gap-2 px-4 py-2.5 bg-rise text-[#0A0A0F] rounded-xl text-sm font-semibold shadow-sm">
           <Plus size={18} /> Add
         </button>
       </div>
@@ -298,7 +298,7 @@ export default function FinancePage() {
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors',
               activeTab === tab.key
-                ? 'bg-rise text-white'
+                ? 'bg-rise text-[#0A0A0F]'
                 : 'text-text-2 hover:bg-surface-2')}>
             <tab.icon size={16} />
             {tab.label}
@@ -314,7 +314,7 @@ export default function FinancePage() {
             {(['all', 'Income', 'Expense'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
                 className={cn('px-4 py-2 rounded-full text-sm font-semibold border',
-                  filter === f ? 'bg-rise text-white border-rise' : 'bg-surface-2 text-text-2 border-border')}>
+                  filter === f ? 'bg-rise text-[#0A0A0F] border-rise' : 'bg-surface-2 text-text-2 border-border')}>
                 {f === 'all' ? 'All' : f}
               </button>
             ))}

@@ -43,7 +43,7 @@ export default function GlobalFab() {
 
       {/* Context menu — 2 rows × 4 cols */}
       {menuOpen && (
-        <div className="fixed bottom-24 right-4 z-50 bg-surface rounded-2xl border border-border shadow-xl p-3 animate-slide-up">
+        <div className="fixed bottom-24 right-4 z-50 bg-[#111118] rounded-2xl border border-[#ffffff1a] shadow-xl shadow-black/60 p-3 animate-slide-up">
           <div className="grid grid-cols-4 gap-1">
             {FAB_ACTIONS.map(action => (
               <button
@@ -52,8 +52,8 @@ export default function GlobalFab() {
                 className={cn(
                   'flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors',
                   action.key === 'task'
-                    ? 'hover:bg-rise/10 active:bg-rise/15'
-                    : 'hover:bg-surface-2 opacity-60',
+                    ? 'hover:bg-rise/15 active:bg-rise/20'
+                    : 'hover:bg-white/5 opacity-60',
                 )}
               >
                 <span className="text-xl">{action.emoji}</span>
@@ -67,7 +67,7 @@ export default function GlobalFab() {
       {/* FAB button */}
       <button
         onClick={() => setMenuOpen(o => !o)}
-        className="fixed bottom-20 right-4 z-50 lg:bottom-6 w-14 h-14 rounded-full bg-rise text-white shadow-lg shadow-rise/30 flex items-center justify-center active:scale-95 transition-all"
+        className="fixed bottom-20 right-4 z-50 lg:bottom-6 w-14 h-14 rounded-full bg-rise text-[#0A0A0F] shadow-lg shadow-rise/40 flex items-center justify-center active:scale-95 hover:scale-[1.05] hover:shadow-rise/50 transition-all duration-150"
         aria-label="Quick add"
       >
         <Plus

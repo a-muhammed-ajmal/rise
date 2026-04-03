@@ -115,7 +115,7 @@ export default function DocumentsPage() {
     <div className="px-4 py-6 lg:px-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-extrabold text-text">Documents</h1>
-        <button onClick={openCreateModal} className="flex items-center gap-2 px-4 py-2.5 bg-rise text-white rounded-xl text-sm font-semibold shadow-sm">
+        <button onClick={openCreateModal} className="flex items-center gap-2 px-4 py-2.5 bg-rise text-[#0A0A0F] rounded-xl text-sm font-semibold shadow-sm">
           <Plus size={18} /> Add
         </button>
       </div>

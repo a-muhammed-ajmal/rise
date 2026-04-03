@@ -280,7 +280,7 @@ export default function ChatPage() {
                 <div className={cn(
                   'max-w-[80%] rounded-2xl px-4 py-3 text-sm',
                   msg.role === 'user'
-                    ? 'bg-rise text-white rounded-br-md'
+                    ? 'bg-rise text-[#0A0A0F] rounded-br-md'
                     : 'bg-surface-2 text-text border border-border rounded-bl-md'
                 )}>
                   {msg.role === 'user' ? (
@@ -343,7 +343,7 @@ export default function ChatPage() {
               autoFocus
               className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-2 text-sm text-text placeholder:text-text-3 focus:outline-none focus:ring-2 focus:ring-rise/30" />
             <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}
-              className="w-12 h-12 rounded-xl bg-rise text-white flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform">
+              className="w-12 h-12 rounded-xl bg-rise text-[#0A0A0F] flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform">
               <Send size={20} />
             </button>
           </div>

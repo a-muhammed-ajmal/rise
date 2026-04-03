@@ -80,7 +80,7 @@ export default function JournalPage() {
     <div className="px-4 py-6 lg:px-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-extrabold text-text">Journal</h1>
-        <button onClick={openCreateModal} className="flex items-center gap-2 px-4 py-2.5 bg-rise text-white rounded-xl text-sm font-semibold shadow-sm">
+        <button onClick={openCreateModal} className="flex items-center gap-2 px-4 py-2.5 bg-rise text-[#0A0A0F] rounded-xl text-sm font-semibold shadow-sm">
           <Plus size={18} /> Write
         </button>
       </div>
@@ -141,7 +141,7 @@ export default function JournalPage() {
                   className={cn(
                     'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
                     mood === option
-                      ? 'bg-rise text-white border-rise'
+                      ? 'bg-rise text-[#0A0A0F] border-rise'
                       : 'bg-surface-3 text-text-3 border-border hover:border-text-3'
                   )}
                 >
@@ -158,7 +158,7 @@ export default function JournalPage() {
               {[1,2,3,4,5].map(i => (
                 <button key={i} onClick={() => setEnergy(i)}
                   className={cn('flex-1 py-3 rounded-xl text-sm font-medium border transition-all text-center',
-                    energy === i ? 'bg-rise text-white border-rise scale-105' : 'bg-surface-3 text-text-3 border-border')}>
+                    energy === i ? 'bg-rise text-[#0A0A0F] border-rise scale-105' : 'bg-surface-3 text-text-3 border-border')}>
                   {ENERGY_LABELS[i]?.split(' ')[0]}
                 </button>
               ))}

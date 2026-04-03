@@ -196,7 +196,7 @@ export default function ProfessionalPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-extrabold text-text">Professional</h1>
         <button onClick={() => tab === 'leads' ? openNewLead() : openNewDeal()}
-          className="flex items-center gap-2 px-4 py-2.5 bg-rise text-white rounded-xl text-sm font-semibold shadow-sm">
+          className="flex items-center gap-2 px-4 py-2.5 bg-rise text-[#0A0A0F] rounded-xl text-sm font-semibold shadow-sm">
           <Plus size={18} /> Add {tab === 'leads' ? 'Lead' : 'Deal'}
         </button>
       </div>

@@ -1,37 +1,49 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode for dark: utilities */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-rise: #FF9933;
-  --color-rise-light: #FFF3E0;
-  --color-rise-dark: #E67E22;
+  --color-rise-light: #FF993315;
+  --color-rise-dark: #E8852A;
   --color-navy: #1E3A5F;
-  --color-green: #2D7C3E;
+  --color-green: #10B981;
   --color-teal: #4A9B8E;
   --color-pink: #E8849B;
   --color-purple: #7B4B9E;
-  --color-surface: #FFFFFF;
-  --color-surface-2: #F5F5F5;
-  --color-surface-3: #EEEEEE;
-  --color-text: #1A1A1A;
-  --color-text-2: #555555;
-  --color-text-3: #999999;
-  --color-border: #E0E0E0;
+  --color-surface: #111118;
+  --color-surface-2: #13131C;
+  --color-surface-3: #1A1A24;
+  --color-text: #F1F5F9;
+  --color-text-2: #94A3B8;
+  --color-text-3: #475569;
+  --color-border: #ffffff0f;
   --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   html {
     font-family: var(--font-sans);
-    background-color: #ffffff;
-    background-image:
-      linear-gradient(rgba(184, 212, 232, 0.25) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(184, 212, 232, 0.25) 1px, transparent 1px);
-    background-size: 28px 28px;
+    background-color: #0A0A0F;
   }
   body {
     @apply text-text antialiased;
     background: transparent;
     -webkit-tap-highlight-color: transparent;
+  }
+  /* Animated grid overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      linear-gradient(#ffffff08 1px, transparent 1px),
+      linear-gradient(90deg, #ffffff08 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridPulse 8s ease-in-out infinite;
+    pointer-events: none;
   }
   h1, h2, h3, h4, h5, h6 {
     font-size: 18px;
@@ -40,35 +52,18 @@
   }
 }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  :root.dark, .dark {
-    --color-surface: #0F0F14;
-    --color-surface-2: #1A1A22;
-    --color-surface-3: #252530;
-    --color-text: #F0F0F0;
-    --color-text-2: #AAAAAA;
-    --color-text-3: #666666;
-    --color-border: #333340;
-  }
+/* Grid pulse animation */
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1.0; }
 }
 
-.dark {
-  --color-surface: #0F0F14;
-  --color-surface-2: #1A1A22;
-  --color-surface-3: #252530;
-  --color-text: #F0F0F0;
-  --color-text-2: #AAAAAA;
-  --color-text-3: #666666;
-  --color-border: #333340;
+/* Card entrance animation */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
-.dark html, html.dark {
-  background-color: #0F0F14;
-  background-image:
-    linear-gradient(#1e2a38 1px, transparent 1px),
-    linear-gradient(90deg, #1e2a38 1px, transparent 1px);
-}
+.animate-fade-up { animation: fadeUp 0.3s ease-out; }
 
 /* Cap font weight at semibold and font size at 18px */
 .font-bold, .font-extrabold, .font-black { font-weight: 600 !important; }
@@ -80,7 +75,7 @@
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #ffffff1a; border-radius: 3px; }
 
 /* Bottom sheet animation */
 @keyframes slideUp {
@@ -89,9 +84,31 @@
 }
 .animate-slide-up { animation: slideUp 0.3s ease-out; }
 
+/* Bottom sheet shadow */
+.shadow-sheet { box-shadow: 0 -4px 24px #00000060; }
+
 /* Safe area for mobile */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
 
 /* Hide scrollbar */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Mobile: reduce grid size */
+@media (max-width: 768px) {
+  body::before {
+    background-size: 60px 60px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+    opacity: 0.7;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

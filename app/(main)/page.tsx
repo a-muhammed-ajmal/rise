@@ -156,7 +156,7 @@ export default function DashboardPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-surface-2 rounded-xl border border-border p-3 flex items-center gap-3">
+        <div className="bg-[#111118] rounded-xl border border-border p-3 flex items-center gap-3 hover:border-[#FF993330] transition-colors">
           <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
             <CheckCircle2 size={18} className="text-emerald-500" />
           </div>
@@ -165,7 +165,7 @@ export default function DashboardPage() {
             <p className="text-xs text-text-3">Done today</p>
           </div>
         </div>
-        <div className="bg-surface-2 rounded-xl border border-border p-3 flex items-center gap-3">
+        <div className="bg-[#111118] rounded-xl border border-border p-3 flex items-center gap-3 hover:border-[#FF993330] transition-colors">
           <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
             <Target size={18} className="text-blue-500" />
           </div>
@@ -174,7 +174,7 @@ export default function DashboardPage() {
             <p className="text-xs text-text-3">Active goals</p>
           </div>
         </div>
-        <div className="bg-surface-2 rounded-xl border border-border p-3 flex items-center gap-3">
+        <div className="bg-[#111118] rounded-xl border border-border p-3 flex items-center gap-3 hover:border-[#FF993330] transition-colors">
           <div className="w-9 h-9 rounded-lg bg-orange-500/10 flex items-center justify-center">
             <Flame size={18} className="text-orange-500" />
           </div>
@@ -183,7 +183,7 @@ export default function DashboardPage() {
             <p className="text-xs text-text-3">Avg streak</p>
           </div>
         </div>
-        <div className="bg-surface-2 rounded-xl border border-border p-3 flex items-center gap-3">
+        <div className="bg-[#111118] rounded-xl border border-border p-3 flex items-center gap-3 hover:border-[#FF993330] transition-colors">
           <div className="w-9 h-9 rounded-lg bg-rise/10 flex items-center justify-center">
             <Wallet size={18} className="text-rise" />
           </div>
@@ -197,7 +197,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Winner's Mindset */}
-      <div className="bg-surface-2 rounded-2xl border border-border overflow-hidden">
+      <div className="bg-[#111118] rounded-2xl border border-border overflow-hidden hover:border-[#FF993330] transition-colors">
         <button
           onClick={() => setAffirmationsOpen(o => !o)}
           className="w-full flex items-center justify-between px-4 py-3.5 text-left"
@@ -223,11 +223,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Today's Focus */}
-      <div className="bg-surface-2 rounded-2xl border border-border p-4">
+      <div className="bg-[#111118] rounded-2xl border border-border p-4 hover:border-[#FF993330] transition-colors">
         <div className="flex items-center gap-2 mb-3">
           <span>🎯</span>
           <h2 className="text-sm font-semibold text-text">Today&apos;s Focus</h2>
-          <span className="ml-auto text-xs text-text-3 bg-surface-3 px-2 py-0.5 rounded-full">
+          <span className="ml-auto text-xs text-text-3 bg-[#1A1A24] px-2 py-0.5 rounded-full">
             {focusTasks.length}/3
           </span>
         </div>
@@ -243,7 +243,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Next Up (Habits) */}
-      <div className="bg-surface-2 rounded-2xl border border-border p-4">
+      <div className="bg-[#111118] rounded-2xl border border-border p-4 hover:border-[#FF993330] transition-colors">
         <div className="flex items-center gap-2 mb-2">
           <span>⏰</span>
           <h2 className="text-sm font-semibold text-text">Next Up</h2>
@@ -276,7 +276,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Get Things Done */}
-      <div className="bg-surface-2 rounded-2xl border border-border p-4">
+      <div className="bg-[#111118] rounded-2xl border border-border p-4 hover:border-[#FF993330] transition-colors">
         <div className="flex items-center gap-2 mb-3">
           <span>⚡</span>
           <h2 className="text-sm font-semibold text-text">Get Things Done</h2>
@@ -300,7 +300,7 @@ export default function DashboardPage() {
 
       {/* Goal Progress */}
       {topGoals.length > 0 && (
-        <div className="bg-surface-2 rounded-2xl border border-border p-4">
+        <div className="bg-[#111118] rounded-2xl border border-border p-4 hover:border-[#FF993330] transition-colors">
           <div className="flex items-center gap-2 mb-3">
             <Target size={16} className="text-blue-500" />
             <h2 className="text-sm font-semibold text-text">Goal Progress</h2>
@@ -311,13 +311,13 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-text truncate mr-2">{g.title}</span>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-medium text-text-3 bg-surface-3 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-medium text-text-3 bg-[#1A1A24] px-1.5 py-0.5 rounded">
                       {g.area}
                     </span>
                     <span className="text-xs font-semibold text-text-2">{g.progress}%</span>
                   </div>
                 </div>
-                <div className="w-full h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                <div className="w-full h-1.5 bg-[#1A1A24] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-blue-500 rounded-full transition-all"
                     style={{ width: `${Math.min(g.progress, 100)}%` }}

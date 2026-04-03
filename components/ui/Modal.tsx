@@ -42,10 +42,10 @@ export default function Modal({ open, onClose, title, children, size = 'md' }: M
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       {/* Desktop: centered modal. Mobile: bottom sheet */}
       <div className={cn(
-        'absolute bg-surface rounded-t-3xl lg:rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+        'absolute bg-[#111118] rounded-t-3xl lg:rounded-2xl shadow-2xl overflow-hidden flex flex-col shadow-sheet',
         'bottom-0 left-0 right-0 max-h-[90dvh] animate-slide-up',
         'lg:bottom-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:animate-none',
         size === 'sm' && 'lg:w-[400px] lg:max-h-[70vh]',
@@ -54,7 +54,7 @@ export default function Modal({ open, onClose, title, children, size = 'md' }: M
       )}>
         {/* Handle bar for mobile */}
         <div className="lg:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-border" />
+          <div className="w-10 h-1 rounded-full bg-white/15" />
         </div>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-border">

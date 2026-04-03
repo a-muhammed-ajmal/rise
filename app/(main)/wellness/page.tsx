@@ -227,7 +227,7 @@ export default function WellnessPage() {
           </p>
         </div>
         <button onClick={openAddModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-rise text-white rounded-xl text-sm font-semibold shadow-sm hover:bg-rise/90 transition-colors">
+          className="flex items-center gap-2 px-4 py-2.5 bg-rise text-[#0A0A0F] rounded-xl text-sm font-semibold shadow-sm hover:bg-rise/90 transition-colors">
           <Plus size={18} /> New Habit
         </button>
       </div>

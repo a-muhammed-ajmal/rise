@@ -42,7 +42,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <>
       <div className="flex h-dvh overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-surface/80 backdrop-blur-sm p-4">
+      <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-[#0D0D14]/90 backdrop-blur-sm p-4">
         <div className="flex items-center gap-3 mb-8 px-2">
           <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0">
             <img src="/icon-512.png" alt="RISE" className="w-full h-full object-cover" />
@@ -61,10 +61,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150',
                   isActive(link.href)
-                    ? 'bg-rise/10 text-rise'
-                    : 'text-text-2 hover:bg-surface-3 hover:text-text',
+                    ? 'bg-rise/15 text-rise border-l-2 border-rise rounded-r-xl'
+                    : 'rounded-xl text-text-2 hover:bg-white/5 hover:text-text',
                 )}
               >
                 <Icon size={18} />
@@ -93,7 +93,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile Header */}
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-surface/80 backdrop-blur-sm">
+        <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-[#0D0D14]/90 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg overflow-hidden">
               <img src="/icon-512.png" alt="RISE" className="w-full h-full object-cover" />
@@ -112,7 +112,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-surface/90 backdrop-blur-sm border-t border-border pb-safe z-40">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0D0D14]/95 backdrop-blur-[12px] border-t border-border pb-safe z-40">
         <div className="flex items-center justify-around h-16">
           {mainTabs.map((tab) => {
             const Icon = tab.icon;
@@ -121,8 +121,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-0.5 min-w-[56px] py-1',
-                  isActive(tab.href) ? 'text-rise' : 'text-text-3',
+                  'flex flex-col items-center justify-center gap-0.5 min-w-[56px] py-1 border-t-2 transition-colors',
+                  isActive(tab.href) ? 'text-rise border-rise' : 'text-text-3 border-transparent',
                 )}
               >
                 <Icon size={22} strokeWidth={isActive(tab.href) ? 2.5 : 1.5} />
@@ -133,8 +133,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setMoreOpen(true)}
             className={cn(
-              'flex flex-col items-center justify-center gap-0.5 min-w-[56px] py-1',
-              moreOpen ? 'text-rise' : 'text-text-3',
+              'flex flex-col items-center justify-center gap-0.5 min-w-[56px] py-1 border-t-2 transition-colors',
+              moreOpen ? 'text-rise border-rise' : 'text-text-3 border-transparent',
             )}
           >
             <Menu size={22} strokeWidth={1.5} />
@@ -150,7 +150,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {moreOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-surface rounded-t-3xl animate-slide-up pb-safe">
+          <div className="absolute bottom-0 left-0 right-0 bg-[#111118] rounded-t-3xl animate-slide-up pb-safe shadow-sheet border-t border-border">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h3 className="font-semibold text-text">More</h3>
               <button onClick={() => setMoreOpen(false)} className="text-text-3"><X size={24} /></button>
@@ -165,7 +165,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     onClick={() => setMoreOpen(false)}
                     className={cn(
                       'flex flex-col items-center gap-2 p-4 rounded-2xl transition-colors',
-                      isActive(link.href) ? 'bg-rise/10 text-rise' : 'text-text-2 hover:bg-surface-2',
+                      isActive(link.href) ? 'bg-rise/15 text-rise' : 'text-text-2 hover:bg-white/5',
                     )}
                   >
                     <Icon size={24} />
