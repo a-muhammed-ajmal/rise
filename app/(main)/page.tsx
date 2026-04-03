@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useCollection, updateDocument } from '@/lib/firestore';
-import { Task, Habit, Project } from '@/lib/types';
-import { cn, isOverdue } from '@/lib/utils';
-import { format } from 'date-fns';
-import { ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { Task, Habit, Project, Goal, Transaction } from '@/lib/types';
+import { cn, isOverdue, formatCurrency } from '@/lib/utils';
+import { format, startOfMonth } from 'date-fns';
+import { ChevronDown, ChevronUp, Clock, Target, Wallet, Flame, CheckCircle2 } from 'lucide-react';
 import TaskCard from '@/components/tasks/TaskCard';
 
 const AFFIRMATIONS = [
@@ -57,6 +57,8 @@ export default function DashboardPage() {
   const { data: tasks } = useCollection<Task>('tasks', uid);
   const { data: projects } = useCollection<Project>('projects', uid);
   const { data: habits } = useCollection<Habit>('habits', uid);
+  const { data: goals } = useCollection<Goal>('goals', uid);
+  const { data: transactions } = useCollection<Transaction>('transactions', uid);
 
   const [now, setNow] = useState(new Date());
   const [affirmationsOpen, setAffirmationsOpen] = useState(false);
@@ -67,6 +69,39 @@ export default function DashboardPage() {
   }, []);
 
   const today = format(now, 'yyyy-MM-dd');
+
+  // Quick Stats
+  const tasksCompletedToday = useMemo(() =>
+    (tasks || []).filter(t => t.completedAt && t.completedAt.startsWith(today)).length,
+    [tasks, today]
+  );
+
+  const activeGoals = useMemo(() =>
+    (goals || []).filter(g => !g.isCompleted),
+    [goals]
+  );
+
+  const avgStreak = useMemo(() => {
+    const activeHabits = (habits || []).filter(h => h.isActive);
+    if (activeHabits.length === 0) return 0;
+    const total = activeHabits.reduce((sum, h) => sum + (h.streak ?? 0), 0);
+    return Math.round(total / activeHabits.length);
+  }, [habits]);
+
+  const monthlyBalance = useMemo(() => {
+    const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
+    const monthTxns = (transactions || []).filter(t => t.date >= monthStart && t.date <= today);
+    const income = monthTxns.filter(t => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
+    const expense = monthTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);
+    return income - expense;
+  }, [transactions, now, today]);
+
+  const topGoals = useMemo(() =>
+    activeGoals
+      .sort((a, b) => b.progress - a.progress)
+      .slice(0, 3),
+    [activeGoals]
+  );
 
   // Today's Focus: max 3 tasks, incomplete first
   const focusTasks = useMemo(() =>
@@ -117,6 +152,48 @@ export default function DashboardPage() {
         <p className="text-sm text-text-3 mt-0.5">
           {format(now, 'EEEE, MMMM d, yyyy')} | {format(now, 'hh:mm a')}
         </p>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-surface-2 rounded-xl border border-border p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <CheckCircle2 size={18} className="text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-text leading-tight">{tasksCompletedToday}</p>
+            <p className="text-xs text-text-3">Done today</p>
+          </div>
+        </div>
+        <div className="bg-surface-2 rounded-xl border border-border p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <Target size={18} className="text-blue-500" />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-text leading-tight">{activeGoals.length}</p>
+            <p className="text-xs text-text-3">Active goals</p>
+          </div>
+        </div>
+        <div className="bg-surface-2 rounded-xl border border-border p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-orange-500/10 flex items-center justify-center">
+            <Flame size={18} className="text-orange-500" />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-text leading-tight">{avgStreak}d</p>
+            <p className="text-xs text-text-3">Avg streak</p>
+          </div>
+        </div>
+        <div className="bg-surface-2 rounded-xl border border-border p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-rise/10 flex items-center justify-center">
+            <Wallet size={18} className="text-rise" />
+          </div>
+          <div>
+            <p className={cn("text-lg font-bold leading-tight", monthlyBalance >= 0 ? "text-emerald-500" : "text-red-500")}>
+              {formatCurrency(Math.abs(monthlyBalance))}
+            </p>
+            <p className="text-xs text-text-3">Monthly {monthlyBalance >= 0 ? 'surplus' : 'deficit'}</p>
+          </div>
+        </div>
       </div>
 
       {/* Winner's Mindset */}
@@ -220,6 +297,43 @@ export default function DashboardPage() {
           View all tasks →
         </a>
       </div>
+
+      {/* Goal Progress */}
+      {topGoals.length > 0 && (
+        <div className="bg-surface-2 rounded-2xl border border-border p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Target size={16} className="text-blue-500" />
+            <h2 className="text-sm font-semibold text-text">Goal Progress</h2>
+          </div>
+          <div className="space-y-3">
+            {topGoals.map(g => (
+              <div key={g.id} className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-text truncate mr-2">{g.title}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] font-medium text-text-3 bg-surface-3 px-1.5 py-0.5 rounded">
+                      {g.area}
+                    </span>
+                    <span className="text-xs font-semibold text-text-2">{g.progress}%</span>
+                  </div>
+                </div>
+                <div className="w-full h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 rounded-full transition-all"
+                    style={{ width: `${Math.min(g.progress, 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <a
+            href="/goals"
+            className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-border text-xs font-semibold text-rise hover:text-rise-dark transition-colors"
+          >
+            View all goals →
+          </a>
+        </div>
+      )}
 
     </div>
   );

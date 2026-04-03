@@ -8,6 +8,7 @@ import { cn, formatTime } from '@/lib/utils';
 import { Activity, Plus, Flame } from 'lucide-react';
 import { format } from 'date-fns';
 import HabitCard from '@/components/wellness/HabitCard';
+import PomodoroTimer from '@/components/wellness/PomodoroTimer';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { Input, Select, TextArea } from '@/components/ui/Input';
@@ -264,6 +265,9 @@ export default function WellnessPage() {
               <div className="text-xs text-text-3 mt-1">Avg Streak</div>
             </div>
           </div>
+
+          {/* Pomodoro Timer */}
+          <PomodoroTimer userId={uid!} />
 
           {/* Timeline View */}
           {renderHabitGroup('🌅 Morning', morningHabits.filter(h => h.time))}

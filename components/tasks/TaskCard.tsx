@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import { Task, Project, LIFE_AREAS, PRIORITY_CONFIG } from '@/lib/types';
+import { Task, Project, LIFE_AREAS, PRIORITY_CONFIG, GTD_CONFIG, QUADRANT_CONFIG } from '@/lib/types';
 import { cn, formatDate } from '@/lib/utils';
 import { CheckCircle2, Circle } from 'lucide-react';
 import { updateDocument, deleteDocument, addDocument } from '@/lib/firestore';
@@ -183,21 +183,44 @@ export default function TaskCard({
           </div>
         </div>
 
-        {/* Row 2: Date & Time | Recurring | Project/Area */}
-        <div className="flex items-center justify-between text-xs text-text-3">
-          {/* Date & Time (left) */}
+        {/* Row 2: GTD Context | Quadrant | Date & Time | Recurring | Project/Area */}
+        <div className="flex items-center gap-1.5 flex-wrap text-xs text-text-3">
+          {/* GTD Context badge */}
+          {task.gtdContext && GTD_CONFIG[task.gtdContext] && (
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white shrink-0"
+              style={{ backgroundColor: GTD_CONFIG[task.gtdContext].color }}
+            >
+              {GTD_CONFIG[task.gtdContext].title}
+            </span>
+          )}
+
+          {/* Quadrant badge */}
+          {task.quadrant && QUADRANT_CONFIG[task.quadrant] && (
+            <span
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0"
+              style={{ backgroundColor: QUADRANT_CONFIG[task.quadrant].color + '20', color: QUADRANT_CONFIG[task.quadrant].color }}
+            >
+              {QUADRANT_CONFIG[task.quadrant].title}
+            </span>
+          )}
+
+          {/* Date & Time */}
           {task.dueDate && (
-            <span className="truncate flex-1 min-w-0">
+            <span className="truncate min-w-0">
               {formatDate(task.dueDate)}{task.dueTime ? ` · ${task.dueTime}` : ''}
             </span>
           )}
 
-          {/* Recurring (center) - minimal letter only */}
+          {/* Recurring - minimal letter only */}
           {getRecurringLetter() && (
-            <span className="text-[10px] font-medium text-text-3 shrink-0 mx-2">
+            <span className="text-[10px] font-medium text-text-3 shrink-0">
               {getRecurringLetter()}
             </span>
           )}
+
+          {/* Spacer to push project/area right */}
+          <div className="flex-1" />
 
           {/* Project/Area (right) */}
           <div className="flex items-center gap-1 truncate shrink-0 min-w-0 max-w-[40%]">

@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useCollection, deleteDocument } from '@/lib/firestore';
-import { Task, Project, LIFE_AREAS, LifeArea } from '@/lib/types';
+import { Task, Project, LIFE_AREAS, LifeArea, GTD_CONFIG, QUADRANT_CONFIG, GtdContext, Quadrant } from '@/lib/types';
 import TaskCard from '@/components/tasks/TaskCard';
 import TaskModal from '@/components/tasks/TaskModal';
 import ProjectModal from '@/components/tasks/ProjectModal';
@@ -11,11 +11,11 @@ import EmptyState from '@/components/ui/EmptyState';
 import { cn, isOverdue } from '@/lib/utils';
 import {
   Plus, ListTodo, FolderOpen, Calendar, Inbox,
-  FolderPlus,
+  FolderPlus, Zap, LayoutGrid,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-type MainTab = 'today' | 'inbox' | 'upcoming' | 'projects';
+type MainTab = 'today' | 'inbox' | 'upcoming' | 'projects' | 'gtd' | 'quadrant';
 
 interface TaskInit {
   area?: LifeArea;
@@ -119,6 +119,8 @@ export default function TasksPage() {
     { key: 'inbox' as MainTab,    label: 'Inbox',    icon: Inbox,      count: inboxTasks.length },
     { key: 'upcoming' as MainTab, label: 'Upcoming', icon: ListTodo,   count: upcomingTasks.length },
     { key: 'projects' as MainTab, label: 'Projects', icon: FolderOpen, count: projects.length },
+    { key: 'gtd' as MainTab,      label: 'GTD',      icon: Zap,        count: 0 },
+    { key: 'quadrant' as MainTab,  label: 'Quadrant', icon: LayoutGrid, count: 0 },
   ];
 
   const sharedCardProps = useMemo(() => ({
@@ -166,7 +168,7 @@ export default function TasksPage() {
       </div>
 
       {/* Main tabs */}
-      <div className="flex gap-1 bg-surface-2 rounded-xl p-1 mb-4 border border-border">
+      <div className="flex gap-1 bg-surface-2 rounded-xl p-1 mb-4 border border-border overflow-x-auto no-scrollbar">
         {tabs.map(t => (
           <button
             key={t.key}
@@ -252,6 +254,80 @@ export default function TasksPage() {
               <TaskCard key={t.id} task={t} selected={selected.has(t.id)} {...sharedCardProps} />
             ))
           }
+        </div>
+      )}
+
+      {/* ── GTD ── */}
+      {tab === 'gtd' && (
+        <div className="space-y-4">
+          {(Object.keys(GTD_CONFIG) as GtdContext[]).map(ctx => {
+            const cfg = GTD_CONFIG[ctx];
+            const ctxTasks = tasks.filter(t => !t.isCompleted && t.gtdContext === ctx);
+            return (
+              <section key={ctx}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: cfg.color }}
+                  />
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: cfg.color }}>
+                    {cfg.title} · {ctxTasks.length}
+                  </p>
+                </div>
+                {ctxTasks.length === 0 ? (
+                  <p className="text-xs text-text-3 pl-5 mb-2">No tasks</p>
+                ) : (
+                  <div className="space-y-2">
+                    {ctxTasks.map(t => (
+                      <TaskCard key={t.id} task={t} selected={selected.has(t.id)} {...sharedCardProps} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── QUADRANT ── */}
+      {tab === 'quadrant' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {(Object.keys(QUADRANT_CONFIG) as Quadrant[]).map(q => {
+            const cfg = QUADRANT_CONFIG[q];
+            const qTasks = tasks.filter(t => !t.isCompleted && t.quadrant === q);
+            return (
+              <div
+                key={q}
+                className="rounded-xl border p-3"
+                style={{ borderColor: cfg.color + '40' }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: cfg.color }}
+                  />
+                  <div>
+                    <p className="text-xs font-semibold" style={{ color: cfg.color }}>
+                      {cfg.title}
+                    </p>
+                    <p className="text-[10px] text-text-3">{cfg.subtitle}</p>
+                  </div>
+                  <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: cfg.color + '15', color: cfg.color }}>
+                    {qTasks.length}
+                  </span>
+                </div>
+                {qTasks.length === 0 ? (
+                  <p className="text-xs text-text-3">No tasks</p>
+                ) : (
+                  <div className="space-y-2">
+                    {qTasks.map(t => (
+                      <TaskCard key={t.id} task={t} selected={selected.has(t.id)} {...sharedCardProps} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

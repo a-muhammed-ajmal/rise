@@ -7,8 +7,8 @@ import { Input, TextArea, Select } from '@/components/ui/Input';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useCollection, addDocument, updateDocument } from '@/lib/firestore';
 import {
-  Task, Project, LIFE_AREAS, PRIORITY_CONFIG,
-  LifeArea, Priority, Recurrence, Label,
+  Task, Project, LIFE_AREAS, PRIORITY_CONFIG, GTD_CONFIG, QUADRANT_CONFIG,
+  LifeArea, Priority, Recurrence, Label, GtdContext, Quadrant,
 } from '@/lib/types';
 import { Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,6 +37,8 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
   const [dueTime, setDueTime] = useState('');
   const [isMyDay, setIsMyDay] = useState(false);
   const [recurring, setRecurring] = useState<Recurrence>('None');
+  const [gtdContext, setGtdContext] = useState<GtdContext | ''>('');
+  const [quadrant, setQuadrant] = useState<Quadrant | ''>('');
 
   // Projects filtered by the currently selected area (cascading)
   const areaProjects = projects.filter(p => p.area === area);
@@ -60,6 +62,8 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
       setDueTime(task.dueTime ?? '');
       setIsMyDay(task.isMyDay);
       setRecurring(task.recurring ?? 'None');
+      setGtdContext(task.gtdContext ?? '');
+      setQuadrant(task.quadrant ?? '');
     } else {
       setTitle('');
       setDescription('');
@@ -71,6 +75,8 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
       setDueTime('');
       setIsMyDay(false);
       setRecurring('None');
+      setGtdContext('');
+      setQuadrant('');
     }
   }, [task, open, initArea, initProjectId]);
 
@@ -94,6 +100,8 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
       dueTime: dueTime || undefined,
       isMyDay,
       recurring,
+      gtdContext: gtdContext || undefined,
+      quadrant: quadrant || undefined,
       isCompleted: task?.isCompleted ?? false,
       order: task?.order ?? Date.now(),
     };
@@ -171,6 +179,55 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
                   style={{ backgroundColor: PRIORITY_CONFIG[p].color }}
                 />
                 {p}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* GTD Context */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-text-2">GTD Context</label>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(GTD_CONFIG) as GtdContext[]).map(ctx => (
+              <button
+                key={ctx}
+                type="button"
+                onClick={() => setGtdContext(gtdContext === ctx ? '' : ctx)}
+                className={cn(
+                  'px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors',
+                  gtdContext === ctx
+                    ? 'border-transparent text-white'
+                    : 'border-border text-text-2 hover:border-text-3'
+                )}
+                style={gtdContext === ctx ? { backgroundColor: GTD_CONFIG[ctx].color } : undefined}
+              >
+                {GTD_CONFIG[ctx].title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Eisenhower Quadrant */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-text-2">Quadrant</label>
+          <div className="grid grid-cols-2 gap-1.5">
+            {(Object.keys(QUADRANT_CONFIG) as Quadrant[]).map(q => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => setQuadrant(quadrant === q ? '' : q)}
+                className={cn(
+                  'px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-colors text-left',
+                  quadrant === q
+                    ? 'border-transparent text-white'
+                    : 'border-border text-text-2 hover:border-text-3'
+                )}
+                style={quadrant === q ? { backgroundColor: QUADRANT_CONFIG[q].color } : undefined}
+              >
+                <span className="block leading-tight">{QUADRANT_CONFIG[q].title}</span>
+                <span className={cn('block text-[9px] leading-tight mt-0.5', quadrant === q ? 'text-white/80' : 'text-text-3')}>
+                  {QUADRANT_CONFIG[q].subtitle}
+                </span>
               </button>
             ))}
           </div>
