@@ -160,7 +160,7 @@ export default function TasksPage() {
             <h1 className="text-lg font-semibold text-text">Tasks</h1>
             <button
               onClick={() => openTaskModal()}
-              className="flex items-center gap-1.5 px-3 py-2 bg-rise text-[#0A0A0F] rounded-xl text-sm font-semibold hover:bg-rise-dark transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-b from-rise to-rise-dark text-[#0A0A0F] rounded-lg text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-rise/20"
             >
               <Plus size={15} /> New Task
             </button>
@@ -169,14 +169,14 @@ export default function TasksPage() {
       </div>
 
       {/* Main tabs */}
-      <div className="flex gap-1 bg-[#0D0D14] rounded-xl p-1 mb-4 border border-border overflow-x-auto no-scrollbar">
+      <div className="flex gap-1 bg-surface rounded-lg p-1 mb-4 border border-white/[0.06] overflow-x-auto no-scrollbar">
         {tabs.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-colors',
-              tab === t.key ? 'bg-[#1A1A24] text-text shadow-sm' : 'text-text-3 hover:text-text-2',
+              'flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-semibold transition-colors',
+              tab === t.key ? 'bg-surface-3 text-text shadow-sm' : 'text-text-3 hover:text-text-2',
             )}
           >
             <t.icon size={12} />
@@ -364,7 +364,7 @@ export default function TasksPage() {
                 const pct = total > 0 ? Math.round((doneTasks.length / total) * 100) : 0;
 
                 return (
-                  <div key={project.id} className="bg-[#111118] rounded-xl border border-border overflow-visible hover:border-[#FF993330] transition-colors">
+                  <div key={project.id} className="bg-surface-2 rounded-xl border border-border overflow-visible hover:border-white/[0.1] transition-colors">
                     {/* Project header */}
                     <div
                       className="flex items-center gap-3 p-4"
@@ -402,7 +402,7 @@ export default function TasksPage() {
                         {projectMenuOpen === project.id && (
                           <>
                             <div className="fixed inset-0 z-10" onClick={() => setProjectMenuOpen(null)} />
-                            <div className="absolute right-0 top-10 z-20 w-40 bg-[#111118] rounded-lg border border-[#ffffff1a] shadow-lg shadow-black/60 py-1">
+                            <div className="absolute right-0 top-10 z-20 w-40 bg-surface-2 rounded-lg border border-white/[0.08] shadow-lg shadow-black/60 py-1">
                               <button
                                 onClick={() => { setProjectMenuOpen(null); openTaskModal(undefined, { area: project.area, projectId: project.id }); }}
                                 className="w-full px-3 py-2 text-left text-xs text-text hover:bg-white/5 transition-colors"
@@ -465,7 +465,7 @@ export default function TasksPage() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => { setShowDeleteProjectConfirm(false); setProjectToDelete(null); }} />
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="bg-[#111118] rounded-xl border border-[#ffffff1a] p-4 max-w-[280px] w-[90%] animate-in fade-in zoom-in duration-150">
+            <div className="bg-surface-2 rounded-xl border border-white/[0.08] p-4 max-w-[280px] w-[90%] animate-in fade-in zoom-in duration-150">
               <p className="text-sm text-text mb-4">Are you sure you want to delete this project?</p>
               <div className="flex gap-2">
                 <button

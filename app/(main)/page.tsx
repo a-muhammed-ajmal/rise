@@ -6,7 +6,7 @@ import { useCollection, updateDocument } from '@/lib/firestore';
 import { Task, Habit, Project, Goal, Transaction } from '@/lib/types';
 import { cn, isOverdue, formatCurrency } from '@/lib/utils';
 import { format, startOfMonth } from 'date-fns';
-import { ChevronDown, ChevronUp, Clock, Target, Wallet, Flame, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, Target, Wallet, Flame, CheckCircle2, ArrowRight } from 'lucide-react';
 import TaskCard from '@/components/tasks/TaskCard';
 
 const AFFIRMATIONS = [
@@ -129,8 +129,6 @@ export default function DashboardPage() {
   }
 
   const handleTaskEdit = (task: Task) => {
-    // Navigation to tasks page with edit modal would be handled by routing
-    // For now, this is a placeholder
     console.log('Edit task from home:', task.id);
   };
 
@@ -141,80 +139,60 @@ export default function DashboardPage() {
     onEdit: handleTaskEdit,
   }), [projects, uid]);
 
+  const stats = [
+    { icon: CheckCircle2, value: tasksCompletedToday, label: 'Done today', color: '#10B981' },
+    { icon: Target, value: activeGoals.length, label: 'Active goals', color: '#3B82F6' },
+    { icon: Flame, value: `${avgStreak}d`, label: 'Avg streak', color: '#FF9933' },
+    { icon: Wallet, value: formatCurrency(Math.abs(monthlyBalance)), label: monthlyBalance >= 0 ? 'Surplus' : 'Deficit', color: monthlyBalance >= 0 ? '#10B981' : '#EF4444' },
+  ];
+
   return (
-    <div className="px-4 py-6 lg:px-8 max-w-3xl mx-auto space-y-4">
+    <div className="px-4 py-6 lg:px-8 max-w-3xl mx-auto space-y-5">
 
       {/* Dynamic Greeting */}
-      <div>
-        <h1 className="text-lg font-semibold text-text">
-          {getGreeting(now.getHours())}, {user?.displayName?.split(' ')[0] || 'Ajmal'} 👋
+      <div className="animate-fade-up">
+        <h1 className="text-xl font-bold text-text tracking-tight">
+          {getGreeting(now.getHours())}, {user?.displayName?.split(' ')[0] || 'Ajmal'}
         </h1>
-        <p className="text-sm text-text-3 mt-0.5">
-          {format(now, 'EEEE, MMMM d, yyyy')} | {format(now, 'hh:mm a')}
+        <p className="text-[13px] text-text-3 mt-1">
+          {format(now, 'EEEE, MMMM d, yyyy')}
         </p>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-[#111118] rounded-xl border border-border p-3 flex items-center gap-3 hover:border-[#FF993330] transition-colors">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-            <CheckCircle2 size={18} className="text-emerald-500" />
-          </div>
-          <div>
-            <p className="text-lg font-bold text-text leading-tight">{tasksCompletedToday}</p>
-            <p className="text-xs text-text-3">Done today</p>
-          </div>
-        </div>
-        <div className="bg-[#111118] rounded-xl border border-border p-3 flex items-center gap-3 hover:border-[#FF993330] transition-colors">
-          <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <Target size={18} className="text-blue-500" />
-          </div>
-          <div>
-            <p className="text-lg font-bold text-text leading-tight">{activeGoals.length}</p>
-            <p className="text-xs text-text-3">Active goals</p>
-          </div>
-        </div>
-        <div className="bg-[#111118] rounded-xl border border-border p-3 flex items-center gap-3 hover:border-[#FF993330] transition-colors">
-          <div className="w-9 h-9 rounded-lg bg-orange-500/10 flex items-center justify-center">
-            <Flame size={18} className="text-orange-500" />
-          </div>
-          <div>
-            <p className="text-lg font-bold text-text leading-tight">{avgStreak}d</p>
-            <p className="text-xs text-text-3">Avg streak</p>
-          </div>
-        </div>
-        <div className="bg-[#111118] rounded-xl border border-border p-3 flex items-center gap-3 hover:border-[#FF993330] transition-colors">
-          <div className="w-9 h-9 rounded-lg bg-rise/10 flex items-center justify-center">
-            <Wallet size={18} className="text-rise" />
-          </div>
-          <div>
-            <p className={cn("text-lg font-bold leading-tight", monthlyBalance >= 0 ? "text-emerald-500" : "text-red-500")}>
-              {formatCurrency(Math.abs(monthlyBalance))}
-            </p>
-            <p className="text-xs text-text-3">Monthly {monthlyBalance >= 0 ? 'surplus' : 'deficit'}</p>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 animate-fade-up delay-1">
+        {stats.map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <div key={i} className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-3.5 flex items-center gap-3 hover:border-white/[0.1] transition-colors">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${stat.color}12` }}>
+                <Icon size={17} style={{ color: stat.color }} />
+              </div>
+              <div>
+                <p className="text-base font-bold text-text leading-tight">{stat.value}</p>
+                <p className="text-[11px] text-text-3 mt-0.5">{stat.label}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Winner's Mindset */}
-      <div className="bg-[#111118] rounded-2xl border border-border overflow-hidden hover:border-[#FF993330] transition-colors">
+      <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] overflow-hidden hover:border-white/[0.1] transition-colors animate-fade-up delay-2">
         <button
           onClick={() => setAffirmationsOpen(o => !o)}
-          className="w-full flex items-center justify-between px-4 py-3.5 text-left"
+          className="w-full flex items-center justify-between px-4 py-3 text-left"
         >
-          <div className="flex items-center gap-2">
-            <span>✨</span>
-            <span className="text-sm font-semibold text-text">Winner&apos;s Mindset</span>
-          </div>
+          <span className="text-[13px] font-semibold text-text">Winner&apos;s Mindset</span>
           {affirmationsOpen
-            ? <ChevronUp size={16} className="text-text-3" />
-            : <ChevronDown size={16} className="text-text-3" />}
+            ? <ChevronUp size={15} className="text-text-3" />
+            : <ChevronDown size={15} className="text-text-3" />}
         </button>
         {affirmationsOpen && (
-          <div className="px-4 pb-4 space-y-2.5 border-t border-border pt-3">
+          <div className="px-4 pb-4 space-y-2 border-t border-white/[0.04] pt-3">
             {SHUFFLED_AFFIRMATIONS.map((a, i) => (
-              <div key={i} className="flex gap-2 text-sm text-text-2">
-                <span className="text-rise shrink-0">•</span>
+              <div key={i} className="flex gap-2.5 text-[13px] text-text-2 leading-relaxed">
+                <span className="text-rise shrink-0 mt-0.5">-</span>
                 <span>{a}</span>
               </div>
             ))}
@@ -223,16 +201,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Today's Focus */}
-      <div className="bg-[#111118] rounded-2xl border border-border p-4 hover:border-[#FF993330] transition-colors">
-        <div className="flex items-center gap-2 mb-3">
-          <span>🎯</span>
-          <h2 className="text-sm font-semibold text-text">Today&apos;s Focus</h2>
-          <span className="ml-auto text-xs text-text-3 bg-[#1A1A24] px-2 py-0.5 rounded-full">
+      <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up delay-3">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[13px] font-semibold text-text">Today&apos;s Focus</h2>
+          <span className="text-[11px] text-text-3 bg-white/[0.04] px-2 py-0.5 rounded-md font-medium">
             {focusTasks.length}/3
           </span>
         </div>
         {focusTasks.length === 0 ? (
-          <p className="text-sm text-text-3 py-3 text-center">No focus tasks. Mark tasks as My Day.</p>
+          <p className="text-[13px] text-text-3 py-4 text-center">No focus tasks. Mark tasks as My Day.</p>
         ) : (
           <div className="space-y-2">
             {focusTasks.map(t => (
@@ -243,12 +220,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Next Up (Habits) */}
-      <div className="bg-[#111118] rounded-2xl border border-border p-4 hover:border-[#FF993330] transition-colors">
-        <div className="flex items-center gap-2 mb-2">
-          <span>⏰</span>
-          <h2 className="text-sm font-semibold text-text">Next Up</h2>
-        </div>
-        <div className="space-y-2">
+      <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up delay-4">
+        <h2 className="text-[13px] font-semibold text-text mb-2">Next Up</h2>
+        <div className="space-y-1">
           {(habits || [])
             .filter(h => {
               if (!h.isActive || !h.time) return false;
@@ -260,29 +234,26 @@ export default function DashboardPage() {
             .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
             .slice(0, 3)
             .map(h => (
-              <div key={h.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
-                <span className="text-lg">{h.icon}</span>
-                <span className="flex-1 text-sm text-text">{h.name}</span>
-                <div className="flex items-center gap-1 text-xs text-text-3">
-                  <Clock size={12} />
+              <div key={h.id} className="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
+                <span className="text-base">{h.icon}</span>
+                <span className="flex-1 text-[13px] text-text">{h.name}</span>
+                <div className="flex items-center gap-1 text-[11px] text-text-3 bg-white/[0.04] px-2 py-0.5 rounded-md">
+                  <Clock size={11} />
                   <span>{h.time}</span>
                 </div>
               </div>
             ))}
         </div>
         {(habits || []).filter(h => h.isActive && h.time && h.time >= format(now, 'HH:mm') && (h.completions?.[today] ?? 0) < h.targetCount).length === 0 && (
-          <p className="text-sm text-text-3 py-3 text-center">No habits scheduled for later today.</p>
+          <p className="text-[13px] text-text-3 py-4 text-center">No habits scheduled for later today.</p>
         )}
       </div>
 
       {/* Get Things Done */}
-      <div className="bg-[#111118] rounded-2xl border border-border p-4 hover:border-[#FF993330] transition-colors">
-        <div className="flex items-center gap-2 mb-3">
-          <span>⚡</span>
-          <h2 className="text-sm font-semibold text-text">Get Things Done</h2>
-        </div>
+      <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up">
+        <h2 className="text-[13px] font-semibold text-text mb-3">Get Things Done</h2>
         {todayTasks.length === 0 ? (
-          <p className="text-sm text-text-3 py-3 text-center">No tasks for today.</p>
+          <p className="text-[13px] text-text-3 py-4 text-center">No tasks for today.</p>
         ) : (
           <div className="space-y-2">
             {todayTasks.map(t => (
@@ -292,34 +263,35 @@ export default function DashboardPage() {
         )}
         <a
           href="/tasks"
-          className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-border text-xs font-semibold text-rise hover:text-rise-dark transition-colors"
+          className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04] text-[12px] font-semibold text-rise hover:text-rise-dark transition-colors"
         >
-          View all tasks →
+          View all tasks
+          <ArrowRight size={12} />
         </a>
       </div>
 
       {/* Goal Progress */}
       {topGoals.length > 0 && (
-        <div className="bg-[#111118] rounded-2xl border border-border p-4 hover:border-[#FF993330] transition-colors">
+        <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up">
           <div className="flex items-center gap-2 mb-3">
-            <Target size={16} className="text-blue-500" />
-            <h2 className="text-sm font-semibold text-text">Goal Progress</h2>
+            <Target size={15} className="text-blue-400" />
+            <h2 className="text-[13px] font-semibold text-text">Goal Progress</h2>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {topGoals.map(g => (
-              <div key={g.id} className="space-y-1.5">
+              <div key={g.id} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-text truncate mr-2">{g.title}</span>
+                  <span className="text-[13px] text-text truncate mr-2">{g.title}</span>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-medium text-text-3 bg-[#1A1A24] px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-medium text-text-3 bg-white/[0.04] px-1.5 py-0.5 rounded-md">
                       {g.area}
                     </span>
-                    <span className="text-xs font-semibold text-text-2">{g.progress}%</span>
+                    <span className="text-[12px] font-semibold text-text-2">{g.progress}%</span>
                   </div>
                 </div>
-                <div className="w-full h-1.5 bg-[#1A1A24] rounded-full overflow-hidden">
+                <div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-500 rounded-full transition-all"
+                    className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all"
                     style={{ width: `${Math.min(g.progress, 100)}%` }}
                   />
                 </div>
@@ -328,9 +300,10 @@ export default function DashboardPage() {
           </div>
           <a
             href="/goals"
-            className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-border text-xs font-semibold text-rise hover:text-rise-dark transition-colors"
+            className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04] text-[12px] font-semibold text-rise hover:text-rise-dark transition-colors"
           >
-            View all goals →
+            View all goals
+            <ArrowRight size={12} />
           </a>
         </div>
       )}

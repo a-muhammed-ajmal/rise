@@ -45,26 +45,29 @@ export default function Modal({ open, onClose, title, children, size = 'md' }: M
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       {/* Desktop: centered modal. Mobile: bottom sheet */}
       <div className={cn(
-        'absolute bg-[#111118] rounded-t-3xl lg:rounded-2xl shadow-2xl overflow-hidden flex flex-col shadow-sheet',
-        'bottom-0 left-0 right-0 max-h-[90dvh] animate-slide-up',
-        'lg:bottom-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:animate-none',
+        'absolute bg-surface-2 overflow-hidden flex flex-col',
+        'border border-white/[0.06]',
+        // Mobile: bottom sheet
+        'bottom-0 left-0 right-0 max-h-[90dvh] rounded-t-2xl animate-slide-up shadow-sheet',
+        // Desktop: centered modal
+        'lg:bottom-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-xl lg:animate-scale-in lg:shadow-2xl',
         size === 'sm' && 'lg:w-[400px] lg:max-h-[70vh]',
         size === 'md' && 'lg:w-[520px] lg:max-h-[80vh]',
         size === 'lg' && 'lg:w-[680px] lg:max-h-[85vh]',
       )}>
         {/* Handle bar for mobile */}
         <div className="lg:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/15" />
+          <div className="w-8 h-1 rounded-full bg-white/10" />
         </div>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-border">
-          <h2 className="font-bold text-lg text-text">{title}</h2>
-          <button onClick={onClose} className="text-text-3 hover:text-text transition-colors p-1">
-            <X size={20} />
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+          <h2 className="font-semibold text-[15px] text-text">{title}</h2>
+          <button onClick={onClose} className="text-text-3 hover:text-text transition-colors p-1.5 rounded-lg hover:bg-white/[0.06]">
+            <X size={18} />
           </button>
         </div>
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4">
           {children}
         </div>
       </div>

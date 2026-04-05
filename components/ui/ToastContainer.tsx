@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { _registerToastHandler } from '@/lib/toast';
 import { cn } from '@/lib/utils';
+import { CheckCircle2, XCircle } from 'lucide-react';
 
 interface ToastItem {
   id: number;
@@ -35,10 +36,13 @@ export default function ToastContainer() {
         <div
           key={t.id}
           className={cn(
-            'px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-slide-up',
-            t.type === 'success' ? 'bg-rise text-[#0A0A0F]' : 'bg-red-500 text-white',
+            'flex items-center gap-2.5 px-4 py-3 rounded-lg shadow-xl text-sm font-medium animate-slide-up border',
+            t.type === 'success'
+              ? 'bg-surface-3 text-emerald-400 border-emerald-500/20'
+              : 'bg-surface-3 text-red-400 border-red-500/20',
           )}
         >
+          {t.type === 'success' ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
           {t.message}
         </div>
       ))}
