@@ -48,12 +48,35 @@
   html {
     font-family: var(--font-sans);
     background-color: #09090F;
+    color-scheme: dark;
   }
   body {
     @apply text-text antialiased;
     background: linear-gradient(145deg, #09090F 0%, #0D0D16 50%, #0A0B14 100%);
     min-height: 100dvh;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Form controls — enforce dark theme rendering */
+  input, textarea, select {
+    color-scheme: dark;
+    color: var(--color-text);
+  }
+  option {
+    background-color: #14141E;
+    color: var(--color-text);
+  }
+
+  /* Autofill — prevent browser from overriding dark theme */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: var(--color-text);
+    -webkit-box-shadow: 0 0 0 1000px #14141E inset;
+    transition: background-color 5000s ease-in-out 0s;
+    caret-color: var(--color-text);
   }
   h1 {
     font-size: 1.5rem;
