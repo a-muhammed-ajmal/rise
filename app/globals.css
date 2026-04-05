@@ -4,21 +4,40 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /* Brand */
   --color-rise: #FF9933;
   --color-rise-light: #FF993315;
   --color-rise-dark: #E8852A;
+
+  /* Realm Colors */
+  --color-realm-professional: #1E4AFF;
+  --color-realm-personal: #800080;
+  --color-realm-financial: #00A86B;
+  --color-realm-relationship: #FF4F6D;
+  --color-realm-wellness: #1ABC9C;
+  --color-realm-vision: #FFD700;
+
+  /* Legacy / Utility */
   --color-navy: #1E3A5F;
   --color-green: #10B981;
-  --color-teal: #4A9B8E;
-  --color-pink: #E8849B;
-  --color-purple: #7B4B9E;
+  --color-teal: #1ABC9C;
+  --color-pink: #FF4F6D;
+  --color-purple: #800080;
+
+  /* Surfaces */
   --color-surface: #111118;
   --color-surface-2: #13131C;
   --color-surface-3: #1A1A24;
+
+  /* Text */
   --color-text: #F1F5F9;
   --color-text-2: #94A3B8;
   --color-text-3: #475569;
+
+  /* Border */
   --color-border: #ffffff0f;
+
+  /* Font */
   --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
 }
 
