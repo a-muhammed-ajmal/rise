@@ -1,5 +1,5 @@
-// ─── Life Areas ───
-export type LifeArea = 'Inbox' | 'Personal' | 'Professional' | 'Financial' | 'Wellness' | 'Relationship' | 'Vision';
+// ─── Realms (formerly Life Areas) ───
+export type Realm = 'Professional' | 'Personal' | 'Financial' | 'Relationship' | 'Wellness' | 'Vision';
 export type Priority = 'P1' | 'P2' | 'P3' | 'P4';
 export type Recurrence = 'None' | 'Daily' | 'Weekly' | 'Monthly' | 'Yearly';
 export type GtdContext = 'inbox' | 'next-action' | 'waiting-for' | 'someday-maybe' | 'reference' | 'project-support';
@@ -8,20 +8,34 @@ export type LeadStatus = 'New' | 'Qualified' | 'Appointment Booked';
 export type DealStatus = 'Processing' | 'Call Verification' | 'Completed' | 'Card Activation' | 'Successful' | 'Unsuccessful';
 export type TransactionType = 'Income' | 'Expense';
 export type TransactionStatus = 'Received' | 'Paid' | 'Pending';
-export type ConnectionType = 'Father' | 'Mother' | 'Spouse' | 'Sibling' | 'Child' | 'Extended Family' | 'Close Friend' | 'Colleague' | 'Mentor' | 'Other';
+export type ConnectionType = 'Spouse' | 'Child' | 'Parent' | 'Sibling' | 'Friend' | 'Colleague' | 'Other';
 export type GoalTimeline = '1yr' | '3yr' | '5yr';
-export type GoalArea = 'health' | 'work' | 'personal' | 'financial' | 'relationship';
-export type HabitFrequency = 'daily' | 'weekly' | 'custom';
+export type VisionCategory = 'Personal' | 'Professional' | 'Financial' | 'Relationship' | 'Wellness' | 'Vision';
+export type HabitFrequency = 'daily' | 'specific-days' | 'custom';
+export type HabitProject = 'Morning Routine' | 'Business Discipline' | 'Evening Routine' | 'Custom';
 export type PomodoroType = 'work' | 'short-break' | 'long-break';
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type DebtStatus = 'Active' | 'Paid Off';
+export type ExpenseType = 'Mandatory' | 'Optional';
+export type PaymentMethod = 'Cash' | 'Credit Card' | 'Debit Card' | 'Bank Transfer' | 'Digital Wallet';
+export type ImportantDateType = 'Birthday' | 'Anniversary' | 'Special Day' | 'Custom';
+export type ReviewType = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+export type ReminderOption = '5-min-before' | 'at-time' | '10-min-after';
+export type DateReminderOption = '1-day' | '3-days' | '7-days' | 'custom';
 
-// ─── Task ───
+// Legacy aliases for backward compatibility during migration
+export type LifeArea = Realm | 'Inbox';
+export type GoalArea = 'health' | 'work' | 'personal' | 'financial' | 'relationship';
+
+// ─── Action (formerly Task) ───
 export interface Task {
   id: string;
   userId: string;
   title: string;
   description?: string;
-  area: LifeArea;
+  realm: Realm;
+  area?: LifeArea; // legacy compat
+  targetId?: string;
   projectId?: string;
   goalId?: string;
   connectionId?: string;
@@ -41,12 +55,13 @@ export interface Task {
   createdAt: string;
 }
 
-// ─── Project ───
+// ─── Target (formerly Project) ───
 export interface Project {
   id: string;
   userId: string;
   title: string;
-  area: LifeArea;
+  realm: Realm;
+  area?: LifeArea; // legacy compat
   color: string;
   icon: string;
   goalId?: string;
@@ -64,13 +79,14 @@ export interface Label {
   color: string;
 }
 
-// ─── Goal (NICE Framework + Timeline) ───
+// ─── Vision Goal (for Vision Timeline) ───
 export interface Goal {
   id: string;
   userId: string;
   title: string;
   description?: string;
-  area: GoalArea;
+  category: VisionCategory;
+  area?: GoalArea; // legacy compat
   why: string;
   metric: string;
   crystal: string;
@@ -79,6 +95,7 @@ export interface Goal {
   progress: number;
   progressHistory: ProgressEntry[];
   isCompleted: boolean;
+  completedAt?: string;
   createdAt: string;
 }
 
@@ -111,7 +128,7 @@ export interface GoalAction {
   createdAt: string;
 }
 
-// ─── Habit ───
+// ─── Rhythm (formerly Habit) ───
 export interface Habit {
   id: string;
   userId: string;
@@ -120,12 +137,16 @@ export interface Habit {
   icon: string;
   color: string;
   category: string;
+  project: HabitProject;
   time?: string;
   frequency: HabitFrequency;
   customDays?: number[];
   targetCount: number;
   goalId?: string;
   trigger?: string;
+  reminder?: boolean;
+  reminderOption?: ReminderOption;
+  notes?: string;
   completions: Record<string, number>; // date -> count
   streak: number;
   bestStreak: number;
@@ -211,7 +232,10 @@ export interface Transaction {
   category: string;
   date: string;
   description?: string;
+  source?: string; // for income
   status?: TransactionStatus;
+  expenseType?: ExpenseType;
+  paymentMethod?: PaymentMethod;
   notes?: string;
   createdAt: string;
 }
@@ -222,7 +246,7 @@ export interface Budget {
   userId: string;
   category: string;
   monthlyLimit: number;
-  monthYear?: string;
+  monthYear?: string; // empty = recurring monthly
   createdAt: string;
 }
 
@@ -236,6 +260,8 @@ export interface Debt {
   monthlyPayment?: number;
   interestRate?: number;
   dueDay?: number;
+  targetPayoffDate?: string;
+  status: DebtStatus;
   notes?: string;
   createdAt: string;
 }
@@ -249,24 +275,72 @@ export interface Connection {
   relationship?: string;
   mobile?: string;
   email?: string;
+  birthday?: string;
   importantDate?: string;
-  dateType?: string;
+  dateType?: ImportantDateType;
+  dateReminder?: DateReminderOption;
   notes?: string;
   createdAt: string;
 }
 
-// ─── Review ───
+// ─── Important Date ───
+export interface ImportantDate {
+  id: string;
+  userId: string;
+  eventName: string;
+  date: string;
+  type: ImportantDateType;
+  reminder?: DateReminderOption;
+  connectionId?: string;
+  createdAt: string;
+}
+
+// ─── Family Mission Statement ───
+export interface FamilyMission {
+  id: string;
+  userId: string;
+  content: string;
+  updatedAt: string;
+  createdAt: string;
+}
+
+// ─── Personal Mission (Vision Page) ───
+export interface PersonalMission {
+  id: string;
+  userId: string;
+  content: string;
+  updatedAt: string;
+  createdAt: string;
+}
+
+// ─── Core Value (Vision Page) ───
+export interface CoreValue {
+  id: string;
+  userId: string;
+  value: string;
+  order: number;
+  createdAt: string;
+}
+
+// ─── Review (expanded for weekly/monthly/quarterly/yearly) ───
 export interface Review {
   id: string;
   userId: string;
-  weekStartDate: string;
+  reviewType: ReviewType;
+  weekStartDate?: string;
+  monthYear?: string;
+  quarter?: string;
+  year?: string;
   rating: number;
+  answers: Record<string, string>;
+  metrics?: Record<string, number | string>;
   wins: string;
   challenges?: string;
   lessons?: string;
   gps?: string;
   next?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // ─── Journal ───
@@ -298,22 +372,24 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-// ─── Constants ───
-export const LIFE_AREAS: { id: LifeArea; name: string; emoji: string; color: string; description: string }[] = [
-  { id: 'Inbox',        name: 'Inbox',        emoji: '📥', color: '#6B7280', description: 'Unsorted items' },
-  { id: 'Personal',     name: 'Personal',     emoji: '🎯', color: '#6B7280', description: 'Personal life & self' },
-  { id: 'Professional', name: 'Professional', emoji: '💼', color: '#3B82F6', description: 'Work & career' },
-  { id: 'Financial',    name: 'Financial',    emoji: '💰', color: '#10B981', description: 'Money & finance' },
-  { id: 'Wellness',     name: 'Wellness',     emoji: '❤️', color: '#EF4444', description: 'Health & habits' },
-  { id: 'Relationship', name: 'Relationship', emoji: '👥', color: '#EC4899', description: 'Family & friends' },
-  { id: 'Vision',       name: 'Vision',       emoji: '✨', color: '#6B7280', description: 'Goals & aspirations' },
+// ─── Realm Configuration ───
+export const REALMS: { id: Realm; name: string; emoji: string; color: string; description: string }[] = [
+  { id: 'Professional', name: 'Professional', emoji: '💼', color: '#1E4AFF', description: 'Focus, clarity, execution' },
+  { id: 'Personal',     name: 'Personal',     emoji: '🎯', color: '#800080', description: 'Identity, creativity, self-expression' },
+  { id: 'Financial',    name: 'Financial',    emoji: '💰', color: '#00A86B', description: 'Growth, stability, wealth' },
+  { id: 'Relationship', name: 'Relationship', emoji: '💖', color: '#FF4F6D', description: 'Connection, empathy, warmth' },
+  { id: 'Wellness',     name: 'Wellness',     emoji: '🧘', color: '#1ABC9C', description: 'Balance, health, vitality' },
+  { id: 'Vision',       name: 'Vision',       emoji: '✨', color: '#FFD700', description: 'Purpose, long-term direction, ambition' },
 ];
 
+// Legacy alias
+export const LIFE_AREAS = REALMS.map(r => ({ ...r, id: r.id as LifeArea }));
+
 export const PRIORITY_CONFIG: Record<Priority, { label: string; short: string; color: string }> = {
-  P1: { label: 'Urgent & Important',     short: 'P1',    color: '#EF4444' }, // Red
-  P2: { label: 'Not Urgent & Important', short: 'P2', color: '#F59E0B' }, // Orange
-  P3: { label: 'Urgent & Not Important', short: 'P3',  color: '#3B82F6' }, // Blue
-  P4: { label: 'Not Urgent & Not Important', short: 'P4', color: '#6B7280' }, // Grey
+  P1: { label: 'Urgent & Important',     short: 'P1', color: '#EF4444' },
+  P2: { label: 'Not Urgent & Important', short: 'P2', color: '#F59E0B' },
+  P3: { label: 'Urgent & Not Important', short: 'P3', color: '#3B82F6' },
+  P4: { label: 'Not Urgent & Not Important', short: 'P4', color: '#6B7280' },
 };
 
 export const GTD_CONFIG: Record<GtdContext, { title: string; icon: string; color: string }> = {
@@ -347,14 +423,16 @@ export const LEAD_SOURCES = ['LinkedIn', 'Cold Calling', 'Referrals', 'Follow-up
 export const PRODUCTS = ['Credit Card', 'Personal Loan', 'Auto Loan', 'Account Opening', 'Other'] as const;
 
 export const INCOME_CATEGORIES = [
-  'Salary', 'Commission', 'Incentive', 'Bonus', 'Gift', 'Side Income', 'Other'
+  'Salary', 'Commission', 'Bonus', 'Business Income',
+  'Investment Returns', 'Side Income', 'Other'
 ] as const;
 
 export const EXPENSE_CATEGORIES = [
-  'Housing/Rent', 'Food & Groceries', 'Transport/Fuel', 'Utilities',
-  'Telecommunications', 'Healthcare', 'Education', 'Entertainment', 'Shopping',
-  'Personal Care', 'Debt Repayment', 'Insurance', 'Savings/Investment',
-  'Business Expenses', 'Others'
+  'Housing (Rent, Utilities)', 'Food (Groceries, Dining)',
+  'Transport (Fuel, Taxi, Parking)', 'Healthcare (Medical, Insurance)',
+  'Education (Courses, Books)', 'Entertainment (Movies, Hobbies)',
+  'Shopping (Clothes, Electronics)', 'Business Expenses',
+  'Savings & Investments', 'Other'
 ] as const;
 
 export const DOCUMENT_CATEGORIES = [
@@ -368,5 +446,22 @@ export const PROJECT_COLORS = [
 ] as const;
 
 export const HABIT_CATEGORIES = [
-  'Morning Routine', 'Business Discipline', 'Evening/Growth', 'Health', 'Learning', 'Other'
+  'Morning Routine', 'Business Discipline', 'Evening Routine', 'Custom'
 ] as const;
+
+export const HABIT_PROJECTS: HabitProject[] = [
+  'Morning Routine', 'Business Discipline', 'Evening Routine', 'Custom'
+];
+
+export const VISION_CATEGORIES: { value: VisionCategory; label: string; color: string }[] = [
+  { value: 'Personal', label: 'Personal', color: '#800080' },
+  { value: 'Professional', label: 'Professional', color: '#1E4AFF' },
+  { value: 'Financial', label: 'Financial', color: '#00A86B' },
+  { value: 'Relationship', label: 'Relationship', color: '#FF4F6D' },
+  { value: 'Wellness', label: 'Wellness', color: '#1ABC9C' },
+  { value: 'Vision', label: 'Vision', color: '#FFD700' },
+];
+
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  'Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Digital Wallet'
+];

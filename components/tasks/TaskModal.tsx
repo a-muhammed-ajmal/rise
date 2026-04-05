@@ -54,7 +54,7 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
     if (task) {
       setTitle(task.title);
       setDescription(task.description ?? '');
-      setArea(task.area);
+      setArea(task.area ?? task.realm ?? 'Personal');
       setProjectId(task.projectId ?? '');
       setConnectedTo(task.connectionId ?? '');
       setPriority(task.priority);

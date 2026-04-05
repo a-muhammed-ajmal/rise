@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useCollection, addDocument, updateDocument, deleteDocument } from '@/lib/firestore';
-import { Connection, ConnectionType } from '@/lib/types';
+import { Connection, ConnectionType, ImportantDateType } from '@/lib/types';
 import dynamic from 'next/dynamic';
 const Modal = dynamic(() => import('@/components/ui/Modal'), { ssr: false });
 import Button from '@/components/ui/Button';
@@ -12,10 +12,10 @@ import EmptyState from '@/components/ui/EmptyState';
 import { cn, formatDate } from '@/lib/utils';
 import { Plus, Users, Trash2, Phone, Mail, Calendar, Edit2, Gift } from 'lucide-react';
 
-const CONN_TYPES: ConnectionType[] = ['Father', 'Mother', 'Spouse', 'Sibling', 'Child', 'Extended Family', 'Close Friend', 'Colleague', 'Mentor', 'Other'];
+const CONN_TYPES: ConnectionType[] = ['Spouse', 'Child', 'Parent', 'Sibling', 'Friend', 'Colleague', 'Other'];
 const TYPE_EMOJIS: Record<string, string> = {
-  Father: '👨', Mother: '👩', Spouse: '💑', Sibling: '👫', Child: '👶',
-  'Extended Family': '👪', 'Close Friend': '🤝', Colleague: '💼', Mentor: '🎓', Other: '👤'
+  Spouse: '💑', Child: '👶', Parent: '👪', Sibling: '👫',
+  Friend: '🤝', Colleague: '💼', Other: '👤'
 };
 
 export default function RelationshipsPage() {
@@ -29,12 +29,12 @@ export default function RelationshipsPage() {
 
   // Form fields
   const [name, setName] = useState('');
-  const [type, setType] = useState<ConnectionType>('Close Friend');
+  const [type, setType] = useState<ConnectionType>('Friend');
   const [relationship, setRelationship] = useState('');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [importantDate, setImportantDate] = useState('');
-  const [dateType, setDateType] = useState('Birthday');
+  const [dateType, setDateType] = useState<ImportantDateType>('Birthday');
   const [notes, setNotes] = useState('');
 
   // Delete confirmation state
@@ -44,7 +44,7 @@ export default function RelationshipsPage() {
   const [filterType, setFilterType] = useState<string>('All');
 
   const resetForm = () => {
-    setName(''); setType('Close Friend'); setRelationship(''); setMobile('');
+    setName(''); setType('Friend'); setRelationship(''); setMobile('');
     setEmail(''); setImportantDate(''); setDateType('Birthday'); setNotes('');
     setEditingConnection(null);
   };
@@ -62,7 +62,7 @@ export default function RelationshipsPage() {
     setMobile(c.mobile || '');
     setEmail(c.email || '');
     setImportantDate(c.importantDate || '');
-    setDateType(c.dateType || 'Birthday');
+    setDateType((c.dateType as ImportantDateType) || 'Birthday');
     setNotes(c.notes || '');
     setModalOpen(true);
   };
@@ -251,8 +251,8 @@ export default function RelationshipsPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Important Date" type="date" value={importantDate} onChange={e => setImportantDate(e.target.value)} />
-            <Select label="Date Type" value={dateType} onChange={e => setDateType(e.target.value)}
-              options={['Birthday', 'Anniversary', 'Memorial', 'Other'].map(d => ({ value: d, label: d }))} />
+            <Select label="Date Type" value={dateType} onChange={e => setDateType(e.target.value as ImportantDateType)}
+              options={['Birthday', 'Anniversary', 'Special Day', 'Custom'].map(d => ({ value: d, label: d }))} />
           </div>
           <TextArea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes about this person..." />
           <div className="flex gap-3 pt-4">

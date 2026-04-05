@@ -98,7 +98,7 @@ export default function GoalsPage() {
   const openEditModal = (goal: Goal) => {
     setEditingGoal(goal);
     setTitle(goal.title);
-    setArea(goal.area);
+    setArea(goal.area || goal.category || 'health');
     setWhy(goal.why);
     setMetric(goal.metric);
     setCrystal(goal.crystal);

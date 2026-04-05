@@ -25,7 +25,7 @@ export default function ProjectModal({ open, onClose, project, defaultArea, onSa
   useEffect(() => {
     if (project) {
       setTitle(project.title);
-      setArea(project.area);
+      setArea(project.area ?? project.realm ?? 'Personal');
     } else {
       setTitle('');
       setArea(defaultArea ?? 'Inbox');
