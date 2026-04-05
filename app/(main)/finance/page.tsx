@@ -8,7 +8,8 @@ import {
   Budget, Debt,
   INCOME_CATEGORIES, EXPENSE_CATEGORIES,
 } from '@/lib/types';
-import Modal from '@/components/ui/Modal';
+import dynamic from 'next/dynamic';
+const Modal = dynamic(() => import('@/components/ui/Modal'), { ssr: false });
 import Button from '@/components/ui/Button';
 import { Input, TextArea, Select } from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';

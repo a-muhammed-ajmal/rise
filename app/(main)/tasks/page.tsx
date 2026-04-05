@@ -5,8 +5,9 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { useCollection, deleteDocument } from '@/lib/firestore';
 import { Task, Project, LIFE_AREAS, LifeArea, GTD_CONFIG, QUADRANT_CONFIG, GtdContext, Quadrant } from '@/lib/types';
 import TaskCard from '@/components/tasks/TaskCard';
-import TaskModal from '@/components/tasks/TaskModal';
-import ProjectModal from '@/components/tasks/ProjectModal';
+import dynamic from 'next/dynamic';
+const TaskModal = dynamic(() => import('@/components/tasks/TaskModal'), { ssr: false });
+const ProjectModal = dynamic(() => import('@/components/tasks/ProjectModal'), { ssr: false });
 import EmptyState from '@/components/ui/EmptyState';
 import { cn, isOverdue } from '@/lib/utils';
 import {
