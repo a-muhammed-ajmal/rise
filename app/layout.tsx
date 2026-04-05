@@ -11,6 +11,11 @@ export const metadata: Metadata = {
     icon: '/icon-512.png',
     apple: '/icon-192.png',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'RISE',
+  },
 };
 
 export const viewport: Viewport = {
@@ -18,6 +23,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
   themeColor: '#1E4AFF',
 };
 
