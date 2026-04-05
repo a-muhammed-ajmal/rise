@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useCollection } from '@/lib/firestore';
 import { Task, Goal, Habit, Transaction, Lead, Deal, Connection, Review, ChatMessage } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Send, Bot, User, Sparkles, RefreshCw, Trash2, MessageSquare } from 'lucide-react';
+import { Send, Bot, User, Sparkles, RefreshCw, Trash2, MessageSquare, Mic, Square, Volume2, VolumeX, X, Loader2 } from 'lucide-react';
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 const QUICK_PROMPTS = [
   'What should I focus on today?',
@@ -14,6 +15,94 @@ const QUICK_PROMPTS = [
   'What rhythms am I maintaining well?',
   'Give me a productivity tip',
 ];
+
+// ─── Text-to-Speech helper ───────────────────────────────────────────────────
+
+function useTTS() {
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
+
+  const speak = useCallback((text: string, messageIndex: number) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    // Stop any current speech
+    window.speechSynthesis.cancel();
+
+    if (speakingId === messageIndex) {
+      setSpeakingId(null);
+      return;
+    }
+
+    // Strip markdown for cleaner speech
+    const clean = text
+      .replace(/```[\s\S]*?```/g, ' code block ')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^[-*]\s+/gm, '')
+      .replace(/^\d+\.\s+/gm, '')
+      .replace(/\n+/g, '. ');
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+    utteranceRef.current = utterance;
+    setSpeakingId(messageIndex);
+    window.speechSynthesis.speak(utterance);
+  }, [speakingId]);
+
+  const stop = useCallback(() => {
+    if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+    setSpeakingId(null);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => () => { stop(); }, [stop]);
+
+  return { speak, stop, speakingId };
+}
+
+// ─── Voice Recording Bar ─────────────────────────────────────────────────────
+
+interface VoiceBarProps {
+  duration: number;
+  isTranscribing: boolean;
+  onStop: () => void;
+  onCancel: () => void;
+}
+
+function VoiceRecordingBar({ duration, isTranscribing, onStop, onCancel }: VoiceBarProps) {
+  const mins = Math.floor(duration / 60);
+  const secs = duration % 60;
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 bg-surface-2 rounded-xl border border-red-500/30 animate-fade-up">
+      {isTranscribing ? (
+        <>
+          <Loader2 size={18} className="text-rise animate-spin" />
+          <span className="flex-1 text-sm text-text-2">Transcribing...</span>
+        </>
+      ) : (
+        <>
+          <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+          <span className="flex-1 text-sm text-text font-medium">
+            Recording <span className="text-text-3 font-mono">{mins}:{secs.toString().padStart(2, '0')}</span>
+          </span>
+          <button onClick={onCancel} className="p-2 rounded-lg hover:bg-surface-3 text-text-3 transition-colors" title="Cancel">
+            <X size={18} />
+          </button>
+          <button onClick={onStop}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">
+            <Square size={14} fill="currentColor" /> Stop
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Chat Page ──────────────────────────────────────────────────────────
 
 export default function ChatPage() {
   const { user } = useAuth();
@@ -31,8 +120,13 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [lastError, setLastError] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { state: recorderState, startRecording, stopRecording, cancelRecording } = useVoiceRecorder();
+  const { speak, speakingId } = useTTS();
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -42,6 +136,20 @@ export default function ChatPage() {
     inputRef.current?.focus();
   }, []);
 
+  // Show recorder errors
+  useEffect(() => {
+    if (recorderState.error) setVoiceError(recorderState.error);
+  }, [recorderState.error]);
+
+  // Auto-dismiss voice error
+  useEffect(() => {
+    if (!voiceError) return;
+    const t = setTimeout(() => setVoiceError(null), 5000);
+    return () => clearTimeout(t);
+  }, [voiceError]);
+
+  // ─── Markdown Rendering ──────────────────────────────────────────────
+
   const renderMarkdown = (text: string) => {
     const lines = text.split('\n');
     const elements: React.ReactNode[] = [];
@@ -50,7 +158,6 @@ export default function ChatPage() {
     while (i < lines.length) {
       const line = lines[i];
 
-      // Code blocks
       if (line.trim().startsWith('```')) {
         const codeLines: string[] = [];
         i++;
@@ -58,7 +165,7 @@ export default function ChatPage() {
           codeLines.push(lines[i]);
           i++;
         }
-        i++; // skip closing ```
+        i++;
         elements.push(
           <pre key={elements.length} className="bg-surface-3 p-3 rounded-lg text-xs font-mono overflow-x-auto my-2">
             <code>{codeLines.join('\n')}</code>
@@ -67,7 +174,6 @@ export default function ChatPage() {
         continue;
       }
 
-      // Bullet lists
       if (/^[\s]*[-*]\s+/.test(line)) {
         const items: string[] = [];
         while (i < lines.length && /^[\s]*[-*]\s+/.test(lines[i])) {
@@ -82,7 +188,6 @@ export default function ChatPage() {
         continue;
       }
 
-      // Numbered lists
       if (/^[\s]*\d+\.\s+/.test(line)) {
         const items: string[] = [];
         while (i < lines.length && /^[\s]*\d+\.\s+/.test(lines[i])) {
@@ -97,14 +202,12 @@ export default function ChatPage() {
         continue;
       }
 
-      // Empty line
       if (line.trim() === '') {
         elements.push(<br key={elements.length} />);
         i++;
         continue;
       }
 
-      // Regular paragraph
       elements.push(<p key={elements.length} className="my-0.5">{inlineMarkdown(line)}</p>);
       i++;
     }
@@ -113,7 +216,6 @@ export default function ChatPage() {
   };
 
   const inlineMarkdown = (text: string): React.ReactNode => {
-    // Split by inline code first, then handle bold within non-code segments
     const parts: React.ReactNode[] = [];
     const codeRegex = /`([^`]+)`/g;
     let lastIndex = 0;
@@ -155,21 +257,22 @@ export default function ChatPage() {
     return parts;
   };
 
+  // ─── Context Builder ─────────────────────────────────────────────────
+
   const buildContext = () => {
     return JSON.stringify({
       tasks: tasks.slice(0, 50).map(t => ({ title: t.title, area: t.area, priority: t.priority, dueDate: t.dueDate, completed: t.isCompleted, isMyDay: t.isMyDay })),
       goals: goals.map(g => ({ title: g.title, area: g.area, progress: g.progress, timeline: g.timeline, completed: g.isCompleted })),
       habits: habits.map(h => ({ name: h.name, streak: h.streak, bestStreak: h.bestStreak })),
-      // Transactions: amounts are intentional for financial analysis — no card numbers or account details stored
       transactions: transactions.slice(0, 30).map(t => ({ type: t.type, amount: t.amount, category: t.category, date: t.date })),
-      // Leads/Deals: client names and sensitive identifiers (Emirates ID, passport, AECB, salary) are stripped
       leads: leads.map((l, i) => ({ ref: `Lead-${i + 1}`, status: l.status, bank: l.bank, product: l.product })),
       deals: deals.map((d, i) => ({ ref: `Deal-${i + 1}`, status: d.status, bank: d.bank, product: d.product })),
-      // Connections: only type sent; names are personal contacts the user wants referenced
       connections: connections.map(c => ({ name: c.name, type: c.type })),
       reviews: reviews.slice(0, 5).map(r => ({ date: r.weekStartDate, rating: r.rating, wins: r.wins })),
     });
   };
+
+  // ─── Send Message ────────────────────────────────────────────────────
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || !user) return;
@@ -215,13 +318,63 @@ export default function ChatPage() {
     }
   };
 
+  // ─── Voice Recording Flow ────────────────────────────────────────────
+
+  const handleMicPress = async () => {
+    if (recorderState.isRecording) return;
+    setVoiceError(null);
+    await startRecording();
+  };
+
+  const handleStopRecording = async () => {
+    setIsTranscribing(true);
+    const blob = await stopRecording();
+    if (!blob) {
+      setIsTranscribing(false);
+      return;
+    }
+
+    try {
+      const idToken = await user!.getIdToken();
+      const formData = new FormData();
+      formData.append('audio', blob, 'recording.webm');
+
+      const res = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${idToken}` },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        setVoiceError(data.error);
+        setIsTranscribing(false);
+        return;
+      }
+
+      setIsTranscribing(false);
+
+      // Use the cleaned transcript to send the message
+      if (data.cleanedTranscript) {
+        sendMessage(data.cleanedTranscript);
+      }
+    } catch {
+      setVoiceError('Failed to transcribe. Please try again.');
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleCancelRecording = () => {
+    cancelRecording();
+    setIsTranscribing(false);
+  };
+
+  // ─── Other Handlers ──────────────────────────────────────────────────
+
   const retryLastMessage = () => {
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
     if (!lastUserMsg) return;
-    // Remove the error response
-    setMessages(prev => prev.slice(0, -1));
-    // Remove the last user message too since sendMessage will re-add it
-    setMessages(prev => prev.slice(0, -1));
+    setMessages(prev => prev.slice(0, -2));
     sendMessage(lastUserMsg.content);
   };
 
@@ -230,6 +383,8 @@ export default function ChatPage() {
     setLastError(false);
     inputRef.current?.focus();
   };
+
+  const isRecordingOrTranscribing = recorderState.isRecording || isTranscribing;
 
   return (
     <div className="flex flex-col h-full">
@@ -257,7 +412,10 @@ export default function ChatPage() {
                 <Sparkles size={28} className="text-white" />
               </div>
               <h2 className="text-xl font-bold text-text mb-2">RISE AI Assistant</h2>
-              <p className="text-sm text-text-3 mb-6">Ask me anything about your actions, targets, finances, rhythms, or life data</p>
+              <p className="text-sm text-text-3 mb-2">Ask me anything about your actions, targets, finances, rhythms, or life data</p>
+              <p className="text-xs text-text-3 mb-6 flex items-center justify-center gap-1.5">
+                <Mic size={12} /> Tap the mic button to use voice input
+              </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {QUICK_PROMPTS.map(p => (
                   <button key={p} onClick={() => sendMessage(p)}
@@ -286,7 +444,18 @@ export default function ChatPage() {
                   {msg.role === 'user' ? (
                     <p className="whitespace-pre-wrap">{msg.content}</p>
                   ) : (
-                    renderMarkdown(msg.content)
+                    <>
+                      {renderMarkdown(msg.content)}
+                      {/* TTS button on assistant messages */}
+                      <button
+                        onClick={() => speak(msg.content, i)}
+                        className="mt-2 flex items-center gap-1 text-[11px] text-text-3 hover:text-rise transition-colors"
+                        title={speakingId === i ? 'Stop speaking' : 'Read aloud'}
+                      >
+                        {speakingId === i ? <VolumeX size={12} /> : <Volume2 size={12} />}
+                        {speakingId === i ? 'Stop' : 'Listen'}
+                      </button>
+                    </>
                   )}
                 </div>
                 {msg.role === 'user' && (
@@ -323,30 +492,67 @@ export default function ChatPage() {
         </div>
       </div>
 
+      {/* Voice Error Toast */}
+      {voiceError && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 max-w-sm w-[90%] z-50">
+          <div className="bg-red-500/90 text-white text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 animate-fade-up">
+            <span className="flex-1">{voiceError}</span>
+            <button onClick={() => setVoiceError(null)} className="shrink-0"><X size={14} /></button>
+          </div>
+        </div>
+      )}
+
       {/* Input Bar */}
       <div className="border-t border-border bg-surface px-4 py-3 lg:px-8">
         <div className="max-w-2xl mx-auto">
-          {messages.length > 0 && (
-            <div className="flex gap-2 mb-2 overflow-x-auto pb-1">
-              {QUICK_PROMPTS.slice(0, 3).map(p => (
-                <button key={p} onClick={() => sendMessage(p)} disabled={loading}
-                  className="px-3 py-1 rounded-full text-xs font-medium bg-surface-2 text-text-3 border border-border hover:border-rise hover:text-rise transition-colors whitespace-nowrap shrink-0 disabled:opacity-50">
-                  {p}
+          {/* Recording bar replaces input when recording */}
+          {isRecordingOrTranscribing ? (
+            <VoiceRecordingBar
+              duration={recorderState.duration}
+              isTranscribing={isTranscribing}
+              onStop={handleStopRecording}
+              onCancel={handleCancelRecording}
+            />
+          ) : (
+            <>
+              {messages.length > 0 && (
+                <div className="flex gap-2 mb-2 overflow-x-auto pb-1">
+                  {QUICK_PROMPTS.slice(0, 3).map(p => (
+                    <button key={p} onClick={() => sendMessage(p)} disabled={loading}
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-surface-2 text-text-3 border border-border hover:border-rise hover:text-rise transition-colors whitespace-nowrap shrink-0 disabled:opacity-50">
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                {/* Mic button */}
+                <button
+                  onClick={handleMicPress}
+                  disabled={loading}
+                  className={cn(
+                    'w-12 h-12 rounded-xl flex items-center justify-center transition-all shrink-0',
+                    'bg-surface-2 border border-border text-text-2 hover:text-rise hover:border-rise/30',
+                    'disabled:opacity-50 active:scale-95',
+                  )}
+                  title="Voice input"
+                >
+                  <Mic size={20} />
                 </button>
-              ))}
-            </div>
+                {/* Text input */}
+                <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
+                  placeholder="Ask RISE AI anything..."
+                  autoFocus
+                  className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-2 text-sm text-text placeholder:text-text-3 focus:outline-none focus:ring-2 focus:ring-rise/30" />
+                {/* Send button */}
+                <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}
+                  className="w-12 h-12 rounded-xl bg-rise text-[#0A0A0F] flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform shrink-0">
+                  <Send size={20} />
+                </button>
+              </div>
+            </>
           )}
-          <div className="flex gap-3">
-            <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
-              placeholder="Ask RISE AI anything..."
-              autoFocus
-              className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-2 text-sm text-text placeholder:text-text-3 focus:outline-none focus:ring-2 focus:ring-rise/30" />
-            <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}
-              className="w-12 h-12 rounded-xl bg-rise text-[#0A0A0F] flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform">
-              <Send size={20} />
-            </button>
-          </div>
         </div>
       </div>
     </div>
