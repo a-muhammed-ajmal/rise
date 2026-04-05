@@ -4,10 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useCollection, updateDocument } from '@/lib/firestore';
 import { Task, Habit, Project, Goal, Transaction } from '@/lib/types';
-import { cn, isOverdue, formatCurrency } from '@/lib/utils';
+import { cn, isOverdue, formatCurrency, formatTime } from '@/lib/utils';
 import { format, startOfMonth } from 'date-fns';
-import { ChevronDown, ChevronUp, Clock, Target, Wallet, Flame, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, Target, Wallet, Flame, CheckCircle2, ArrowRight, Check, X } from 'lucide-react';
 import TaskCard from '@/components/tasks/TaskCard';
+import { doc, runTransaction } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { HabitStatus } from '@/lib/types';
 
 const AFFIRMATIONS = [
   "I am a top performer who creates massive value for my clients.",
@@ -219,35 +222,8 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Next Up (Rhythms) */}
-      <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up delay-4">
-        <h2 className="text-[13px] font-semibold text-text mb-2">Next Up</h2>
-        <div className="space-y-1">
-          {(habits || [])
-            .filter(h => {
-              if (!h.isActive || !h.time) return false;
-              const nowTime = format(now, 'HH:mm');
-              if (h.time < nowTime) return false;
-              const todayCount = h.completions?.[today] ?? 0;
-              return todayCount < h.targetCount;
-            })
-            .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
-            .slice(0, 3)
-            .map(h => (
-              <div key={h.id} className="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
-                <span className="text-base">{h.icon}</span>
-                <span className="flex-1 text-[13px] text-text">{h.name}</span>
-                <div className="flex items-center gap-1 text-[11px] text-text-3 bg-white/[0.04] px-2 py-0.5 rounded-md">
-                  <Clock size={11} />
-                  <span>{h.time}</span>
-                </div>
-              </div>
-            ))}
-        </div>
-        {(habits || []).filter(h => h.isActive && h.time && h.time >= format(now, 'HH:mm') && (h.completions?.[today] ?? 0) < h.targetCount).length === 0 && (
-          <p className="text-[13px] text-text-3 py-4 text-center">No rhythms scheduled for later today.</p>
-        )}
-      </div>
+      {/* Be Consistent (Rhythms) */}
+      <BeConsistentSection habits={habits || []} today={today} />
 
       {/* Get Things Done */}
       <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up">
@@ -308,6 +284,135 @@ export default function DashboardPage() {
         </div>
       )}
 
+    </div>
+  );
+}
+
+// ─── Be Consistent: Rhythms Module ──────────────────────────────────────────
+
+const INITIAL_SHOW = 5;
+
+function BeConsistentSection({ habits, today }: { habits: Habit[]; today: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const getTodayStatus = (h: Habit): HabitStatus => {
+    return (h.statusLog?.[today] as HabitStatus) || 'pending';
+  };
+
+  // All rhythms sorted by time, pending ones only
+  const pendingRhythms = useMemo(() =>
+    habits
+      .filter(h => h.isActive && getTodayStatus(h) === 'pending')
+      .sort((a, b) => {
+        if (!a.time && !b.time) return a.name.localeCompare(b.name);
+        if (!a.time) return 1;
+        if (!b.time) return -1;
+        return a.time.localeCompare(b.time);
+      }),
+    [habits, today]
+  );
+
+  const visibleRhythms = expanded ? pendingRhythms : pendingRhythms.slice(0, INITIAL_SHOW);
+  const hasMore = pendingRhythms.length > INITIAL_SHOW;
+
+  const markStatus = async (habit: Habit, status: HabitStatus) => {
+    try {
+      await runTransaction(db, async (transaction) => {
+        const habitRef = doc(db, 'habits', habit.id);
+        const snap = await transaction.get(habitRef);
+        if (!snap.exists()) return;
+        const data = snap.data();
+
+        const completions: Record<string, number> = { ...(data.completions || {}) };
+        const statusLog: Record<string, string> = { ...(data.statusLog || {}) };
+
+        if (status === 'done') completions[today] = 1;
+        else delete completions[today];
+        statusLog[today] = status;
+
+        let streak = 0;
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        if (!completions[format(d, 'yyyy-MM-dd')]) d.setDate(d.getDate() - 1);
+        while (completions[format(d, 'yyyy-MM-dd')]) { streak++; d.setDate(d.getDate() - 1); }
+        const bestStreak = Math.max(streak, data.bestStreak || 0);
+        transaction.update(habitRef, { completions, statusLog, streak, bestStreak });
+      });
+    } catch (err) {
+      console.error('[Dashboard] Failed to mark rhythm:', err);
+    }
+  };
+
+  return (
+    <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up delay-4">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-[13px] font-semibold text-text">Be Consistent</h2>
+        <span className="text-[11px] text-text-3 bg-white/[0.04] px-2 py-0.5 rounded-md font-medium">
+          {pendingRhythms.length} left
+        </span>
+      </div>
+
+      {pendingRhythms.length === 0 ? (
+        <p className="text-[13px] text-text-3 py-4 text-center">All rhythms completed for today!</p>
+      ) : (
+        <div className="space-y-1">
+          {visibleRhythms.map(h => (
+            <div key={h.id} className="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
+              <div className="flex-1 min-w-0">
+                <span className="text-[13px] text-text block truncate">{h.name}</span>
+                {h.time && (
+                  <span className="flex items-center gap-1 text-[11px] text-text-3 mt-0.5">
+                    <Clock size={10} />
+                    {formatTime(h.time)}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => markStatus(h, 'done')}
+                  className="w-8 h-8 rounded-full bg-green-500/15 flex items-center justify-center hover:bg-green-500/25 transition-colors"
+                >
+                  <Check size={14} className="text-green-500" />
+                </button>
+                <button
+                  onClick={() => markStatus(h, 'failed')}
+                  className="w-8 h-8 rounded-full bg-red-500/15 flex items-center justify-center hover:bg-red-500/25 transition-colors"
+                >
+                  <X size={14} className="text-red-500" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {hasMore && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04] w-full text-[12px] font-semibold text-rise hover:text-rise-dark transition-colors"
+        >
+          Show {pendingRhythms.length - INITIAL_SHOW} more
+          <ChevronDown size={12} />
+        </button>
+      )}
+
+      {expanded && hasMore && (
+        <button
+          onClick={() => setExpanded(false)}
+          className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04] w-full text-[12px] font-semibold text-rise hover:text-rise-dark transition-colors"
+        >
+          Show less
+          <ChevronUp size={12} />
+        </button>
+      )}
+
+      <a
+        href="/wellness"
+        className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04] text-[12px] font-semibold text-rise hover:text-rise-dark transition-colors"
+      >
+        View all rhythms
+        <ArrowRight size={12} />
+      </a>
     </div>
   );
 }

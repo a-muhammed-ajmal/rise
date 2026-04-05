@@ -14,7 +14,7 @@ export const TransactionStatus = z.enum(['Received', 'Paid', 'Pending']);
 export const ConnectionType = z.enum(['Father', 'Mother', 'Spouse', 'Sibling', 'Child', 'Extended Family', 'Close Friend', 'Colleague', 'Mentor', 'Other']);
 export const GoalTimeline = z.enum(['1yr', '3yr', '5yr']);
 export const GoalArea = z.enum(['health', 'work', 'personal', 'financial', 'relationship']);
-export const HabitFrequency = z.enum(['daily', 'weekly', 'custom']);
+export const HabitFrequency = z.enum(['daily', 'weekly', 'monthly', 'yearly']);
 export const PomodoroType = z.enum(['work', 'short-break', 'long-break']);
 export const ThemeMode = z.enum(['system', 'light', 'dark']);
 
@@ -104,15 +104,20 @@ export const GoalActionSchema = z.object({
 
 export const HabitSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
+  note: z.string().optional().nullable(),
   icon: z.string().min(1, 'Icon is required'),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format'),
+  category: z.string().optional().nullable(),
+  project: z.string().optional().nullable(),
   frequency: HabitFrequency,
   customDays: z.array(z.number().min(1).max(7)).optional(),
   targetCount: z.number().int().positive().default(1),
   goalId: z.string().optional().nullable(),
   time: z.string().optional().nullable(),
   trigger: z.string().optional().nullable(),
+  reminder: z.object({ enabled: z.boolean(), time: z.string() }).optional().default({ enabled: false, time: '' }),
   completions: z.record(z.string(), z.number()).default({}),
+  statusLog: z.record(z.string(), z.enum(['pending', 'done', 'failed'])).optional().default({}),
   streak: z.number().int().nonnegative().default(0),
   bestStreak: z.number().int().nonnegative().default(0),
   isActive: z.boolean().default(true),

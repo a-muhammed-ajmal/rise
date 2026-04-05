@@ -11,8 +11,15 @@ export type TransactionStatus = 'Received' | 'Paid' | 'Pending';
 export type ConnectionType = 'Spouse' | 'Child' | 'Parent' | 'Sibling' | 'Friend' | 'Colleague' | 'Other';
 export type GoalTimeline = '1yr' | '3yr' | '5yr';
 export type VisionCategory = 'Personal' | 'Professional' | 'Financial' | 'Relationship' | 'Wellness' | 'Vision';
-export type HabitFrequency = 'daily' | 'specific-days' | 'custom';
+export type HabitFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 export type HabitProject = 'Morning Routine' | 'Business Discipline' | 'Evening Routine' | 'Custom';
+export type HabitCategory =
+  | 'Affirmation' | 'Meditation' | 'Dedication' | 'Discipline'
+  | 'Fitness' | 'Learning' | 'Spiritual' | 'Personal Growth'
+  | 'Health' | 'Work' | 'Productivity' | 'Morning Routine'
+  | 'Evening Routine' | 'Finance' | 'Social' | 'Creativity'
+  | 'Mindfulness' | 'Nutrition' | 'Self-Care' | 'Other';
+export type HabitStatus = 'pending' | 'done' | 'failed';
 export type PomodoroType = 'work' | 'short-break' | 'long-break';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type DebtStatus = 'Active' | 'Paid Off';
@@ -134,6 +141,7 @@ export interface Habit {
   userId: string;
   name: string;
   description?: string;
+  note?: string;
   icon: string;
   color: string;
   category: string;
@@ -144,10 +152,11 @@ export interface Habit {
   targetCount: number;
   goalId?: string;
   trigger?: string;
-  reminder?: boolean;
-  reminderOption?: ReminderOption;
+  reminder: { enabled: boolean; time: string };
   notes?: string;
   completions: Record<string, number>; // date -> count
+  /** Per-day status: { 'yyyy-MM-dd': 'done' | 'failed' } */
+  statusLog: Record<string, HabitStatus>;
   streak: number;
   bestStreak: number;
   isActive: boolean;
@@ -445,9 +454,16 @@ export const PROJECT_COLORS = [
   '#af38eb', '#eb96eb', '#e05194', '#ff8d85', '#808080', '#b8b8b8',
 ] as const;
 
-export const HABIT_CATEGORIES = [
-  'Morning Routine', 'Business Discipline', 'Evening Routine', 'Custom'
-] as const;
+export const RHYTHM_CATEGORIES: HabitCategory[] = [
+  'Affirmation', 'Meditation', 'Dedication', 'Discipline',
+  'Fitness', 'Learning', 'Spiritual', 'Personal Growth',
+  'Health', 'Work', 'Productivity', 'Morning Routine',
+  'Evening Routine', 'Finance', 'Social', 'Creativity',
+  'Mindfulness', 'Nutrition', 'Self-Care', 'Other',
+];
+
+// Legacy aliases
+export const HABIT_CATEGORIES = RHYTHM_CATEGORIES;
 
 export const HABIT_PROJECTS: HabitProject[] = [
   'Morning Routine', 'Business Discipline', 'Evening Routine', 'Custom'
