@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '@/components/providers/AuthProvider';
+import { SWRegistrar } from '@/components/providers/SWRegistrar';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body>
+        <SWRegistrar />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

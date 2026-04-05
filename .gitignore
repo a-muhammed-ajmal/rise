@@ -37,3 +37,9 @@ next-env.d.ts
 
 # windows zone identifier files
 *:Zone.Identifier
+
+# serwist service worker (generated)
+public/sw.js
+public/sw.js.map
+public/serwist-worker-*.js
+public/serwist-worker-*.js.map
