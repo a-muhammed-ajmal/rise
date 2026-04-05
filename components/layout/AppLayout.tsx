@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Home, CheckSquare, Target, Wallet, Menu, X,
   Briefcase, BookOpen, FileText, MessageSquare, Activity, Settings, LogOut, Users,
+  Eye, Compass,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -14,22 +15,25 @@ import ToastContainer from '@/components/ui/ToastContainer';
 
 const mainTabs = [
   { href: '/',        icon: Home,        label: 'Home' },
-  { href: '/tasks',   icon: CheckSquare, label: 'Tasks' },
-  { href: '/goals',   icon: Target,      label: 'Goals' },
+  { href: '/tasks',   icon: CheckSquare, label: 'Actions' },
+  { href: '/goals',   icon: Eye,         label: 'Visions' },
   { href: '/finance', icon: Wallet,      label: 'Finance' },
 ];
 
 const moreLinks = [
-  { href: '/wellness',       icon: Activity,      label: 'Wellness' },
-  { href: '/professional',   icon: Briefcase,     label: 'Professional' },
-  { href: '/relationships',  icon: Users,         label: 'Relationships' },
-  { href: '/reviews',        icon: BookOpen,      label: 'Reviews' },
-  { href: '/journal',        icon: BookOpen,      label: 'Journal' },
-  { href: '/documents',      icon: FileText,      label: 'Documents' },
-  { href: '/chat',           icon: MessageSquare, label: 'AI Chat' },
+  { href: '/wellness',       icon: Activity,      label: 'Wellness',       color: '#1ABC9C' },
+  { href: '/professional',   icon: Briefcase,     label: 'Professional',   color: '#1E4AFF' },
+  { href: '/relationships',  icon: Users,         label: 'Relationships',  color: '#FF4F6D' },
+  { href: '/reviews',        icon: Compass,       label: 'Reviews',        color: '#FFD700' },
+  { href: '/journal',        icon: BookOpen,      label: 'Journal',        color: '#800080' },
+  { href: '/documents',      icon: FileText,      label: 'Documents',      color: '#94A3B8' },
+  { href: '/chat',           icon: MessageSquare, label: 'AI Chat',        color: '#FF9933' },
 ];
 
-const allLinks = [...mainTabs, ...moreLinks];
+const allLinks = [
+  ...mainTabs.map(t => ({ ...t, color: undefined })),
+  ...moreLinks,
+];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -49,7 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <h1 className="font-semibold text-text">RISE</h1>
-            <p className="text-xs text-text-3">My Organized Hub</p>
+            <p className="text-xs text-text-3">Realms · Targets · Actions</p>
           </div>
         </div>
 
@@ -168,7 +172,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       isActive(link.href) ? 'bg-rise/15 text-rise' : 'text-text-2 hover:bg-white/5',
                     )}
                   >
-                    <Icon size={24} />
+                    <Icon size={24} style={{ color: isActive(link.href) ? undefined : link.color }} />
                     <span className="text-xs font-medium">{link.label}</span>
                   </Link>
                 );
