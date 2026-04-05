@@ -189,10 +189,10 @@ export default function WellnessPage() {
     <div className="px-4 py-6 lg:px-8 max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-text">My Habits</h1>
+        <h1 className="text-lg font-semibold text-text">My Rhythms</h1>
         <button onClick={openAddModal}
           className="flex items-center gap-1.5 px-3 py-2 bg-rise text-[#0A0A0F] rounded-lg text-xs font-semibold">
-          <Plus size={14} /> Add Habit
+          <Plus size={14} /> Add Rhythm
         </button>
       </div>
 
@@ -212,11 +212,11 @@ export default function WellnessPage() {
       ) : sortedHabits.length === 0 ? (
         <EmptyState
           icon={Flame}
-          title="No habits yet"
-          description="Build consistent habits to improve your life"
+          title="No rhythms yet"
+          description="Build consistent rhythms to improve your life"
           action={
             <div className="flex flex-col gap-3 w-full max-w-xs">
-              <Button onClick={openAddModal} className="w-full"><Plus size={16} /> Create Custom Habit</Button>
+              <Button onClick={openAddModal} className="w-full"><Plus size={16} /> Create Custom Rhythm</Button>
               <Button onClick={seedDefaultHabits} variant="secondary" className="w-full">
                 <Flame size={16} /> Add Default Routine
               </Button>
@@ -242,7 +242,7 @@ export default function WellnessPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left text-xs text-text-3 font-semibold py-3 pr-4 min-w-[180px]">Habit Name</th>
+                  <th className="text-left text-xs text-text-3 font-semibold py-3 pr-4 min-w-[180px]">Rhythm</th>
                   {weekDays.map((day, i) => (
                     <th key={i} className="text-center text-xs text-text-3 font-semibold py-3 w-12">
                       <div>{dayLabels[i]}</div>
@@ -360,14 +360,14 @@ export default function WellnessPage() {
       )}
 
       {/* Add/Edit Modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingHabit ? 'Edit Habit' : 'New Habit'}>
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingHabit ? 'Edit Rhythm' : 'New Rhythm'}>
         <div className="space-y-4">
-          <Input label="Habit Name" value={formData.name} maxLength={100}
+          <Input label="Rhythm Name" value={formData.name} maxLength={100}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
             placeholder="e.g. Morning Exercise" autoFocus />
           <Input label="Time (24h format)" type="time" value={formData.time}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, time: e.target.value })} />
-          <Select label="Project" value={formData.project}
+          <Select label="Category" value={formData.project}
             onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, project: e.target.value as HabitProject })}
             options={HABIT_PROJECTS.map(p => ({ value: p, label: p }))} />
           <Select label="Frequency" value={formData.frequency}
@@ -403,7 +403,7 @@ export default function WellnessPage() {
           <div className="flex gap-3 pt-4">
             <Button variant="secondary" onClick={() => setModalOpen(false)} className="flex-1">Cancel</Button>
             <Button onClick={handleSubmit} disabled={!formData.name.trim()} className="flex-1">
-              {editingHabit ? 'Save Changes' : 'Save Habit'}
+              {editingHabit ? 'Save Changes' : 'Save Rhythm'}
             </Button>
           </div>
         </div>

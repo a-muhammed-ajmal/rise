@@ -9,13 +9,13 @@ import TaskModal from '@/components/tasks/TaskModal';
 import { cn } from '@/lib/utils';
 
 const FAB_ACTIONS = [
-  { emoji: '✅', label: 'Task',       key: 'task' },
+  { emoji: '✅', label: 'Action',     key: 'task' },
   { emoji: '👤', label: 'Lead',       key: 'lead' },
   { emoji: '🤝', label: 'Deal',       key: 'deal' },
   { emoji: '👥', label: 'Connection', key: 'connection' },
   { emoji: '💵', label: 'Income',     key: 'income' },
   { emoji: '💳', label: 'Expense',    key: 'expense' },
-  { emoji: '💪', label: 'Habit',      key: 'habit' },
+  { emoji: '💪', label: 'Rhythm',     key: 'habit' },
   { emoji: '📄', label: 'Document',   key: 'document' },
 ] as const;
 

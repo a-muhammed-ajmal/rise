@@ -107,8 +107,8 @@ export default function TaskCard({
     return letter;
   };
 
-  // Project/Area label (max 15 chars, separator is |)
-  const projectAreaLabel = project
+  // Target/Realm label (max 15 chars, separator is |)
+  const targetRealmLabel = project
     ? `${project.title.length > 15 ? project.title.slice(0, 15) + '..' : project.title} | ${area?.name ?? 'Inbox'}`
     : area?.name ?? 'Inbox';
 
@@ -163,19 +163,19 @@ export default function TaskCard({
                     onClick={() => { setMenuOpen(false); onEdit(task); }}
                     className="w-full px-3 py-2 text-left text-xs text-text hover:bg-white/5 transition-colors"
                   >
-                    Edit Task
+                    Edit Action
                   </button>
                   <button
                     onClick={handleDuplicate}
                     className="w-full px-3 py-2 text-left text-xs text-text hover:bg-white/5 transition-colors"
                   >
-                    Duplicate Task
+                    Duplicate Action
                   </button>
                   <button
                     onClick={startDelete}
                     className="w-full px-3 py-2 text-left text-xs text-red-500 hover:bg-red-500/10 transition-colors"
                   >
-                    Delete Task
+                    Delete Action
                   </button>
                 </div>
               </>
@@ -219,12 +219,12 @@ export default function TaskCard({
             </span>
           )}
 
-          {/* Spacer to push project/area right */}
+          {/* Spacer to push target/realm right */}
           <div className="flex-1" />
 
-          {/* Project/Area (right) */}
+          {/* Target/Realm (right) */}
           <div className="flex items-center gap-1 truncate shrink-0 min-w-0 max-w-[40%]">
-            <span className="truncate">{projectAreaLabel}</span>
+            <span className="truncate">{targetRealmLabel}</span>
           </div>
         </div>
       </div>
@@ -235,7 +235,7 @@ export default function TaskCard({
           <div className="fixed inset-0 z-40" onClick={() => setShowDeleteConfirm(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
             <div className="bg-surface-2 rounded-xl border border-white/[0.08] p-4 max-w-[280px] w-[90%] animate-scale-in">
-              <p className="text-sm text-text mb-4">Are you sure you want to delete this task?</p>
+              <p className="text-sm text-text mb-4">Are you sure you want to delete this action?</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}

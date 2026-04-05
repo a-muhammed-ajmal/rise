@@ -15,6 +15,26 @@ No test framework is configured in this project.
 
 Environment: copy `.env.example` to `.env.local` and fill in Firebase and Gemini API keys before running.
 
+## Terminology
+
+RISE uses a strict hierarchy of terms throughout all UI, code, and documentation:
+
+| Term | Meaning | Old term (never use) |
+|------|---------|---------------------|
+| **Realm** | High-level life domain | Life Area, LifeArea |
+| **Target** | Outcome or objective inside a Realm | Project |
+| **Action** | Small, concrete step to complete a Target | Task |
+| **Rhythm** | Recurring behavior or routine | Habit |
+
+**Hierarchy**: Realm → Target → Action → Rhythm
+
+Rules:
+- Every Target belongs to exactly one Realm
+- Every Action belongs to exactly one Target
+- Every Rhythm is linked to a Realm or Target
+- All UI labels, button text, headings, descriptions, and toast messages must use these terms
+- Internal TypeScript interfaces (`Task`, `Project`, `Habit`) and Firestore collection names (`tasks`, `projects`, `habits`) remain unchanged for backward compatibility
+
 ## Architecture Overview
 
 **RISE** is a Next.js 15 (App Router) personal life management app with Firebase backend and Google Gemini AI integration.
@@ -42,7 +62,7 @@ Each feature module uses its own Firestore collection (e.g. `tasks`, `projects`,
 
 ### Type System
 
-`lib/types.ts` is the single source of truth for all data models. Key types: `Task`, `Project`, `Label`, `Goal`, `Habit`, `Transaction`, `Lead`, `Deal`, `Connection`, `Review`, `JournalEntry`, `ChatMessage`. Also exports configuration constants: `LIFE_AREAS`, `PRIORITY_CONFIG`, `GTD_CONFIG`, `QUADRANT_CONFIG`, `UAE_BANKS`, `EXPENSE_CATEGORIES`.
+`lib/types.ts` is the single source of truth for all data models. Key interfaces: `Task` (Action), `Project` (Target), `Habit` (Rhythm), `Goal`, `Label`, `Transaction`, `Lead`, `Deal`, `Connection`, `Review`, `ChatMessage`. Also exports configuration constants: `REALMS`, `LIFE_AREAS` (legacy alias), `PRIORITY_CONFIG`, `GTD_CONFIG`, `QUADRANT_CONFIG`, `UAE_BANKS`, `EXPENSE_CATEGORIES`.
 
 ### UI Components
 
@@ -61,10 +81,10 @@ Tailwind CSS 4 with a custom theme defined in `app/globals.css`. Primary brand c
 
 | Module | Collection(s) | Notes |
 |--------|--------------|-------|
-| Tasks | `tasks`, `projects`, `labels` | Priority P1-P4, GTD contexts, Eisenhower quadrant, recurrence, project grouping |
-| Goals | `goals`, `milestones`, `goal-actions` | NICE framework |
+| Actions | `tasks`, `projects`, `labels` | Priority P1-P4, GTD contexts, Eisenhower quadrant, recurrence, target grouping |
+| Visions | `goals`, `milestones`, `goal-actions` | NICE framework |
 | Finance | `transactions`, `budgets`, `debts` | AED currency |
-| Wellness | `habits`, `pomodoro-sessions` | Streak tracking |
+| Wellness | `habits`, `pomodoro-sessions` | Rhythm streak tracking |
 | Professional | `leads`, `deals` | UAE banking CRM (13 banks, 7 emirates) |
 | Relationships | `connections` | Contact types, important dates |
 | Reviews | `reviews` | GPS framework (Goals, Progress, Strategy) |

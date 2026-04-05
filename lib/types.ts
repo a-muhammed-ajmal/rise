@@ -398,7 +398,7 @@ export const GTD_CONFIG: Record<GtdContext, { title: string; icon: string; color
   'waiting-for': { title: 'Waiting For', icon: 'clock', color: '#F49C18' },
   'someday-maybe': { title: 'Someday/Maybe', icon: 'cloud', color: '#6B7280' },
   'reference': { title: 'Reference', icon: 'bookmark', color: '#2D7C3E' },
-  'project-support': { title: 'Project Support', icon: 'folder', color: '#7B4B9E' },
+  'project-support': { title: 'Target Support', icon: 'folder', color: '#7B4B9E' },
 };
 
 export const QUADRANT_CONFIG: Record<Quadrant, { title: string; subtitle: string; color: string }> = {

@@ -193,7 +193,7 @@ export default function HabitCard({ habit, userId, onEdit }: HabitCardProps) {
                     onClick={() => { setMenuOpen(false); onEdit(habit); }}
                     className="w-full px-3 py-2 text-left text-xs text-text hover:bg-white/5 transition-colors"
                   >
-                    Edit Habit
+                    Edit Rhythm
                   </button>
                   <button
                     onClick={handleDuplicate}
@@ -239,7 +239,7 @@ export default function HabitCard({ habit, userId, onEdit }: HabitCardProps) {
           <div className="fixed inset-0 z-40" onClick={() => setShowDeleteConfirm(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
             <div className="bg-surface-2 rounded-xl border border-white/[0.08] p-4 max-w-[280px] w-[90%] animate-scale-in">
-              <p className="text-sm text-text mb-4">Delete this habit?</p>
+              <p className="text-sm text-text mb-4">Delete this rhythm?</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}

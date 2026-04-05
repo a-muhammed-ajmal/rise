@@ -11,7 +11,7 @@ const QUICK_PROMPTS = [
   'What should I focus on today?',
   'How are my goals progressing?',
   'Summarize my finances this month',
-  'What habits am I maintaining well?',
+  'What rhythms am I maintaining well?',
   'Give me a productivity tip',
 ];
 
@@ -257,7 +257,7 @@ export default function ChatPage() {
                 <Sparkles size={28} className="text-white" />
               </div>
               <h2 className="text-xl font-bold text-text mb-2">RISE AI Assistant</h2>
-              <p className="text-sm text-text-3 mb-6">Ask me anything about your tasks, goals, finances, habits, or life data</p>
+              <p className="text-sm text-text-3 mb-6">Ask me anything about your actions, targets, finances, rhythms, or life data</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {QUICK_PROMPTS.map(p => (
                   <button key={p} onClick={() => sendMessage(p)}

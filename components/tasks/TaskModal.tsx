@@ -112,20 +112,20 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
     try {
       if (task) {
         await updateDocument('tasks', task.id, data);
-        toast('Task updated', 'success');
+        toast('Action updated', 'success');
       } else {
         await addDocument('tasks', data, user.uid);
-        toast('Task created', 'success');
+        toast('Action created', 'success');
       }
       if (onSaved) onSaved();
     } catch (error) {
       console.error('Failed to save task:', error);
-      toast('Failed to save task', 'error');
+      toast('Failed to save action', 'error');
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={task ? 'Edit Task' : 'New Task'} size="sm">
+    <Modal open={open} onClose={onClose} title={task ? 'Edit Action' : 'New Action'} size="sm">
       <div className="space-y-3">
         {/* Title */}
         <Input
@@ -139,14 +139,14 @@ export default function TaskModal({ open, onClose, task, projects, initArea, ini
         {/* Area & Project */}
         <div className="grid grid-cols-2 gap-2">
           <Select
-            label="Area"
+            label="Realm"
             value={area}
             onChange={e => handleAreaChange(e.target.value as LifeArea)}
             options={LIFE_AREAS.map(a => ({ value: a.id, label: `${a.emoji} ${a.name}` }))}
             className="text-xs"
           />
           <Select
-            label="Project"
+            label="Target"
             value={projectId}
             onChange={e => setProjectId(e.target.value)}
             options={[

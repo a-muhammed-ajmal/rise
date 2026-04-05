@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ tip: 'Focus on one task at a time. Small progress is still progress.' });
+    return NextResponse.json({ tip: 'Focus on one action at a time. Small progress is still progress.' });
   }
 
   try {
@@ -37,6 +37,6 @@ export async function POST(req: NextRequest) {
     const tip = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? 'Every day is a chance to rise higher.';
     return NextResponse.json({ tip });
   } catch {
-    return NextResponse.json({ tip: 'Start your day with your most important task. Momentum builds success.' });
+    return NextResponse.json({ tip: 'Start your day with your most important action. Momentum builds success.' });
   }
 }

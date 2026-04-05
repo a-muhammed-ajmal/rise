@@ -48,23 +48,23 @@ export default function ProjectModal({ open, onClose, project, defaultArea, onSa
     try {
       if (project) {
         await updateDocument('projects', project.id, data);
-        toast('Project updated', 'success');
+        toast('Target updated', 'success');
       } else {
         await addDocument('projects', data, user.uid);
-        toast('Project created', 'success');
+        toast('Target created', 'success');
       }
       if (onSaved) onSaved();
       onClose();
     } catch (error) {
       console.error('Failed to save project:', error);
-      toast('Failed to save project', 'error');
+      toast('Failed to save target', 'error');
     }
   };
 
   const areaConfig = LIFE_AREAS.find(a => a.id === area);
 
   return (
-    <Modal open={open} onClose={onClose} title={project ? 'Edit Project' : 'New Project'} size="sm">
+    <Modal open={open} onClose={onClose} title={project ? 'Edit Target' : 'New Target'} size="sm">
       <div className="space-y-4">
         {/* Area preview pill */}
         {areaConfig && (
@@ -79,7 +79,7 @@ export default function ProjectModal({ open, onClose, project, defaultArea, onSa
         )}
 
         <Input
-          label="Project Name"
+          label="Target Name"
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="e.g. New Website, Q2 Budget…"
@@ -87,7 +87,7 @@ export default function ProjectModal({ open, onClose, project, defaultArea, onSa
         />
 
         <Select
-          label="Life Area"
+          label="Realm"
           value={area}
           onChange={e => setArea(e.target.value as LifeArea)}
           options={LIFE_AREAS.map(a => ({ value: a.id, label: `${a.emoji} ${a.name}` }))}

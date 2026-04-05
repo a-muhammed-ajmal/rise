@@ -141,7 +141,7 @@ export default function DashboardPage() {
 
   const stats = [
     { icon: CheckCircle2, value: tasksCompletedToday, label: 'Done today', color: '#10B981' },
-    { icon: Target, value: activeGoals.length, label: 'Active goals', color: '#3B82F6' },
+    { icon: Target, value: activeGoals.length, label: 'Active targets', color: '#3B82F6' },
     { icon: Flame, value: `${avgStreak}d`, label: 'Avg streak', color: '#FF9933' },
     { icon: Wallet, value: formatCurrency(Math.abs(monthlyBalance)), label: monthlyBalance >= 0 ? 'Surplus' : 'Deficit', color: monthlyBalance >= 0 ? '#10B981' : '#EF4444' },
   ];
@@ -209,7 +209,7 @@ export default function DashboardPage() {
           </span>
         </div>
         {focusTasks.length === 0 ? (
-          <p className="text-[13px] text-text-3 py-4 text-center">No focus tasks. Mark tasks as My Day.</p>
+          <p className="text-[13px] text-text-3 py-4 text-center">No focus actions. Mark actions as My Day.</p>
         ) : (
           <div className="space-y-2">
             {focusTasks.map(t => (
@@ -219,7 +219,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Next Up (Habits) */}
+      {/* Next Up (Rhythms) */}
       <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up delay-4">
         <h2 className="text-[13px] font-semibold text-text mb-2">Next Up</h2>
         <div className="space-y-1">
@@ -245,7 +245,7 @@ export default function DashboardPage() {
             ))}
         </div>
         {(habits || []).filter(h => h.isActive && h.time && h.time >= format(now, 'HH:mm') && (h.completions?.[today] ?? 0) < h.targetCount).length === 0 && (
-          <p className="text-[13px] text-text-3 py-4 text-center">No habits scheduled for later today.</p>
+          <p className="text-[13px] text-text-3 py-4 text-center">No rhythms scheduled for later today.</p>
         )}
       </div>
 
@@ -253,7 +253,7 @@ export default function DashboardPage() {
       <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up">
         <h2 className="text-[13px] font-semibold text-text mb-3">Get Things Done</h2>
         {todayTasks.length === 0 ? (
-          <p className="text-[13px] text-text-3 py-4 text-center">No tasks for today.</p>
+          <p className="text-[13px] text-text-3 py-4 text-center">No actions for today.</p>
         ) : (
           <div className="space-y-2">
             {todayTasks.map(t => (
@@ -265,7 +265,7 @@ export default function DashboardPage() {
           href="/tasks"
           className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04] text-[12px] font-semibold text-rise hover:text-rise-dark transition-colors"
         >
-          View all tasks
+          View all actions
           <ArrowRight size={12} />
         </a>
       </div>
@@ -275,7 +275,7 @@ export default function DashboardPage() {
         <div className="glow-card bg-surface-2 rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.1] transition-colors animate-fade-up">
           <div className="flex items-center gap-2 mb-3">
             <Target size={15} className="text-blue-400" />
-            <h2 className="text-[13px] font-semibold text-text">Goal Progress</h2>
+            <h2 className="text-[13px] font-semibold text-text">Target Progress</h2>
           </div>
           <div className="space-y-3.5">
             {topGoals.map(g => (
@@ -302,7 +302,7 @@ export default function DashboardPage() {
             href="/goals"
             className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04] text-[12px] font-semibold text-rise hover:text-rise-dark transition-colors"
           >
-            View all goals
+            View all targets
             <ArrowRight size={12} />
           </a>
         </div>
