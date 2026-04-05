@@ -5,8 +5,8 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { useCollection, addDocument, updateDocument, deleteDocument } from '@/lib/firestore';
 import {
   Transaction, TransactionType, TransactionStatus,
-  Budget, Debt,
-  INCOME_CATEGORIES, EXPENSE_CATEGORIES,
+  Budget, Debt, DebtStatus, ExpenseType, PaymentMethod,
+  INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS,
 } from '@/lib/types';
 import dynamic from 'next/dynamic';
 const Modal = dynamic(() => import('@/components/ui/Modal'), { ssr: false });
@@ -16,493 +16,537 @@ import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
-  Plus, Wallet, TrendingUp, TrendingDown, Trash2,
-  Edit3, PiggyBank, CreditCard, AlertTriangle, Target,
-  DollarSign, Percent,
+  Plus, TrendingUp, TrendingDown, Trash2,
+  Edit3, PiggyBank, CreditCard, AlertTriangle,
+  DollarSign, Percent, ChevronLeft, ChevronRight, CheckCircle2,
 } from 'lucide-react';
-import { format } from 'date-fns';
-
-type Tab = 'transactions' | 'budgets' | 'debts';
+import { format, subMonths, addMonths } from 'date-fns';
 
 export default function FinancePage() {
   const { user } = useAuth();
   const uid = user?.uid;
-  const { data: transactions, loading: loadingTxns } = useCollection<Transaction>('transactions', uid);
-  const { data: budgets, loading: loadingBudgets } = useCollection<Budget>('budgets', uid);
-  const { data: debts, loading: loadingDebts } = useCollection<Debt>('debts', uid);
+  const { data: transactions } = useCollection<Transaction>('transactions', uid);
+  const { data: budgets } = useCollection<Budget>('budgets', uid);
+  const { data: debts } = useCollection<Debt>('debts', uid);
 
-  const [activeTab, setActiveTab] = useState<Tab>('transactions');
+  // Month selector
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const monthKey = format(selectedMonth, 'yyyy-MM');
+  const monthLabel = format(selectedMonth, 'MMMM yyyy');
 
-  // ── Transaction state ──
-  const [filter, setFilter] = useState<'all' | 'Income' | 'Expense'>('all');
-  const [txnModalOpen, setTxnModalOpen] = useState(false);
-  const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
-  const [type, setType] = useState<TransactionType>('Expense');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('');
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<TransactionStatus>('Pending');
-  const [notes, setNotes] = useState('');
-
-  // ── Budget state ──
-  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
-  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
-  const [budgetCategory, setBudgetCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
-  const [budgetLimit, setBudgetLimit] = useState('');
-  const [budgetMonthYear, setBudgetMonthYear] = useState(format(new Date(), 'yyyy-MM'));
-
-  // ── Debt state ──
+  // ── Modal states ──
+  const [incomeModalOpen, setIncomeModalOpen] = useState(false);
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
+  // ── Editing states ──
+  const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [paymentDebt, setPaymentDebt] = useState<Debt | null>(null);
+
+  // ── Income form ──
+  const [incSource, setIncSource] = useState('');
+  const [incAmount, setIncAmount] = useState('');
+  const [incDate, setIncDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [incCategory, setIncCategory] = useState<string>(INCOME_CATEGORIES[0]);
+  const [incStatus, setIncStatus] = useState<TransactionStatus>('Pending');
+  const [incNotes, setIncNotes] = useState('');
+
+  // ── Expense form ──
+  const [expDesc, setExpDesc] = useState('');
+  const [expAmount, setExpAmount] = useState('');
+  const [expDate, setExpDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [expCategory, setExpCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
+  const [expType, setExpType] = useState<ExpenseType>('Mandatory');
+  const [expPayment, setExpPayment] = useState<PaymentMethod | ''>('');
+  const [expNotes, setExpNotes] = useState('');
+
+  // ── Debt form ──
   const [debtName, setDebtName] = useState('');
   const [debtTotal, setDebtTotal] = useState('');
   const [debtRemaining, setDebtRemaining] = useState('');
   const [debtMonthly, setDebtMonthly] = useState('');
   const [debtRate, setDebtRate] = useState('');
   const [debtDueDay, setDebtDueDay] = useState('');
+  const [debtPayoffDate, setDebtPayoffDate] = useState('');
   const [debtNotes, setDebtNotes] = useState('');
+
+  // ── Budget form ──
+  const [budgetCategory, setBudgetCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
+  const [budgetLimit, setBudgetLimit] = useState('');
+  const [budgetMonthYear, setBudgetMonthYear] = useState(format(new Date(), 'yyyy-MM'));
+
+  // ── Payment form ──
+  const [paymentAmount, setPaymentAmount] = useState('');
 
   // ── Delete confirmation ──
   const [deleteConfirm, setDeleteConfirm] = useState<{ collection: string; id: string; label: string } | null>(null);
 
   // ── Computed values ──
-  const currentMonth = format(new Date(), 'yyyy-MM');
-  const monthTxns = transactions.filter(t => t.date?.startsWith(currentMonth));
-  const totalIncome = monthTxns.filter(t => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
-  const totalExpense = monthTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);
-  const balance = totalIncome - totalExpense;
-  const totalDebtRemaining = debts.reduce((s, d) => s + (d.remainingBalance || 0), 0);
+  const monthTxns = transactions.filter(t => t.date?.startsWith(monthKey));
+  const incomes = monthTxns.filter(t => t.type === 'Income').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const expenses = monthTxns.filter(t => t.type === 'Expense').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const totalIncome = incomes.filter(t => t.status === 'Received').reduce((s, t) => s + t.amount, 0);
+  const totalExpense = expenses.reduce((s, t) => s + t.amount, 0);
+  const netCashFlow = totalIncome - totalExpense;
 
-  const filtered = transactions
-    .filter(t => filter === 'all' || t.type === filter)
-    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const activeDebts = debts.filter(d => d.status !== 'Paid Off');
+  const paidOffDebts = debts.filter(d => d.status === 'Paid Off');
 
-  const categories = type === 'Income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-
-  // Spending per expense category for current month
   const spendingByCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    monthTxns
-      .filter(t => t.type === 'Expense')
-      .forEach(t => { map[t.category] = (map[t.category] || 0) + t.amount; });
+    expenses.forEach(t => { map[t.category] = (map[t.category] || 0) + t.amount; });
     return map;
-  }, [monthTxns]);
+  }, [expenses]);
 
-  // ── Transaction handlers ──
-  const resetTxnForm = () => {
-    setType('Expense');
-    setAmount('');
-    setCategory('');
-    setDate(format(new Date(), 'yyyy-MM-dd'));
-    setDescription('');
-    setStatus('Pending');
-    setNotes('');
-    setEditingTxn(null);
+  // ── Income handlers ──
+  const resetIncomeForm = () => {
+    setIncSource(''); setIncAmount(''); setIncDate(format(new Date(), 'yyyy-MM-dd'));
+    setIncCategory(INCOME_CATEGORIES[0]); setIncStatus('Pending'); setIncNotes(''); setEditingTxn(null);
   };
-
-  const openAddTxn = () => {
-    resetTxnForm();
-    setTxnModalOpen(true);
+  const openAddIncome = () => { resetIncomeForm(); setIncomeModalOpen(true); };
+  const openEditIncome = (t: Transaction) => {
+    setEditingTxn(t); setIncSource(t.source || t.description || ''); setIncAmount(t.amount.toString());
+    setIncDate(t.date); setIncCategory(t.category); setIncStatus(t.status || 'Pending');
+    setIncNotes(t.notes || ''); setIncomeModalOpen(true);
   };
-
-  const openEditTxn = (txn: Transaction) => {
-    setEditingTxn(txn);
-    setType(txn.type);
-    setAmount(txn.amount.toString());
-    setCategory(txn.category);
-    setDate(txn.date);
-    setDescription(txn.description || '');
-    setStatus(txn.status || 'Pending');
-    setNotes(txn.notes || '');
-    setTxnModalOpen(true);
-  };
-
-  const handleSaveTxn = async () => {
+  const handleSaveIncome = async () => {
     if (!user) return;
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+    const amt = parseFloat(incAmount);
+    if (isNaN(amt) || amt <= 0) return;
     const payload: Partial<Transaction> = {
-      type,
-      amount: parsedAmount,
-      category: category || (categories[0] as string),
-      date,
-      description,
-      status,
-      notes,
+      type: 'Income', amount: amt, source: incSource, description: incSource,
+      category: incCategory, date: incDate, status: incStatus, notes: incNotes,
     };
-    if (editingTxn) {
-      await updateDocument('transactions', editingTxn.id, payload);
-    } else {
-      await addDocument('transactions', payload as Partial<Transaction>, user.uid);
-    }
-    resetTxnForm();
-    setTxnModalOpen(false);
+    if (editingTxn) await updateDocument('transactions', editingTxn.id, payload);
+    else await addDocument('transactions', payload, user.uid);
+    resetIncomeForm(); setIncomeModalOpen(false);
   };
 
-  // ── Budget handlers ──
-  const resetBudgetForm = () => {
-    setBudgetCategory(EXPENSE_CATEGORIES[0]);
-    setBudgetLimit('');
-    setBudgetMonthYear(format(new Date(), 'yyyy-MM'));
-    setEditingBudget(null);
+  // ── Expense handlers ──
+  const resetExpenseForm = () => {
+    setExpDesc(''); setExpAmount(''); setExpDate(format(new Date(), 'yyyy-MM-dd'));
+    setExpCategory(EXPENSE_CATEGORIES[0]); setExpType('Mandatory'); setExpPayment('');
+    setExpNotes(''); setEditingTxn(null);
   };
-
-  const openAddBudget = () => {
-    resetBudgetForm();
-    setBudgetModalOpen(true);
+  const openAddExpense = () => { resetExpenseForm(); setExpenseModalOpen(true); };
+  const openEditExpense = (t: Transaction) => {
+    setEditingTxn(t); setExpDesc(t.description || ''); setExpAmount(t.amount.toString());
+    setExpDate(t.date); setExpCategory(t.category); setExpType((t.expenseType as ExpenseType) || 'Mandatory');
+    setExpPayment((t.paymentMethod as PaymentMethod) || ''); setExpNotes(t.notes || '');
+    setExpenseModalOpen(true);
   };
-
-  const openEditBudget = (b: Budget) => {
-    setEditingBudget(b);
-    setBudgetCategory(b.category);
-    setBudgetLimit(b.monthlyLimit.toString());
-    setBudgetMonthYear(b.monthYear || format(new Date(), 'yyyy-MM'));
-    setBudgetModalOpen(true);
-  };
-
-  const handleSaveBudget = async () => {
+  const handleSaveExpense = async () => {
     if (!user) return;
-    const limit = parseFloat(budgetLimit);
-    if (isNaN(limit) || limit <= 0) return;
-    const payload: Partial<Budget> = {
-      category: budgetCategory,
-      monthlyLimit: limit,
-      monthYear: budgetMonthYear,
+    const amt = parseFloat(expAmount);
+    if (isNaN(amt) || amt <= 0) return;
+    const payload: Partial<Transaction> = {
+      type: 'Expense', amount: amt, description: expDesc, category: expCategory,
+      date: expDate, expenseType: expType, paymentMethod: expPayment || undefined, notes: expNotes,
     };
-    if (editingBudget) {
-      await updateDocument('budgets', editingBudget.id, payload);
-    } else {
-      await addDocument('budgets', payload as Partial<Budget>, user.uid);
-    }
-    resetBudgetForm();
-    setBudgetModalOpen(false);
+    if (editingTxn) await updateDocument('transactions', editingTxn.id, payload);
+    else await addDocument('transactions', payload, user.uid);
+    resetExpenseForm(); setExpenseModalOpen(false);
   };
 
   // ── Debt handlers ──
   const resetDebtForm = () => {
-    setDebtName('');
-    setDebtTotal('');
-    setDebtRemaining('');
-    setDebtMonthly('');
-    setDebtRate('');
-    setDebtDueDay('');
-    setDebtNotes('');
-    setEditingDebt(null);
+    setDebtName(''); setDebtTotal(''); setDebtRemaining(''); setDebtMonthly('');
+    setDebtRate(''); setDebtDueDay(''); setDebtPayoffDate(''); setDebtNotes(''); setEditingDebt(null);
   };
-
-  const openAddDebt = () => {
-    resetDebtForm();
-    setDebtModalOpen(true);
-  };
-
+  const openAddDebt = () => { resetDebtForm(); setDebtModalOpen(true); };
   const openEditDebt = (d: Debt) => {
-    setEditingDebt(d);
-    setDebtName(d.name);
-    setDebtTotal(d.totalAmount.toString());
-    setDebtRemaining(d.remainingBalance.toString());
-    setDebtMonthly(d.monthlyPayment?.toString() || '');
-    setDebtRate(d.interestRate?.toString() || '');
-    setDebtDueDay(d.dueDay?.toString() || '');
-    setDebtNotes(d.notes || '');
-    setDebtModalOpen(true);
+    setEditingDebt(d); setDebtName(d.name); setDebtTotal(d.totalAmount.toString());
+    setDebtRemaining(d.remainingBalance.toString()); setDebtMonthly(d.monthlyPayment?.toString() || '');
+    setDebtRate(d.interestRate?.toString() || ''); setDebtDueDay(d.dueDay?.toString() || '');
+    setDebtPayoffDate(d.targetPayoffDate || ''); setDebtNotes(d.notes || ''); setDebtModalOpen(true);
   };
-
   const handleSaveDebt = async () => {
     if (!user) return;
-    const total = parseFloat(debtTotal);
-    const remaining = parseFloat(debtRemaining);
+    const total = parseFloat(debtTotal), remaining = parseFloat(debtRemaining);
     if (isNaN(total) || total <= 0 || isNaN(remaining) || remaining < 0) return;
     const payload: Partial<Debt> = {
-      name: debtName,
-      totalAmount: total,
-      remainingBalance: remaining,
+      name: debtName, totalAmount: total, remainingBalance: remaining, status: 'Active' as DebtStatus,
       monthlyPayment: debtMonthly ? parseFloat(debtMonthly) : undefined,
       interestRate: debtRate ? parseFloat(debtRate) : undefined,
       dueDay: debtDueDay ? parseInt(debtDueDay) : undefined,
-      notes: debtNotes || undefined,
+      targetPayoffDate: debtPayoffDate || undefined, notes: debtNotes || undefined,
     };
-    if (editingDebt) {
-      await updateDocument('debts', editingDebt.id, payload);
-    } else {
-      await addDocument('debts', payload as Partial<Debt>, user.uid);
-    }
-    resetDebtForm();
-    setDebtModalOpen(false);
+    if (editingDebt) await updateDocument('debts', editingDebt.id, payload);
+    else await addDocument('debts', payload, user.uid);
+    resetDebtForm(); setDebtModalOpen(false);
   };
 
-  // ── Delete with confirmation ──
+  // ── Log Payment ──
+  const openPaymentModal = (d: Debt) => { setPaymentDebt(d); setPaymentAmount(d.monthlyPayment?.toString() || ''); setPaymentModalOpen(true); };
+  const handleLogPayment = async () => {
+    if (!paymentDebt) return;
+    const amt = parseFloat(paymentAmount);
+    if (isNaN(amt) || amt <= 0) return;
+    const newBalance = Math.max(0, paymentDebt.remainingBalance - amt);
+    await updateDocument('debts', paymentDebt.id, {
+      remainingBalance: newBalance,
+      status: newBalance === 0 ? 'Paid Off' : 'Active',
+    });
+    setPaymentModalOpen(false); setPaymentDebt(null);
+  };
+
+  const markDebtPaidOff = async (d: Debt) => {
+    await updateDocument('debts', d.id, { remainingBalance: 0, status: 'Paid Off' as DebtStatus });
+  };
+
+  // ── Budget handlers ──
+  const resetBudgetForm = () => {
+    setBudgetCategory(EXPENSE_CATEGORIES[0]); setBudgetLimit('');
+    setBudgetMonthYear(format(new Date(), 'yyyy-MM')); setEditingBudget(null);
+  };
+  const openAddBudget = () => { resetBudgetForm(); setBudgetModalOpen(true); };
+  const openEditBudget = (b: Budget) => {
+    setEditingBudget(b); setBudgetCategory(b.category); setBudgetLimit(b.monthlyLimit.toString());
+    setBudgetMonthYear(b.monthYear || format(new Date(), 'yyyy-MM')); setBudgetModalOpen(true);
+  };
+  const handleSaveBudget = async () => {
+    if (!user) return;
+    const limit = parseFloat(budgetLimit);
+    if (isNaN(limit) || limit <= 0) return;
+    const payload: Partial<Budget> = { category: budgetCategory, monthlyLimit: limit, monthYear: budgetMonthYear };
+    if (editingBudget) await updateDocument('budgets', editingBudget.id, payload);
+    else await addDocument('budgets', payload, user.uid);
+    resetBudgetForm(); setBudgetModalOpen(false);
+  };
+
+  // ── Delete ──
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
     await deleteDocument(deleteConfirm.collection, deleteConfirm.id);
     setDeleteConfirm(null);
   };
 
-  const statusColor = (s?: TransactionStatus) => {
-    switch (s) {
-      case 'Received': return '#22c55e';
-      case 'Paid': return '#3b82f6';
-      case 'Pending': return '#f59e0b';
-      default: return '#9ca3af';
-    }
-  };
-
-  // ── Which "Add" button for current tab ──
-  const handleAdd = () => {
-    if (activeTab === 'transactions') openAddTxn();
-    else if (activeTab === 'budgets') openAddBudget();
-    else openAddDebt();
-  };
-
   return (
-    <div className="px-4 py-6 lg:px-8 max-w-4xl mx-auto">
+    <div className="px-4 py-6 lg:px-8 max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-extrabold text-text">Finance</h1>
-        <button onClick={handleAdd}
-          className="flex items-center gap-2 px-4 py-2.5 bg-rise text-[#0A0A0F] rounded-xl text-sm font-semibold shadow-sm">
-          <Plus size={18} /> Add
+      <h1 className="text-lg font-semibold text-text">Finance</h1>
+
+      {/* ────── FINANCIAL SUMMARY (KPI Cards) ────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-surface-2 rounded-xl p-4 border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#10B98120' }}>
+              <TrendingUp size={16} style={{ color: '#10B981' }} />
+            </div>
+            <span className="text-xs text-text-3">Total Income</span>
+          </div>
+          <p className="text-lg font-semibold" style={{ color: '#10B981' }}>{formatCurrency(totalIncome)}</p>
+        </div>
+        <div className="bg-surface-2 rounded-xl p-4 border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#EF444420' }}>
+              <TrendingDown size={16} style={{ color: '#EF4444' }} />
+            </div>
+            <span className="text-xs text-text-3">Total Expenses</span>
+          </div>
+          <p className="text-lg font-semibold" style={{ color: '#EF4444' }}>{formatCurrency(totalExpense)}</p>
+        </div>
+        <div className="bg-surface-2 rounded-xl p-4 border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#3B82F620' }}>
+              <DollarSign size={16} style={{ color: '#3B82F6' }} />
+            </div>
+            <span className="text-xs text-text-3">Net Cash Flow</span>
+          </div>
+          <p className={cn('text-lg font-semibold', netCashFlow >= 0 ? 'text-[#3B82F6]' : 'text-red-500')}>
+            {netCashFlow < 0 && '-'}{formatCurrency(Math.abs(netCashFlow))}
+          </p>
+        </div>
+      </div>
+
+      {/* Month Selector */}
+      <div className="flex items-center justify-center gap-4">
+        <button onClick={() => setSelectedMonth(m => subMonths(m, 1))} className="p-2 rounded-lg hover:bg-surface-2 text-text-3">
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-sm font-semibold text-text min-w-[140px] text-center">{monthLabel}</span>
+        <button onClick={() => setSelectedMonth(m => addMonths(m, 1))} className="p-2 rounded-lg hover:bg-surface-2 text-text-3">
+          <ChevronRight size={18} />
         </button>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4 border border-green-200 dark:border-green-800/30">
-          <TrendingUp size={18} className="text-green-600 mb-1" />
-          <p className="text-lg font-bold text-green-700 dark:text-green-400">{formatCurrency(totalIncome)}</p>
-          <p className="text-xs text-green-600/70">Income</p>
-        </div>
-        <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4 border border-red-200 dark:border-red-800/30">
-          <TrendingDown size={18} className="text-red-500 mb-1" />
-          <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(totalExpense)}</p>
-          <p className="text-xs text-red-500/70">Expense</p>
-        </div>
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 border border-blue-200 dark:border-blue-800/30">
-          <Wallet size={18} className="text-blue-600 mb-1" />
-          <p className={cn('text-lg font-bold', balance >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-600')}>{formatCurrency(balance)}</p>
-          <p className="text-xs text-blue-600/70">Balance</p>
-        </div>
-        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-4 border border-orange-200 dark:border-orange-800/30">
-          <CreditCard size={18} className="text-orange-600 mb-1" />
-          <p className="text-lg font-bold text-orange-700 dark:text-orange-400">{formatCurrency(totalDebtRemaining)}</p>
-          <p className="text-xs text-orange-600/70">Total Debt</p>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2 mb-4 border-b border-border pb-2">
-        {([
-          { key: 'transactions' as Tab, label: 'Transactions', icon: DollarSign },
-          { key: 'budgets' as Tab, label: 'Budgets', icon: Target },
-          { key: 'debts' as Tab, label: 'Debts', icon: CreditCard },
-        ]).map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors',
-              activeTab === tab.key
-                ? 'bg-rise text-[#0A0A0F]'
-                : 'text-text-2 hover:bg-surface-2')}>
-            <tab.icon size={16} />
-            {tab.label}
+      {/* ────── INCOME TRACKER ────── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-text">Income ({monthLabel})</h2>
+          <button onClick={openAddIncome} className="flex items-center gap-1.5 px-3 py-1.5 bg-rise text-[#0A0A0F] rounded-lg text-xs font-semibold">
+            <Plus size={14} /> Add
           </button>
-        ))}
-      </div>
-
-      {/* ──────────────── TRANSACTIONS TAB ──────────────── */}
-      {activeTab === 'transactions' && (
-        <>
-          {/* Filter */}
-          <div className="flex gap-2 mb-4">
-            {(['all', 'Income', 'Expense'] as const).map(f => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={cn('px-4 py-2 rounded-full text-sm font-semibold border',
-                  filter === f ? 'bg-rise text-[#0A0A0F] border-rise' : 'bg-surface-2 text-text-2 border-border')}>
-                {f === 'all' ? 'All' : f}
-              </button>
-            ))}
-          </div>
-
-          {/* Transaction List */}
-          {loadingTxns ? (
-            <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 rounded-xl bg-surface-2 animate-pulse" />)}</div>
-          ) : filtered.length === 0 ? (
-            <EmptyState icon={Wallet} title="No transactions" description="Start tracking your income and expenses" />
-          ) : (
-            <div className="space-y-2">
-              {filtered.map(txn => (
-                <div key={txn.id}
-                  onClick={() => openEditTxn(txn)}
-                  className="flex items-center gap-4 p-4 bg-surface-2 rounded-xl border border-border group cursor-pointer hover:border-rise/30 transition-colors">
-                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-                    txn.type === 'Income' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30')}>
-                    {txn.type === 'Income' ? <TrendingUp size={18} className="text-green-600" /> : <TrendingDown size={18} className="text-red-500" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text truncate">{txn.description || txn.category}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-text-3">{txn.category} · {txn.date}</p>
-                      <Badge color={statusColor(txn.status)}>{txn.status || 'Pending'}</Badge>
-                    </div>
-                  </div>
-                  <p className={cn('text-sm font-bold shrink-0', txn.type === 'Income' ? 'text-green-600' : 'text-red-500')}>
-                    {txn.type === 'Income' ? '+' : '-'}{formatCurrency(txn.amount)}
-                  </p>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ collection: 'transactions', id: txn.id, label: txn.description || txn.category }); }}
-                    className="opacity-0 group-hover:opacity-100 text-text-3 hover:text-red-500 p-1">
-                    <Trash2 size={15} />
-                  </button>
+        </div>
+        {incomes.length === 0 ? (
+          <p className="text-sm text-text-3 text-center py-4">No income recorded this month</p>
+        ) : (
+          <div className="space-y-2">
+            {incomes.map(t => (
+              <div key={t.id} onClick={() => openEditIncome(t)}
+                className="flex items-center gap-3 p-3 bg-surface-2 rounded-xl border border-border cursor-pointer hover:border-[#10B98140] group">
+                <div className="w-9 h-9 rounded-lg bg-green-900/30 flex items-center justify-center shrink-0">
+                  <TrendingUp size={16} className="text-green-500" />
                 </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ──────────────── BUDGETS TAB ──────────────── */}
-      {activeTab === 'budgets' && (
-        <>
-          {loadingBudgets ? (
-            <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-surface-2 animate-pulse" />)}</div>
-          ) : budgets.length === 0 ? (
-            <EmptyState icon={Target} title="No budgets" description="Set monthly spending limits for each category" />
-          ) : (
-            <div className="space-y-3">
-              {budgets
-                .sort((a, b) => a.category.localeCompare(b.category))
-                .map(b => {
-                  const spent = spendingByCategory[b.category] || 0;
-                  const pct = b.monthlyLimit > 0 ? Math.min((spent / b.monthlyLimit) * 100, 100) : 0;
-                  const overBudget = spent > b.monthlyLimit;
-                  return (
-                    <div key={b.id}
-                      onClick={() => openEditBudget(b)}
-                      className="p-4 bg-surface-2 rounded-xl border border-border cursor-pointer hover:border-rise/30 transition-colors group">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <PiggyBank size={16} className="text-text-3" />
-                          <p className="text-sm font-semibold text-text">{b.category}</p>
-                          {b.monthYear && <span className="text-xs text-text-3">({b.monthYear})</span>}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <p className={cn('text-sm font-bold', overBudget ? 'text-red-500' : 'text-text')}>
-                            {formatCurrency(spent)} / {formatCurrency(b.monthlyLimit)}
-                          </p>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ collection: 'budgets', id: b.id, label: b.category }); }}
-                            className="opacity-0 group-hover:opacity-100 text-text-3 hover:text-red-500 p-1">
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="w-full h-2 bg-border rounded-full overflow-hidden">
-                        <div
-                          className={cn('h-full rounded-full transition-all', overBudget ? 'bg-red-500' : 'bg-green-500')}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      {overBudget && (
-                        <div className="flex items-center gap-1 mt-2">
-                          <AlertTriangle size={12} className="text-red-500" />
-                          <p className="text-xs text-red-500 font-medium">Over budget by {formatCurrency(spent - b.monthlyLimit)}</p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ──────────────── DEBTS TAB ──────────────── */}
-      {activeTab === 'debts' && (
-        <>
-          {loadingDebts ? (
-            <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-surface-2 animate-pulse" />)}</div>
-          ) : debts.length === 0 ? (
-            <EmptyState icon={CreditCard} title="No debts" description="Track your debts and repayment progress" />
-          ) : (
-            <div className="space-y-3">
-              {debts
-                .sort((a, b) => b.remainingBalance - a.remainingBalance)
-                .map(d => {
-                  const paidPct = d.totalAmount > 0 ? Math.min(((d.totalAmount - d.remainingBalance) / d.totalAmount) * 100, 100) : 0;
-                  return (
-                    <div key={d.id}
-                      onClick={() => openEditDebt(d)}
-                      className="p-4 bg-surface-2 rounded-xl border border-border cursor-pointer hover:border-rise/30 transition-colors group">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <CreditCard size={16} className="text-text-3" />
-                          <p className="text-sm font-semibold text-text">{d.name}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-text">{formatCurrency(d.remainingBalance)}</p>
-                          <span className="text-xs text-text-3">/ {formatCurrency(d.totalAmount)}</span>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ collection: 'debts', id: d.id, label: d.name }); }}
-                            className="opacity-0 group-hover:opacity-100 text-text-3 hover:text-red-500 p-1">
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="w-full h-2 bg-border rounded-full overflow-hidden mb-2">
-                        <div className="h-full rounded-full bg-rise transition-all" style={{ width: `${paidPct}%` }} />
-                      </div>
-                      <div className="flex flex-wrap gap-3 text-xs text-text-3">
-                        <span>{paidPct.toFixed(0)}% paid</span>
-                        {d.monthlyPayment && <span className="flex items-center gap-1"><DollarSign size={11} />{formatCurrency(d.monthlyPayment)}/mo</span>}
-                        {d.interestRate != null && d.interestRate > 0 && <span className="flex items-center gap-1"><Percent size={11} />{d.interestRate}%</span>}
-                        {d.dueDay && <span>Due day: {d.dueDay}</span>}
-                      </div>
-                      {d.notes && <p className="text-xs text-text-3 mt-1 truncate">{d.notes}</p>}
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ──────────────── TRANSACTION MODAL ──────────────── */}
-      <Modal open={txnModalOpen} onClose={() => { setTxnModalOpen(false); resetTxnForm(); }}
-        title={editingTxn ? 'Edit Transaction' : 'Add Transaction'} size="md">
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            {(['Income', 'Expense'] as TransactionType[]).map(t => (
-              <button key={t} onClick={() => { setType(t); setCategory(''); }}
-                className={cn('flex-1 py-3 rounded-xl font-semibold text-sm border transition-colors',
-                  type === t
-                    ? t === 'Income' ? 'bg-green-500 text-white border-green-500' : 'bg-red-500 text-white border-red-500'
-                    : 'bg-surface-2 text-text-2 border-border')}>
-                {t}
-              </button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-text truncate">{t.source || t.description || t.category}</p>
+                  <p className="text-xs text-text-3">{t.category} · {t.date}</p>
+                </div>
+                <Badge color={t.status === 'Received' ? '#22c55e' : '#f59e0b'}>{t.status || 'Pending'}</Badge>
+                <p className="text-sm font-semibold text-green-500 shrink-0">+{formatCurrency(t.amount)}</p>
+                <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ collection: 'transactions', id: t.id, label: t.source || t.category }); }}
+                  className="opacity-0 group-hover:opacity-100 text-text-3 hover:text-red-500 p-1"><Trash2 size={14} /></button>
+              </div>
             ))}
           </div>
-          <Input label="Amount (AED)" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
-          <Select label="Category" value={category || (categories[0] as string)} onChange={e => setCategory(e.target.value)}
-            options={categories.map(c => ({ value: c, label: c }))} />
-          <Input label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
-          <Input label="Description" value={description} onChange={e => setDescription(e.target.value)} placeholder="What is this for?" />
-          <Select label="Status" value={status} onChange={e => setStatus(e.target.value as TransactionStatus)}
-            options={[
-              { value: 'Pending', label: 'Pending' },
-              { value: 'Received', label: 'Received' },
-              { value: 'Paid', label: 'Paid' },
-            ]} />
-          <TextArea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Additional notes..." />
+        )}
+      </section>
+
+      {/* ────── EXPENSE TRACKER ────── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-text">Expenses ({monthLabel})</h2>
+          <button onClick={openAddExpense} className="flex items-center gap-1.5 px-3 py-1.5 bg-rise text-[#0A0A0F] rounded-lg text-xs font-semibold">
+            <Plus size={14} /> Add
+          </button>
+        </div>
+        {expenses.length === 0 ? (
+          <p className="text-sm text-text-3 text-center py-4">No expenses recorded this month</p>
+        ) : (
+          <div className="space-y-2">
+            {expenses.map(t => (
+              <div key={t.id} onClick={() => openEditExpense(t)}
+                className="flex items-center gap-3 p-3 bg-surface-2 rounded-xl border border-border cursor-pointer hover:border-[#EF444440] group">
+                <div className="w-9 h-9 rounded-lg bg-red-900/30 flex items-center justify-center shrink-0">
+                  <TrendingDown size={16} className="text-red-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-text truncate">{t.description || t.category}</p>
+                  <p className="text-xs text-text-3">{t.category} · {t.date}</p>
+                </div>
+                <p className="text-sm font-semibold text-red-500 shrink-0">-{formatCurrency(t.amount)}</p>
+                <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ collection: 'transactions', id: t.id, label: t.description || t.category }); }}
+                  className="opacity-0 group-hover:opacity-100 text-text-3 hover:text-red-500 p-1"><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ────── DEBT / CREDIT TRACKER ────── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-text">Debts & Credits</h2>
+          <button onClick={openAddDebt} className="flex items-center gap-1.5 px-3 py-1.5 bg-rise text-[#0A0A0F] rounded-lg text-xs font-semibold">
+            <Plus size={14} /> Add
+          </button>
+        </div>
+        {activeDebts.length === 0 && paidOffDebts.length === 0 ? (
+          <EmptyState icon={CreditCard} title="No debts" description="Track your debts and repayment progress" />
+        ) : (
+          <div className="space-y-3">
+            {activeDebts.sort((a, b) => b.remainingBalance - a.remainingBalance).map(d => {
+              const paidPct = d.totalAmount > 0 ? Math.min(((d.totalAmount - d.remainingBalance) / d.totalAmount) * 100, 100) : 0;
+              return (
+                <div key={d.id} className="p-4 bg-surface-2 rounded-xl border border-border group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <CreditCard size={16} className="text-text-3" />
+                      <p className="text-sm font-semibold text-text">{d.name}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-text">{formatCurrency(d.remainingBalance)}</p>
+                      <span className="text-xs text-text-3">/ {formatCurrency(d.totalAmount)}</span>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 bg-border rounded-full overflow-hidden mb-2">
+                    <div className="h-full rounded-full bg-rise transition-all" style={{ width: `${paidPct}%` }} />
+                  </div>
+                  <div className="flex flex-wrap gap-3 text-xs text-text-3 mb-3">
+                    <span>{paidPct.toFixed(0)}% paid</span>
+                    {d.monthlyPayment && <span className="flex items-center gap-1"><DollarSign size={11} />{formatCurrency(d.monthlyPayment)}/mo</span>}
+                    {d.interestRate != null && d.interestRate > 0 && <span className="flex items-center gap-1"><Percent size={11} />{d.interestRate}%</span>}
+                    {d.dueDay && <span>Due day: {d.dueDay}</span>}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => openPaymentModal(d)} className="flex-1 px-3 py-2 text-xs font-semibold bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20">
+                      Log Payment
+                    </button>
+                    <button onClick={() => openEditDebt(d)} className="px-3 py-2 text-xs font-semibold bg-surface-3 text-text-2 rounded-lg hover:bg-surface-3/80">
+                      <Edit3 size={14} />
+                    </button>
+                    <button onClick={() => markDebtPaidOff(d)} className="px-3 py-2 text-xs font-semibold bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20">
+                      <CheckCircle2 size={14} />
+                    </button>
+                    <button onClick={() => setDeleteConfirm({ collection: 'debts', id: d.id, label: d.name })}
+                      className="px-3 py-2 text-xs text-text-3 hover:text-red-500 rounded-lg">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {paidOffDebts.length > 0 && (
+              <div className="pt-2">
+                <p className="text-xs text-text-3 font-semibold mb-2 uppercase tracking-wide">Paid Off</p>
+                {paidOffDebts.map(d => (
+                  <div key={d.id} className="flex items-center justify-between p-3 bg-surface-2 rounded-xl border border-border mb-2 opacity-60">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-green-500" />
+                      <span className="text-sm text-text line-through">{d.name}</span>
+                    </div>
+                    <span className="text-sm text-text-3">{formatCurrency(d.totalAmount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ────── BUDGET PLANNER ────── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-text">Budget ({monthLabel})</h2>
+          <button onClick={openAddBudget} className="flex items-center gap-1.5 px-3 py-1.5 bg-rise text-[#0A0A0F] rounded-lg text-xs font-semibold">
+            <Plus size={14} /> Add Category
+          </button>
+        </div>
+        {budgets.length === 0 ? (
+          <EmptyState icon={PiggyBank} title="No budgets" description="Set monthly spending limits for each category" />
+        ) : (
+          <div className="space-y-3">
+            {budgets.sort((a, b) => a.category.localeCompare(b.category)).map(b => {
+              const spent = spendingByCategory[b.category] || 0;
+              const remaining = b.monthlyLimit - spent;
+              const pct = b.monthlyLimit > 0 ? (spent / b.monthlyLimit) * 100 : 0;
+              const status = pct > 100 ? 'over' : pct >= 75 ? 'warning' : 'good';
+              const barColor = status === 'over' ? '#EF4444' : status === 'warning' ? '#F59E0B' : '#10B981';
+              return (
+                <div key={b.id} onClick={() => openEditBudget(b)}
+                  className="p-4 bg-surface-2 rounded-xl border border-border cursor-pointer hover:border-rise/30 group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <PiggyBank size={16} className="text-text-3" />
+                      <p className="text-sm font-semibold text-text">{b.category}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-text">{formatCurrency(spent)} / {formatCurrency(b.monthlyLimit)}</p>
+                      <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ collection: 'budgets', id: b.id, label: b.category }); }}
+                        className="opacity-0 group-hover:opacity-100 text-text-3 hover:text-red-500 p-1"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 bg-border rounded-full overflow-hidden mb-1">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: barColor }} />
+                  </div>
+                  <div className="flex justify-between text-xs text-text-3">
+                    <span>Remaining: {formatCurrency(Math.max(remaining, 0))}</span>
+                    <span>{pct.toFixed(0)}%</span>
+                  </div>
+                  {status === 'over' && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <AlertTriangle size={12} className="text-red-500" />
+                      <p className="text-xs text-red-500 font-medium">Over budget by {formatCurrency(spent - b.monthlyLimit)}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ────── INCOME MODAL ────── */}
+      <Modal open={incomeModalOpen} onClose={() => { setIncomeModalOpen(false); resetIncomeForm(); }}
+        title={editingTxn ? 'Edit Income' : 'Add Income'} size="md">
+        <div className="space-y-4">
+          <Input label="Source" value={incSource} onChange={e => setIncSource(e.target.value)} placeholder="e.g. Monthly Salary" autoFocus />
+          <Input label="Amount (AED)" type="number" value={incAmount} onChange={e => setIncAmount(e.target.value)} placeholder="0.00" />
+          <Input label="Date" type="date" value={incDate} onChange={e => setIncDate(e.target.value)} />
+          <Select label="Category" value={incCategory} onChange={e => setIncCategory(e.target.value)}
+            options={INCOME_CATEGORIES.map(c => ({ value: c, label: c }))} />
+          <Select label="Status" value={incStatus} onChange={e => setIncStatus(e.target.value as TransactionStatus)}
+            options={[{ value: 'Received', label: 'Received' }, { value: 'Pending', label: 'Pending' }]} />
+          <TextArea label="Notes" value={incNotes} onChange={e => setIncNotes(e.target.value)} placeholder="Optional notes..." />
           <div className="flex gap-3 pt-4">
-            <Button variant="secondary" onClick={() => { setTxnModalOpen(false); resetTxnForm(); }} className="flex-1">Cancel</Button>
-            <Button onClick={handleSaveTxn} disabled={!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0} className="flex-1">
-              {editingTxn ? 'Save' : 'Add'}
+            <Button variant="secondary" onClick={() => { setIncomeModalOpen(false); resetIncomeForm(); }} className="flex-1">Cancel</Button>
+            <Button onClick={handleSaveIncome} disabled={!incAmount || isNaN(parseFloat(incAmount)) || parseFloat(incAmount) <= 0} className="flex-1">
+              {editingTxn ? 'Save' : 'Add Income'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* ──────────────── BUDGET MODAL ──────────────── */}
+      {/* ────── EXPENSE MODAL ────── */}
+      <Modal open={expenseModalOpen} onClose={() => { setExpenseModalOpen(false); resetExpenseForm(); }}
+        title={editingTxn ? 'Edit Expense' : 'Add Expense'} size="md">
+        <div className="space-y-4">
+          <Input label="Description" value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="What is this expense for?" autoFocus />
+          <Input label="Amount (AED)" type="number" value={expAmount} onChange={e => setExpAmount(e.target.value)} placeholder="0.00" />
+          <Input label="Date" type="date" value={expDate} onChange={e => setExpDate(e.target.value)} />
+          <Select label="Category" value={expCategory} onChange={e => setExpCategory(e.target.value)}
+            options={EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <Select label="Type" value={expType} onChange={e => setExpType(e.target.value as ExpenseType)}
+              options={[{ value: 'Mandatory', label: 'Mandatory' }, { value: 'Optional', label: 'Optional' }]} />
+            <Select label="Payment Method" value={expPayment} onChange={e => setExpPayment(e.target.value as PaymentMethod)}
+              options={[{ value: '', label: 'Select...' }, ...PAYMENT_METHODS.map(p => ({ value: p, label: p }))]} />
+          </div>
+          <TextArea label="Notes" value={expNotes} onChange={e => setExpNotes(e.target.value)} placeholder="Optional notes..." />
+          <div className="flex gap-3 pt-4">
+            <Button variant="secondary" onClick={() => { setExpenseModalOpen(false); resetExpenseForm(); }} className="flex-1">Cancel</Button>
+            <Button onClick={handleSaveExpense} disabled={!expAmount || isNaN(parseFloat(expAmount)) || parseFloat(expAmount) <= 0} className="flex-1">
+              {editingTxn ? 'Save' : 'Add Expense'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ────── DEBT MODAL ────── */}
+      <Modal open={debtModalOpen} onClose={() => { setDebtModalOpen(false); resetDebtForm(); }}
+        title={editingDebt ? 'Edit Debt' : 'Add Debt'} size="md">
+        <div className="space-y-4">
+          <Input label="Debt Name" value={debtName} onChange={e => setDebtName(e.target.value)} placeholder="e.g. Car Loan" autoFocus />
+          <Input label="Total Amount (AED)" type="number" value={debtTotal} onChange={e => setDebtTotal(e.target.value)} placeholder="0.00" />
+          <Input label="Remaining Balance (AED)" type="number" value={debtRemaining} onChange={e => setDebtRemaining(e.target.value)} placeholder="0.00" />
+          <Input label="Monthly Payment (AED)" type="number" value={debtMonthly} onChange={e => setDebtMonthly(e.target.value)} placeholder="Optional" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Interest Rate (%)" type="number" value={debtRate} onChange={e => setDebtRate(e.target.value)} placeholder="Optional" />
+            <Input label="Due Day of Month" type="number" value={debtDueDay} onChange={e => setDebtDueDay(e.target.value)} placeholder="1-31" />
+          </div>
+          <Input label="Target Payoff Date" type="date" value={debtPayoffDate} onChange={e => setDebtPayoffDate(e.target.value)} />
+          <TextArea label="Notes" value={debtNotes} onChange={e => setDebtNotes(e.target.value)} placeholder="Additional notes..." />
+          <div className="flex gap-3 pt-4">
+            <Button variant="secondary" onClick={() => { setDebtModalOpen(false); resetDebtForm(); }} className="flex-1">Cancel</Button>
+            <Button onClick={handleSaveDebt}
+              disabled={!debtName || !debtTotal || isNaN(parseFloat(debtTotal)) || parseFloat(debtTotal) <= 0 || !debtRemaining || isNaN(parseFloat(debtRemaining))}
+              className="flex-1">{editingDebt ? 'Save' : 'Add Debt'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ────── PAYMENT MODAL ────── */}
+      <Modal open={paymentModalOpen} onClose={() => { setPaymentModalOpen(false); setPaymentDebt(null); }}
+        title={`Log Payment — ${paymentDebt?.name || ''}`} size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-text-3">Remaining: {formatCurrency(paymentDebt?.remainingBalance || 0)}</p>
+          <Input label="Payment Amount (AED)" type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" autoFocus />
+          <div className="flex gap-3 pt-4">
+            <Button variant="secondary" onClick={() => { setPaymentModalOpen(false); setPaymentDebt(null); }} className="flex-1">Cancel</Button>
+            <Button onClick={handleLogPayment} disabled={!paymentAmount || isNaN(parseFloat(paymentAmount)) || parseFloat(paymentAmount) <= 0} className="flex-1">
+              Log Payment
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ────── BUDGET MODAL ────── */}
       <Modal open={budgetModalOpen} onClose={() => { setBudgetModalOpen(false); resetBudgetForm(); }}
-        title={editingBudget ? 'Edit Budget' : 'Add Budget'} size="md">
+        title={editingBudget ? 'Edit Budget' : 'Add Budget Category'} size="md">
         <div className="space-y-4">
           <Select label="Category" value={budgetCategory} onChange={e => setBudgetCategory(e.target.value)}
             options={EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }))} />
@@ -517,35 +561,13 @@ export default function FinancePage() {
         </div>
       </Modal>
 
-      {/* ──────────────── DEBT MODAL ──────────────── */}
-      <Modal open={debtModalOpen} onClose={() => { setDebtModalOpen(false); resetDebtForm(); }}
-        title={editingDebt ? 'Edit Debt' : 'Add Debt'} size="md">
-        <div className="space-y-4">
-          <Input label="Name" value={debtName} onChange={e => setDebtName(e.target.value)} placeholder="e.g. Car Loan" />
-          <Input label="Total Amount (AED)" type="number" value={debtTotal} onChange={e => setDebtTotal(e.target.value)} placeholder="0.00" />
-          <Input label="Remaining Balance (AED)" type="number" value={debtRemaining} onChange={e => setDebtRemaining(e.target.value)} placeholder="0.00" />
-          <Input label="Monthly Payment (AED)" type="number" value={debtMonthly} onChange={e => setDebtMonthly(e.target.value)} placeholder="Optional" />
-          <Input label="Interest Rate (%)" type="number" value={debtRate} onChange={e => setDebtRate(e.target.value)} placeholder="Optional" />
-          <Input label="Due Day of Month" type="number" value={debtDueDay} onChange={e => setDebtDueDay(e.target.value)} placeholder="1-31" />
-          <TextArea label="Notes" value={debtNotes} onChange={e => setDebtNotes(e.target.value)} placeholder="Additional notes..." />
-          <div className="flex gap-3 pt-4">
-            <Button variant="secondary" onClick={() => { setDebtModalOpen(false); resetDebtForm(); }} className="flex-1">Cancel</Button>
-            <Button onClick={handleSaveDebt}
-              disabled={!debtName || !debtTotal || isNaN(parseFloat(debtTotal)) || parseFloat(debtTotal) <= 0 || !debtRemaining || isNaN(parseFloat(debtRemaining))}
-              className="flex-1">
-              {editingDebt ? 'Save' : 'Add'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* ──────────────── DELETE CONFIRMATION MODAL ──────────────── */}
+      {/* ────── DELETE CONFIRMATION ────── */}
       <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Confirm Delete" size="sm">
         <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800/30">
+          <div className="flex items-center gap-3 p-3 bg-red-900/20 rounded-xl border border-red-800/30">
             <AlertTriangle size={20} className="text-red-500 shrink-0" />
             <p className="text-sm text-text">
-              Are you sure you want to delete <span className="font-semibold">{deleteConfirm?.label}</span>? This action cannot be undone.
+              Delete <span className="font-semibold">{deleteConfirm?.label}</span>? This cannot be undone.
             </p>
           </div>
           <div className="flex gap-3">
