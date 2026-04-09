@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── ROOT & FONTS ────────────────────────────────────────────────────────── */
+:root {
+  --background: #0A0A0A;
+  --surface: #141414;
+  --surface-elevated: #1C1C1C;
+  --border: #2A2A2A;
+  --text-primary: #F0F0F0;
+  --text-secondary: #8A8A8A;
+  --text-placeholder: #505050;
+  --orange: #FF6B35;
+  --green: #1ABC9C;
+  --red: #FF4F6D;
+  --blue: #1E4AFF;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  color-scheme: dark;
+  background-color: var(--background);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* ─── SAFE AREA ───────────────────────────────────────────────────────────── */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 0px);
+}
+
+/* ─── SCROLLBAR ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-placeholder);
+}
+
+/* ─── ANIMATIONS ──────────────────────────────────────────────────────────── */
+@keyframes slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; text-shadow: 0 0 20px rgba(255, 107, 53, 0.4); }
+  50% { opacity: 0.7; text-shadow: 0 0 40px rgba(255, 107, 53, 0.8); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s ease forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Shimmer override for skeleton */
+.animate-pulse {
+  background: linear-gradient(
+    90deg,
+    var(--surface-elevated) 0%,
+    #242424 50%,
+    var(--surface-elevated) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ─── TRANSITIONS ─────────────────────────────────────────────────────────── */
+.transition-250 {
+  transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ─── INPUT DATE/TIME (dark theme fix) ────────────────────────────────────── */
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'] {
+  color-scheme: dark;
+}
+
+/* ─── CHECKBOX ────────────────────────────────────────────────────────────── */
+input[type='checkbox'] {
+  accent-color: var(--orange);
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* ─── SELECT ARROW FIX ────────────────────────────────────────────────────── */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238A8A8A' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px !important;
+}
+
+/* ─── FOCUS VISIBLE ───────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+/* ─── PAGE CONTENT PADDING ────────────────────────────────────────────────── */
+.page-content {
+  padding: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+}

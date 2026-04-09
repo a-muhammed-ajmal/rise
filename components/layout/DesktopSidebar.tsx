@@ -1,0 +1,109 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  Home,
+  CheckSquare,
+  Eye,
+  Wallet,
+  Activity,
+  Briefcase,
+  Users,
+  Compass,
+  BookOpen,
+  FileText,
+  MessageSquare,
+  LogOut,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { Avatar } from '@/components/ui/Avatar';
+
+const NAV_LINKS = [
+  { href: '/', icon: Home, label: 'Dashboard' },
+  { href: '/tasks', icon: CheckSquare, label: 'Actions' },
+  { href: '/goals', icon: Eye, label: 'Visions' },
+  { href: '/finance', icon: Wallet, label: 'Finance' },
+  { href: '/wellness', icon: Activity, label: 'Wellness', accent: '#1ABC9C' },
+  { href: '/professional', icon: Briefcase, label: 'Professional', accent: '#1E4AFF' },
+  { href: '/relationships', icon: Users, label: 'Relationships', accent: '#FF4F6D' },
+  { href: '/reviews', icon: Compass, label: 'Reviews', accent: '#FFD700' },
+  { href: '/journal', icon: BookOpen, label: 'Journal', accent: '#800080' },
+  { href: '/documents', icon: FileText, label: 'Documents', accent: '#8E95A9' },
+  { href: '/chat', icon: MessageSquare, label: 'AI Chat', accent: '#FF9933' },
+];
+
+export function DesktopSidebar() {
+  const pathname = usePathname();
+  const { user, signOut } = useAuth();
+
+  return (
+    <aside className="hidden sm:flex flex-col w-[200px] h-screen fixed left-0 top-0 bg-[#0A0A0A] border-r border-[#2A2A2A] z-30">
+      {/* Logo */}
+      <div className="px-4 py-5 border-b border-[#2A2A2A]">
+        <span className="text-xl font-bold text-[#FF6B35] tracking-widest">RISE</span>
+        <p className="text-[10px] text-[#505050] mt-0.5">My Organized Hub</p>
+      </div>
+
+      {/* Nav Links */}
+      <nav className="flex-1 overflow-y-auto py-2">
+        {NAV_LINKS.map(({ href, icon: Icon, label, accent }) => {
+          const active = pathname === href;
+          const color = accent ?? '#FF6B35';
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors relative',
+                active
+                  ? 'text-[#F0F0F0] bg-[#1C1C1C]'
+                  : 'text-[#8A8A8A] hover:text-[#F0F0F0] hover:bg-[#141414]'
+              )}
+            >
+              <Icon
+                size={18}
+                style={{ color: active ? color : undefined }}
+              />
+              <span>{label}</span>
+              {active && (
+                <span
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-l-full"
+                  style={{ backgroundColor: color }}
+                />
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* User Profile */}
+      {user && (
+        <div className="border-t border-[#2A2A2A] p-3">
+          <div className="flex items-center gap-2">
+            <Avatar
+              name={user.displayName ?? user.email ?? 'U'}
+              photoURL={user.photoURL}
+              size="sm"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-[#F0F0F0] truncate">
+                {user.displayName ?? 'User'}
+              </p>
+              <p className="text-[10px] text-[#8A8A8A] truncate">{user.email}</p>
+            </div>
+            <button
+              onClick={signOut}
+              className="text-[#8A8A8A] hover:text-[#FF4F6D] p-1"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+    </aside>
+  );
+}
