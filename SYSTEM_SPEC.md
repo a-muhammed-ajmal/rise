@@ -4,7 +4,7 @@
 > Every page, module, name, behavior, rule, UI element, logic flow, and data model is documented here.
 > This file MUST be read before any task and updated after every change.
 
-**Last updated:** 2026-04-10
+**Last updated:** 2026-04-10 (fix: strip undefined values in Firestore helpers)
 
 ---
 

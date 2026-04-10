@@ -30,12 +30,19 @@ export function docRef(collectionName: string, id: string) {
   return doc(db, collectionName, id);
 }
 
+/** Strip undefined values so Firestore never receives them. */
+function stripUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as Partial<T>;
+}
+
 export async function createDoc<T extends object>(
   collectionName: string,
   data: T
 ): Promise<string> {
   const ref = await addDoc(colRef(collectionName), {
-    ...data,
+    ...stripUndefined(data),
     createdAt: new Date().toISOString(),
   });
   return ref.id;
@@ -46,7 +53,7 @@ export async function setDocById<T extends object>(
   id: string,
   data: T
 ): Promise<void> {
-  await setDoc(docRef(collectionName, id), data, { merge: true });
+  await setDoc(docRef(collectionName, id), stripUndefined(data), { merge: true });
 }
 
 export async function updateDocById<T extends Partial<DocumentData>>(
@@ -54,7 +61,7 @@ export async function updateDocById<T extends Partial<DocumentData>>(
   id: string,
   data: T
 ): Promise<void> {
-  await updateDoc(docRef(collectionName, id), data as DocumentData);
+  await updateDoc(docRef(collectionName, id), stripUndefined(data) as DocumentData);
 }
 
 export async function deleteDocById(
