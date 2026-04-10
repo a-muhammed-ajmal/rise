@@ -6,6 +6,13 @@ This file contains session-specific instructions for AI coding sessions on the R
 
 Read `/SYSTEM_SPEC.md` completely before doing anything.
 
+## STRICT EXECUTION RULES — NEVER VIOLATE
+
+1. **Do ONLY what the task explicitly states.** Do not add, remove, or change anything else — not for cleanliness, not because it "makes sense", not as a side improvement.
+2. **If it is not mentioned in the task, do not touch it.**
+3. After completing the task → update `SYSTEM_SPEC.md` → run `npm run build` (zero errors) → commit → push to main.
+4. No assumptions. No extras. No "while I'm here" changes.
+
 ## PROJECT LOCATION
 
 `E:/Muhammed Ajmal OS/Rise`
