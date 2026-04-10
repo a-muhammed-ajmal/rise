@@ -31,19 +31,38 @@ export const COLLECTIONS = {
   USERS: 'users',
 } as const;
 
+// ─── REALMS (6 fixed realms) ─────────────────────────────────────────────────
+export const REALMS = [
+  'Professional',
+  'Personal',
+  'Financial',
+  'Relationship',
+  'Wellness',
+  'Vision',
+] as const;
+
+export const REALM_CONFIG: Record<string, { emoji: string; color: string; description: string }> = {
+  Professional: { emoji: '💼', color: '#1E4AFF', description: 'Focus, clarity, execution' },
+  Personal:     { emoji: '🎯', color: '#FF6B35', description: 'Identity, creativity, self-expression' },
+  Financial:    { emoji: '💰', color: '#FFD700', description: 'Growth, stability, wealth' },
+  Relationship: { emoji: '❤️', color: '#FF4F6D', description: 'Connection, empathy, warmth' },
+  Wellness:     { emoji: '🧘', color: '#1ABC9C', description: 'Balance, health, vitality' },
+  Vision:       { emoji: '✨', color: '#800080', description: 'Purpose, long-term direction, ambition' },
+} as const;
+
 // ─── PRIORITY ────────────────────────────────────────────────────────────────
 export const PRIORITIES = ['P1', 'P2', 'P3', 'P4'] as const;
 export const PRIORITY_COLORS: Record<string, string> = {
   P1: '#FF4F6D',
-  P2: '#FF6B35',
+  P2: '#FF9933',
   P3: '#1E4AFF',
   P4: '#8A8A8A',
 };
 export const PRIORITY_LABELS: Record<string, string> = {
-  P1: 'Critical',
-  P2: 'High',
-  P3: 'Medium',
-  P4: 'Low',
+  P1: 'Do Now',
+  P2: 'Important',
+  P3: 'Get Done',
+  P4: 'Default',
 };
 
 // ─── VISION CATEGORIES ───────────────────────────────────────────────────────
@@ -61,26 +80,26 @@ export const GOAL_TIMELINES = ['1yr', '3yr', '5yr'] as const;
 
 // ─── RHYTHM CATEGORIES ───────────────────────────────────────────────────────
 export const RHYTHM_CATEGORIES = [
+  'Affirmation',
+  'Meditation',
+  'Dedication',
+  'Discipline',
   'Fitness',
-  'Nutrition',
-  'Sleep',
-  'Hydration',
-  'Mindfulness',
   'Learning',
-  'Reading',
-  'Journaling',
-  'Prayer / Spirituality',
-  'Gratitude',
-  'Deep Work',
-  'Business Development',
-  'Networking',
-  'Finance Review',
-  'Family Time',
-  'Social Connection',
-  'Recovery',
+  'Spiritual',
+  'Personal Growth',
+  'Health',
+  'Work',
+  'Productivity',
+  'Morning Routine',
+  'Evening Routine',
+  'Finance',
+  'Social',
   'Creativity',
-  'Planning',
-  'Custom',
+  'Mindfulness',
+  'Nutrition',
+  'Self-Care',
+  'Other',
 ] as const;
 
 // ─── HABIT PROJECTS ──────────────────────────────────────────────────────────
@@ -333,6 +352,20 @@ export const LS_KEYS = {
   PWA_INSTALL_DISMISSED: 'rise_pwa_install_dismissed',
   VISIT_COUNT: 'rise_visit_count',
 } as const;
+
+// ─── TARGET PRESET COLORS (18) ───────────────────────────────────────────────
+export const TARGET_COLORS = [
+  '#b8255f', '#db4035', '#ff9933', '#fad000', '#7ecc49',
+  '#299438', '#6accbc', '#158fad', '#14aaf5', '#96c3eb',
+  '#4073ff', '#884dff', '#af38eb', '#eb96eb', '#e05194',
+  '#ff8d85', '#808080', '#b8b8b8',
+] as const;
+
+// ─── RHYTHM PRESET COLORS (10) ────────────────────────────────────────────────
+export const RHYTHM_COLORS = [
+  '#FF9933', '#DC4C3E', '#4073FF', '#2D7C3E', '#7B4B9E',
+  '#E8849B', '#4A9B8E', '#F49C18', '#10B981', '#EF4444',
+] as const;
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
 export const COLORS = {

@@ -1,19 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Plus, Flame, CheckCircle2, XCircle, ChevronDown, ChevronUp,
-  Timer, Activity, Settings, Play, Pause, RotateCcw, SkipForward,
+  Plus, Clock, Flame, Trophy, CheckCircle, XCircle,
+  Activity, Timer, Pencil, Copy, Trash2,
+  Play, Pause, RotateCcw, SkipForward, Settings,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
-import { updateDocById, createDoc } from '@/lib/firestore';
-import { COLLECTIONS, RHYTHM_CATEGORIES, HABIT_PROJECTS } from '@/lib/constants';
+import { updateDocById, createDoc, deleteDocById } from '@/lib/firestore';
+import { COLLECTIONS, RHYTHM_CATEGORIES, RHYTHM_COLORS } from '@/lib/constants';
 import { todayISO, cn } from '@/lib/utils';
-import type { Habit, HabitStatus, HabitFrequency, HabitProject } from '@/lib/types';
+import type { Habit, HabitStatus, HabitFrequency } from '@/lib/types';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Modal } from '@/components/ui/Modal';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -21,41 +23,159 @@ import { toast } from '@/lib/toast';
 import { sanitize } from '@/lib/sanitizer';
 import { usePomodoroTimer } from '@/hooks/usePomodoroTimer';
 
-// ─── RHYTHM MODAL ─────────────────────────────────────────────────────────────
-interface RhythmForm {
-  name: string;
-  icon: string;
-  color: string;
-  category: string;
-  project: HabitProject;
-  frequency: HabitFrequency;
-  customDays: number[];
-  targetCount: number;
-  time: string;
-  reminderEnabled: boolean;
-  reminderTime: string;
-  trigger: string;
-  note: string;
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+/** Convert HH:mm to 12-hour AM/PM string */
+function formatTime12(time24: string): string {
+  if (!time24) return '';
+  const [h, m] = time24.split(':').map(Number);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
-const DEFAULT_RHYTHM: RhythmForm = {
+/** Calculate streak: consecutive days ending on today or yesterday with status === 'done' */
+function calculateStreak(statusLog: Record<string, HabitStatus>): number {
+  const today = todayISO();
+  const yesterday = (() => {
+    const d = new Date(today + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  })();
+
+  const startDate = statusLog[today] === 'done' ? today : yesterday;
+  if (statusLog[startDate] !== 'done') return 0;
+
+  let streak = 0;
+  let checkDate = startDate;
+  while (statusLog[checkDate] === 'done') {
+    streak++;
+    const d = new Date(checkDate + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    checkDate = d.toISOString().split('T')[0];
+  }
+  return streak;
+}
+
+/** Category colour map (cycling through RHYTHM_COLORS) */
+const CATEGORY_COLORS: Record<string, string> = {};
+RHYTHM_CATEGORIES.forEach((cat, i) => {
+  CATEGORY_COLORS[cat] = RHYTHM_COLORS[i % RHYTHM_COLORS.length];
+});
+
+// ─── RHYTHM FORM / MODAL ──────────────────────────────────────────────────────
+
+interface RhythmFormData {
+  name: string;
+  note: string;
+  category: string;
+  time: string;
+  frequency: HabitFrequency;
+  reminderEnabled: boolean;
+}
+
+const EMPTY_FORM: RhythmFormData = {
   name: '',
-  icon: '💪',
-  color: '#FF6B35',
-  category: 'Fitness',
-  project: 'Morning Routine',
-  frequency: 'daily',
-  customDays: [],
-  targetCount: 1,
-  time: '',
-  reminderEnabled: false,
-  reminderTime: '08:00',
-  trigger: '',
   note: '',
+  category: 'Fitness',
+  time: '',
+  frequency: 'daily',
+  reminderEnabled: false,
 };
 
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+function RhythmFormFields({
+  form,
+  onChange,
+  errors,
+}: {
+  form: RhythmFormData;
+  onChange: <K extends keyof RhythmFormData>(k: K, v: RhythmFormData[K]) => void;
+  errors: Record<string, string>;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <Input
+        label="Title"
+        value={form.name}
+        onChange={(e) => onChange('name', e.target.value)}
+        error={errors.name}
+        required
+        placeholder="e.g. Morning Run"
+        autoFocus
+      />
+      <Textarea
+        label="Short Note"
+        value={form.note}
+        onChange={(e) => onChange('note', e.target.value)}
+        rows={2}
+        placeholder="Any notes about this rhythm..."
+      />
+      <Select
+        label="Category"
+        value={form.category}
+        onChange={(e) => onChange('category', (e.target as HTMLSelectElement).value)}
+        options={RHYTHM_CATEGORIES.map((c) => ({ value: c, label: c }))}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          label="Time (optional)"
+          type="time"
+          value={form.time}
+          onChange={(e) => {
+            onChange('time', e.target.value);
+            if (form.reminderEnabled) onChange('time', e.target.value);
+          }}
+        />
+        <Select
+          label="Frequency"
+          value={form.frequency}
+          onChange={(e) => onChange('frequency', (e.target as HTMLSelectElement).value as HabitFrequency)}
+          options={[
+            { value: 'daily', label: 'Daily' },
+            { value: 'weekly', label: 'Weekly' },
+            { value: 'monthly', label: 'Monthly' },
+            { value: 'yearly', label: 'Yearly' },
+          ]}
+        />
+      </div>
+      {/* Reminder toggle */}
+      <button
+        type="button"
+        onClick={() => onChange('reminderEnabled', !form.reminderEnabled)}
+        className={cn(
+          'flex items-center gap-3 px-4 py-3 rounded-card border transition-colors text-left',
+          form.reminderEnabled
+            ? 'bg-[#1ABC9C]/10 border-[#1ABC9C] text-[#1ABC9C]'
+            : 'bg-[#1C1C1C] border-[#2A2A2A] text-[#8A8A8A]'
+        )}
+      >
+        <div className="flex-1">
+          <p className="text-sm font-semibold">Reminder</p>
+          <p className="text-xs opacity-70">
+            {form.reminderEnabled
+              ? form.time ? `Reminder at ${formatTime12(form.time)}` : 'Reminder ON'
+              : 'Tap to enable reminder'}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'w-10 h-6 rounded-full transition-colors flex items-center px-1',
+            form.reminderEnabled ? 'bg-[#1ABC9C]' : 'bg-[#2A2A2A]'
+          )}
+        >
+          <div
+            className={cn(
+              'w-4 h-4 rounded-full bg-white transition-transform',
+              form.reminderEnabled ? 'translate-x-4' : 'translate-x-0'
+            )}
+          />
+        </div>
+      </button>
+    </div>
+  );
+}
 
+/** Create / Edit Rhythm Modal */
 function RhythmModal({
   open,
   onClose,
@@ -67,49 +187,50 @@ function RhythmModal({
   habit: Habit | null;
   userId: string;
 }) {
-  const [form, setForm] = useState<RhythmForm>(
-    habit
-      ? {
-          name: habit.name,
-          icon: habit.icon,
-          color: habit.color,
-          category: habit.category,
-          project: habit.project,
-          frequency: habit.frequency,
-          customDays: habit.customDays ?? [],
-          targetCount: habit.targetCount,
-          time: habit.time ?? '',
-          reminderEnabled: habit.reminder.enabled,
-          reminderTime: habit.reminder.time,
-          trigger: habit.trigger ?? '',
-          note: habit.note ?? '',
-        }
-      : { ...DEFAULT_RHYTHM }
-  );
+  const [form, setForm] = useState<RhythmFormData>(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const set = <K extends keyof RhythmForm>(k: K, v: RhythmForm[K]) =>
+  useEffect(() => {
+    if (open) {
+      setErrors({});
+      setForm(habit
+        ? {
+            name: habit.name,
+            note: habit.note ?? '',
+            category: habit.category || 'Fitness',
+            time: habit.time ?? '',
+            frequency: habit.frequency,
+            reminderEnabled: habit.reminder?.enabled ?? false,
+          }
+        : { ...EMPTY_FORM }
+      );
+    }
+  }, [open, habit]);
+
+  const handleChange = useCallback(<K extends keyof RhythmFormData>(k: K, v: RhythmFormData[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
+  }, []);
 
   const handleSave = async () => {
     if (!form.name.trim()) { setErrors({ name: 'Name is required' }); return; }
     setSaving(true);
     try {
+      const colorIndex = RHYTHM_CATEGORIES.indexOf(form.category as typeof RHYTHM_CATEGORIES[number]);
+      const color = RHYTHM_COLORS[colorIndex >= 0 ? colorIndex % RHYTHM_COLORS.length : 0];
       const data = {
         userId,
         name: sanitize(form.name, 100),
-        icon: form.icon || '💪',
-        color: form.color,
-        category: form.category,
-        project: form.project,
-        frequency: form.frequency,
-        customDays: form.frequency === 'weekly' ? form.customDays : undefined,
-        targetCount: form.targetCount,
-        time: form.time || undefined,
-        reminder: { enabled: form.reminderEnabled, time: form.reminderTime },
-        trigger: sanitize(form.trigger),
         note: sanitize(form.note),
+        icon: habit?.icon ?? '💪',
+        color,
+        category: form.category,
+        project: habit?.project ?? 'Custom' as const,
+        frequency: form.frequency,
+        time: form.time || undefined,
+        reminder: { enabled: form.reminderEnabled, time: form.time || '08:00' },
+        trigger: habit?.trigger ?? '',
+        targetCount: habit?.targetCount ?? 1,
         completions: habit?.completions ?? {},
         statusLog: habit?.statusLog ?? {},
         streak: habit?.streak ?? 0,
@@ -117,9 +238,13 @@ function RhythmModal({
         isActive: true,
         order: habit?.order ?? Date.now(),
       };
-      if (habit) await updateDocById(COLLECTIONS.HABITS, habit.id, data);
-      else await createDoc(COLLECTIONS.HABITS, data);
-      toast.success('Rhythm saved.');
+      if (habit) {
+        await updateDocById(COLLECTIONS.HABITS, habit.id, data);
+        toast.success('Rhythm updated.');
+      } else {
+        await createDoc(COLLECTIONS.HABITS, data);
+        toast.success('Rhythm created.');
+      }
       onClose();
     } catch {
       toast.error('Failed to save rhythm.');
@@ -136,268 +261,477 @@ function RhythmModal({
       footer={
         <div className="flex gap-3">
           <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
-          <Button fullWidth loading={saving} onClick={handleSave}>Save</Button>
+          <Button fullWidth loading={saving} onClick={handleSave}>
+            {habit ? 'Save Changes' : 'Save Rhythm'}
+          </Button>
         </div>
       }
     >
-      <div className="flex flex-col gap-4">
-        <div className="flex gap-3">
-          <Input
-            label="Icon"
-            value={form.icon}
-            onChange={(e) => set('icon', e.target.value)}
-            className="w-20 text-center text-lg"
-            placeholder="💪"
-          />
-          <div className="flex-1">
-            <Input
-              label="Name"
-              value={form.name}
-              onChange={(e) => set('name', e.target.value)}
-              error={errors.name}
-              required
-              placeholder="e.g. Morning Run"
-            />
-          </div>
-        </div>
-        <Select
-          label="Category"
-          value={form.category}
-          onChange={(e) => set('category', (e.target as HTMLSelectElement).value)}
-          options={RHYTHM_CATEGORIES.map((c) => ({ value: c, label: c }))}
-        />
-        <Select
-          label="Group"
-          value={form.project}
-          onChange={(e) => set('project', (e.target as HTMLSelectElement).value as HabitProject)}
-          options={HABIT_PROJECTS.map((p) => ({ value: p, label: p }))}
-        />
-        <Select
-          label="Frequency"
-          value={form.frequency}
-          onChange={(e) => set('frequency', (e.target as HTMLSelectElement).value as HabitFrequency)}
-          options={[
-            { value: 'daily', label: 'Daily' },
-            { value: 'weekly', label: 'Weekly' },
-            { value: 'monthly', label: 'Monthly' },
-            { value: 'yearly', label: 'Yearly' },
-          ]}
-        />
-        {form.frequency === 'weekly' && (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[#F0F0F0]">Days</label>
-            <div className="flex gap-2">
-              {DAY_LABELS.map((day, idx) => {
-                const num = idx + 1;
-                const selected = form.customDays.includes(num);
-                return (
-                  <button
-                    key={day}
-                    onClick={() =>
-                      set('customDays', selected
-                        ? form.customDays.filter((d) => d !== num)
-                        : [...form.customDays, num]
-                      )
-                    }
-                    className={cn(
-                      'w-9 h-9 rounded-full text-xs font-medium transition-colors',
-                      selected ? 'bg-[#FF6B35] text-white' : 'bg-[#1C1C1C] text-[#8A8A8A] border border-[#2A2A2A]'
-                    )}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        <Input
-          label="Scheduled Time (optional)"
-          type="time"
-          value={form.time}
-          onChange={(e) => set('time', e.target.value)}
-        />
-        <Input
-          label="Trigger / Cue"
-          value={form.trigger}
-          onChange={(e) => set('trigger', e.target.value)}
-          placeholder="e.g. After morning coffee"
-        />
-        <Textarea
-          label="Note"
-          value={form.note}
-          onChange={(e) => set('note', e.target.value)}
-          rows={2}
-          placeholder="Any notes..."
-        />
-      </div>
+      <RhythmFormFields form={form} onChange={handleChange} errors={errors} />
     </Modal>
   );
 }
 
-// ─── POMODORO TIMER PANEL ─────────────────────────────────────────────────────
-function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => void }) {
-  const {
-    sessionType, display, isRunning, sessionsCompleted,
-    start, pause, reset, skip,
-  } = usePomodoroTimer(userId);
+// ─── RHYTHM POPUP (view + inline edit) ───────────────────────────────────────
 
-  const labels = { work: 'Focus', 'short-break': 'Short Break', 'long-break': 'Long Break' };
-  const colors = { work: '#FF6B35', 'short-break': '#1ABC9C', 'long-break': '#1E4AFF' };
+function RhythmPopup({
+  habit,
+  onClose,
+  onDelete,
+  onDuplicate,
+  userId,
+}: {
+  habit: Habit;
+  onClose: () => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  userId: string;
+}) {
+  const [editMode, setEditMode] = useState(false);
+  const [form, setForm] = useState<RhythmFormData>({
+    name: habit.name,
+    note: habit.note ?? '',
+    category: habit.category || 'Fitness',
+    time: habit.time ?? '',
+    frequency: habit.frequency,
+    reminderEnabled: habit.reminder?.enabled ?? false,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = useCallback(<K extends keyof RhythmFormData>(k: K, v: RhythmFormData[K]) => {
+    setForm((f) => ({ ...f, [k]: v }));
+  }, []);
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { setErrors({ name: 'Name is required' }); return; }
+    setSaving(true);
+    try {
+      const colorIndex = RHYTHM_CATEGORIES.indexOf(form.category as typeof RHYTHM_CATEGORIES[number]);
+      const color = RHYTHM_COLORS[colorIndex >= 0 ? colorIndex % RHYTHM_COLORS.length : 0];
+      await updateDocById(COLLECTIONS.HABITS, habit.id, {
+        name: sanitize(form.name, 100),
+        note: sanitize(form.note),
+        color,
+        category: form.category,
+        frequency: form.frequency,
+        time: form.time || undefined,
+        reminder: { enabled: form.reminderEnabled, time: form.time || '08:00' },
+      });
+      toast.success('Rhythm updated.');
+      onClose();
+    } catch {
+      toast.error('Failed to update rhythm.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const catColor = CATEGORY_COLORS[habit.category] ?? '#8A8A8A';
+  const streak = habit.streak;
+  const today = todayISO();
 
   return (
-    <div className="fixed bottom-[72px] right-4 z-50 sm:bottom-6 sm:right-6 bg-[#141414] border border-[#2A2A2A] rounded-card p-4 w-56 shadow-card">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold" style={{ color: colors[sessionType] }}>
-          {labels[sessionType]}
-        </span>
-        <button onClick={onClose} className="text-[#8A8A8A] text-xs">✕</button>
-      </div>
-      <div className="text-center mb-4">
-        <span className="text-4xl font-bold text-[#F0F0F0] tabular-nums">{display}</span>
-        <p className="text-xs text-[#8A8A8A] mt-1">Session {sessionsCompleted + 1}</p>
-      </div>
-      <div className="flex gap-2 justify-center">
-        <button
-          onClick={isRunning ? pause : start}
-          className="w-10 h-10 rounded-full bg-[#FF6B35] flex items-center justify-center"
-        >
-          {isRunning ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white" />}
-        </button>
-        <button
-          onClick={reset}
-          className="w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#2A2A2A] flex items-center justify-center text-[#8A8A8A]"
-        >
-          <RotateCcw size={14} />
-        </button>
-        <button
-          onClick={skip}
-          className="w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#2A2A2A] flex items-center justify-center text-[#8A8A8A]"
-        >
-          <SkipForward size={14} />
-        </button>
-      </div>
-    </div>
+    <Modal
+      open
+      onClose={onClose}
+      title={editMode ? 'Edit Rhythm' : habit.name}
+      footer={
+        editMode ? (
+          <div className="flex gap-3">
+            <Button variant="secondary" fullWidth onClick={() => { setEditMode(false); setErrors({}); }}>
+              Cancel
+            </Button>
+            <Button fullWidth loading={saving} onClick={handleSave}>
+              Save Changes
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setEditMode(true)}>
+              <Pencil size={14} /> Edit
+            </Button>
+            <Button size="sm" variant="secondary" onClick={onDuplicate}>
+              <Copy size={14} /> Duplicate
+            </Button>
+            <Button size="sm" variant="danger" onClick={onDelete}>
+              <Trash2 size={14} /> Delete
+            </Button>
+          </div>
+        )
+      }
+    >
+      {editMode ? (
+        <RhythmFormFields form={form} onChange={handleChange} errors={errors} />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {/* Note */}
+          {habit.note && (
+            <p className="text-sm text-[#8A8A8A] leading-relaxed">{habit.note}</p>
+          )}
+
+          {/* 2x3 info grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Time */}
+            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
+              <p className="text-xs text-[#505050] mb-1 flex items-center gap-1">
+                <Clock size={10} /> Time
+              </p>
+              <p className="text-sm font-semibold text-[#F0F0F0]">
+                {habit.time ? formatTime12(habit.time) : '—'}
+              </p>
+            </div>
+
+            {/* Category */}
+            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
+              <p className="text-xs text-[#505050] mb-1">Category</p>
+              <Badge label={habit.category} color={catColor} />
+            </div>
+
+            {/* Frequency */}
+            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
+              <p className="text-xs text-[#505050] mb-1">Frequency</p>
+              <p className="text-sm font-semibold text-[#F0F0F0] capitalize">{habit.frequency}</p>
+            </div>
+
+            {/* Reminder */}
+            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
+              <p className="text-xs text-[#505050] mb-1">Reminder</p>
+              <p className="text-sm font-semibold text-[#F0F0F0]">
+                {habit.reminder?.enabled
+                  ? habit.time ? formatTime12(habit.time) : 'ON'
+                  : 'OFF'}
+              </p>
+            </div>
+
+            {/* Current Streak */}
+            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
+              <p className="text-xs text-[#505050] mb-1 flex items-center gap-1">
+                <Flame size={10} /> Streak
+              </p>
+              <p className="text-sm font-semibold text-[#F0F0F0]">
+                {streak}d {streak > 3 ? '🔥' : ''}
+              </p>
+            </div>
+
+            {/* Best Streak */}
+            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
+              <p className="text-xs text-[#505050] mb-1 flex items-center gap-1">
+                <Trophy size={10} /> Best
+              </p>
+              <p className="text-sm font-semibold text-[#F0F0F0]">
+                {habit.bestStreak}d 🏆
+              </p>
+            </div>
+          </div>
+
+          {/* 7-day activity strip */}
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs text-[#505050]">Last 7 days</p>
+            <div className="flex gap-1.5">
+              {Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(today + 'T00:00:00');
+                d.setDate(d.getDate() - (6 - i));
+                const dateStr = d.toISOString().split('T')[0];
+                const s = habit.statusLog[dateStr] as HabitStatus | undefined;
+                return (
+                  <div key={dateStr} className="flex-1 flex flex-col items-center gap-1">
+                    <span className="text-[9px] text-[#505050]">{d.getDate()}</span>
+                    <div
+                      className={cn(
+                        'w-full h-6 rounded-sm flex items-center justify-center text-xs',
+                        s === 'done' ? 'bg-[#1ABC9C]' : s === 'failed' ? 'bg-[#FF4F6D]' : 'bg-[#2A2A2A]'
+                      )}
+                    >
+                      {s === 'done' ? '✓' : s === 'failed' ? '✕' : ''}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }
 
 // ─── RHYTHM CARD ──────────────────────────────────────────────────────────────
+
 function RhythmCard({
   habit,
-  selectedDate,
-  onEdit,
+  today,
+  onOpenPopup,
 }: {
   habit: Habit;
-  selectedDate: string;
-  onEdit: (h: Habit) => void;
+  today: string;
+  onOpenPopup: (h: Habit) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const status = habit.statusLog[selectedDate];
+  const status = (habit.statusLog[today] ?? 'pending') as HabitStatus;
+  const catColor = CATEGORY_COLORS[habit.category] ?? '#8A8A8A';
+  const isDoneOrFailed = status === 'done' || status === 'failed';
 
   const markDone = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const completions = { ...habit.completions, [selectedDate]: (habit.completions[selectedDate] ?? 0) + 1 };
-    const statusLog = { ...habit.statusLog, [selectedDate]: 'done' as HabitStatus };
-    const streak = status !== 'done' ? habit.streak + 1 : habit.streak;
-    await updateDocById(COLLECTIONS.HABITS, habit.id, { completions, statusLog, streak });
-    toast.success(`${habit.name} ✓`);
+    const completions = { ...habit.completions, [today]: 1 };
+    const statusLog = { ...habit.statusLog, [today]: 'done' as HabitStatus };
+    const newStreak = calculateStreak({ ...habit.statusLog, [today]: 'done' });
+    const bestStreak = Math.max(habit.bestStreak, newStreak);
+    await updateDocById(COLLECTIONS.HABITS, habit.id, {
+      completions, statusLog, streak: newStreak, bestStreak,
+    });
+    toast.success(`${habit.name} done! ✓`);
   };
 
   const markFailed = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const statusLog = { ...habit.statusLog, [selectedDate]: 'failed' as HabitStatus };
     const completions = { ...habit.completions };
-    delete completions[selectedDate];
-    await updateDocById(COLLECTIONS.HABITS, habit.id, { statusLog, completions });
+    delete completions[today];
+    const statusLog = { ...habit.statusLog, [today]: 'failed' as HabitStatus };
+    const newStreak = calculateStreak({ ...habit.statusLog, [today]: 'failed' });
+    await updateDocById(COLLECTIONS.HABITS, habit.id, {
+      completions, statusLog, streak: newStreak,
+    });
   };
 
-  // Last 7 days status strip
-  const last7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split('T')[0];
-  });
-
-  const statusColors: Record<HabitStatus, string> = {
-    done: '#1ABC9C',
-    failed: '#FF4F6D',
-    pending: '#2A2A2A',
+  const resetStatus = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const completions = { ...habit.completions };
+    delete completions[today];
+    const statusLog = { ...habit.statusLog };
+    delete statusLog[today];
+    const newStreak = calculateStreak(statusLog);
+    await updateDocById(COLLECTIONS.HABITS, habit.id, {
+      completions, statusLog, streak: newStreak,
+    });
   };
 
   return (
     <div
-      className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 flex flex-col gap-3"
-      onClick={() => setExpanded(!expanded)}
+      className={cn(
+        'bg-[#141414] rounded-card border border-[#2A2A2A] p-3 flex items-center gap-3 transition-opacity active:bg-[#1A1A1A] cursor-pointer',
+        isDoneOrFailed && 'opacity-50'
+      )}
+      onClick={() => onOpenPopup(habit)}
     >
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">{habit.icon}</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#F0F0F0]">{habit.name}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <Badge label={habit.category} />
-            <span className="text-xs text-[#FF6B35] flex items-center gap-0.5">
-              <Flame size={10} /> {habit.streak}
-            </span>
-          </div>
-        </div>
-        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-          {status !== 'done' && (
-            <button
-              onClick={markDone}
-              className="h-10 px-3 rounded-button bg-[#1ABC9C]/15 text-[#1ABC9C] text-xs font-semibold min-w-[56px]"
-            >
-              Done
-            </button>
-          )}
-          {status === 'done' && (
-            <span className="h-10 px-3 flex items-center text-xs text-[#1ABC9C] font-semibold">
-              ✓ Done
+      {/* Left: name + time + category */}
+      <div className="flex-1 min-w-0">
+        <p className={cn(
+          'text-sm font-semibold text-[#F0F0F0] truncate',
+          status === 'done' && 'line-through text-[#505050]'
+        )}>
+          {habit.name}
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          {habit.time && (
+            <span className="text-xs text-[#8A8A8A] flex items-center gap-0.5">
+              <Clock size={10} /> {formatTime12(habit.time)}
             </span>
           )}
-          {status !== 'failed' && status !== 'done' && (
-            <button
-              onClick={markFailed}
-              className="h-10 px-3 rounded-button bg-[#FF4F6D]/15 text-[#FF4F6D] text-xs font-semibold min-w-[56px]"
-            >
-              Skip
-            </button>
-          )}
+          <Badge label={habit.category} color={catColor} />
         </div>
-        {expanded
-          ? <ChevronUp size={16} className="text-[#8A8A8A] flex-shrink-0" />
-          : <ChevronDown size={16} className="text-[#8A8A8A] flex-shrink-0" />
-        }
       </div>
 
-      {expanded && (
-        <div className="flex flex-col gap-3 pt-2 border-t border-[#2A2A2A]">
-          {/* 7-day strip */}
-          <div className="flex gap-1.5">
-            {last7.map((date) => {
-              const s = habit.statusLog[date] as HabitStatus | undefined;
-              return (
-                <div
-                  key={date}
-                  className="flex-1 h-2 rounded-full"
-                  style={{ backgroundColor: s ? statusColors[s] : statusColors.pending }}
-                  title={date}
-                />
-              );
-            })}
-          </div>
+      {/* Right: action buttons */}
+      <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        {status === 'pending' ? (
+          <>
+            {/* Done button — round green 40px */}
+            <button
+              type="button"
+              onClick={markDone}
+              aria-label="Mark done"
+              className="w-10 h-10 rounded-full bg-[#1ABC9C] flex items-center justify-center text-white active:scale-90 transition-transform"
+            >
+              <CheckCircle size={20} />
+            </button>
+            {/* Failed button — round red 40px */}
+            <button
+              type="button"
+              onClick={markFailed}
+              aria-label="Mark failed"
+              className="w-10 h-10 rounded-full bg-[#FF4F6D] flex items-center justify-center text-white active:scale-90 transition-transform"
+            >
+              <XCircle size={20} />
+            </button>
+          </>
+        ) : (
+          /* Clickable status badge to reset */
           <button
-            onClick={(e) => { e.stopPropagation(); onEdit(habit); }}
-            className="text-xs text-[#FF6B35] text-left"
+            type="button"
+            onClick={resetStatus}
+            aria-label="Reset status"
+            className={cn(
+              'h-8 px-3 rounded-chip text-xs font-semibold border transition-colors',
+              status === 'done'
+                ? 'bg-[#1ABC9C]/15 text-[#1ABC9C] border-[#1ABC9C]/30 hover:bg-[#1ABC9C]/25'
+                : 'bg-[#FF4F6D]/15 text-[#FF4F6D] border-[#FF4F6D]/30 hover:bg-[#FF4F6D]/25'
+            )}
           >
-            Edit Rhythm
+            {status === 'done' ? '✓ Done' : '✕ Failed'}
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
+// ─── POMODORO PANEL ───────────────────────────────────────────────────────────
+
+function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const {
+    settings, sessionType, display, isRunning, sessionsCompleted,
+    start, pause, reset, skip, updateSettings,
+  } = usePomodoroTimer(userId);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [localWork, setLocalWork] = useState(String(settings.workDuration));
+  const [localShort, setLocalShort] = useState(String(settings.shortBreakDuration));
+  const [localLong, setLocalLong] = useState(String(settings.longBreakDuration));
+
+  const typeLabels = { work: 'Focus', 'short-break': 'Short Break', 'long-break': 'Long Break' };
+  const typeColors = { work: '#FF6B35', 'short-break': '#1ABC9C', 'long-break': '#1E4AFF' };
+  const color = typeColors[sessionType];
+
+  // Total seconds for current session
+  const totalSeconds =
+    sessionType === 'work' ? settings.workDuration * 60
+    : sessionType === 'short-break' ? settings.shortBreakDuration * 60
+    : settings.longBreakDuration * 60;
+
+  // Time left in seconds (parsed from display MM:SS)
+  const [mins, secs] = display.split(':').map(Number);
+  const timeLeftSecs = mins * 60 + secs;
+  const progress = totalSeconds > 0 ? ((totalSeconds - timeLeftSecs) / totalSeconds) * 100 : 0;
+
+  const applySettings = () => {
+    updateSettings({
+      ...settings,
+      workDuration: Math.max(1, Math.min(120, parseInt(localWork) || 25)),
+      shortBreakDuration: Math.max(1, Math.min(60, parseInt(localShort) || 5)),
+      longBreakDuration: Math.max(1, Math.min(60, parseInt(localLong) || 15)),
+    });
+    setSettingsOpen(false);
+  };
+
+  return (
+    <>
+      <div className="fixed bottom-[72px] right-4 z-50 sm:bottom-6 sm:right-6 bg-[#141414] border border-[#2A2A2A] rounded-card p-4 w-60 shadow-card">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold" style={{ color }}>
+            {typeLabels[sessionType]}
+          </span>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Timer settings"
+              className="w-6 h-6 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0]"
+            >
+              <Settings size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close timer"
+              className="w-6 h-6 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0] text-xs"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Circular SVG progress */}
+        <div className="flex justify-center mb-3">
+          <div className="relative w-28 h-28">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="44" fill="none" stroke="#2A2A2A" strokeWidth="8" />
+              <circle
+                cx="50" cy="50" r="44" fill="none"
+                stroke={color} strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 44}`}
+                strokeDashoffset={`${2 * Math.PI * 44 * (1 - progress / 100)}`}
+                style={{ transition: 'stroke-dashoffset 1s linear' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-bold text-[#F0F0F0] tabular-nums">{display}</span>
+              <span className="text-[10px] text-[#8A8A8A]">Session {sessionsCompleted + 1}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex gap-2 justify-center">
+          <button
+            type="button"
+            onClick={reset}
+            aria-label="Reset timer"
+            className="w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#2A2A2A] flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0]"
+          >
+            <RotateCcw size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={isRunning ? pause : start}
+            aria-label={isRunning ? 'Pause' : 'Play'}
+            className="w-12 h-12 rounded-full flex items-center justify-center text-white"
+            style={{ backgroundColor: color }}
+          >
+            {isRunning ? <Pause size={18} /> : <Play size={18} />}
+          </button>
+          <button
+            type="button"
+            onClick={skip}
+            aria-label="Skip session"
+            className="w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#2A2A2A] flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0]"
+          >
+            <SkipForward size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Settings modal */}
+      <Modal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title="Timer Settings"
+        footer={
+          <div className="flex gap-3">
+            <Button variant="secondary" fullWidth onClick={() => setSettingsOpen(false)}>Cancel</Button>
+            <Button fullWidth onClick={applySettings}>Apply</Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <Input
+            label="Work duration (minutes)"
+            type="number"
+            value={localWork}
+            onChange={(e) => setLocalWork(e.target.value)}
+          />
+          <Input
+            label="Short break (minutes)"
+            type="number"
+            value={localShort}
+            onChange={(e) => setLocalShort(e.target.value)}
+          />
+          <Input
+            label="Long break (minutes)"
+            type="number"
+            value={localLong}
+            onChange={(e) => setLocalLong(e.target.value)}
+          />
+        </div>
+      </Modal>
+    </>
+  );
+}
+
 // ─── WELLNESS PAGE ────────────────────────────────────────────────────────────
+
 export default function WellnessPage() {
   const { user } = useAuth();
   const { data: habits, loading } = useCollection<Habit>({
@@ -406,102 +740,131 @@ export default function WellnessPage() {
     enabled: !!user,
   });
 
-  const [selectedDate, setSelectedDate] = useState(todayISO());
-  const [activeGroup, setActiveGroup] = useState<string>('All');
+  const today = todayISO();
   const [modalOpen, setModalOpen] = useState(false);
   const [editHabit, setEditHabit] = useState<Habit | null>(null);
+  const [popupHabit, setPopupHabit] = useState<Habit | null>(null);
+  const [deleteHabit, setDeleteHabit] = useState<Habit | null>(null);
   const [pomodoroOpen, setPomodoroOpen] = useState(false);
 
-  // 7-day strip
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split('T')[0];
+  // ── KPI calculations ─────────────────────────────────────────────────────
+  const activeHabits = habits.filter((h) => h.isActive);
+  const doneToday = activeHabits.filter((h) => h.statusLog[today] === 'done').length;
+  const pendingToday = activeHabits.filter((h) => !h.statusLog[today]).length;
+  const avgStreak = activeHabits.length
+    ? Math.round(activeHabits.reduce((s, h) => s + h.streak, 0) / activeHabits.length)
+    : 0;
+  const bestStreak = activeHabits.length
+    ? Math.max(...activeHabits.map((h) => h.bestStreak))
+    : 0;
+  const completionPct = activeHabits.length
+    ? Math.round((doneToday / activeHabits.length) * 100)
+    : 0;
+
+  // ── Sort: pending first → by time → alphabetically ────────────────────────
+  const sorted = [...activeHabits].sort((a, b) => {
+    const aStatus = a.statusLog[today] ?? 'pending';
+    const bStatus = b.statusLog[today] ?? 'pending';
+    const aPending = aStatus === 'pending' ? 0 : 1;
+    const bPending = bStatus === 'pending' ? 0 : 1;
+    if (aPending !== bPending) return aPending - bPending;
+    // Sort by time (no time = sort last)
+    const aTime = a.time ?? '99:99';
+    const bTime = b.time ?? '99:99';
+    if (aTime !== bTime) return aTime.localeCompare(bTime);
+    return a.name.localeCompare(b.name);
   });
 
-  const dayNames = ['S','M','T','W','T','F','S'];
+  // ── Delete handler ────────────────────────────────────────────────────────
+  const handleDelete = useCallback(async () => {
+    if (!deleteHabit) return;
+    await deleteDocById(COLLECTIONS.HABITS, deleteHabit.id);
+    toast.success('Rhythm deleted.');
+    setDeleteHabit(null);
+    setPopupHabit(null);
+  }, [deleteHabit]);
 
-  // Filter by group
-  const groups = ['All', ...HABIT_PROJECTS];
-  const displayed = habits.filter((h) =>
-    h.isActive && (activeGroup === 'All' || h.project === activeGroup)
-  );
-
-  // Status counts for selected date
-  const done = habits.filter((h) => h.statusLog[selectedDate] === 'done').length;
-  const failed = habits.filter((h) => h.statusLog[selectedDate] === 'failed').length;
-  const pending = habits.filter((h) => h.isActive && !h.statusLog[selectedDate]).length;
-  const totalActive = habits.filter((h) => h.isActive).length;
-  const pct = totalActive > 0 ? Math.round((done / totalActive) * 100) : 0;
+  // ── Duplicate handler ─────────────────────────────────────────────────────
+  const handleDuplicate = useCallback(async (habit: Habit) => {
+    const { id: _id, ...rest } = habit;
+    void _id;
+    await createDoc(COLLECTIONS.HABITS, {
+      ...rest,
+      name: `${habit.name} (Copy)`,
+      streak: 0,
+      bestStreak: 0,
+      completions: {},
+      statusLog: {},
+      order: Date.now(),
+      createdAt: new Date().toISOString(),
+    });
+    toast.success('Rhythm duplicated.');
+    setPopupHabit(null);
+  }, []);
 
   return (
     <div className="flex flex-col min-h-dvh">
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-[#2A2A2A]">
-        <h1 className="text-xl font-bold text-[#F0F0F0] mb-3">Wellness</h1>
-
-        {/* 7-day date strip */}
-        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1">
-          {days.map((date, idx) => {
-            const d = new Date(date + 'T00:00:00');
-            const isToday = date === todayISO();
-            const isSelected = date === selectedDate;
-            return (
-              <button
-                key={date}
-                onClick={() => setSelectedDate(date)}
-                className={cn(
-                  'flex-shrink-0 flex flex-col items-center gap-1 w-10 py-2 rounded-card transition-colors',
-                  isSelected ? 'bg-[#FF6B35]' : isToday ? 'bg-[#1C1C1C]' : 'bg-transparent'
-                )}
-              >
-                <span className={cn('text-[10px]', isSelected ? 'text-white' : 'text-[#8A8A8A]')}>
-                  {dayNames[d.getDay()]}
-                </span>
-                <span className={cn('text-sm font-semibold', isSelected ? 'text-white' : 'text-[#F0F0F0]')}>
-                  {d.getDate()}
-                </span>
-              </button>
-            );
-          })}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold text-[#F0F0F0]">My Rhythms</h1>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPomodoroOpen(!pomodoroOpen)}
+              aria-label="Pomodoro timer"
+              className="w-9 h-9 bg-[#141414] border border-[#2A2A2A] rounded-full flex items-center justify-center text-[#FF6B35]"
+            >
+              <Timer size={16} />
+            </button>
+            <Button size="sm" onClick={() => { setEditHabit(null); setModalOpen(true); }}>
+              <Plus size={15} /> Add Rhythm
+            </Button>
+          </div>
         </div>
 
-        {/* Status bar */}
-        <div className="flex items-center gap-4 mt-3">
-          <span className="text-xs text-[#1ABC9C]">Done: {done}</span>
-          <span className="text-xs text-[#8A8A8A]">Pending: {pending}</span>
-          <span className="text-xs text-[#FF4F6D]">Failed: {failed}</span>
-          <span className="text-xs text-[#FF6B35] ml-auto font-semibold">{pct}%</span>
-        </div>
-      </div>
-
-      {/* Group tabs */}
-      <div className="flex gap-2 overflow-x-auto px-4 py-3 border-b border-[#2A2A2A]">
-        {groups.map((g) => (
-          <button
-            key={g}
-            onClick={() => setActiveGroup(g)}
-            className={cn(
-              'flex-shrink-0 h-7 px-3 rounded-chip text-xs font-medium transition-colors',
-              activeGroup === g
-                ? 'bg-[#FF6B35] text-white'
-                : 'bg-[#141414] text-[#8A8A8A] border border-[#2A2A2A]'
-            )}
-          >
-            {g}
-          </button>
-        ))}
+        {/* KPI cards — only when rhythms exist */}
+        {activeHabits.length > 0 && (
+          <div className="grid grid-cols-2 gap-2">
+            {/* Today's Completion */}
+            <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A] col-span-2">
+              <div className="flex justify-between items-center mb-1.5">
+                <p className="text-xs text-[#8A8A8A]">Today&apos;s Completion</p>
+                <span className="text-xs font-semibold text-[#1ABC9C]">
+                  {doneToday}/{activeHabits.length}
+                </span>
+              </div>
+              <ProgressBar value={completionPct} color="#1ABC9C" height={6} />
+              <p className="text-xs text-[#1ABC9C] mt-1">{completionPct}%</p>
+            </div>
+            {/* Avg Streak */}
+            <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A]">
+              <p className="text-xs text-[#8A8A8A] mb-1">Avg Streak</p>
+              <p className="text-lg font-bold text-[#FF6B35]">{avgStreak}d</p>
+            </div>
+            {/* Best Streak */}
+            <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A]">
+              <p className="text-xs text-[#8A8A8A] mb-1">Best Streak</p>
+              <p className="text-lg font-bold text-[#FFD700]">{bestStreak}d</p>
+            </div>
+            {/* Pending */}
+            <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A] col-span-2">
+              <p className="text-xs text-[#8A8A8A] mb-1">Pending Today</p>
+              <p className="text-lg font-bold text-[#FF9933]">{pendingToday}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Rhythm list */}
-      <div className="flex-1 px-4 py-4 pb-6 flex flex-col gap-3">
+      <div className="flex-1 px-4 py-4 pb-24 flex flex-col gap-3">
         {loading ? (
           <>
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
           </>
-        ) : displayed.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <EmptyState
             icon={Activity}
             title="No rhythms yet"
@@ -510,19 +873,20 @@ export default function WellnessPage() {
             onAction={() => { setEditHabit(null); setModalOpen(true); }}
           />
         ) : (
-          displayed.map((habit) => (
+          sorted.map((habit) => (
             <RhythmCard
               key={habit.id}
               habit={habit}
-              selectedDate={selectedDate}
-              onEdit={(h) => { setEditHabit(h); setModalOpen(true); }}
+              today={today}
+              onOpenPopup={setPopupHabit}
             />
           ))
         )}
       </div>
 
-      {/* FAB */}
+      {/* FAB (mobile) */}
       <button
+        type="button"
         onClick={() => { setEditHabit(null); setModalOpen(true); }}
         className="fixed bottom-[80px] right-4 w-14 h-14 bg-[#1ABC9C] rounded-full flex items-center justify-center shadow-fab active:scale-95 transition-transform sm:hidden z-30"
         aria-label="Add rhythm"
@@ -530,24 +894,38 @@ export default function WellnessPage() {
         <Plus size={24} className="text-white" />
       </button>
 
-      {/* Pomodoro button */}
-      <button
-        onClick={() => setPomodoroOpen(!pomodoroOpen)}
-        className="fixed bottom-[144px] right-4 w-12 h-12 bg-[#141414] border border-[#2A2A2A] rounded-full flex items-center justify-center shadow-card sm:hidden z-30"
-        aria-label="Pomodoro timer"
-      >
-        <Timer size={20} className="text-[#FF6B35]" />
-      </button>
-
+      {/* Pomodoro panel */}
       {pomodoroOpen && user && (
         <PomodoroPanel userId={user.uid} onClose={() => setPomodoroOpen(false)} />
       )}
 
+      {/* Create / Edit modal */}
       <RhythmModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         habit={editHabit}
         userId={user?.uid ?? ''}
+      />
+
+      {/* Rhythm detail popup */}
+      {popupHabit && (
+        <RhythmPopup
+          habit={popupHabit}
+          onClose={() => setPopupHabit(null)}
+          onDelete={() => setDeleteHabit(popupHabit)}
+          onDuplicate={() => handleDuplicate(popupHabit)}
+          userId={user?.uid ?? ''}
+        />
+      )}
+
+      {/* Delete confirm */}
+      <ConfirmModal
+        open={!!deleteHabit}
+        onClose={() => setDeleteHabit(null)}
+        onConfirm={handleDelete}
+        title="Delete Rhythm"
+        message={`Delete "${deleteHabit?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
       />
     </div>
   );

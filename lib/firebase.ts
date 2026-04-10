@@ -4,6 +4,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut as firebaseSignOut,
+  browserLocalPersistence,
+  setPersistence,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -38,6 +40,11 @@ try {
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export { db };
+
+// Explicitly persist session across browser restarts (default in web, explicit here per spec)
+setPersistence(auth, browserLocalPersistence).catch(() => {
+  // Non-fatal — browser may not support local persistence
+});
 
 // ─── GOOGLE AUTH ─────────────────────────────────────────────────────────────
 const googleProvider = new GoogleAuthProvider();
