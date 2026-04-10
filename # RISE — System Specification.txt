@@ -1,0 +1,1547 @@
+# RISE — System Specification
+
+> **Single source of truth for the entire application.**
+> Every page, module, name, behavior, rule, UI element, logic flow, and data model is documented here.
+> This file MUST be read before any task and updated after every change.
+
+**Last updated:** 2026-04-07 (compact theme: 11px base font, tighter spacing, 200px sidebar)
+
+---
+
+## Table of Contents
+
+1. [Application Overview](#1-application-overview)
+2. [Technology Stack](#2-technology-stack)
+3. [Terminology](#3-terminology)
+4. [Project Structure](#4-project-structure)
+5. [Routing & Navigation](#5-routing--navigation)
+6. [Authentication](#6-authentication)
+7. [Data Models](#7-data-models)
+8. [Firestore Collections](#8-firestore-collections)
+9. [Pages — Detailed Specification](#9-pages--detailed-specification)
+   - 9.1 [Dashboard (Home)](#91-dashboard-home)
+   - 9.2 [Actions (Tasks)](#92-actions-tasks)
+   - 9.3 [Visions (Goals)](#93-visions-goals)
+   - 9.4 [Finance](#94-finance)
+   - 9.5 [Wellness (Rhythms)](#95-wellness-rhythms)
+   - 9.6 [Professional (CRM)](#96-professional-crm)
+   - 9.7 [Relationships](#97-relationships)
+   - 9.8 [Reviews](#98-reviews)
+   - 9.9 [Journal](#99-journal)
+   - 9.10 [Documents](#910-documents)
+   - 9.11 [AI Chat](#911-ai-chat)
+   - 9.12 [Login](#912-login)
+10. [Reusable Components](#10-reusable-components)
+11. [API Routes](#11-api-routes)
+12. [Hooks](#12-hooks)
+13. [Library & Utilities](#13-library--utilities)
+14. [Styling & Theme](#14-styling--theme)
+15. [Security & Privacy](#15-security--privacy)
+16. [PWA & Service Worker](#16-pwa--service-worker)
+17. [Configuration Constants](#17-configuration-constants)
+18. [Environment Variables](#18-environment-variables)
+
+---
+
+## 1. Application Overview
+
+**RISE** is a personal life management application. Full name: **RISE — My Organized Hub for Everything**.
+
+It tracks actions, targets, visions, finances, rhythms, professional CRM, relationships, reviews, journal entries, and documents. It includes an AI assistant powered by Google Gemini.
+
+- **Currency:** AED (UAE Dirham)
+- **Region:** UAE-specific (banks, emirates, visa statuses)
+- **User:** Single-user app with Google OAuth
+
+---
+
+## 2. Technology Stack
+
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Framework | Next.js (App Router, Turbopack) | 15.1.0 |
+| Language | TypeScript | 5.7.0 |
+| UI | React | 19.0.0 |
+| Styling | Tailwind CSS | 4.0.0 |
+| Database | Firebase Firestore | 11.2.0 |
+| Auth | Firebase Auth (Google OAuth) | 11.2.0 |
+| Storage | Firebase Storage | 11.2.0 |
+| AI | Google Generative AI (@google/genai) — Gemini 2.5 Flash | 1.0.0 |
+| Icons | Lucide React | 0.468.0 |
+| Animations | Framer Motion | 11.15.0 |
+| Charts | Recharts | 2.15.0 |
+| Forms | React Hook Form | 7.54.0 |
+| Validation | Zod | 4.3.6 |
+| State | Zustand (available), React Context (Auth) | 5.0.0 |
+| Dates | date-fns | 4.1.0 |
+| CSS Merge | clsx + tailwind-merge | 2.1.1 / 2.6.0 |
+| PWA | Serwist + @serwist/next | 9.5.7 |
+| Linting | ESLint + eslint-config-next | 9.0.0 |
+
+---
+
+## 3. Terminology
+
+RISE enforces a strict hierarchy of terms. These names MUST be used in all UI labels, headings, buttons, descriptions, and toast messages.
+
+| Term | Meaning | Old term (never use in UI) |
+|------|---------|---------------------------|
+| **Realm** | High-level life domain | Life Area, LifeArea |
+| **Target** | Outcome or objective inside a Realm | Project |
+| **Action** | Small, concrete step to complete a Target | Task |
+| **Rhythm** | Recurring behavior or routine | Habit |
+
+**Hierarchy:** Realm -> Target -> Action -> Rhythm
+
+**Rules:**
+- Every Target belongs to exactly one Realm
+- Every Action belongs to exactly one Target (optional) and one Realm
+- Every Rhythm is linked to a category
+- Internal TypeScript interfaces (`Task`, `Project`, `Habit`) and Firestore collection names (`tasks`, `projects`, `habits`) remain unchanged for backward compatibility
+
+---
+
+## 4. Project Structure
+
+```
+rise/
+  app/
+    (auth)/login/page.tsx          # Login page
+    (main)/                        # Protected routes (requires auth)
+      layout.tsx                   # Auth guard + AppLayout wrapper
+      page.tsx                     # Dashboard / Home
+      tasks/page.tsx               # Actions page
+      goals/page.tsx               # Visions page
+      finance/page.tsx             # Finance page
+      wellness/page.tsx            # Wellness / Rhythms page
+      professional/page.tsx        # CRM page (Leads & Deals)
+      relationships/page.tsx       # Relationships page
+      reviews/page.tsx             # Reviews / GPS page
+      journal/page.tsx             # Journal page
+      documents/page.tsx           # Documents page
+      chat/page.tsx                # AI Chat page
+    api/
+      chat/route.ts                # AI chat endpoint
+      transcribe/route.ts          # Voice-to-text endpoint
+      ai-tip/route.ts              # Daily AI tip endpoint
+    layout.tsx                     # Root layout (fonts, meta, providers)
+    globals.css                    # Theme, animations, utilities
+    sw.ts                          # Service worker
+  components/
+    providers/
+      AuthProvider.tsx             # Firebase Auth context
+      SWRegistrar.tsx              # Service worker registration
+      PWAInstallPrompt.tsx         # PWA install prompt
+    layout/
+      AppLayout.tsx                # Sidebar + bottom nav + FAB + toasts
+      GlobalFab.tsx                # Floating action button
+    ui/
+      Button.tsx                   # Button component
+      Input.tsx                    # Input, TextArea, Select components
+      Modal.tsx                    # Modal / bottom sheet
+      Badge.tsx                    # Badge component
+      EmptyState.tsx               # Empty data state
+      ToastContainer.tsx           # Toast notifications
+    tasks/
+      TaskCard.tsx                 # Action card with completion toggle
+      TaskModal.tsx                # Create/Edit action modal
+      ProjectModal.tsx             # Create/Edit target modal
+    wellness/
+      HabitCard.tsx                # Rhythm card (legacy, used by dashboard)
+      PomodoroTimer.tsx            # Pomodoro focus timer
+  hooks/
+    useVoiceRecorder.ts            # Microphone recording hook
+  lib/
+    types.ts                       # All TypeScript interfaces & constants
+    validations.ts                 # Zod schemas for all collections
+    firebase.ts                    # Firebase initialization
+    firestore.ts                   # CRUD helpers + useCollection hook
+    utils.ts                       # cn, formatDate, formatTime, etc.
+    sanitizer.ts                   # PII redaction
+    verify-auth.ts                 # Server-side token verification
+    rate-limiter.ts                # Sliding window rate limiter
+    toast.ts                       # Toast notification helper
+  firestore.rules                  # Firestore security rules
+  storage.rules                    # Storage security rules
+  .env.example                     # Environment variable template
+  CLAUDE.md                        # Claude Code instructions
+  SYSTEM_SPEC.md                   # This file
+```
+
+---
+
+## 5. Routing & Navigation
+
+### 5.1 Route Groups
+
+| Route Group | Purpose | Auth Required |
+|-------------|---------|---------------|
+| `(auth)` | Login page | No |
+| `(main)` | All app pages | Yes — redirects to `/login` if unauthenticated |
+| `api` | Server endpoints | Token-based auth per route |
+
+### 5.2 Navigation Tabs
+
+**Main tabs** (always visible in bottom bar on mobile, sidebar on desktop):
+
+| Order | Path | Icon | Label |
+|-------|------|------|-------|
+| 1 | `/` | Home | Home |
+| 2 | `/tasks` | CheckSquare | Actions |
+| 3 | `/goals` | Eye | Visions |
+| 4 | `/finance` | Wallet | Finance |
+
+**More links** (3-column grid drawer on mobile, sidebar list on desktop):
+
+| Path | Icon | Label | Color |
+|------|------|-------|-------|
+| `/wellness` | Activity | Wellness | #1ABC9C |
+| `/professional` | Briefcase | Professional | #1E4AFF |
+| `/relationships` | Users | Relationships | #FF4F6D |
+| `/reviews` | Compass | Reviews | #FFD700 |
+| `/journal` | BookOpen | Journal | #800080 |
+| `/documents` | FileText | Documents | #8E95A9 |
+| `/chat` | MessageSquare | AI Chat | #FF9933 |
+
+### 5.3 Layout Behavior
+
+**Desktop (lg: 1024px+):**
+- Fixed 200px sidebar on left
+- Logo (24px) + subtitle "Realms · Targets · Actions"
+- All nav links visible as list (11px text, 14px icons, py-1.5 padding)
+- User profile card at bottom (24px avatar initial, name, email, sign-out)
+- Active link: orange highlight + dot indicator on right
+
+**Mobile (<1024px):**
+- Top header bar (40px / h-10): logo + sign-out button
+- Bottom tab bar (48px / h-12): 4 main tabs + "More" button
+- "More" opens bottom sheet drawer with 3-column grid (smaller icons/padding)
+- Active tab: orange text + top bar indicator
+- Content area: `pb-14` to clear bottom bar
+
+### 5.4 Global FAB
+
+Floating action button (bottom-right) with quick-create actions:
+- Action (enabled — opens TaskModal)
+- Lead, Deal, Connection, Income, Expense, Rhythm, Document (disabled/coming soon)
+- 2x4 grid layout, rotates + icon when open
+
+---
+
+## 6. Authentication
+
+### 6.1 Client-Side Auth
+
+**Provider:** `components/providers/AuthProvider.tsx`
+- Firebase `onAuthStateChanged` listener
+- Exposes: `user`, `loading`, `signOut`, `signInWithGoogle`
+- `useAuth()` hook for accessing auth context
+
+**Login flow:**
+1. User visits `/login`
+2. Clicks "Sign in with Google"
+3. Firebase `GoogleAuthProvider` + `signInWithPopup`
+4. On success: redirect to `/` (dashboard)
+5. `(main)/layout.tsx` checks auth — redirects to `/login` if no user
+
+**Loading state:** Centered pulsing RISE logo
+
+### 6.2 Server-Side Auth
+
+**Module:** `lib/verify-auth.ts`
+- Extracts Bearer token from `Authorization` header
+- Verifies via Firebase `identitytoolkit.googleapis.com` REST API
+- Returns `userId` (localId) or throws
+
+Used by: `/api/chat`, `/api/transcribe`, `/api/ai-tip`
+
+---
+
+## 7. Data Models
+
+### 7.1 Action (interface: `Task`, collection: `tasks`)
+
+```typescript
+{
+  id: string                    // Firestore document ID
+  userId: string                // Owner
+  title: string                 // 1-200 characters, required
+  description?: string          // Optional notes
+  realm: Realm                  // Life domain
+  area?: LifeArea               // Legacy compat — maps to realm
+  targetId?: string             // Link to Target/Project
+  projectId?: string            // Legacy alias for targetId
+  goalId?: string               // Link to Vision goal
+  connectionId?: string         // Link to Relationship contact
+  labelIds?: string[]           // Tag references
+  dueDate?: string              // YYYY-MM-DD
+  dueTime?: string              // HH:mm (24h)
+  priority: Priority            // P1 | P2 | P3 | P4
+  gtdContext?: GtdContext        // GTD classification
+  quadrant?: Quadrant           // Eisenhower matrix position
+  isMyDay: boolean              // "Today's Focus" flag
+  isStarred: boolean            // Star/favorite flag
+  isCompleted: boolean          // Done state
+  completedAt?: string          // ISO timestamp when completed
+  recurring?: Recurrence        // None | Daily | Weekly | Monthly | Yearly
+  parentId?: string             // Subtask parent reference
+  order: number                 // Sort order (timestamp-based)
+  createdAt: string             // ISO timestamp
+}
+```
+
+### 7.2 Target (interface: `Project`, collection: `projects`)
+
+```typescript
+{
+  id: string
+  userId: string
+  title: string                 // 1-100 characters, required
+  realm: Realm
+  area?: LifeArea               // Legacy compat
+  color: string                 // Hex #RRGGBB
+  icon: string                  // Emoji
+  goalId?: string               // Link to Vision goal
+  order: number
+  isFavorite: boolean
+  dueDate?: string              // YYYY-MM-DD
+  createdAt: string
+}
+```
+
+### 7.3 Label (interface: `Label`, collection: `labels`)
+
+```typescript
+{
+  id: string
+  userId: string
+  name: string                  // 1-50 characters
+  color: string                 // Hex #RRGGBB
+}
+```
+
+### 7.4 Vision (interface: `Goal`, collection: `goals`)
+
+```typescript
+{
+  id: string
+  userId: string
+  title: string                 // Required
+  description?: string
+  category: VisionCategory      // Personal | Professional | Financial | Relationship | Wellness | Vision
+  area?: GoalArea               // Legacy compat
+  why: string                   // Motivation (NICE framework)
+  metric: string                // Success measure
+  crystal: string               // Crystal-clear statement
+  timeline: GoalTimeline        // 1yr | 3yr | 5yr
+  targetDate?: string           // YYYY-MM-DD
+  progress: number              // 0-100
+  progressHistory: ProgressEntry[] // Array of { date, progress }
+  isCompleted: boolean
+  completedAt?: string
+  createdAt: string
+}
+```
+
+### 7.5 Milestone (interface: `Milestone`, collection: `milestones`)
+
+```typescript
+{
+  id: string
+  userId: string
+  goalId: string                // Parent Vision reference
+  text: string
+  date: string                  // YYYY-MM-DD
+  type: string                  // Checkpoint | Deliverable | Review
+  done: boolean
+  createdAt: string
+}
+```
+
+### 7.6 Goal Action (interface: `GoalAction`, collection: `goal-actions`)
+
+```typescript
+{
+  id: string
+  userId: string
+  goalId: string
+  text: string
+  done: boolean
+  priority: 'High' | 'Medium' | 'Low'
+  dueDate?: string
+  createdAt: string
+}
+```
+
+### 7.7 Rhythm (interface: `Habit`, collection: `habits`)
+
+```typescript
+{
+  id: string
+  userId: string
+  name: string                  // 1-100 characters, required
+  description?: string          // Legacy field
+  note?: string                 // Short note
+  icon: string                  // Emoji (default '💪')
+  color: string                 // Hex #RRGGBB (random from presets)
+  category: string              // One of 20 RHYTHM_CATEGORIES
+  project: HabitProject         // Morning Routine | Business Discipline | Evening Routine | Custom
+  time?: string                 // HH:mm (24h format, displayed as AM/PM)
+  frequency: HabitFrequency     // daily | weekly | monthly | yearly
+  customDays?: number[]         // 1-7 for weekly (legacy)
+  targetCount: number           // Default 1
+  goalId?: string               // Link to Vision
+  trigger?: string              // Habit stacking trigger
+  reminder: {
+    enabled: boolean            // ON/OFF toggle
+    time: string                // Same as rhythm time (auto-synced)
+  }
+  notes?: string                // Legacy field
+  completions: Record<string, number>  // { 'YYYY-MM-DD': count }
+  statusLog: Record<string, HabitStatus> // { 'YYYY-MM-DD': 'pending'|'done'|'failed' }
+  streak: number                // Current consecutive days
+  bestStreak: number            // All-time best
+  isActive: boolean
+  order: number
+  createdAt: string
+}
+```
+
+**Status Logic:**
+- Default: `pending`
+- User marks Done -> `done` (completions[today] = 1)
+- User marks Failed -> `failed` (completions[today] deleted)
+- End of day with no action -> Auto-failed (not yet implemented server-side)
+
+**Rhythm Categories (20):**
+Affirmation, Meditation, Dedication, Discipline, Fitness, Learning, Spiritual, Personal Growth, Health, Work, Productivity, Morning Routine, Evening Routine, Finance, Social, Creativity, Mindfulness, Nutrition, Self-Care, Other
+
+### 7.8 Pomodoro Session (interface: `PomodoroSession`, collection: `pomodoro-sessions`)
+
+```typescript
+{
+  id: string
+  userId: string
+  taskId?: string               // Linked Action
+  startedAt: string             // ISO timestamp
+  duration: number              // Minutes (positive integer)
+  type: PomodoroType            // work | short-break | long-break
+  completed: boolean
+}
+```
+
+### 7.9 Pomodoro Settings (interface: `PomodoroSettings`, stored in localStorage)
+
+```typescript
+{
+  workDuration: number           // 1-120, default 25
+  shortBreakDuration: number     // 1-60, default 5
+  longBreakDuration: number      // 1-60, default 15
+  sessionsBeforeLongBreak: number // 1-10, default 4
+  autoStartBreak: boolean
+  autoStartWork: boolean
+}
+```
+
+### 7.10 Transaction (interface: `Transaction`, collection: `transactions`)
+
+```typescript
+{
+  id: string
+  userId: string
+  type: TransactionType         // Income | Expense
+  amount: number                // Positive number
+  category: string              // From INCOME_CATEGORIES or EXPENSE_CATEGORIES
+  date: string                  // YYYY-MM-DD
+  description?: string
+  source?: string               // For income entries
+  status?: TransactionStatus    // Received | Paid | Pending
+  expenseType?: ExpenseType     // Mandatory | Optional
+  paymentMethod?: PaymentMethod // Cash | Credit Card | Debit Card | Bank Transfer | Digital Wallet
+  notes?: string
+  createdAt: string
+}
+```
+
+### 7.11 Budget (interface: `Budget`, collection: `budgets`)
+
+```typescript
+{
+  id: string
+  userId: string
+  category: string              // Expense category
+  monthlyLimit: number          // AED amount
+  monthYear?: string            // YYYY-MM (empty = recurring monthly)
+  createdAt: string
+}
+```
+
+### 7.12 Debt (interface: `Debt`, collection: `debts`)
+
+```typescript
+{
+  id: string
+  userId: string
+  name: string                  // 1-100 characters
+  totalAmount: number           // Positive
+  remainingBalance: number      // Positive
+  monthlyPayment?: number
+  interestRate?: number         // 0-100
+  dueDay?: number               // 1-31
+  targetPayoffDate?: string
+  status: DebtStatus            // Active | Paid Off
+  notes?: string
+  createdAt: string
+}
+```
+
+### 7.13 Lead (interface: `Lead`, collection: `leads`)
+
+```typescript
+{
+  id: string
+  userId: string
+  name: string                  // 1-100 characters
+  company?: string
+  salary?: number
+  salaryBank?: string
+  phone?: string
+  email?: string
+  status: LeadStatus            // New | Qualified | Appointment Booked
+  source?: string               // LinkedIn | Cold Calling | Referrals | Follow-up | Other
+  emirate?: string              // UAE emirate
+  bank?: string                 // UAE bank
+  product?: string              // Credit Card | Personal Loan | Auto Loan | Account Opening | Other
+  cardType?: string
+  notes?: string
+  createdAt: string
+}
+```
+
+### 7.14 Deal (interface: `Deal`, collection: `deals`)
+
+```typescript
+{
+  id: string
+  userId: string
+  name: string                  // 1-100 characters
+  status: DealStatus            // Processing | Call Verification | Completed | Card Activation | Successful | Unsuccessful
+  applicationNumber?: string
+  bpmId?: string
+  company?: string
+  salary?: number
+  salaryBank?: string
+  dob?: string
+  nationality?: string
+  visaStatus?: string
+  emiratesId?: string
+  passportNumber?: string
+  aecbScore?: string            // UAE credit score
+  locationEmirate?: string
+  submissionDate?: string
+  completionDate?: string
+  bank?: string
+  product?: string
+  cardType?: string
+  leadId?: string               // Link to Lead
+  notes?: string
+  createdAt: string
+}
+```
+
+### 7.15 Connection (interface: `Connection`, collection: `connections`)
+
+```typescript
+{
+  id: string
+  userId: string
+  name: string                  // 1-100 characters
+  type: ConnectionType          // Spouse | Child | Parent | Sibling | Friend | Colleague | Other
+  relationship?: string
+  mobile?: string
+  email?: string
+  birthday?: string             // YYYY-MM-DD
+  importantDate?: string        // YYYY-MM-DD
+  dateType?: ImportantDateType  // Birthday | Anniversary | Special Day | Custom
+  dateReminder?: DateReminderOption // 1-day | 3-days | 7-days | custom
+  notes?: string
+  createdAt: string
+}
+```
+
+### 7.16 Review (interface: `Review`, collection: `reviews`)
+
+```typescript
+{
+  id: string
+  userId: string
+  reviewType: ReviewType        // weekly | monthly | quarterly | yearly
+  weekStartDate?: string        // YYYY-MM-DD (for weekly)
+  monthYear?: string            // YYYY-MM (for monthly)
+  quarter?: string              // e.g. "Q1 2026"
+  year?: string                 // e.g. "2026"
+  rating: number                // 1-10
+  answers: Record<string, string> // Flexible Q&A
+  metrics?: Record<string, number | string>
+  wins: string                  // Required, min 1 char
+  challenges?: string
+  lessons?: string
+  gps?: string                  // Goal-Plan-System reflection
+  next?: string                 // Next period priorities
+  createdAt: string
+  updatedAt?: string
+}
+```
+
+### 7.17 Journal (interface: `Journal`, collection: `journal-entries`)
+
+```typescript
+{
+  id: string
+  userId: string
+  date: string                  // YYYY-MM-DD
+  text: string                  // Required, min 1 char
+  energy: number                // 1-5
+  mood?: string                 // Happy | Calm | Focused | Grateful | Energetic | Anxious | Tired | Sad | Frustrated | Neutral
+  createdAt: string
+}
+```
+
+### 7.18 Document (interface: `RiseDocument`, collection: `documents`)
+
+```typescript
+{
+  id: string
+  userId: string
+  title: string                 // 1-200 characters
+  url?: string                  // Must start with https:// or http://
+  category: string              // Legal | Financial | Medical | Travel | Educational | Insurance | Personal | Other
+  notes?: string
+  createdAt: string
+}
+```
+
+### 7.19 Chat Message (interface: `ChatMessage`, collection: `chat-messages`)
+
+```typescript
+{
+  id: string                    // Firestore document ID
+  userId: string                // Owner
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string             // ISO timestamp
+  createdAt: string             // ISO timestamp
+}
+```
+
+### 7.20 Supporting Interfaces
+
+```typescript
+ImportantDate {
+  id, userId, eventName, date, type: ImportantDateType,
+  reminder?: DateReminderOption, connectionId?, createdAt
+}
+
+FamilyMission { id, userId, content, updatedAt, createdAt }
+PersonalMission { id, userId, content, updatedAt, createdAt }
+CoreValue { id, userId, value, order, createdAt }
+ProgressEntry { date: string, progress: number }
+```
+
+---
+
+## 8. Firestore Collections
+
+| Collection | Interface | Notes |
+|-----------|-----------|-------|
+| `tasks` | Task | Actions |
+| `projects` | Project | Targets |
+| `labels` | Label | Tags for actions |
+| `goals` | Goal | Visions |
+| `milestones` | Milestone | Vision milestones |
+| `goal-actions` | GoalAction | Steps for visions |
+| `habits` | Habit | Rhythms |
+| `pomodoro-sessions` | PomodoroSession | Timer sessions |
+| `leads` | Lead | CRM leads |
+| `deals` | Deal | CRM deals |
+| `transactions` | Transaction | Income/expense |
+| `budgets` | Budget | Monthly limits |
+| `debts` | Debt | Debt tracking |
+| `connections` | Connection | Relationships |
+| `reviews` | Review | GPS reviews |
+| `journal-entries` | Journal | Journal entries |
+| `documents` | RiseDocument | Document metadata |
+| `chat-messages` | ChatMessage | AI chat history (synced across devices) |
+
+**Query pattern:** All queries filter by `userId == currentUser.uid`. No composite indexes — sorting is client-side to avoid index requirements.
+
+**Cross-device sync:** Firestore is initialized with `memoryLocalCache()` (not `persistentLocalCache`). The IndexedDB-backed cache is intentionally **disabled** so every device reads the same authoritative server state via real-time `onSnapshot` listeners. Trade-off: no offline reads, but no cache divergence between mobile and PC. See `lib/firebase.ts` for the rationale and the upstream firebase-js-sdk issues this works around.
+
+---
+
+## 9. Pages — Detailed Specification
+
+### 9.1 Dashboard (Home)
+
+**File:** `app/(main)/page.tsx`
+**Path:** `/`
+
+**Sections (top to bottom):**
+
+1. **Dynamic Greeting**
+   - Time-based: "Good morning/afternoon/evening"
+   - Shows user's first name from Google account (no hardcoded fallback — nothing shown if name unavailable)
+   - Date + time on one line: "Tue, Apr 7, 2026 · 10:30 AM" (clock updates every 60s)
+
+2. **Quick Stats** (2x2 grid on mobile, 4-col on desktop)
+   - Done today: count of tasks completed today (green)
+   - Active targets: count of incomplete goals (blue)
+   - Avg streak: average of all active rhythm streaks (orange)
+   - Surplus/Deficit: monthly income - expenses (green if positive, red if negative, AED)
+
+3. **Winner's Mindset** (collapsible)
+   - 37 hardcoded affirmation strings
+   - Shuffled randomly on page load
+   - Collapsed by default, click to expand
+
+4. **Today's Focus**
+   - Max 3 tasks where `isMyDay === true`
+   - Sorted: incomplete first
+   - Uses TaskCard component
+   - Empty: "No focus actions. Mark actions as My Day."
+
+5. **Be Consistent** (Rhythms module)
+   - Shows ALL pending rhythms for today (status === 'pending')
+   - Sorted by time (earliest first), then alphabetically
+   - Each rhythm shows: name, time (AM/PM), Done button (green), Failed button (red)
+   - First 5 visible, expandable dropdown "Show X more" for rest
+   - Marking Done or Failed removes rhythm from this list (real-time)
+   - "View all rhythms" link to `/wellness`
+   - Empty: "All rhythms completed for today!"
+
+6. **Get Things Done**
+   - Up to 5 tasks where `isMyDay || dueDate === today`
+   - Sorted: incomplete first
+   - Uses TaskCard component
+   - "View all actions" link to `/tasks`
+
+7. **Target Progress**
+   - Top 3 goals sorted by progress descending
+   - Each: title, area badge, progress %, progress bar (blue gradient)
+   - "View all targets" link to `/goals`
+   - Only shown if goals exist
+
+### 9.2 Actions (Tasks)
+
+**File:** `app/(main)/tasks/page.tsx`
+**Path:** `/tasks`
+
+**Header:** "Actions" + "New Action" button (opens TaskModal)
+
+**5-Tab Navigation:**
+
+| Tab | Label | Content |
+|-----|-------|---------|
+| 1 | Today | Overdue actions (red label) + actions due today |
+| 2 | Inbox | Actions without a Target (no projectId) |
+| 3 | Upcoming | Actions with future due dates |
+| 4 | Completed | Actions completed in the last 7 days |
+| 5 | Targets | Targets grouped by Realm, with progress bar (done/total) |
+
+> GTD and Quadrant tabs have been **removed**. Only these 5 tabs exist.
+
+**Completed-tab cutoff:** The Completed tab only renders actions whose `completedAt` is within the last 7 days. Older completed actions are **hidden from view** but remain in Firestore — nothing is auto-deleted. (Previous versions deleted them on page load, which caused cross-device data loss when one device cleaned up before another synced.)
+
+**TaskCard behavior:**
+- Left: priority-colored border (P1=red, P2=amber, P3=blue, P4=gray)
+- Completion toggle circle (colored by priority)
+- Title with strikethrough when completed
+- Badges: priority label (colored), recurring letter (D/W/M/Y)
+- Due date + time on same line (separator ·)
+- Target/Realm label (right side)
+- Three-dot menu: Edit Action, Duplicate Action, Delete Action
+- Long-press (600ms): enters bulk-selection mode
+- On complete recurring action: auto-creates next instance
+
+**TaskModal fields:**
+- Title (required, autofocus)
+- Realm selector + Target selector (2-col grid, Target filtered by Realm)
+- Priority (4 buttons: **Do Now** / **Important** / **Get Done** / **Default**, each colored)
+- Due Date + Time (single row, 2-col grid — no separate sections)
+- Recurring (None, Daily, Weekly, Monthly, Yearly)
+- Notes (textarea)
+- Today's Focus toggle (sun icon)
+
+> GTD Context picker and Quadrant picker have been **removed** from TaskModal.
+
+**ProjectModal fields:**
+- Target Name (required)
+- Realm selector
+- Auto-assigns color and emoji from realm config
+
+### 9.3 Visions (Goals)
+
+**File:** `app/(main)/goals/page.tsx`
+**Path:** `/goals`
+
+**Header:** "My Visions" + "Add Vision" button
+
+**Features:**
+- NICE Framework info box: Near-term, Input-based, Controllable, Energizing
+- Timeline filter: 1yr / 3yr / 5yr / All
+- Goal cards with:
+  - Title
+  - Category badge (colored by vision category)
+  - Progress slider (0-100%)
+  - Timeline badge
+  - Why / Metric / Crystal display
+  - Progress history list
+- Create/Edit modal with:
+  - Title, Description
+  - Category (6 vision categories)
+  - Why, Metric, Crystal (NICE framework)
+  - Timeline (1yr/3yr/5yr)
+  - Target date
+- Milestone management:
+  - Types: Checkpoint, Deliverable, Review
+  - Toggle done/pending
+
+### 9.4 Finance
+
+**File:** `app/(main)/finance/page.tsx`
+**Path:** `/finance`
+
+**Header:** "Finance" + month selector (prev/next)
+
+**KPI Cards (3-col):**
+- Total Income (green, sums "Received" status only)
+- Total Expenses (red, sums all expenses)
+- Net Cash Flow (green if positive, red if negative)
+- All amounts in AED
+
+**Sections (stacked):**
+
+1. **Income Tracker**
+   - Fields: source, amount, date, category (7 income categories), status (Received/Paid/Pending), notes
+   - Status badge coloring: Received=green, Pending=amber, Paid=blue
+   - Add/Edit/Delete modals
+
+2. **Expense Tracker**
+   - Fields: description, amount, date, category (10 expense categories), type (Mandatory/Optional), payment method (5 methods), notes
+   - Category spending calculation
+   - Add/Edit/Delete modals
+
+3. **Debt/Credit Tracker**
+   - Fields: name, totalAmount, remainingBalance, monthlyPayment, interestRate, dueDay, targetPayoffDate, status, notes
+   - Progress bar: (totalAmount - remainingBalance) / totalAmount
+   - Actions: Log Payment (reduces balance), Edit, Mark Paid Off, Delete
+   - Paid Off section: separated with strikethrough
+   - Payment modal: amount input, reduces remaining balance
+
+4. **Budget Planner**
+   - Fields: category, monthlyLimit, monthYear
+   - Progress bar: spending / limit
+   - Colors: green (<75%), amber (75-100%), red (>100%)
+   - Exceeded warning with overage amount
+   - Add/Edit/Delete modals
+
+**Income Categories (7):** Salary, Commission, Bonus, Business Income, Investment Returns, Side Income, Other
+
+**Expense Categories (10):** Housing (Rent, Utilities), Food (Groceries, Dining), Transport (Fuel, Taxi, Parking), Healthcare (Medical, Insurance), Education (Courses, Books), Entertainment (Movies, Hobbies), Shopping (Clothes, Electronics), Business Expenses, Savings & Investments, Other
+
+**Payment Methods (5):** Cash, Credit Card, Debit Card, Bank Transfer, Digital Wallet
+
+### 9.5 Wellness (Rhythms)
+
+**File:** `app/(main)/wellness/page.tsx`
+**Path:** `/wellness`
+
+**Header:** "My Rhythms" + "Add Rhythm" button
+
+**Rhythm Tracking Metrics** (4 KPI cards, visible when rhythms exist):
+- **Today's Completion:** doneCount / totalCount with teal progress bar (#1ABC9C)
+- **Avg Streak:** mean of all rhythm streaks (days)
+- **Best Streak:** highest `bestStreak` value across all rhythms (days)
+- **Pending:** count of rhythms not yet marked today (orange)
+
+**Rhythm Card Layout:**
+- Top: Rhythm title (bold, truncated; strikethrough when done)
+- Below title: Time in AM/PM (clock icon) + Category badge (colored pill)
+- Right side of card:
+  - **When pending:** Round Done button (green ✓, 40px) + Round Failed button (red ✗, 40px)
+  - **When done/failed:** clickable status badge ("Done" green / "Failed" red) — tap to reset to pending
+- Card fades to 50% opacity when status is done or failed
+
+**Card sorting:** Pending first, then by time, then alphabetically
+
+**Rhythm Popup (Modal) — View Mode:**
+- Opens without keyboard focus
+- Shows: title (heading), note text, 2x3 info grid:
+  - Time (AM/PM) | Category
+  - Frequency (capitalized) | Reminder (ON/OFF + time)
+  - Streak (X days + fire emoji if >3) | Best Streak (X days + trophy)
+- Action buttons row: Edit | Duplicate | Delete
+
+**Rhythm Popup — Edit Mode:**
+- Keyboard appears when user taps a field
+- Fields:
+  - Title (text input)
+  - Short Note (textarea, 2 rows)
+  - Category (dropdown, 20 categories)
+  - Time (time input, stored as HH:mm, displayed as AM/PM)
+  - Frequency (dropdown: Daily, Weekly, Monthly, Yearly)
+  - Reminder toggle (ON/OFF, reminder time = rhythm time, auto-synced)
+- Actions: Cancel | Save Changes (or Save Rhythm for new)
+
+**Delete confirmation:** "Are you sure?" modal with Cancel / Delete buttons
+
+**Duplicate:** Creates copy with "(Copy)" suffix, resets streaks to 0
+
+**Default Rhythms (seed):** 15 predefined rhythms:
+- Morning: Start day at 6am, Water, Affirmation, Goals, Exercise, Breathing, Meditation, Educational Video
+- Business: Follow-ups, LinkedIn, Meet customers
+- Evening: Prep tomorrow, Review, Plan, MIT
+
+### 9.6 Professional (CRM)
+
+**File:** `app/(main)/professional/page.tsx`
+**Path:** `/professional`
+
+**Two tabs:** Leads | Deals
+
+**Leads Tab:**
+- Status filter pills: All, New, Qualified, Appointment Booked
+- Lead cards: name, company, salary, status badge, bank, product
+- Create/Edit modal with all Lead fields
+- Delete with confirmation
+
+**Deals Tab:**
+- Status filter pills: All + 6 deal statuses
+- Deal cards: name, status badge, bank, product, application number
+- Create/Edit modal with all Deal fields
+- Delete with confirmation
+
+**UAE-specific constants:**
+- Banks (13): ADCB, ENBD, DIB, FAB, Mashreq Bank, CBD, RAKBANK, ADIB, Emirates Islamic Bank, Sharjah Islamic Bank, HSBC UAE, Citi Bank, Standard Chartered
+- Emirates (7): Abu Dhabi, Dubai, Sharjah, Ajman, Umm Al Quwain, Ras Al Khaimah, Fujairah
+- Lead Sources (5): LinkedIn, Cold Calling, Referrals, Follow-up, Other
+- Products (5): Credit Card, Personal Loan, Auto Loan, Account Opening, Other
+
+### 9.7 Relationships
+
+**File:** `app/(main)/relationships/page.tsx`
+**Path:** `/relationships`
+
+**Features:**
+- Type filter: All, Spouse, Child, Parent, Sibling, Friend, Colleague, Other
+- Connection cards: name, type emoji, relationship label, contact info
+- Important dates section: upcoming dates in next 30 days
+- Create/Edit modal: name, type, relationship, mobile, email, birthday, important date, date type, reminder, notes
+- Delete with confirmation
+
+**Connection Types (7):** Spouse, Child, Parent, Sibling, Friend, Colleague, Other
+
+### 9.8 Reviews
+
+**File:** `app/(main)/reviews/page.tsx`
+**Path:** `/reviews`
+
+**GPS Framework:** Goals, Progress, Strategy
+
+**Fields:**
+- Week start date (date picker)
+- Rating (1-10 scale)
+- Wins (required)
+- Challenges (optional)
+- Lessons (optional)
+- GPS reflection (optional)
+- Next week priorities (optional)
+
+**Display:** Chronological list of past reviews with rating, wins summary
+
+### 9.9 Journal
+
+**File:** `app/(main)/journal/page.tsx`
+**Path:** `/journal`
+
+**Fields:**
+- Date (YYYY-MM-DD picker)
+- Energy level (1-5 with emoji indicators)
+- Mood (10 options as pill buttons): Happy, Calm, Focused, Grateful, Energetic, Anxious, Tired, Sad, Frustrated, Neutral
+- Text entry (textarea)
+
+**Display:** Chronological list with date, energy, mood badge, text preview
+
+### 9.10 Documents
+
+**File:** `app/(main)/documents/page.tsx`
+**Path:** `/documents`
+
+**Features:**
+- Category filter: All + 8 categories
+- Search bar (filters by title)
+- Document cards: title, category badge, URL link (external), notes preview
+- Create/Edit modal: title, URL (validated: https:// or http://), category, notes
+- External link button opens URL in new tab
+- Delete with confirmation
+
+**Categories (8):** Legal, Financial, Medical, Travel, Educational, Insurance, Personal, Other
+
+### 9.11 AI Chat
+
+**File:** `app/(main)/chat/page.tsx`
+**Path:** `/chat`
+
+**Welcome Screen (no messages):**
+- RISE AI Assistant branding (gradient icon)
+- "Ask me anything about your actions, targets, finances, rhythms, or life data"
+- Mic hint: "Tap the mic button to use voice input"
+- 5 quick prompt buttons
+
+**Chat Interface:**
+- Messages persisted in Firestore (`chat-messages` collection) — real-time sync across all devices
+- Header: "RISE AI Chat" + Clear button (trash icon, deletes all messages from Firestore)
+- Message bubbles:
+  - User: orange background, right-aligned
+  - Assistant: surface-2 background, left-aligned, Bot icon
+  - Assistant messages include "Listen" TTS button
+- Loading: 3 bouncing dots
+- Error: retry button
+- Quick prompts (3) shown above input when messages exist
+
+**Input Bar:**
+- Mic button (left) — starts voice recording
+- Text input (center) — "Ask RISE AI anything..."
+- Send button (right) — orange, Send icon
+
+**Voice Recording Flow:**
+1. Tap mic -> browser requests microphone permission
+2. Recording bar appears: red pulse dot, duration timer (M:SS), Cancel (X), Stop button
+3. Tap Stop -> "Transcribing..." state with spinner
+4. Audio sent to `/api/transcribe` as FormData
+5. Receives `{ rawTranscript, cleanedTranscript }`
+6. cleanedTranscript auto-sent as chat message
+7. Cancel discards recording
+
+**Text-to-Speech:**
+- Each assistant message has a "Listen" button (Volume2 icon)
+- Uses browser `speechSynthesis` API
+- Strips markdown before speaking
+- Toggle: click again to stop ("Stop" with VolumeX icon)
+
+**Context sent to AI:**
+- Tasks (50 max): title, area, priority, dueDate, completed, isMyDay
+- Goals: title, area, progress, timeline, completed
+- Habits: name, streak, bestStreak
+- Transactions (30 max): type, amount, category, date
+- Leads: anonymized (ref, status, bank, product)
+- Deals: anonymized (ref, status, bank, product)
+- Connections: name, type only
+- Reviews (5 max): date, rating, wins
+
+**Markdown Rendering:**
+- Code blocks (``` delimited)
+- Bullet lists (- or * prefix)
+- Numbered lists (1. prefix)
+- Bold (**text**)
+- Inline code (`code`)
+
+### 9.12 Login
+
+**File:** `app/(auth)/login/page.tsx`
+**Path:** `/login`
+
+**Layout:**
+- Centered card on dark background with radial glow
+- RISE logo + "My Organized Hub for Everything"
+- "Sign in with Google" button
+- Auto-redirects to `/` if already authenticated
+
+---
+
+## 10. Reusable Components
+
+### 10.1 Button (`components/ui/Button.tsx`)
+
+**Props:** variant, size, disabled, className, children, onClick
+**Variants:** primary (rise gradient), secondary (surface-2), ghost (transparent), danger (red)
+**Sizes:** sm, md (default), lg
+
+### 10.2 Input, TextArea, Select (`components/ui/Input.tsx`)
+
+**Input:** label, type, placeholder, value, onChange, maxLength, autoFocus, className
+**TextArea:** label, placeholder, value, onChange, rows, className
+**Select:** label, value, onChange, options: { value, label }[], className
+
+All use: dark bg, border-border, focus:ring-rise/25, text-text
+
+### 10.3 Modal (`components/ui/Modal.tsx`)
+
+**Props:** open, onClose, title, size ('sm'|'md'|'lg'), children
+
+**Behavior:**
+- Body scroll locked when open (tracks open count for nested modals)
+- Mobile (<lg): bottom sheet with slide-up animation, handle bar, safe-area padding
+- Desktop (lg+): centered dialog with scale-in animation, max-width by size
+- Close: X button in header, backdrop click
+- Sizes: sm=400px, md=520px, lg=680px
+
+### 10.4 Badge (`components/ui/Badge.tsx`)
+
+**Props:** children, className, color (optional hex)
+When color provided: applies as inline backgroundColor and border styles
+
+### 10.5 EmptyState (`components/ui/EmptyState.tsx`)
+
+**Props:** icon (Lucide component), title, description, action (ReactNode)
+Centered layout with icon, text, and optional action content
+
+### 10.6 ToastContainer (`components/ui/ToastContainer.tsx`)
+
+**Position:** Mobile: bottom-24 center. Desktop: bottom-6 right-6.
+**Types:** success (green), error (red)
+**Auto-dismiss:** 3 seconds
+**Integration:** `toast(message, type)` from `lib/toast.ts`
+
+### 10.7 TaskCard (`components/tasks/TaskCard.tsx`)
+
+See section 9.2 for full specification.
+
+### 10.8 TaskModal (`components/tasks/TaskModal.tsx`)
+
+See section 9.2 for full specification.
+
+### 10.9 ProjectModal (`components/tasks/ProjectModal.tsx`)
+
+See section 9.2 for full specification.
+
+### 10.10 HabitCard (`components/wellness/HabitCard.tsx`)
+
+Status-aware rhythm card. Shows:
+- Name (strikethrough when done, muted when failed/done)
+- Description (1-line), time (AM/PM with clock icon), category badge (colored pill)
+- Current streak (🔥 Xd) + best streak (🏆 Xd)
+- **Status controls:**
+  - Pending → ✓ Done button (green, 36px circle) + ✗ Failed button (red, 36px circle)
+  - Done/Failed → clickable badge ("Done"/"Failed") — click resets to pending
+- **7-day activity tracker:** ✓ on done days, ✗ on failed days, empty circle for pending/future
+- Three-dot menu: Edit Rhythm, Duplicate, Delete
+- Status source: `statusLog[today]` (not just `completions`)
+- Card dims to 70% opacity when status is not pending
+
+### 10.11 PomodoroTimer (`components/wellness/PomodoroTimer.tsx`)
+
+**Modes:** Work, Short Break, Long Break (tab buttons)
+**Display:** SVG circular progress ring, time in center (MM:SS), session counter
+**Controls:** Reset, Play/Pause
+**Settings modal:** work/break durations, sessions before long break, auto-start toggles
+**Persistence:** Settings in localStorage, completed sessions in Firestore
+**Integration:** Part of the Wellness page
+
+### 10.12 GlobalFab (`components/layout/GlobalFab.tsx`)
+
+See section 5.4 for full specification.
+
+### 10.13 PWAInstallPrompt (`components/providers/PWAInstallPrompt.tsx`)
+
+Listens for `beforeinstallprompt` event. Shows install card: Download icon, "Install RISE" text, Not now / Install buttons. Dismissible.
+
+---
+
+## 11. API Routes
+
+### 11.1 POST `/api/chat`
+
+**Purpose:** AI chat with Gemini
+**Auth:** Bearer token (Firebase ID token)
+**Rate limit:** 30 requests/minute/user
+**Request:** `{ message: string, context: string, history: ChatMessage[] }`
+**Response:** `{ reply: string }` or `{ error: string }`
+
+**System prompt includes:**
+- RISE terminology explanation
+- User's full data context (sanitized)
+- Instructions: concise, actionable, AED currency, UAE context
+
+**Model:** Gemini 2.5 Flash via @google/genai
+
+### 11.2 POST `/api/transcribe`
+
+**Purpose:** Speech-to-text with transcript cleanup
+**Auth:** Bearer token (Firebase ID token)
+**Rate limit:** 30 requests/minute/user (shared with chat)
+**Request:** FormData with `audio` file field
+**Max file size:** 10 MB
+**Supported formats:** webm, wav, mp4, m4a
+**Response:** `{ rawTranscript: string, cleanedTranscript: string }` or `{ error: string }`
+
+**Process:**
+1. Raw transcription: Gemini multimodal with audio (preserves all fillers/stutters)
+2. Cleanup: second Gemini call removes fillers (um, uh, like, you know), stutters, repetitions, false starts; fixes grammar; keeps meaning
+
+### 11.3 POST `/api/ai-tip`
+
+**Purpose:** Daily motivational tip
+**Auth:** Bearer token (Firebase ID token)
+**Rate limit:** 10 requests/day/user
+**Request:** `{ context: string }`
+**Response:** `{ tip: string }` or `{ error: string }`
+**Fallback:** "Start your day with your most important action. Momentum builds success."
+
+---
+
+## 12. Hooks
+
+### 12.1 useVoiceRecorder (`hooks/useVoiceRecorder.ts`)
+
+**Purpose:** Capture microphone audio via MediaRecorder API
+
+**Returns:**
+```typescript
+{
+  state: {
+    isRecording: boolean
+    isPaused: boolean
+    duration: number        // seconds elapsed
+    error: string | null
+  }
+  startRecording(): Promise<void>
+  stopRecording(): Promise<Blob | null>
+  cancelRecording(): void
+}
+```
+
+**Audio config:** echoCancellation, noiseSuppression, sampleRate 16000
+**Format preference:** webm;codecs=opus > webm > mp4
+**Data collection:** 250ms chunks
+**Duration timer:** 1-second interval updates
+**Errors:** Permission denied, device access failure — descriptive messages
+
+### 12.2 useCollection (`lib/firestore.ts`)
+
+**Purpose:** Real-time Firestore collection subscription
+
+**Signature:**
+```typescript
+useCollection<T>(
+  collectionName: string,
+  userId: string | undefined,
+  orderField?: string,        // default 'createdAt'
+  limitCount?: number,
+  serverOrder?: boolean,      // default false (client-side sort)
+  startAfterValue?: any,
+  orderDirection?: 'asc' | 'desc'  // default 'desc'
+): { data: T[], loading: boolean, error: string | null }
+```
+
+**Default mode (serverOrder=false):** queries by userId only (no composite indexes), sorts client-side
+**Server mode (serverOrder=true):** uses Firestore orderBy (requires composite index)
+
+### 12.3 useAuth (`components/providers/AuthProvider.tsx`)
+
+**Returns:** `{ user: User | null, loading: boolean, signOut: () => void, signInWithGoogle: () => Promise<void> }`
+
+---
+
+## 13. Library & Utilities
+
+### 13.1 Firestore Helpers (`lib/firestore.ts`)
+
+- `addDocument<T>(collection, data, userId)` — creates with validation, auto-injects userId + createdAt
+- `updateDocument(collection, docId, data)` — partial update with validation
+- `deleteDocument(collection, docId)` — deletes document
+- `clean(obj)` — strips undefined values before Firestore write
+
+### 13.2 Validation (`lib/validations.ts`)
+
+- Zod schemas for every collection (create + partial update variants)
+- `validateDocument(collectionName, data, isUpdate?)` — validates against schema, returns `{ valid, data | error }`
+- All writes go through validation before Firestore
+
+### 13.3 Utils (`lib/utils.ts`)
+
+- `cn(...classes)` — Tailwind class merge (clsx + tailwind-merge)
+- `formatDate(dateStr)` — "Today", "Tomorrow", or "MMM d, yyyy"
+- `isOverdue(dateStr)` — true if date is in the past
+- `generateId()` — timestamp + random string
+- `getGreeting()` — time-based greeting
+- `formatTime(timeStr)` — "HH:mm" (24h) -> "H:MM AM/PM"
+- `formatCurrency(amount)` — "AED X,XXX.XX"
+
+### 13.4 Sanitizer (`lib/sanitizer.ts`)
+
+PII patterns: email, phone (UAE/international), credit card, account numbers
+Recursive object sanitization before sending context to Gemini
+
+### 13.5 Rate Limiter (`lib/rate-limiter.ts`)
+
+Sliding window algorithm, in-memory.
+- `chatRateLimiter`: 30 req / 60s / user
+- `tipRateLimiter`: 10 req / 86400s / user
+- `check(userId)` -> `{ allowed, remaining, resetAt }`
+- Auto-cleanup of expired entries
+
+### 13.6 Toast (`lib/toast.ts`)
+
+- `toast(message, type)` — fires notification
+- `_registerToastHandler(fn)` — used by ToastContainer
+
+---
+
+## 14. Styling & Theme
+
+### 14.1 Color System
+
+**Brand:**
+- `--color-rise`: #FF9933 (primary orange)
+- `--color-rise-light`: #FF993320 (transparent orange)
+- `--color-rise-dark`: #E8852A (dark orange)
+- `--color-rise-glow`: #FF993315 (subtle glow)
+
+**Realm Colors:**
+- Professional: #1E4AFF (blue)
+- Personal: #800080 (purple)
+- Financial: #00A86B (green)
+- Relationship: #FF4F6D (pink)
+- Wellness: #1ABC9C (teal)
+- Vision: #FFD700 (gold)
+
+**Surfaces (glassmorphism dark theme):**
+- `--color-surface`: #09090F (body/page background)
+- `--color-surface-2`: rgba(255,255,255,0.04)
+- `--color-surface-3`: rgba(255,255,255,0.06)
+- `--color-surface-4`: rgba(255,255,255,0.08)
+
+**Background pattern:** Body has a dot-grid overlay — radial-gradient dots at 24px spacing, ~7% white opacity — creates subtle texture behind all content.
+
+**Text:**
+- `--color-text`: #EDEEF2 (primary)
+- `--color-text-2`: #8E95A9 (secondary)
+- `--color-text-3`: #505672 (tertiary)
+
+**Border:** #ffffff0a (white 4% opacity), hover: #ffffff10
+
+### 14.2 Glassmorphism Design System (Hume-style)
+
+**Background:** Near-black `#080810` base with subtle dot-grid pattern overlay (radial-gradient dots at ~24px spacing, 6–8% white opacity).
+
+**Glass Utility Classes (defined in `globals.css`):**
+- `.glass-card`: `background: rgba(255,255,255,0.04)`, `backdrop-filter: blur(12px)`, `border: 1px solid rgba(255,255,255,0.08)`, `border-radius: 16px`, `box-shadow: 0 4px 24px rgba(0,0,0,0.4)`
+- `.glass-nav`: `background: rgba(10,10,20,0.7)`, `backdrop-filter: blur(20px)` — used by sidebar and bottom nav
+- `.glass-modal`: `background: rgba(18,18,30,0.85)`, `backdrop-filter: blur(24px)`, `border: 1px solid rgba(255,255,255,0.1)`
+
+**Applied to:**
+- All cards, panels, stat boxes, and list items use `.glass-card`
+- Sidebar + bottom nav use `.glass-nav` with thin border accents
+- All modals use `.glass-modal`
+- Primary buttons: `#FF9933` solid with glow `box-shadow: 0 0 20px rgba(255,153,51,0.3)`
+- Inputs: `background: rgba(255,255,255,0.05)`, focus border `rgba(255,153,51,0.5)`
+- Scrollbars: 2px width, transparent track, `rgba(255,255,255,0.1)` thumb
+
+**Active nav indicators:** Orange `#FF9933` text/icon, thin left border on desktop, top bar accent on mobile — no solid background pill.
+
+### 14.3 Typography
+
+**Font:** Figtree (Google Fonts) — 400, 500, 600, 700 weights
+**Headings:** h1=1.5rem, h2=1.25rem, h3=1.125rem, h4=1rem — tight letter-spacing, semi-bold
+
+### 14.3 Animations
+
+- `animate-fade-up`: translateY(12px)->0, opacity 0->1, 0.35s cubic-bezier
+- `animate-slide-up`: translateY(100%)->0 for bottom sheets
+- `animate-scale-in`: scale(0.95)->1 for modals
+- Stagger delays: `.delay-1` through `.delay-4` (50ms increments)
+- `.animate-pulse`, `.animate-bounce` (Tailwind built-in)
+
+### 14.4 Utilities
+
+**Glassmorphism classes (defined in `globals.css`):**
+- `.glass-card` — bg rgba(255,255,255,0.04), blur(10px), border rgba(255,255,255,0.08), radius 10px, shadow 0 4px 24px rgba(0,0,0,0.55) + inset top highlight. Used on all cards, panels, stat boxes, list items.
+- `.glass-nav` — bg rgba(10,10,20,0.7), blur(20px). Used on sidebar and bottom tab bar.
+- `.glass-modal` — bg rgba(12,12,20,0.92), blur(22px), border rgba(255,255,255,0.08). Used on modals and dropdown menus.
+- `.glass-input` — bg rgba(255,255,255,0.05), border rgba(255,255,255,0.08), orange focus ring. Used on all form inputs.
+- `.glass-badge` — bg rgba(255,255,255,0.08), border rgba(255,255,255,0.1). Used on neutral badges.
+- `.section-label` — 10px uppercase, letter-spacing 0.12em, white/35% opacity. Used for KPI card labels.
+- `.btn-primary-glow` — box-shadow: 0 0 20px rgba(255,153,51,0.3). Used on primary action buttons.
+- `.progress-track` / `.progress-fill` — 3px rounded bar, orange→dark-orange gradient fill.
+- `.glow-card` — top gradient highlight via `::before` pseudo-element.
+- `.shadow-sheet` — 0 -8px 40px black/50 (bottom sheet shadow)
+- Safe area padding: `pb-safe`, `pt-safe`, `pl-safe`, `pr-safe`
+- Thin scrollbar: 2px width, transparent track
+- `.no-scrollbar` — hides scrollbar completely
+- Touch targets: 44px minimum on mobile
+- GPU acceleration: `transform: translateZ(0)`
+- `@media (prefers-reduced-motion)`: disables all animations
+
+### 14.5 Dark Mode
+
+Always-on dark mode. `html` has `class="dark"`.
+All form controls forced to dark: `color-scheme: dark`, autofill backgrounds overridden.
+
+---
+
+## 15. Security & Privacy
+
+### 15.1 Firestore Rules
+
+```
+All reads/writes require:
+  - request.auth != null
+  - resource.data.userId == request.auth.uid (for reads/updates)
+  - request.resource.data.userId == request.auth.uid (for creates)
+```
+
+Complete per-user data isolation. No cross-user access.
+
+### 15.2 Storage Rules
+
+```
+/users/{userId}/{allPaths=**}
+  - read, write: request.auth.uid == userId
+```
+
+Files scoped to user directories only.
+
+### 15.3 API Security
+
+- All API routes verify Firebase ID token
+- Rate limiting per user (sliding window)
+- PII sanitization before sending data to Gemini
+- Generic error messages to client (no API internals leaked)
+- No CORS issues (same-origin API routes)
+
+### 15.4 Client Security
+
+- No secrets in client code (GEMINI_API_KEY is server-only)
+- `NEXT_PUBLIC_*` prefix only for Firebase config (public by design)
+- Auth state managed via Firebase onAuthStateChanged
+- ID token refreshed automatically by Firebase SDK
+
+---
+
+## 16. PWA & Service Worker
+
+### 16.1 Manifest
+
+- Name: "RISE"
+- Theme color: #1E4AFF
+- Icons: icon-192.png, icon-512.png
+- Apple web app: capable, black-translucent status bar
+
+### 16.2 Service Worker (`app/sw.ts`)
+
+- Serwist-based service worker
+- Precaches static assets from build manifest
+- `skipWaiting` + `clientsClaim` for immediate activation
+- Navigation preload enabled
+- **Custom runtimeCaching order** (critical for cross-device sync):
+  1. RSC prefetch requests → `NetworkFirst` (cacheName: `pages-rsc-prefetch`)
+  2. RSC requests → `NetworkFirst` (cacheName: `pages-rsc`)
+  3. Page navigations → `NetworkFirst` (cacheName: `pages`)
+  4. `/api/*` routes → `NetworkOnly`
+  5. `...defaultCache` (handles content-hashed JS chunks, images, fonts)
+- The custom rules are registered **before** `defaultCache`, overriding its default `StaleWhileRevalidate` for pages. This guarantees that page HTML and API responses are never served from a stale cache, so mobile and PC always render the same shell after a deployment.
+
+### 16.3 Install Prompt
+
+- Listens for `beforeinstallprompt` event
+- Shows fixed-position card at bottom
+- "Install RISE" with Download icon
+- Dismissible ("Not now" button)
+
+---
+
+## 17. Configuration Constants
+
+### 17.1 Realms
+
+| ID | Emoji | Color | Description |
+|----|-------|-------|-------------|
+| Professional | 💼 | #1E4AFF | Focus, clarity, execution |
+| Personal | 🎯 | #800080 | Identity, creativity, self-expression |
+| Financial | 💰 | #00A86B | Growth, stability, wealth |
+| Relationship | 💖 | #FF4F6D | Connection, empathy, warmth |
+| Wellness | 🧘 | #1ABC9C | Balance, health, vitality |
+| Vision | ✨ | #FFD700 | Purpose, long-term direction, ambition |
+
+### 17.2 Priority
+
+| ID | UI Label | Color |
+|----|----------|-------|
+| P1 | **Do Now** | #EF4444 (red) |
+| P2 | **Important** | #F59E0B (amber) |
+| P3 | **Get Done** | #3B82F6 (blue) |
+| P4 | **Default** | #6B7280 (gray) |
+
+### 17.3 GTD Contexts — REMOVED FROM UI
+
+GTD Context and Eisenhower Quadrant fields still exist on the `Task` TypeScript interface for backward compatibility, but are **not shown anywhere in the UI**:
+- The GTD tab has been removed from the Actions page
+- The Quadrant tab has been removed from the Actions page
+- The GTD Context picker has been removed from TaskModal
+- The Quadrant picker has been removed from TaskModal
+
+`GTD_CONFIG` and `QUADRANT_CONFIG` constants remain in `lib/types.ts` and must not be deleted (backward compat).
+
+### 17.5 UAE Banks (13)
+
+ADCB, ENBD, DIB, FAB, Mashreq Bank, CBD, RAKBANK, ADIB, Emirates Islamic Bank, Sharjah Islamic Bank, HSBC UAE, Citi Bank, Standard Chartered
+
+### 17.6 UAE Emirates (7)
+
+Abu Dhabi, Dubai, Sharjah, Ajman, Umm Al Quwain, Ras Al Khaimah, Fujairah
+
+### 17.7 Financial Categories
+
+**Income (7):** Salary, Commission, Bonus, Business Income, Investment Returns, Side Income, Other
+
+**Expense (10):** Housing (Rent, Utilities), Food (Groceries, Dining), Transport (Fuel, Taxi, Parking), Healthcare (Medical, Insurance), Education (Courses, Books), Entertainment (Movies, Hobbies), Shopping (Clothes, Electronics), Business Expenses, Savings & Investments, Other
+
+**Payment Methods (5):** Cash, Credit Card, Debit Card, Bank Transfer, Digital Wallet
+
+### 17.8 Document Categories (8)
+
+Legal, Financial, Medical, Travel, Educational, Insurance, Personal, Other
+
+### 17.9 Rhythm Categories (20)
+
+Affirmation, Meditation, Dedication, Discipline, Fitness, Learning, Spiritual, Personal Growth, Health, Work, Productivity, Morning Routine, Evening Routine, Finance, Social, Creativity, Mindfulness, Nutrition, Self-Care, Other
+
+### 17.10 Vision Categories (6)
+
+Personal (#800080), Professional (#1E4AFF), Financial (#00A86B), Relationship (#FF4F6D), Wellness (#1ABC9C), Vision (#FFD700)
+
+### 17.11 Connection Types (7)
+
+Spouse, Child, Parent, Sibling, Friend, Colleague, Other
+
+### 17.12 Preset Colors (for Targets)
+
+18 colors: #b8255f, #db4035, #ff9933, #fad000, #7ecc49, #299438, #6accbc, #158fad, #14aaf5, #96c3eb, #4073ff, #884dff, #af38eb, #eb96eb, #e05194, #ff8d85, #808080, #b8b8b8
+
+### 17.13 Rhythm Preset Colors (for Habits)
+
+10 colors: #FF9933, #DC4C3E, #4073FF, #2D7C3E, #7B4B9E, #E8849B, #4A9B8E, #F49C18, #10B981, #EF4444
+
+---
+
+## 18. Environment Variables
+
+**File:** `.env.local` (copy from `.env.example`)
+
+| Variable | Scope | Purpose |
+|----------|-------|---------|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Client + Server | Firebase API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Client + Server | Firebase auth domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Client + Server | Firebase project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Client + Server | Firebase storage bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Client + Server | Firebase messaging sender |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Client + Server | Firebase app ID |
+| `GEMINI_API_KEY` | Server only | Google Gemini API key |
+| `NEXT_PUBLIC_APP_URL` | Client + Server | App base URL (default: http://localhost:3000) |
+
+**Notes:**
+- `NEXT_PUBLIC_*` variables are exposed to the browser — Firebase config is public by design
+- `GEMINI_API_KEY` is server-only — never sent to client
+- Missing Firebase vars: app logs warning, Firestore operations fail gracefully
+- Missing Gemini key: AI endpoints return 500 with "No API key configured"
