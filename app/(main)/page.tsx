@@ -1,71 +1,25 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ChevronDown, ChevronUp, RefreshCw, MessageSquare, CheckCircle2,
-  Circle, Star, Flame, ArrowRight,
+  ChevronDown, ChevronUp, RefreshCw, MessageSquare,
+  Circle, Flame, ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
 import { updateDocById } from '@/lib/firestore';
 import { COLLECTIONS, AFFIRMATIONS } from '@/lib/constants';
 import {
-  getTimeGreeting, formatDayDateTime, formatAED, getMonthYear,
+  getTimeGreeting, formatDayDateTime,
   todayISO, randomItem, cn,
 } from '@/lib/utils';
-import type { Task, Habit, Transaction, Project } from '@/lib/types';
-import { SkeletonStats, SkeletonCard, SkeletonListItem } from '@/components/ui/SkeletonCard';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import type { Task, Habit } from '@/lib/types';
+import { SkeletonCard, SkeletonListItem } from '@/components/ui/SkeletonCard';
 import { Badge } from '@/components/ui/Badge';
 import { toast } from '@/lib/toast';
 import { getIdToken } from '@/lib/verify-auth';
 import { LS_KEYS } from '@/lib/constants';
-
-// ─── QUICK STATS ─────────────────────────────────────────────────────────────
-function QuickStats({
-  tasks, habits, transactions, projects,
-}: {
-  tasks: Task[]; habits: Habit[]; transactions: Transaction[]; projects: Project[];
-}) {
-  const today = todayISO();
-  const thisMonth = getMonthYear();
-
-  const doneToday = tasks.filter((t) => t.isCompleted && t.completedAt?.startsWith(today)).length;
-  const activeTargets = projects.filter((p) => !p.isFavorite).length;
-  const avgStreak = habits.length
-    ? Math.round(habits.reduce((sum, h) => sum + h.streak, 0) / habits.length)
-    : 0;
-  const monthlyIncome = transactions
-    .filter((t) => t.type === 'Income' && t.date.startsWith(thisMonth))
-    .reduce((s, t) => s + t.amount, 0);
-  const monthlyExpenses = transactions
-    .filter((t) => t.type === 'Expense' && t.date.startsWith(thisMonth))
-    .reduce((s, t) => s + t.amount, 0);
-  const surplus = monthlyIncome - monthlyExpenses;
-
-  const stats = [
-    { label: 'Done today', value: doneToday, color: '#1ABC9C' },
-    { label: 'Active Targets', value: activeTargets, color: '#1E4AFF' },
-    { label: 'Avg Streak', value: `${avgStreak}d`, color: '#FF6B35' },
-    {
-      label: surplus >= 0 ? 'Surplus' : 'Deficit',
-      value: formatAED(Math.abs(surplus)),
-      color: surplus >= 0 ? '#1ABC9C' : '#FF4F6D',
-    },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      {stats.map((s) => (
-        <div key={s.label} className="bg-[#141414] rounded-card p-4 border border-[#2A2A2A]">
-          <p className="text-xs text-[#8A8A8A]">{s.label}</p>
-          <p className="text-xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ─── WINNERS MINDSET ─────────────────────────────────────────────────────────
 function WinnersMindset() {
@@ -304,34 +258,12 @@ export default function DashboardPage() {
     collectionName: COLLECTIONS.HABITS,
     enabled: !!user,
   });
-  const { data: transactions, loading: txLoading } = useCollection<Transaction>({
-    userId: user?.uid ?? '',
-    collectionName: COLLECTIONS.TRANSACTIONS,
-    enabled: !!user,
-  });
-  const { data: projects, loading: projLoading } = useCollection<Project>({
-    userId: user?.uid ?? '',
-    collectionName: COLLECTIONS.PROJECTS,
-    enabled: !!user,
-  });
-
-  const statsLoading = tasksLoading || habitsLoading || txLoading || projLoading;
 
   // Clock tick
   useEffect(() => {
     const interval = setInterval(() => setDateTime(formatDayDateTime()), 60_000);
     return () => clearInterval(interval);
   }, []);
-
-  // Check onboarding
-  useEffect(() => {
-    if (!user) return;
-    import('@/lib/firestore').then(({ getUserMeta }) => {
-      getUserMeta(user.uid).then((meta) => {
-        if (!meta?.onboardingComplete) router.replace('/onboarding');
-      });
-    });
-  }, [user, router]);
 
   const firstName = user?.displayName?.split(' ')[0] ?? '';
 
@@ -342,16 +274,6 @@ export default function DashboardPage() {
         <h1 className="text-xl font-bold text-[#F0F0F0]">{getTimeGreeting(firstName)}</h1>
         <p className="text-xs text-[#8A8A8A] mt-0.5">{dateTime}</p>
       </div>
-
-      {/* Quick Stats */}
-      {statsLoading ? <SkeletonStats /> : (
-        <QuickStats
-          tasks={tasks}
-          habits={habits}
-          transactions={transactions}
-          projects={projects}
-        />
-      )}
 
       {/* Winner's Mindset */}
       <WinnersMindset />

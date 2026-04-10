@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { getUserMeta } from '@/lib/firestore';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export default function LoginPage() {
@@ -16,15 +15,7 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const meta = await getUserMeta(user.uid);
-      if (!meta?.onboardingComplete) {
-        router.replace('/onboarding');
-      } else {
-        router.replace('/');
-      }
-    })();
+    if (user) router.replace('/');
   }, [user, router]);
 
   const handleSignIn = async () => {
