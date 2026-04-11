@@ -82,8 +82,8 @@ Statuses: **Complete** (usable end-to-end), **Partial** (works but missing plan 
 
 | Area | Plan § | Status | Notes |
 |------|--------|--------|--------|
-| Auth / session | §6 | **Complete** | `AuthProvider`, `browserLocalPersistence`, `(main)/layout.tsx` guard |
-| Login | §9.12 | **Complete** | Google sign-in; authed users → `/` — **no** `onboardingComplete` gate |
+| Auth / session | §6 | **Complete** | `AuthProvider`; `initializeAuth` + `browserLocalPersistence` (client); `(main)/layout.tsx` guard; `FullPageLoader` = centered pulsing RISE until auth resolves |
+| Login | §9.12 | **Complete** | Google sign-in; login UI only when no user (no flash if session exists); authed users → `/` — **no** `onboardingComplete` gate; sign-out only from explicit actions in layout |
 | Dashboard | §9.1 | **Partial** | Missing plan’s quick stats, Today’s Focus, Be Consistent expanded list, target progress |
 | Actions | §9.2 | **Partial** | Five tabs, modals, bulk select, recurring behavior in code — verify parity with plan in a future pass |
 | Visions | §9.3 | **Partial** | CRUD + filters; no milestone management UI |
@@ -164,6 +164,7 @@ There is **no** `components/tasks/` directory: task UI lives in `app/(main)/task
 - **Collection names** are **frozen** — see `COLLECTIONS` in `lib/constants.ts` and the plan §8. Never rename collections in Firestore or code without a migration plan.
 - **Full field-level schemas** remain in `# RISE — System Specification.txt` §7 and `lib/types.ts`. This file does not duplicate them to avoid drift.
 - **Firestore init:** `memoryLocalCache()` in `lib/firebase.ts` — aligns with plan narrative on avoiding IndexedDB cache divergence.
+- **Auth persistence:** Client `initializeAuth` with `browserLocalPersistence` in `lib/firebase.ts` (session survives closing the browser; cleared only on explicit sign-out). Scoped to the origin; another device still requires signing in there.
 - **User metadata:** `users` collection / `UserMeta` for flags like `onboardingComplete` — see `lib/firestore.ts`.
 
 ---

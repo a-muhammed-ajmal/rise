@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { LoadingSpinner, FullPageLoader } from '@/components/ui/LoadingSpinner';
 
 export default function LoginPage() {
   const { user, signInWithGoogle } = useAuth();
@@ -13,10 +13,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) router.replace('/');
   }, [user, router]);
+
+  if (user) {
+    return <FullPageLoader />;
+  }
 
   const handleSignIn = async () => {
     setLoading(true);

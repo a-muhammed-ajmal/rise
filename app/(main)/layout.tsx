@@ -23,7 +23,7 @@ export default function MainLayout({
   }, [user, loading, router]);
 
   if (loading) return <FullPageLoader />;
-  if (!user) return null;
+  if (!user) return <FullPageLoader />;
 
   return <AppLayout>{children}</AppLayout>;
 }

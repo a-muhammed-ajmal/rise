@@ -1,11 +1,11 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getAuth,
+  initializeAuth,
   GoogleAuthProvider,
   signInWithPopup,
   signOut as firebaseSignOut,
   browserLocalPersistence,
-  setPersistence,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -37,14 +37,29 @@ try {
   db = getFirestore(app);
 }
 
-export const auth = getAuth(app);
+function createAuth() {
+  if (typeof window === 'undefined') {
+    return getAuth(app);
+  }
+  try {
+    return initializeAuth(app, {
+      persistence: browserLocalPersistence,
+    });
+  } catch (e: unknown) {
+    const code =
+      e && typeof e === 'object' && 'code' in e
+        ? String((e as { code: unknown }).code)
+        : '';
+    if (code === 'auth/already-initialized') {
+      return getAuth(app);
+    }
+    throw e;
+  }
+}
+
+export const auth = createAuth();
 export const storage = getStorage(app);
 export { db };
-
-// Explicitly persist session across browser restarts (default in web, explicit here per spec)
-setPersistence(auth, browserLocalPersistence).catch(() => {
-  // Non-fatal — browser may not support local persistence
-});
 
 // ─── GOOGLE AUTH ─────────────────────────────────────────────────────────────
 const googleProvider = new GoogleAuthProvider();

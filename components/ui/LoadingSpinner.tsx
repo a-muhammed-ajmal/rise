@@ -23,13 +23,18 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
 
 export function FullPageLoader() {
   return (
-    <div className="fixed inset-0 bg-[#0A0A0A] flex items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-4">
-        <span className="text-3xl font-bold text-[#FF6B35] animate-pulse tracking-widest">
-          RISE
-        </span>
-        <LoadingSpinner size="md" className="text-[#FF6B35]" />
-      </div>
+    <div
+      className="fixed inset-0 bg-[#0A0A0A] flex items-center justify-center z-50"
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        className="text-5xl font-bold text-[#FF6B35] tracking-widest animate-pulse-glow"
+        aria-hidden
+      >
+        RISE
+      </span>
+      <span className="sr-only">Loading</span>
     </div>
   );
 }
