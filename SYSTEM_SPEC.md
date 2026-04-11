@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-11 (TASKS 5-8: TaskCard right side now shows both Target name and Realm label — previously showed one or the other; handleDeleteProject fixed to set targetId/projectId to null (not undefined which was stripped by stripUndefined, leaving fields unchanged); TASK 6 TaskModal and TASK 8 Targets tab verified complete with no additional changes needed; Actions remains Complete)
+**Last updated:** 2026-04-11 (VISIONS PAGE: Full rebuild of app/(main)/goals/page.tsx — NICE Framework info box, timeline filter pills, vision cards with progress slider + debounced Firestore write + progress history, collapsible details, Milestones modal with Milestones/Steps tabs, milestone completion → goal progress recalculation, create/edit Vision modal with timeline pills, completed Visions section, all 11 spec sections implemented; progress-track and progress-fill CSS classes added to globals.css)
 
 ---
 
@@ -65,7 +65,7 @@ These are notable differences between `# RISE — System Specification.txt` and 
 | §4 Project structure | `components/tasks/TaskCard.tsx`, `app/sw.ts` Serwist | `TaskCard` extracted to `components/tasks/TaskCard.tsx` (TASK 3); `app/(main)/tasks/page.tsx` still has a local duplicate — future refactor only; **no** `app/sw.ts` |
 | §5.4 Global FAB | Most quick actions “disabled/coming soon” | **Action** opens new Task flow via `/tasks?create=true` (Task modal on Actions page); **other** FAB slots show “Coming soon” and are disabled |
 | §9.1 Dashboard | Quick stats, Today’s Focus, Be Consistent list, Get Things Done, Target Progress | **TASK 3 complete**: dynamic greeting (date-fns, surname), Today’s Focus (top 3 isMyDay tasks), Be Consistent (pending habits + Done/Failed buttons + streak recalc + show-more), Get Things Done (top 5 today/isMyDay tasks); **no** stats grid, **no** goal progress; Winner’s Mindset removed from dashboard — **pending** move to Wellness page |
-| §9.3 Visions | NICE box, milestones, rich cards | Vision **CRUD**, filters, modal with NICE fields, cards with progress — **no** milestone UI, **no** separate NICE info box |
+| §9.3 Visions | NICE box, milestones, rich cards | Full implementation: NICE info box (collapsible), timeline filter pills, rich vision cards (progress bar, slider, details, history), Milestones + Steps modal, completed Visions section — all per spec |
 | §9.4 Finance | Rich income/expense/debt/budget per spec | **Transactions / Budgets / Debts** tabs with CRUD; categories from `lib/constants.ts` — **not** identical lists to plan §17.7 in all labels |
 | §9.11 AI Chat | Rich context blob, markdown rendering, TTS, voice pipeline | Firestore history, `/api/chat` with **optional** `context` (client **does not** send full sanitized app context today); **no** TTS buttons; **no** markdown renderer in UI; voice uses `/api/transcribe` which is a **stub** |
 | §11 API | POST `/api/ai-tip` with body, daily rate limit | **`GET`** `/api/ai-tip` — no separate daily tip rate limiter in code |
@@ -86,7 +86,7 @@ Statuses: **Complete** (usable end-to-end), **Partial** (works but missing plan 
 | Login | §9.12 | **Complete** | Google sign-in; login UI only when no user (no flash if session exists); authed users → `/` — **no** `onboardingComplete` gate; sign-out only from explicit actions in layout |
 | Dashboard | §9.1 | **Partial** | TASK 3 done: greeting, Today’s Focus, Be Consistent, Get Things Done. Missing: stats grid, goal progress, Winner’s Mindset (moved to Wellness — pending) |
 | Actions | §9.2 | **Complete** | Five tabs (Today/Inbox/Upcoming/Completed/Targets), TaskModal + ProjectModal, bulk select, recurring auto-create next instance; overdue red label; 7-day completed cutoff (no auto-delete); Targets grouped by realm with ProgressBar — full §9.2 parity verified |
-| Visions | §9.3 | **Partial** | CRUD + filters; no milestone management UI |
+| Visions | §9.3 | **Complete** | NICE info box, timeline filters, vision cards with progress slider + debounced Firestore writes + progress history, collapsible details, milestones modal (Milestones + Steps tabs, milestone completion recalculates goal progress), create/edit modal with NICE fields + timeline pills, completed Visions section |
 | Finance | §9.4 | **Partial** | Transactions, budgets, debts; field/category sets per `constants.ts` |
 | Wellness | §9.5 | **Complete** | Rhythms KPIs, cards, popup, Pomodoro hook — closest to plan |
 | Professional CRM | §9.6 | **Partial** | Leads/Deals tabs, modals; Deal modal fields subset vs full plan |
