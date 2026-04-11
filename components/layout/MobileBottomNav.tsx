@@ -2,76 +2,56 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CheckSquare, Plus, Activity, MoreHorizontal } from 'lucide-react';
+import { Home, CheckSquare, Eye, Wallet, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MobileBottomNavProps {
-  onFabClick: () => void;
   onMoreClick: () => void;
 }
 
-export function MobileBottomNav({ onFabClick, onMoreClick }: MobileBottomNavProps) {
+export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
   const pathname = usePathname();
 
-  const isActive = (href: string) => pathname === href;
+  const tabs: { href: string; label: string; icon: typeof Home }[] = [
+    { href: '/', label: 'Home', icon: Home },
+    { href: '/tasks', label: 'Actions', icon: CheckSquare },
+    { href: '/goals', label: 'Visions', icon: Eye },
+    { href: '/finance', label: 'Finance', icon: Wallet },
+  ];
 
   return (
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0A0A0A] border-t border-[#2A2A2A] pb-safe">
-      <div className="h-16 flex items-center">
-        {/* Home */}
-        <Link
-          href="/"
-          className={cn(
-            'flex-1 h-full flex flex-col items-center justify-center gap-0.5 text-xs',
-            isActive('/') ? 'text-[#FF6B35]' : 'text-[#8A8A8A]'
-          )}
-        >
-          <Home size={22} />
-          <span>Home</span>
-        </Link>
+      <div className="h-12 flex items-stretch">
+        {tabs.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                'relative flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] min-w-0 px-0.5',
+                active ? 'text-[#FF6B35]' : 'text-[#8A8A8A]'
+              )}
+            >
+              {active && (
+                <span
+                  className="absolute top-0 left-2 right-2 h-0.5 rounded-full bg-[#FF6B35]"
+                  aria-hidden
+                />
+              )}
+              <Icon size={20} className={cn('shrink-0', active && 'text-[#FF6B35]')} />
+              <span className="truncate max-w-full">{label}</span>
+            </Link>
+          );
+        })}
 
-        {/* Actions */}
-        <Link
-          href="/tasks"
-          className={cn(
-            'flex-1 h-full flex flex-col items-center justify-center gap-0.5 text-xs',
-            isActive('/tasks') ? 'text-[#FF6B35]' : 'text-[#8A8A8A]'
-          )}
-        >
-          <CheckSquare size={22} />
-          <span>Actions</span>
-        </Link>
-
-        {/* FAB Center */}
-        <div className="flex-1 flex items-center justify-center">
-          <button
-            onClick={onFabClick}
-            className="w-14 h-14 bg-[#FF6B35] rounded-full flex items-center justify-center shadow-fab -mt-5 active:scale-95 transition-transform"
-            aria-label="Quick create"
-          >
-            <Plus size={26} className="text-white" />
-          </button>
-        </div>
-
-        {/* Wellness */}
-        <Link
-          href="/wellness"
-          className={cn(
-            'flex-1 h-full flex flex-col items-center justify-center gap-0.5 text-xs',
-            isActive('/wellness') ? 'text-[#1ABC9C]' : 'text-[#8A8A8A]'
-          )}
-        >
-          <Activity size={22} />
-          <span>Wellness</span>
-        </Link>
-
-        {/* More */}
         <button
+          type="button"
           onClick={onMoreClick}
-          className="flex-1 h-full flex flex-col items-center justify-center gap-0.5 text-xs text-[#8A8A8A]"
+          className="relative flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] text-[#8A8A8A] min-w-0 px-0.5"
         >
-          <MoreHorizontal size={22} />
-          <span>More</span>
+          <MoreHorizontal size={20} className="shrink-0" />
+          <span className="truncate max-w-full">More</span>
         </button>
       </div>
     </nav>

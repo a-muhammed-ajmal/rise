@@ -8,13 +8,15 @@ export const metadata: Metadata = {
   description: 'Your personal operating system. Manage your life, goals, habits, and growth in one place.',
   manifest: '/manifest.json',
   appleWebApp: {
-    capable: true,
     statusBarStyle: 'black-translucent',
     title: 'RISE',
   },
   icons: {
     icon: '/icons/icon-192.png',
     apple: '/icons/icon-192.png',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
   },
 };
 

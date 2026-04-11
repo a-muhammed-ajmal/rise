@@ -1,5 +1,8 @@
 node_modules
 .next
+# next-pwa outputs (created by `npm run build`; Vercel regenerates on deploy)
+public/sw.js
+public/precache.*.js
 .env.local
 .env.local.example
 .env.local.example.example

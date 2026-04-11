@@ -25,14 +25,16 @@ const NAV_LINKS = [
   { href: '/tasks', icon: CheckSquare, label: 'Actions' },
   { href: '/goals', icon: Eye, label: 'Visions' },
   { href: '/finance', icon: Wallet, label: 'Finance' },
-  { href: '/wellness', icon: Activity, label: 'Wellness', accent: '#1ABC9C' },
-  { href: '/professional', icon: Briefcase, label: 'Professional', accent: '#1E4AFF' },
-  { href: '/relationships', icon: Users, label: 'Relationships', accent: '#FF4F6D' },
-  { href: '/reviews', icon: Compass, label: 'Reviews', accent: '#FFD700' },
-  { href: '/journal', icon: BookOpen, label: 'Journal', accent: '#800080' },
-  { href: '/documents', icon: FileText, label: 'Documents', accent: '#8E95A9' },
-  { href: '/chat', icon: MessageSquare, label: 'AI Chat', accent: '#FF9933' },
+  { href: '/wellness', icon: Activity, label: 'Wellness' },
+  { href: '/professional', icon: Briefcase, label: 'Professional' },
+  { href: '/relationships', icon: Users, label: 'Relationships' },
+  { href: '/reviews', icon: Compass, label: 'Reviews' },
+  { href: '/journal', icon: BookOpen, label: 'Journal' },
+  { href: '/documents', icon: FileText, label: 'Documents' },
+  { href: '/chat', icon: MessageSquare, label: 'AI Chat' },
 ];
+
+const ORANGE = '#FF6B35';
 
 export function DesktopSidebar() {
   const pathname = usePathname();
@@ -43,14 +45,15 @@ export function DesktopSidebar() {
       {/* Logo */}
       <div className="px-4 py-5 border-b border-[#2A2A2A]">
         <span className="text-xl font-bold text-[#FF6B35] tracking-widest">RISE</span>
-        <p className="text-[10px] text-[#505050] mt-0.5">My Organized Hub</p>
+        <p className="text-[10px] text-[#505050] mt-0.5 leading-tight">
+          Realms · Targets · Actions
+        </p>
       </div>
 
       {/* Nav Links */}
       <nav className="flex-1 overflow-y-auto py-2">
-        {NAV_LINKS.map(({ href, icon: Icon, label, accent }) => {
+        {NAV_LINKS.map(({ href, icon: Icon, label }) => {
           const active = pathname === href;
-          const color = accent ?? '#FF6B35';
           return (
             <Link
               key={href}
@@ -58,19 +61,19 @@ export function DesktopSidebar() {
               className={cn(
                 'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors relative',
                 active
-                  ? 'text-[#F0F0F0] bg-[#1C1C1C]'
+                  ? 'text-[#F0F0F0] bg-[#FF6B35]/12'
                   : 'text-[#8A8A8A] hover:text-[#F0F0F0] hover:bg-[#141414]'
               )}
             >
               <Icon
                 size={18}
-                style={{ color: active ? color : undefined }}
+                className={cn(active ? 'text-[#FF6B35]' : 'text-[#8A8A8A]')}
               />
               <span>{label}</span>
               {active && (
                 <span
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-l-full"
-                  style={{ backgroundColor: color }}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-5 rounded-l-full bg-[#FF6B35]"
+                  style={{ boxShadow: `0 0 8px ${ORANGE}` }}
                 />
               )}
             </Link>
@@ -94,6 +97,7 @@ export function DesktopSidebar() {
               <p className="text-[10px] text-[#8A8A8A] truncate">{user.email}</p>
             </div>
             <button
+              type="button"
               onClick={signOut}
               className="text-[#8A8A8A] hover:text-[#FF4F6D] p-1"
               title="Sign out"

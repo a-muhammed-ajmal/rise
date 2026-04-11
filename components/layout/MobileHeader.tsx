@@ -1,30 +1,19 @@
 'use client';
 
-import { Menu, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-interface MobileHeaderProps {
-  onMenuOpen: () => void;
-}
-
-export function MobileHeader({ onMenuOpen }: MobileHeaderProps) {
+export function MobileHeader() {
   const { signOut } = useAuth();
 
   return (
-    <header className="sm:hidden h-12 bg-[#0A0A0A] border-b border-[#2A2A2A] flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40">
-      <button
-        onClick={onMenuOpen}
-        className="w-12 h-12 -ml-3 flex items-center justify-center text-[#F0F0F0]"
-        aria-label="Open menu"
-      >
-        <Menu size={22} />
-      </button>
-
+    <header className="sm:hidden h-10 bg-[#0A0A0A] border-b border-[#2A2A2A] flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40">
       <span className="text-lg font-bold text-[#FF6B35] tracking-widest">RISE</span>
 
       <button
+        type="button"
         onClick={signOut}
-        className="w-12 h-12 -mr-3 flex items-center justify-center text-[#8A8A8A]"
+        className="w-10 h-10 -mr-2 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0]"
         aria-label="Sign out"
       >
         <LogOut size={18} />

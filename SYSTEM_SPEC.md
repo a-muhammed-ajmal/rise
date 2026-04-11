@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-11 (§8: no extras without explicit user request; verify spec or ask)
+**Last updated:** 2026-04-11 (TASK 2 layout/nav + PWA meta/sw; `pwa` key triggers Next config warning but is required by `next-pwa`)
 
 ---
 
@@ -63,14 +63,14 @@ These are notable differences between `# RISE — System Specification.txt` and 
 |-------|----------------|-------------------|
 | §2 Technology table | Next 15, React 19, Tailwind 4, Serwist, etc. | Next 14, React 18, Tailwind 3, `next-pwa` |
 | §4 Project structure | `components/tasks/TaskCard.tsx`, `app/sw.ts` Serwist | `TaskCard` is **inline** in `app/(main)/tasks/page.tsx`; **no** `app/sw.ts` |
-| §5.4 Global FAB | Most quick actions “disabled/coming soon” | **All** quick actions **navigate** via `AppLayout` (`/tasks?create=true`, `/professional?…`, `/finance?…`, etc.) |
+| §5.4 Global FAB | Most quick actions “disabled/coming soon” | **Action** opens new Task flow via `/tasks?create=true` (Task modal on Actions page); **other** FAB slots show “Coming soon” and are disabled |
 | §9.1 Dashboard | Quick stats, Today’s Focus, Be Consistent list, Get Things Done, Target Progress | **Simpler** home: greeting, Winner’s Mindset, AI tip, Today’s Rhythms **strip**, Upcoming Actions, AI chat shortcut — **no** stats grid, **no** `isMyDay` block, **no** goal progress section |
 | §9.3 Visions | NICE box, milestones, rich cards | Vision **CRUD**, filters, modal with NICE fields, cards with progress — **no** milestone UI, **no** separate NICE info box |
 | §9.4 Finance | Rich income/expense/debt/budget per spec | **Transactions / Budgets / Debts** tabs with CRUD; categories from `lib/constants.ts` — **not** identical lists to plan §17.7 in all labels |
 | §9.11 AI Chat | Rich context blob, markdown rendering, TTS, voice pipeline | Firestore history, `/api/chat` with **optional** `context` (client **does not** send full sanitized app context today); **no** TTS buttons; **no** markdown renderer in UI; voice uses `/api/transcribe` which is a **stub** |
 | §11 API | POST `/api/ai-tip` with body, daily rate limit | **`GET`** `/api/ai-tip` — no separate daily tip rate limiter in code |
 | §11 `/api/transcribe` | Gemini multimodal + cleanup | **Stub**: returns placeholder; `useVoiceRecorder` expects `data.text` — **transcription does not populate** from API |
-| §16 PWA | Serwist `app/sw.ts`, custom runtime cache order | **`next-pwa`** only |
+| §16 PWA | Serwist `app/sw.ts`, custom runtime cache order | **`next-pwa`** — `pwa.dest: 'public'` so `sw.js` / precache ship under `public/`; `navigateFallback: '/offline.html'` (Workbox v4); root metadata includes `mobile-web-app-capable` (avoids deprecated `apple-mobile-web-app-capable` from `appleWebApp.capable`) |
 | §18 Env | `.env.example` | **No** committed `.env.example` / `.env.local.example` in repo (add in next steps) |
 | Vision categories (plan §17.10) | Six categories including Relationship, Wellness, Vision naming | **`lib/constants.ts`** `VISION_CATEGORIES`: includes `Relationships`, `Health`, `Learning` — align with code when implementing UI |
 
@@ -127,7 +127,7 @@ rise/
     layout.tsx
     globals.css
   components/
-    layout/                      # AppLayout, sidebars, FAB, sheets, nav
+    layout/                      # AppLayout, DesktopSidebar, MobileHeader/BottomNav, MoreSheet, GlobalFab + QuickCreateSheet
     providers/                   # Auth, PWA, SW registrar
     ui/                          # Button, Input, Modal, Badge, etc.
   hooks/
@@ -215,7 +215,7 @@ These rules replace the former `CLAUDE.md` instructions. Follow them on **every*
 - `lib/firestore.ts` — CRUD and subscriptions  
 - `hooks/useFirestore.ts` — `useCollection` and related hooks  
 - `lib/gemini.ts` — Gemini calls  
-- `components/layout/AppLayout.tsx` — shell, navigation, FAB routing  
+- `components/layout/AppLayout.tsx` — shell: desktop 200px sidebar (subtitle “Realms · Targets · Actions”), mobile 40px header + 48px bottom tabs (Home · Actions · Visions · Finance · More) + `pb-14` content, global FAB bottom-right  
 
 ### 8.5 Environment variables
 
@@ -246,6 +246,7 @@ For local development, configure Firebase and `GEMINI_API_KEY` in `.env.local` (
 | **Chat context** | Rich, sanitized context pipeline from plan is **not** wired from client to `/api/chat`. |
 | **Missing env template** | No `.env.example` in repo; onboarding for new devs is harder. |
 | **Onboarding page** | Redirect-only; conflicts with any expectation of a multi-step flow until implemented or removed. |
+| **`next.config.js` + `next-pwa`** | Next may log “Unrecognized key(s): `pwa`” — expected; `next-pwa` reads `pwa` at webpack time. Service worker output should live in `public/` (`pwa.dest`) so `/sw.js` matches registration. |
 
 ---
 
