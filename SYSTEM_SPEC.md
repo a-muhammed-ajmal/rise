@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-12 (FIX: upgraded `@google/generative-ai` 0.15.0 → ^0.24.1; model `gemini-1.5-flash` → `gemini-2.5-flash` in `lib/gemini.ts` — Gemini 1.5 series is fully shut down by Google, 404 responses caused `/api/chat` to return 500)
+**Last updated:** 2026-04-12 (feat: Vision AI Coach — `VisionAIPanel` added to `app/(main)/goals/page.tsx`; gold sparkle button in Visions header opens a full-screen AI chat overlay that passes the user's active visions as context to `/api/chat`; includes NICE-framework quick-prompt chips, markdown rendering, typing indicator; session-only, no Firestore persistence)
 
 ---
 

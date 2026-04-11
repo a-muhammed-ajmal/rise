@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   ChevronDown, ChevronUp, Eye, Trophy, Pencil, Flag,
-  Trash2, Plus, Check,
+  Trash2, Plus, Check, Sparkles, X, Send,
 } from 'lucide-react';
+import { getIdToken } from '@/lib/verify-auth';
 import { format, parseISO } from 'date-fns';
 import { deleteField } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
@@ -610,6 +611,260 @@ function MilestonesModal({
   );
 }
 
+// ─── VISION AI COACH ─────────────────────────────────────────────────────────
+
+function parseInline(text: string) {
+  const parts = text.split(/(\*{1,3}[^*\n]+\*{1,3})/g);
+  return parts.map((part, i) => {
+    if (/^\*{3}[^*]+\*{3}$/.test(part)) return <strong key={i}>{part.slice(3, -3)}</strong>;
+    if (/^\*{2}[^*]+\*{2}$/.test(part)) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (/^\*[^*]+\*$/.test(part)) return <em key={i}>{part.slice(1, -1)}</em>;
+    return <span key={i}>{part}</span>;
+  });
+}
+
+function renderMarkdown(text: string) {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let listItems: string[] = [];
+  let listType: 'ul' | 'ol' = 'ul';
+
+  const flushList = (key: number) => {
+    if (!listItems.length) return;
+    const Tag = listType === 'ol' ? 'ol' : 'ul';
+    nodes.push(
+      <Tag key={`list-${key}`} className={`${listType === 'ol' ? 'list-decimal' : 'list-disc'} pl-5 space-y-1 my-1`}>
+        {listItems.map((item, j) => <li key={j}>{parseInline(item)}</li>)}
+      </Tag>
+    );
+    listItems = [];
+  };
+
+  lines.forEach((line, i) => {
+    const ul = line.match(/^[-*•]\s+(.*)/);
+    const ol = line.match(/^\d+\.\s+(.*)/);
+    if (ul) {
+      if (listType !== 'ul' && listItems.length) flushList(i);
+      listType = 'ul'; listItems.push(ul[1]);
+    } else if (ol) {
+      if (listType !== 'ol' && listItems.length) flushList(i);
+      listType = 'ol'; listItems.push(ol[1]);
+    } else {
+      flushList(i);
+      const t = line.trim();
+      if (t) nodes.push(<p key={`p-${i}`} className="mb-1 last:mb-0 leading-relaxed">{parseInline(t)}</p>);
+    }
+  });
+  flushList(lines.length);
+  return <>{nodes}</>;
+}
+
+const VISION_AI_CHIPS = [
+  'Help me create a new vision',
+  'Review my visions for the NICE framework',
+  'Suggest milestones for my top vision',
+  'How can I improve my existing goals?',
+];
+
+function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void }) {
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length, sending]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 100) + 'px';
+    }
+  }, [input]);
+
+  const buildContext = () => {
+    const active = goals.filter(g => !g.isCompleted);
+    if (!active.length) return 'The user has no active visions yet.';
+    return (
+      'User\'s current active visions:\n' +
+      active.map(g =>
+        `- "${g.title}" | Category: ${g.category} | Timeline: ${g.timeline} | Progress: ${g.progress}%` +
+        (g.why ? `\n  Why: ${g.why}` : '') +
+        (g.metric ? `\n  Metric: ${g.metric}` : '') +
+        (g.crystal ? `\n  Crystal clear: ${g.crystal}` : '')
+      ).join('\n')
+    );
+  };
+
+  const send = async (text: string) => {
+    if (!text.trim() || sending) return;
+    setSending(true);
+    setMessages(prev => [...prev, { role: 'user', content: text }]);
+    setInput('');
+
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error('Not authenticated');
+
+      const history = messages.map(m => ({
+        role: m.role === 'user' ? 'user' as const : 'model' as const,
+        parts: [{ text: m.content }],
+      }));
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: text, history, context: buildContext() }),
+      });
+
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply ?? 'I am here to help with your visions.' }]);
+    } catch {
+      toast.error('Vision AI Coach is temporarily unavailable. Try again shortly.');
+      setMessages(prev => prev.slice(0, -1));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0A0A0A] flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#2A2A2A] flex-shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-[#FFD700]/15 flex items-center justify-center flex-shrink-0">
+            <Sparkles size={15} className="text-[#FFD700]" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#F0F0F0]">Vision AI Coach</p>
+            <p className="text-[10px] text-[#8A8A8A]">Powered by Gemini</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-8 h-8 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0] transition-colors"
+          aria-label="Close Vision AI Coach"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+        {messages.length === 0 && !sending && (
+          <div className="flex flex-col items-center justify-center h-full gap-6">
+            <div className="w-16 h-16 bg-[#FFD700]/15 rounded-full flex items-center justify-center">
+              <Sparkles size={28} className="text-[#FFD700]" />
+            </div>
+            <div className="text-center px-4">
+              <p className="text-base font-semibold text-[#F0F0F0]">Your Vision AI Coach</p>
+              <p className="text-sm text-[#8A8A8A] mt-1 leading-relaxed">
+                I can help you set powerful visions, apply the NICE framework, suggest milestones, and guide your long-term goals.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 w-full max-w-sm">
+              {VISION_AI_CHIPS.map(chip => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => send(chip)}
+                  className="p-3 bg-[#141414] border border-[#2A2A2A] rounded-card text-xs text-[#F0F0F0] text-left hover:bg-[#1C1C1C] active:scale-[0.98] transition-colors"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={cn('flex flex-col gap-1 max-w-[85%]', msg.role === 'user' ? 'self-end items-end' : 'self-start items-start')}
+          >
+            {msg.role === 'assistant' && (
+              <div className="w-6 h-6 bg-[#FFD700]/15 rounded-full flex items-center justify-center mb-1">
+                <Sparkles size={12} className="text-[#FFD700]" />
+              </div>
+            )}
+            <div className={cn(
+              'rounded-card px-4 py-3 text-sm',
+              msg.role === 'user'
+                ? 'bg-[#FF6B35] text-white leading-relaxed'
+                : 'bg-[#141414] text-[#F0F0F0] border border-[#2A2A2A]'
+            )}>
+              {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
+            </div>
+          </div>
+        ))}
+
+        {/* Typing indicator */}
+        {sending && (
+          <div className="self-start flex flex-col gap-1">
+            <div className="w-6 h-6 bg-[#FFD700]/15 rounded-full flex items-center justify-center mb-1">
+              <Sparkles size={12} className="text-[#FFD700]" />
+            </div>
+            <div className="bg-[#141414] border border-[#2A2A2A] rounded-card px-4 py-3 flex gap-1">
+              {[0, 1, 2].map(i => (
+                <span key={i} className="w-1.5 h-1.5 bg-[#8A8A8A] rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Show chips above input once conversation has started */}
+        {messages.length > 0 && !sending && (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {VISION_AI_CHIPS.slice(0, 2).map(chip => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => send(chip)}
+                className="px-3 py-1.5 bg-[#141414] border border-[#2A2A2A] rounded-chip text-xs text-[#8A8A8A] hover:text-[#F0F0F0] hover:bg-[#1C1C1C] transition-colors"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input bar */}
+      <div className="px-4 py-3 border-t border-[#2A2A2A] bg-[#0A0A0A] flex-shrink-0 pb-safe">
+        <div className="flex gap-2 items-end">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
+            }}
+            placeholder="Ask about your visions..."
+            disabled={sending}
+            rows={1}
+            className="flex-1 bg-[#1C1C1C] border border-[#2A2A2A] rounded-input px-3 py-2.5 text-sm text-[#F0F0F0] placeholder-[#505050] outline-none focus:border-[#FFD700] resize-none transition-colors disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={() => send(input)}
+            disabled={!input.trim() || sending}
+            className="w-11 h-11 flex-shrink-0 bg-[#FFD700] rounded-full flex items-center justify-center disabled:opacity-40 transition-opacity active:scale-95"
+            aria-label="Send"
+          >
+            <Send size={17} className="text-black" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── VISION CARD ─────────────────────────────────────────────────────────────
 
 function VisionCard({
@@ -844,6 +1099,7 @@ export default function VisionsPage() {
   const [milestonesGoal, setMilestonesGoal] = useState<Goal | null>(null);
   const [selectedTimeline, setSelectedTimeline] = useState('All');
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
+  const [showAIPanel, setShowAIPanel] = useState(false);
 
   // SECTION 4 — Filter and sort active goals
   const activeGoals = goals.filter(g => !g.isCompleted);
@@ -902,9 +1158,20 @@ export default function VisionsPage() {
       {/* SECTION 2 — Page header */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between">
         <h1 className="text-xl font-bold text-[#F0F0F0]">My Visions</h1>
-        <Button variant="primary" size="sm" onClick={() => setShowCreateModal(true)}>
-          Add Vision
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAIPanel(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-[#FFD700]/15 text-[#FFD700] hover:bg-[#FFD700]/25 transition-colors"
+            aria-label="Open Vision AI Coach"
+            title="Vision AI Coach"
+          >
+            <Sparkles size={16} />
+          </button>
+          <Button variant="primary" size="sm" onClick={() => setShowCreateModal(true)}>
+            Add Vision
+          </Button>
+        </div>
       </div>
 
       {/* SECTION 3 — NICE Framework info box */}
@@ -1029,6 +1296,11 @@ export default function VisionsPage() {
         confirmLabel="Mark Achieved"
         confirmVariant="primary"
       />
+
+      {/* Vision AI Coach panel */}
+      {showAIPanel && (
+        <VisionAIPanel goals={goals} onClose={() => setShowAIPanel(false)} />
+      )}
     </div>
   );
 }
