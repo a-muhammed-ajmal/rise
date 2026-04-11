@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-11 (TASK 3 service worker; fixed navigateFallback no-response error with offline.html fallback)
+**Last updated:** 2026-04-11 (fix auth/argument-error by adding browserPopupRedirectResolver to initializeAuth; fix SW no-response by removing navigateFallback from next.config.js so navigation requests no longer hit registerNavigationRoute)
 
 ---
 
@@ -70,7 +70,7 @@ These are notable differences between `# RISE — System Specification.txt` and 
 | §9.11 AI Chat | Rich context blob, markdown rendering, TTS, voice pipeline | Firestore history, `/api/chat` with **optional** `context` (client **does not** send full sanitized app context today); **no** TTS buttons; **no** markdown renderer in UI; voice uses `/api/transcribe` which is a **stub** |
 | §11 API | POST `/api/ai-tip` with body, daily rate limit | **`GET`** `/api/ai-tip` — no separate daily tip rate limiter in code |
 | §11 `/api/transcribe` | Gemini multimodal + cleanup | **Stub**: returns placeholder; `useVoiceRecorder` expects `data.text` — **transcription does not populate** from API |
-| §16 PWA | Serwist `app/sw.ts`, custom runtime cache order | **`next-pwa`** — `pwa.dest: 'public'` so `sw.js` / precache ship under `public/`; `navigateFallback: '/'` (Workbox v4); root metadata includes `mobile-web-app-capable` (avoids deprecated `apple-mobile-web-app-capable` from `appleWebApp.capable: false`) |
+| §16 PWA | Serwist `app/sw.ts`, custom runtime cache order | **`next-pwa`** — `pwa.dest: 'public'` so `sw.js` / precache ship under `public/`; `navigateFallback` omitted (Workbox v4 `registerNavigationRoute` intercepts all navigations — wrong for SSR); root metadata includes `mobile-web-app-capable` (avoids deprecated `apple-mobile-web-app-capable` from `appleWebApp.capable: false`) |
 | §18 Env | `.env.example` | **No** committed `.env.example` / `.env.local.example` in repo (add in next steps) |
 | Vision categories (plan §17.10) | Six categories including Relationship, Wellness, Vision naming | **`lib/constants.ts`** `VISION_CATEGORIES`: includes `Relationships`, `Health`, `Learning` — align with code when implementing UI |
 
@@ -246,7 +246,7 @@ For local development, configure Firebase and `GEMINI_API_KEY` in `.env.local` (
 | **Chat context** | Rich, sanitized context pipeline from plan is **not** wired from client to `/api/chat`. |
 | **Missing env template** | No `.env.example` in repo; onboarding for new devs is harder. |
 | **Onboarding page** | Redirect-only; conflicts with any expectation of a multi-step flow until implemented or removed. |
-| **`next.config.js` + `next-pwa`** | Next may log "Unrecognized key(s): `pwa`" — expected; `next-pwa` reads `pwa` at webpack time. Service worker output should live in `public/` (`pwa.dest`) so `/sw.js` matches registration. `navigateFallback` set to `/offline.html` provides offline fallback for failed navigations. |
+| **`next.config.js` + `next-pwa`** | Next may log "Unrecognized key(s): `pwa`" — expected; `next-pwa` reads `pwa` at webpack time. Service worker output lives in `public/` (`pwa.dest`). `navigateFallback` is intentionally **not set** — this is an SSR app and Workbox v4's `registerNavigationRoute` would intercept all navigations and serve `/offline.html` instead of real pages. Navigation requests fall through to the catch-all `StaleWhileRevalidate` route. |
 
 ---
 

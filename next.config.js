@@ -18,7 +18,8 @@ module.exports = withPWA({
     skipWaiting: true,
     clientsClaim: true,
     cleanupOutdatedCaches: true,
-    // Workbox v4 (bundled with next-pwa 2.x): serve offline.html on navigation failure
-    navigateFallback: '/offline.html',
+    // navigateFallback intentionally omitted: this is an SSR app, not an SPA.
+    // registerNavigationRoute would serve the fallback page for ALL navigations,
+    // breaking server-rendered routes. Network-first is correct for Next.js pages.
   },
 });

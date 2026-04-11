@@ -6,6 +6,7 @@ import {
   signInWithPopup,
   signOut as firebaseSignOut,
   browserLocalPersistence,
+  browserPopupRedirectResolver,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -44,6 +45,7 @@ function createAuth() {
   try {
     return initializeAuth(app, {
       persistence: browserLocalPersistence,
+      popupRedirectResolver: browserPopupRedirectResolver,
     });
   } catch (e: unknown) {
     const code =
