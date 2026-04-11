@@ -1,306 +1,411 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 import {
-  ChevronDown, ChevronUp, RefreshCw, MessageSquare,
-  Circle, Flame, ArrowRight,
+  ChevronDown, ChevronUp, ArrowRight,
+  CheckCircle2, Circle, Sun, Check,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
-import { updateDocById } from '@/lib/firestore';
-import { COLLECTIONS, AFFIRMATIONS } from '@/lib/constants';
-import {
-  getTimeGreeting, formatDayDateTime,
-  todayISO, randomItem, cn,
-} from '@/lib/utils';
-import type { Task, Habit } from '@/lib/types';
-import { SkeletonCard, SkeletonListItem } from '@/components/ui/SkeletonCard';
-import { Badge } from '@/components/ui/Badge';
+import { updateDocById, deleteDocById, createDoc } from '@/lib/firestore';
+import { COLLECTIONS } from '@/lib/constants';
+import { cn, formatTime, todayISO } from '@/lib/utils';
+import type { Task, Habit, Project, HabitStatus } from '@/lib/types';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { TaskCard } from '@/components/tasks/TaskCard';
 import { toast } from '@/lib/toast';
-import { getIdToken } from '@/lib/verify-auth';
-import { LS_KEYS } from '@/lib/constants';
 
-// ─── WINNERS MINDSET ─────────────────────────────────────────────────────────
-function WinnersMindset() {
-  const [open, setOpen] = useState(false);
-  const [affirmation, setAffirmation] = useState(() => randomItem(AFFIRMATIONS));
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+function formatGreetingClock(): string {
+  const now = new Date();
+  const datePart = format(now, 'EEEE, MMM dd, yyyy');
+  const timePart = format(now, 'h:mm a');
+  return `${datePart} · ${timePart}`;
+}
+
+function getGreeting(hour: number, surname: string): string {
+  const n = surname ? `, ${surname}` : '';
+  if (hour >= 5 && hour <= 11) return `Good morning${n}`;
+  if (hour >= 12 && hour <= 16) return `Good afternoon${n}`;
+  if (hour >= 1 && hour <= 4) return `Up late${n}`;
+  return `Good evening${n}`;
+}
+
+function recalcStreak(statusLog: Record<string, HabitStatus>): number {
+  let streak = 0;
+  const base = new Date();
+  for (let i = 0; i < 366; i++) {
+    const d = new Date(base);
+    d.setDate(base.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    if (statusLog[dateStr] !== 'done') break;
+    streak++;
+  }
+  return streak;
+}
+
+// ─── SECTION 3: TODAY'S FOCUS ─────────────────────────────────────────────────
+
+function TodayFocus({
+  tasks,
+  projects,
+  onComplete,
+  onEdit,
+  onDelete,
+  onDuplicate,
+}: {
+  tasks: Task[];
+  projects: Project[];
+  onComplete: (t: Task) => void;
+  onEdit: (t: Task) => void;
+  onDelete: (t: Task) => void;
+  onDuplicate: (t: Task) => void;
+}) {
+  const focusTasks = tasks
+    .filter((t) => t.isMyDay && !t.isCompleted)
+    .sort((a, b) => a.order - b.order)
+    .slice(0, 3);
+
   return (
-    <div className="bg-[#141414] rounded-card border border-[#2A2A2A] overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-[#F0F0F0]"
-      >
-        <span>🏆 Winner&apos;s Mindset</span>
-        {open ? <ChevronUp size={16} className="text-[#8A8A8A]" /> : <ChevronDown size={16} className="text-[#8A8A8A]" />}
-      </button>
-      {open && (
-        <div className="px-4 pb-4 flex flex-col gap-3">
-          <p className="text-sm text-[#F0F0F0] leading-relaxed italic">&ldquo;{affirmation}&rdquo;</p>
-          <button
-            onClick={() => setAffirmation(randomItem(AFFIRMATIONS))}
-            className="flex items-center gap-1.5 text-xs text-[#FF6B35]"
-          >
-            <RefreshCw size={12} /> Refresh
-          </button>
+    <div>
+      <p className="section-label mb-3">Today&apos;s Focus</p>
+      {focusTasks.length === 0 ? (
+        <div className="glass-card p-5 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Sun size={28} className="text-[#505050]" />
+            <p className="text-sm text-[#8A8A8A]">No focus actions. Mark actions as My Day.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="glass-card overflow-hidden">
+          {focusTasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              projects={projects}
+              onComplete={onComplete}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onDuplicate={onDuplicate}
+              selected={false}
+              onSelect={() => {}}
+              inBulkMode={false}
+            />
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-// ─── AI TIP CARD ─────────────────────────────────────────────────────────────
-function AiTipCard({ userId }: { userId: string }) {
-  const [tip, setTip] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+// ─── SECTION 4: BE CONSISTENT ─────────────────────────────────────────────────
 
-  useEffect(() => {
-    const key = `${LS_KEYS.DAILY_TIP_PREFIX}${todayISO()}`;
-    const cached = localStorage.getItem(key);
-    if (cached) { setTip(cached); setLoading(false); return; }
+function BeConsistent({ habits }: { habits: Habit[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const todayKey = todayISO();
 
-    (async () => {
-      try {
-        const token = await getIdToken();
-        const res = await fetch('/api/ai-tip', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        const text = data.tip ?? 'Keep showing up. Consistency compounds.';
-        localStorage.setItem(key, text);
-        setTip(text);
-      } catch {
-        setTip('Keep showing up. Consistency compounds.');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [userId]);
+  const pendingHabits = habits
+    .filter((h) => h.isActive)
+    .filter((h) => {
+      const status = h.statusLog[todayKey];
+      return status !== 'done' && status !== 'failed';
+    })
+    .sort((a, b) => {
+      const aTime = a.time ?? '';
+      const bTime = b.time ?? '';
+      if (!aTime && bTime) return 1;
+      if (aTime && !bTime) return -1;
+      if (!aTime && !bTime) return a.name.localeCompare(b.name);
+      if (aTime !== bTime) return aTime.localeCompare(bTime);
+      return a.name.localeCompare(b.name);
+    });
 
-  return (
-    <div className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-base">✨</span>
-        <span className="text-xs font-semibold text-[#FF6B35] uppercase tracking-wider">Daily AI Tip</span>
-      </div>
-      {loading ? (
-        <div className="h-4 bg-[#1C1C1C] rounded animate-pulse w-full" />
-      ) : (
-        <p className="text-sm text-[#F0F0F0] leading-relaxed">{tip}</p>
-      )}
-    </div>
-  );
-}
-
-// ─── TODAY'S RHYTHMS ─────────────────────────────────────────────────────────
-function TodayRhythms({ habits, loading }: { habits: Habit[]; loading: boolean }) {
-  const today = todayISO();
-  const todayHabits = habits.filter((h) => h.isActive && h.frequency === 'daily');
+  const remaining = pendingHabits.length - 5;
+  const visible = expanded ? pendingHabits : pendingHabits.slice(0, 5);
+  const allDoneOrFailed =
+    habits.filter((h) => h.isActive).length > 0 && pendingHabits.length === 0;
 
   const markDone = async (habit: Habit) => {
-    const completions = { ...habit.completions, [today]: (habit.completions[today] ?? 0) + 1 };
-    const statusLog = { ...habit.statusLog, [today]: 'done' as const };
-    await updateDocById(COLLECTIONS.HABITS, habit.id, { completions, statusLog });
-    toast.success(`${habit.name} ✓`);
+    const newStatusLog = { ...habit.statusLog, [todayKey]: 'done' as HabitStatus };
+    const newCompletions = { ...habit.completions, [todayKey]: 1 };
+    const newStreak = recalcStreak(newStatusLog);
+    const newBestStreak = Math.max(habit.bestStreak ?? 0, newStreak);
+    try {
+      await updateDocById(COLLECTIONS.HABITS, habit.id, {
+        statusLog: newStatusLog,
+        completions: newCompletions,
+        streak: newStreak,
+        bestStreak: newBestStreak,
+      });
+    } catch {
+      toast.error('Failed to update rhythm.');
+    }
+  };
+
+  const markFailed = async (habit: Habit) => {
+    const newStatusLog = { ...habit.statusLog, [todayKey]: 'failed' as HabitStatus };
+    const newCompletions = { ...habit.completions };
+    delete newCompletions[todayKey];
+    const newStreak = recalcStreak(newStatusLog);
+    try {
+      await updateDocById(COLLECTIONS.HABITS, habit.id, {
+        statusLog: newStatusLog,
+        completions: newCompletions,
+        streak: newStreak,
+      });
+    } catch {
+      toast.error('Failed to update rhythm.');
+    }
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-[#F0F0F0]">Today&apos;s Rhythms</h2>
-        <a href="/wellness" className="text-xs text-[#FF6B35] flex items-center gap-1">
-          See All <ArrowRight size={12} />
-        </a>
-      </div>
-      {loading ? (
-        <div className="flex gap-3 overflow-hidden">
-          {[1,2,3].map((i) => (
-            <div key={i} className="flex-shrink-0 w-32 h-24 bg-[#141414] rounded-card border border-[#2A2A2A] animate-pulse" />
-          ))}
+      <p className="section-label mb-3">Be Consistent</p>
+      {allDoneOrFailed ? (
+        <div className="glass-card p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[#1ABC9C]/15 flex items-center justify-center flex-shrink-0">
+            <Check size={16} className="text-[#1ABC9C]" />
+          </div>
+          <p className="text-sm text-[#1ABC9C] font-medium">All rhythms completed for today!</p>
         </div>
-      ) : todayHabits.length === 0 ? (
-        <div className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 text-center">
-          <p className="text-sm text-[#8A8A8A]">No rhythms scheduled for today.</p>
-          <a href="/wellness" className="text-xs text-[#FF6B35] mt-1 block">Add one →</a>
+      ) : pendingHabits.length === 0 ? (
+        <div className="glass-card p-5 flex items-center justify-center">
+          <p className="text-sm text-[#8A8A8A]">No active rhythms.</p>
         </div>
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4">
-          {todayHabits.map((habit) => {
-            const done = habit.statusLog[today] === 'done';
-            return (
-              <div
-                key={habit.id}
-                className={cn(
-                  'flex-shrink-0 w-36 bg-[#141414] rounded-card border p-3 flex flex-col gap-2',
-                  done ? 'border-[#1ABC9C]' : 'border-[#2A2A2A]'
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xl">{habit.icon}</span>
-                  <span className="text-xs text-[#FF6B35] flex items-center gap-0.5">
-                    <Flame size={10} /> {habit.streak}
-                  </span>
-                </div>
-                <p className="text-xs font-medium text-[#F0F0F0] leading-tight line-clamp-2">{habit.name}</p>
-                {!done && (
-                  <button
-                    onClick={() => markDone(habit)}
-                    className="h-8 w-full rounded-button bg-[#1ABC9C]/15 text-[#1ABC9C] text-xs font-semibold"
-                  >
-                    Done
-                  </button>
-                )}
-                {done && (
-                  <span className="text-xs text-[#1ABC9C] text-center">✓ Complete</span>
+        <div className="glass-card overflow-hidden">
+          {visible.map((habit, idx) => (
+            <div
+              key={habit.id}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3',
+                idx < visible.length - 1 && 'border-b border-[#2A2A2A]'
+              )}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-[#F0F0F0] truncate">{habit.name}</p>
+                {habit.time && (
+                  <p className="text-xs text-[#8A8A8A] mt-0.5">{formatTime(habit.time)}</p>
                 )}
               </div>
-            );
-          })}
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => markDone(habit)}
+                  className="h-8 px-3 rounded-button bg-[#1ABC9C]/15 text-[#1ABC9C] text-xs font-semibold active:bg-[#1ABC9C]/25"
+                >
+                  Done
+                </button>
+                <button
+                  type="button"
+                  onClick={() => markFailed(habit)}
+                  className="h-8 px-3 rounded-button bg-[#FF4F6D]/15 text-[#FF4F6D] text-xs font-semibold active:bg-[#FF4F6D]/25"
+                >
+                  Failed
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {!expanded && remaining > 0 && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="w-full flex items-center justify-center gap-1.5 py-3 text-xs text-[#FF6B35] border-t border-[#2A2A2A]"
+            >
+              <ChevronDown size={14} />
+              Show {remaining} more
+            </button>
+          )}
+          {expanded && pendingHabits.length > 5 && (
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="w-full flex items-center justify-center gap-1.5 py-3 text-xs text-[#8A8A8A] border-t border-[#2A2A2A]"
+            >
+              <ChevronUp size={14} />
+              Show less
+            </button>
+          )}
         </div>
       )}
+
+      <a
+        href="/wellness"
+        className="flex items-center gap-1.5 mt-3 text-xs text-[#FF6B35]"
+      >
+        View all rhythms <ArrowRight size={12} />
+      </a>
     </div>
   );
 }
 
-// ─── UPCOMING ACTIONS ─────────────────────────────────────────────────────────
-function UpcomingActions({ tasks, loading }: { tasks: Task[]; loading: boolean }) {
-  const today = todayISO();
-  const upcoming = tasks
-    .filter((t) => !t.isCompleted && t.dueDate && t.dueDate <= today)
+// ─── SECTION 5: GET THINGS DONE ───────────────────────────────────────────────
+
+function GetThingsDone({
+  tasks,
+  projects,
+  onComplete,
+  onEdit,
+  onDelete,
+  onDuplicate,
+}: {
+  tasks: Task[];
+  projects: Project[];
+  onComplete: (t: Task) => void;
+  onEdit: (t: Task) => void;
+  onDelete: (t: Task) => void;
+  onDuplicate: (t: Task) => void;
+}) {
+  const todayKey = todayISO();
+
+  const todayTasks = tasks
+    .filter((t) => !t.isCompleted && (t.isMyDay || t.dueDate === todayKey))
     .sort((a, b) => {
-      const pa = parseInt(a.priority.slice(1));
-      const pb = parseInt(b.priority.slice(1));
-      return pa !== pb ? pa - pb : (a.dueTime ?? '').localeCompare(b.dueTime ?? '');
+      if (a.isCompleted !== b.isCompleted) return Number(a.isCompleted) - Number(b.isCompleted);
+      return a.order - b.order;
     })
     .slice(0, 5);
 
-  const completeTask = async (task: Task) => {
-    await updateDocById(COLLECTIONS.TASKS, task.id, {
-      isCompleted: true,
-      completedAt: new Date().toISOString(),
-    });
-    toast.success('Action completed! 🎉');
-  };
-
-  const priorityColors: Record<string, string> = {
-    P1: '#FF4F6D', P2: '#FF6B35', P3: '#1E4AFF', P4: '#8A8A8A',
-  };
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-[#F0F0F0]">Upcoming Actions</h2>
-        <a href="/tasks" className="text-xs text-[#FF6B35] flex items-center gap-1">
-          See All <ArrowRight size={12} />
-        </a>
-      </div>
-      {loading ? (
-        <div className="bg-[#141414] rounded-card border border-[#2A2A2A] overflow-hidden">
-          {[1,2,3].map((i) => <SkeletonListItem key={i} />)}
-        </div>
-      ) : upcoming.length === 0 ? (
-        <div className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 text-center">
-          <p className="text-sm text-[#8A8A8A]">All clear. No actions due today.</p>
+      <p className="section-label mb-3">Get Things Done</p>
+      {todayTasks.length === 0 ? (
+        <div className="glass-card p-5 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Circle size={28} className="text-[#505050]" />
+            <p className="text-sm text-[#8A8A8A]">No actions for today. You&apos;re all clear!</p>
+          </div>
         </div>
       ) : (
-        <div className="bg-[#141414] rounded-card border border-[#2A2A2A] overflow-hidden">
-          {upcoming.map((task, idx) => (
-            <div
+        <div className="glass-card overflow-hidden">
+          {todayTasks.map((task) => (
+            <TaskCard
               key={task.id}
-              className={cn(
-                'flex items-center gap-3 px-4 py-3',
-                idx < upcoming.length - 1 && 'border-b border-[#2A2A2A]'
-              )}
-            >
-              <button
-                onClick={() => completeTask(task)}
-                className="w-6 h-6 flex-shrink-0 flex items-center justify-center"
-              >
-                <Circle size={20} className="text-[#2A2A2A]" />
-              </button>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-[#F0F0F0] truncate">{task.title}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <Badge label={task.realm} />
-                  {task.dueDate && (
-                    <span className="text-xs text-[#FF4F6D]">
-                      {task.dueDate === today ? 'Today' : 'Overdue'}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: priorityColors[task.priority] }}
-              />
-            </div>
+              task={task}
+              projects={projects}
+              onComplete={onComplete}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onDuplicate={onDuplicate}
+              selected={false}
+              onSelect={() => {}}
+              inBulkMode={false}
+            />
           ))}
         </div>
       )}
+      <a
+        href="/tasks"
+        className="flex items-center gap-1.5 mt-3 text-xs text-[#FF6B35]"
+      >
+        View all actions <ArrowRight size={12} />
+      </a>
     </div>
   );
 }
 
 // ─── DASHBOARD PAGE ───────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [dateTime, setDateTime] = useState(formatDayDateTime());
+  const [dateTime, setDateTime] = useState(formatGreetingClock);
 
-  const { data: tasks, loading: tasksLoading } = useCollection<Task>({
+  const { data: tasks } = useCollection<Task>({
     userId: user?.uid ?? '',
     collectionName: COLLECTIONS.TASKS,
     enabled: !!user,
   });
-  const { data: habits, loading: habitsLoading } = useCollection<Habit>({
+  const { data: habits } = useCollection<Habit>({
     userId: user?.uid ?? '',
     collectionName: COLLECTIONS.HABITS,
     enabled: !!user,
   });
+  const { data: projects } = useCollection<Project>({
+    userId: user?.uid ?? '',
+    collectionName: COLLECTIONS.PROJECTS,
+    enabled: !!user,
+  });
 
-  // Clock tick
+  // Live clock — update every 60 seconds
   useEffect(() => {
-    const interval = setInterval(() => setDateTime(formatDayDateTime()), 60_000);
+    const interval = setInterval(() => setDateTime(formatGreetingClock()), 60_000);
     return () => clearInterval(interval);
   }, []);
 
-  const firstName = user?.displayName?.split(' ')[0] ?? '';
+  // Greeting logic: surname = last word of displayName
+  const surname = user?.displayName
+    ? (user.displayName.split(' ').filter(Boolean).pop() ?? '')
+    : '';
+  const greeting = getGreeting(new Date().getHours(), surname);
+
+  // ── Shared task action handlers ────────────────────────────────────────────
+
+  const handleComplete = useCallback(async (task: Task) => {
+    await updateDocById(COLLECTIONS.TASKS, task.id, {
+      isCompleted: true,
+      completedAt: new Date().toISOString(),
+    });
+    toast.success('Action completed! 🎉');
+  }, []);
+
+  const handleEdit = useCallback((task: Task) => {
+    router.push('/tasks');
+  }, [router]);
+
+  const handleDelete = useCallback(async (task: Task) => {
+    await deleteDocById(COLLECTIONS.TASKS, task.id);
+    toast.success('Action deleted.');
+  }, []);
+
+  const handleDuplicate = useCallback(async (task: Task) => {
+    const { id, ...rest } = task;
+    await createDoc(COLLECTIONS.TASKS, {
+      ...rest,
+      title: task.title + ' (copy)',
+      order: Date.now(),
+      isCompleted: false,
+      completedAt: undefined,
+    });
+    toast.success('Action duplicated.');
+  }, []);
 
   return (
-    <div className="page-content flex flex-col gap-5 pb-6">
-      {/* Greeting */}
+    <div className="page-content flex flex-col gap-6 pb-6">
+
+      {/* ── Section 1: Dynamic Greeting ──────────────────────────────────────── */}
       <div className="pt-2">
-        <h1 className="text-xl font-bold text-[#F0F0F0]">{getTimeGreeting(firstName)}</h1>
+        <h1 className="text-xl font-bold text-[#F0F0F0]">{greeting}</h1>
         <p className="text-xs text-[#8A8A8A] mt-0.5">{dateTime}</p>
       </div>
 
-      {/* Winner's Mindset */}
-      <WinnersMindset />
+      {/* ── Section 3: Today's Focus ──────────────────────────────────────────── */}
+      <TodayFocus
+        tasks={tasks}
+        projects={projects}
+        onComplete={handleComplete}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onDuplicate={handleDuplicate}
+      />
 
-      {/* AI Tip */}
-      {user && <AiTipCard userId={user.uid} />}
+      {/* ── Section 4: Be Consistent ─────────────────────────────────────────── */}
+      <BeConsistent habits={habits} />
 
-      {/* Today's Rhythms */}
-      <TodayRhythms habits={habits} loading={habitsLoading} />
+      {/* ── Section 5: Get Things Done ───────────────────────────────────────── */}
+      <GetThingsDone
+        tasks={tasks}
+        projects={projects}
+        onComplete={handleComplete}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onDuplicate={handleDuplicate}
+      />
 
-      {/* Upcoming Actions */}
-      <UpcomingActions tasks={tasks} loading={tasksLoading} />
-
-      {/* AI Chat shortcut */}
-      <button
-        onClick={() => router.push('/chat')}
-        className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 flex items-center gap-3 text-left active:bg-[#1C1C1C] transition-colors"
-      >
-        <div className="w-10 h-10 bg-[#FF9933]/15 rounded-full flex items-center justify-center flex-shrink-0">
-          <MessageSquare size={18} className="text-[#FF9933]" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-[#F0F0F0]">Ask RISE anything</p>
-          <p className="text-xs text-[#8A8A8A]">Powered by Gemini AI</p>
-        </div>
-        <ArrowRight size={16} className="text-[#8A8A8A] ml-auto" />
-      </button>
     </div>
   );
 }

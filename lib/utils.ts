@@ -86,6 +86,19 @@ export function formatAED(amount: number): string {
   }).format(amount);
 }
 
+export function formatCurrency(amount: number): string {
+  return formatAED(amount);
+}
+
+// ─── TIME ─────────────────────────────────────────────────────────────────────
+export function formatTime(time24: string): string {
+  if (!time24) return '';
+  const [h, m] = time24.split(':').map(Number);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
 // ─── AVATAR COLOR ────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
   '#FF6B35', '#1ABC9C', '#1E4AFF', '#FF4F6D',

@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-11 (fix auth/argument-error by adding browserPopupRedirectResolver to initializeAuth; fix SW no-response by removing navigateFallback from next.config.js so navigation requests no longer hit registerNavigationRoute)
+**Last updated:** 2026-04-11 (TASK 3 dashboard: Section 1 dynamic greeting with date-fns clock; Section 3 Today's Focus (isMyDay tasks); Section 4 Be Consistent (habits with Done/Failed/streak); Section 5 Get Things Done (today/isMyDay tasks); Winner's Mindset removed from dashboard — pending move to Wellness page; shared TaskCard extracted to components/tasks/TaskCard.tsx; date-fns installed; formatCurrency + formatTime added to lib/utils.ts; glass-card + section-label CSS added to globals.css)
 
 ---
 
@@ -64,7 +64,7 @@ These are notable differences between `# RISE — System Specification.txt` and 
 | §2 Technology table | Next 15, React 19, Tailwind 4, Serwist, etc. | Next 14, React 18, Tailwind 3, `next-pwa` |
 | §4 Project structure | `components/tasks/TaskCard.tsx`, `app/sw.ts` Serwist | `TaskCard` is **inline** in `app/(main)/tasks/page.tsx`; **no** `app/sw.ts` |
 | §5.4 Global FAB | Most quick actions “disabled/coming soon” | **Action** opens new Task flow via `/tasks?create=true` (Task modal on Actions page); **other** FAB slots show “Coming soon” and are disabled |
-| §9.1 Dashboard | Quick stats, Today’s Focus, Be Consistent list, Get Things Done, Target Progress | **Simpler** home: greeting, Winner’s Mindset, AI tip, Today’s Rhythms **strip**, Upcoming Actions, AI chat shortcut — **no** stats grid, **no** `isMyDay` block, **no** goal progress section |
+| §9.1 Dashboard | Quick stats, Today’s Focus, Be Consistent list, Get Things Done, Target Progress | **TASK 3 complete**: dynamic greeting (date-fns, surname), Today’s Focus (top 3 isMyDay tasks), Be Consistent (pending habits + Done/Failed buttons + streak recalc + show-more), Get Things Done (top 5 today/isMyDay tasks); **no** stats grid, **no** goal progress; Winner’s Mindset removed from dashboard — **pending** move to Wellness page |
 | §9.3 Visions | NICE box, milestones, rich cards | Vision **CRUD**, filters, modal with NICE fields, cards with progress — **no** milestone UI, **no** separate NICE info box |
 | §9.4 Finance | Rich income/expense/debt/budget per spec | **Transactions / Budgets / Debts** tabs with CRUD; categories from `lib/constants.ts` — **not** identical lists to plan §17.7 in all labels |
 | §9.11 AI Chat | Rich context blob, markdown rendering, TTS, voice pipeline | Firestore history, `/api/chat` with **optional** `context` (client **does not** send full sanitized app context today); **no** TTS buttons; **no** markdown renderer in UI; voice uses `/api/transcribe` which is a **stub** |
@@ -84,7 +84,7 @@ Statuses: **Complete** (usable end-to-end), **Partial** (works but missing plan 
 |------|--------|--------|--------|
 | Auth / session | §6 | **Complete** | `AuthProvider`; `initializeAuth` + `browserLocalPersistence` (client); `(main)/layout.tsx` guard; `FullPageLoader` = centered pulsing RISE until auth resolves |
 | Login | §9.12 | **Complete** | Google sign-in; login UI only when no user (no flash if session exists); authed users → `/` — **no** `onboardingComplete` gate; sign-out only from explicit actions in layout |
-| Dashboard | §9.1 | **Partial** | Missing plan’s quick stats, Today’s Focus, Be Consistent expanded list, target progress |
+| Dashboard | §9.1 | **Partial** | TASK 3 done: greeting, Today’s Focus, Be Consistent, Get Things Done. Missing: stats grid, goal progress, Winner’s Mindset (moved to Wellness — pending) |
 | Actions | §9.2 | **Partial** | Five tabs, modals, bulk select, recurring behavior in code — verify parity with plan in a future pass |
 | Visions | §9.3 | **Partial** | CRUD + filters; no milestone management UI |
 | Finance | §9.4 | **Partial** | Transactions, budgets, debts; field/category sets per `constants.ts` |
@@ -129,6 +129,8 @@ rise/
   components/
     layout/                      # AppLayout, DesktopSidebar, MobileHeader/BottomNav, MoreSheet, GlobalFab + QuickCreateSheet
     providers/                   # Auth, PWA, SW registrar
+    tasks/
+      TaskCard.tsx               # Shared TaskCard (extracted TASK 3); tasks/page.tsx still has a local duplicate
     ui/                          # Button, Input, Modal, Badge, etc.
   hooks/
     useAuth.ts
@@ -225,14 +227,15 @@ For local development, configure Firebase and `GEMINI_API_KEY` in `.env.local` (
 
 ## 9. Next steps
 
-1. **Dashboard parity** with plan §9.1 (stats, Today’s Focus, Be Consistent block, goals snippet) **or** formally narrow the plan — do not silently assume.  
-2. **Onboarding:** implement the wizard described in the plan **or** remove stub/`useOnboarding` dead paths and document.  
-3. **Add `.env.local.example`** mirroring plan §18.  
-4. **`/api/transcribe`:** implement real transcription or switch journal/chat to **Web Speech API** client-side and align docs.  
-5. **`/api/ai-tip`:** align method, rate limits, and dashboard fetch with plan §11 if product requires it.  
-6. **AI Chat:** optional injection of sanitized Firestore context into `POST /api/chat` body to match plan §9.11.  
-7. **Dependencies:** align `eslint-config-next` major with Next 14 to reduce tooling drift.  
-8. **Optional:** extract `TaskCard` to `components/tasks/` to match plan structure.
+1. **Winner’s Mindset** panel (with 21 plan-specified affirmations) needs to be added to **Wellness page** (app/(main)/wellness/page.tsx) at the top of the Habits (Rhythms) module — removed from dashboard in TASK 3; not yet added to wellness.  
+2. **Dashboard stats grid** (quick stats) and goal progress section still missing from plan §9.1.  
+3. **Onboarding:** implement the wizard described in the plan **or** remove stub/`useOnboarding` dead paths and document.  
+4. **Add `.env.local.example`** mirroring plan §18.  
+5. **`/api/transcribe`:** implement real transcription or switch journal/chat to **Web Speech API** client-side and align docs.  
+6. **`/api/ai-tip`:** align method, rate limits, and dashboard fetch with plan §11 if product requires it.  
+7. **AI Chat:** optional injection of sanitized Firestore context into `POST /api/chat` body to match plan §9.11.  
+8. **Dependencies:** align `eslint-config-next` major with Next 14 to reduce tooling drift.  
+9. **`TaskCard` extracted** to `components/tasks/TaskCard.tsx` (done in TASK 3); `app/(main)/tasks/page.tsx` still has a local duplicate — consider removing it in a future refactor pass.
 
 ---
 
