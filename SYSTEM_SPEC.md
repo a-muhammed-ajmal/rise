@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-11 (aligned with codebase audit; plan file unchanged)
+**Last updated:** 2026-04-11 (§8: no extras without explicit user request; verify spec or ask)
 
 ---
 
@@ -191,8 +191,10 @@ These rules replace the former `CLAUDE.md` instructions. Follow them on **every*
 
 1. Do **only** what the task explicitly asks. Do not refactor, rename, or “clean up” unrelated code.  
 2. If something is not requested, do not change it.  
-3. After completing a **code** task: update **this** `SYSTEM_SPEC.md` if behavior or structure changed, run **`npm run build`** (zero errors), then **commit** and **push** to `main` when the workflow requires it.  
-4. No assumptions, no extras, no “while I’m here” changes.
+3. **Do not add** new files, folders, tooling, or editor config (including under `.cursor/`, new markdown docs, scripts, or dependencies) **unless the user explicitly asked for that addition.** “Optional” in an old plan is not permission—only the user’s message is.  
+4. **Do not guess.** If scope, behavior, or repo state is unclear, **read** `# RISE — System Specification.txt` and this file, and/or **ask the user**. Do not invent workflows, filenames, or git identity.  
+5. After completing a **code** task: update **this** `SYSTEM_SPEC.md` if behavior or structure changed, run **`npm run build`** (zero errors), then **commit** and **push** only when the task says so **and** git author config exists—**do not** fabricate `user.name` / `user.email`; if commit is blocked, tell the user to configure identity or commit themselves.  
+6. No assumptions, no extras, no “while I’m here” changes.
 
 ### 8.3 UI terminology (non-negotiable)
 

@@ -1,8 +1,0 @@
----
-description: RISE project — read specs before any edit
-globs:
-  - "**/*"
-alwaysApply: true
----
-
-Before making any code or documentation change, read `SYSTEM_SPEC.md` (especially §8 AI agent rules) and the frozen plan file `# RISE — System Specification.txt` for full product intent. Follow frozen Firestore collection names in `lib/constants.ts` and UI terminology in `SYSTEM_SPEC.md` §8.3.
