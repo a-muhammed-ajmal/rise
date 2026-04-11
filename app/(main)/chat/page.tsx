@@ -14,6 +14,77 @@ import { sanitize } from '@/lib/sanitizer';
 import { getIdToken } from '@/lib/verify-auth';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
+// ── Markdown helpers ────────────────────────────────────────────────────────
+
+function parseInline(text: string): React.ReactNode[] {
+  // Match ***bold***, **bold**, *italic* in one pass
+  const parts = text.split(/(\*{1,3}[^*\n]+\*{1,3})/g);
+  return parts.map((part, i) => {
+    if (/^\*{3}[^*]+\*{3}$/.test(part)) {
+      return <strong key={i}>{part.slice(3, -3)}</strong>;
+    }
+    if (/^\*{2}[^*]+\*{2}$/.test(part)) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (/^\*[^*]+\*$/.test(part)) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+function renderMarkdown(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let listItems: string[] = [];
+  let listType: 'ul' | 'ol' = 'ul';
+
+  const flushList = (key: number) => {
+    if (listItems.length === 0) return;
+    const Tag = listType === 'ol' ? 'ol' : 'ul';
+    nodes.push(
+      <Tag
+        key={`list-${key}`}
+        className={`${listType === 'ol' ? 'list-decimal' : 'list-disc'} pl-5 space-y-1 my-1`}
+      >
+        {listItems.map((item, j) => (
+          <li key={j}>{parseInline(item)}</li>
+        ))}
+      </Tag>
+    );
+    listItems = [];
+  };
+
+  lines.forEach((line, i) => {
+    const ul = line.match(/^[-*•]\s+(.*)/);
+    const ol = line.match(/^\d+\.\s+(.*)/);
+    if (ul) {
+      if (listType !== 'ul' && listItems.length) flushList(i);
+      listType = 'ul';
+      listItems.push(ul[1]);
+    } else if (ol) {
+      if (listType !== 'ol' && listItems.length) flushList(i);
+      listType = 'ol';
+      listItems.push(ol[1]);
+    } else {
+      flushList(i);
+      const trimmed = line.trim();
+      if (trimmed !== '') {
+        nodes.push(
+          <p key={`p-${i}`} className="mb-1 last:mb-0 leading-relaxed">
+            {parseInline(trimmed)}
+          </p>
+        );
+      }
+    }
+  });
+  flushList(lines.length);
+
+  return <>{nodes}</>;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 const SUGGESTION_CHIPS = [
   'What should I focus on today?',
   'Review my week',
@@ -176,13 +247,13 @@ export default function ChatPage() {
             )}
             <div
               className={cn(
-                'rounded-card px-4 py-3 text-sm leading-relaxed',
+                'rounded-card px-4 py-3 text-sm',
                 msg.role === 'user'
-                  ? 'bg-[#FF6B35] text-white'
+                  ? 'bg-[#FF6B35] text-white leading-relaxed'
                   : 'bg-[#141414] text-[#F0F0F0] border border-[#2A2A2A]'
               )}
             >
-              {msg.content}
+              {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
             </div>
             <span className="text-[10px] text-[#505050]">
               {new Date(msg.timestamp).toLocaleTimeString('en-AE', { hour: '2-digit', minute: '2-digit' })}

@@ -27,7 +27,12 @@ export async function POST(req: NextRequest) {
 You are helpful, motivating, and concise. You help users manage their goals, habits, tasks, and personal growth.
 You operate in UAE context (AED currency, UAE work culture).
 ${context ? `\nUser context: ${context}` : ''}
-Keep responses focused and practical. Use bullet points for lists. Be encouraging but direct.`;
+Formatting rules (follow strictly):
+- Always use a blank line between paragraphs.
+- For bullet lists, put each item on its own line starting with "- ".
+- For numbered lists, put each item on its own line starting with "1. ", "2. ", etc.
+- Use **bold** for emphasis. Never run list items together on a single line.
+- Keep responses focused, practical, and encouraging.`;
 
     const reply = await generateChatResponse(history, message, systemContext);
 
