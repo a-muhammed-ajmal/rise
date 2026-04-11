@@ -5,7 +5,7 @@ function getGenAI() {
   return new GoogleGenerativeAI(key);
 }
 
-export function getGeminiModel(modelName = 'gemini-1.5-flash') {
+export function getGeminiModel(modelName = 'gemini-2.5-flash') {
   return getGenAI().getGenerativeModel({ model: modelName });
 }
 

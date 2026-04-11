@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-11 (VISIONS PAGE: Full rebuild of app/(main)/goals/page.tsx — NICE Framework info box, timeline filter pills, vision cards with progress slider + debounced Firestore write + progress history, collapsible details, Milestones modal with Milestones/Steps tabs, milestone completion → goal progress recalculation, create/edit Vision modal with timeline pills, completed Visions section, all 11 spec sections implemented; progress-track and progress-fill CSS classes added to globals.css)
+**Last updated:** 2026-04-12 (FIX: upgraded `@google/generative-ai` 0.15.0 → ^0.24.1; model `gemini-1.5-flash` → `gemini-2.5-flash` in `lib/gemini.ts` — Gemini 1.5 series is fully shut down by Google, 404 responses caused `/api/chat` to return 500)
 
 ---
 
@@ -46,7 +46,7 @@ Pinned from `package.json` and config (not from the plan’s §2 table, which de
 | Database | Firebase **^10.14** (Firestore) |
 | Auth | Firebase Auth (Google popup) |
 | Storage | Firebase Storage (initialized in `lib/firebase.ts`) |
-| AI | `@google/generative-ai` **0.15.0** — see `lib/gemini.ts` (default model name `gemini-1.5-flash`) |
+| AI | `@google/generative-ai` **^0.24.1** — see `lib/gemini.ts` (default model name `gemini-2.5-flash`) |
 | Icons | `lucide-react` **0.446.0** |
 | PWA | `next-pwa` **^2.0.2** — `next.config.js`, output under `public/` |
 | Class merge | `clsx`, `tailwind-merge` |
