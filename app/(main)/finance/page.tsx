@@ -1,215 +1,752 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, DollarSign, ShoppingCart, CreditCard, PieChart, MoreVertical, Plus } from 'lucide-react';
+import { format, subMonths, addMonths, parse } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
 import { createDoc, updateDocById, deleteDocById } from '@/lib/firestore';
-import { COLLECTIONS, INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '@/lib/constants';
-import { formatAED, getMonthYear, cn } from '@/lib/utils';
-import type { Transaction, TransactionType, Budget, Debt } from '@/lib/types';
-import { SkeletonCard } from '@/components/ui/SkeletonCard';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { Modal, ConfirmModal } from '@/components/ui/Modal';
+import { COLLECTIONS } from '@/lib/constants';
+import { formatCurrency } from '@/lib/utils';
+import type { Transaction, Budget, Debt } from '@/lib/types';
+import { Modal } from '@/components/ui/Modal';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from '@/lib/toast';
-import { sanitize } from '@/lib/sanitizer';
 
-type Tab = 'transactions' | 'budgets' | 'debts';
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const INCOME_CATEGORIES = ['Salary', 'Commission', 'Bonus', 'Business Income', 'Investment Returns', 'Side Income', 'Other'] as const;
+const EXPENSE_CATEGORIES = ['Housing', 'Food', 'Transport', 'Healthcare', 'Education', 'Entertainment', 'Shopping', 'Business Expenses', 'Savings & Investments', 'Other'] as const;
+const PAYMENT_METHODS = ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Digital Wallet'] as const;
+const INCOME_STATUSES = ['Received', 'Pending', 'Paid'] as const;
+const EXPENSE_TYPES = ['Mandatory', 'Optional'] as const;
+const DEBT_STATUSES = ['Active', 'Paid Off'] as const;
 
-// ─── TRANSACTION MODAL ───────────────────────────────────────────────────────
-function TransactionModal({
-  open, onClose, tx, userId, defaultType,
-}: {
-  open: boolean; onClose: () => void; tx: Transaction | null; userId: string; defaultType?: TransactionType;
-}) {
-  const [type, setType] = useState<TransactionType>(tx?.type ?? defaultType ?? 'Expense');
-  const [form, setForm] = useState({
-    amount: tx ? String(tx.amount) : '',
-    category: tx?.category ?? '',
-    date: tx?.date ?? new Date().toISOString().split('T')[0],
-    description: tx?.description ?? '',
-    paymentMethod: tx?.paymentMethod ?? '',
-    notes: tx?.notes ?? '',
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
-
-  const handleSave = async () => {
-    const e: Record<string, string> = {};
-    if (!form.amount || isNaN(parseFloat(form.amount)) || parseFloat(form.amount) <= 0) e.amount = 'Valid amount required';
-    if (!form.category) e.category = 'Category required';
-    if (!form.date) e.date = 'Date required';
-    setErrors(e);
-    if (Object.keys(e).length > 0) return;
-    setSaving(true);
-    try {
-      const data = { userId, type, amount: parseFloat(form.amount), category: form.category, date: form.date, description: sanitize(form.description), paymentMethod: form.paymentMethod, notes: sanitize(form.notes) };
-      if (tx) await updateDocById(COLLECTIONS.TRANSACTIONS, tx.id, data);
-      else await createDoc(COLLECTIONS.TRANSACTIONS, data);
-      toast.success('Transaction saved.');
-      onClose();
-    } catch { toast.error('Failed to save.'); }
-    finally { setSaving(false); }
-  };
-
-  const cats = type === 'Income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-
-  return (
-    <Modal open={open} onClose={onClose} title={tx ? 'Edit Transaction' : 'New Transaction'}
-      footer={<div className="flex gap-3"><Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button><Button fullWidth loading={saving} onClick={handleSave}>Save</Button></div>}
-    >
-      <div className="flex flex-col gap-4">
-        <div className="flex rounded-button overflow-hidden border border-[#2A2A2A]">
-          {(['Income','Expense'] as TransactionType[]).map((t) => (
-            <button key={t} onClick={() => setType(t)} className={cn('flex-1 h-10 text-sm font-semibold transition-colors', type === t ? (t === 'Income' ? 'bg-[#1ABC9C] text-white' : 'bg-[#FF4F6D] text-white') : 'bg-[#141414] text-[#8A8A8A]')}>{t}</button>
-          ))}
-        </div>
-        <Input label="Amount (AED)" type="number" value={form.amount} onChange={(e) => set('amount', e.target.value)} error={errors.amount} required placeholder="0.00" />
-        <Select label="Category" value={form.category} onChange={(e) => set('category', (e.target as HTMLSelectElement).value)} options={[{ value: '', label: 'Select category...' }, ...cats.map((c) => ({ value: c, label: c }))]} error={errors.category} required />
-        <Input label="Date" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
-        <Input label="Description" value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Optional description" />
-        <Select label="Payment Method" value={form.paymentMethod} onChange={(e) => set('paymentMethod', (e.target as HTMLSelectElement).value)} options={[{ value: '', label: 'Select...' }, ...PAYMENT_METHODS.map((m) => ({ value: m, label: m }))]} />
-        <Textarea label="Notes" value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={2} />
-      </div>
-    </Modal>
-  );
-}
-
+// ─── COMPONENT ───────────────────────────────────────────────────────────────
 export default function FinancePage() {
   const { user } = useAuth();
-  const [monthOffset, setMonthOffset] = useState(0);
-  const [tab, setTab] = useState<Tab>('transactions');
-  const [txModalOpen, setTxModalOpen] = useState(false);
-  const [editTx, setEditTx] = useState<Transaction | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
-  const [defaultType, setDefaultType] = useState<TransactionType>('Expense');
+  const userId = user?.uid ?? '';
 
-  const date = new Date();
-  date.setMonth(date.getMonth() + monthOffset);
-  const monthYear = getMonthYear(date);
-  const monthLabel = date.toLocaleDateString('en-AE', { month: 'long', year: 'numeric' });
+  // Data fetching
+  const { data: transactions } = useCollection<Transaction>({ userId, collectionName: COLLECTIONS.TRANSACTIONS, enabled: !!user });
+  const { data: budgets } = useCollection<Budget>({ userId, collectionName: COLLECTIONS.BUDGETS, enabled: !!user });
+  const { data: debts } = useCollection<Debt>({ userId, collectionName: COLLECTIONS.DEBTS, enabled: !!user });
 
-  const { data: transactions, loading: txLoading } = useCollection<Transaction>({ userId: user?.uid ?? '', collectionName: COLLECTIONS.TRANSACTIONS, enabled: !!user });
-  const { data: budgets, loading: budgetsLoading } = useCollection<Budget>({ userId: user?.uid ?? '', collectionName: COLLECTIONS.BUDGETS, enabled: !!user });
-  const { data: debts, loading: debtsLoading } = useCollection<Debt>({ userId: user?.uid ?? '', collectionName: COLLECTIONS.DEBTS, enabled: !!user });
+  // Month selector
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
 
-  const monthTx = transactions.filter((t) => t.date.startsWith(monthYear));
-  const income = monthTx.filter((t) => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
-  const expenses = monthTx.filter((t) => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);
-  const surplus = income - expenses;
-  const savingsRate = income > 0 ? Math.round((surplus / income) * 100) : 0;
+  // Section open states
+  const [incomeOpen, setIncomeOpen] = useState(true);
+  const [expenseOpen, setExpenseOpen] = useState(true);
+  const [debtOpen, setDebtOpen] = useState(true);
+  const [paidOffOpen, setPaidOffOpen] = useState(false);
+  const [budgetOpen, setBudgetOpen] = useState(true);
 
-  // Group transactions by date
-  const grouped = monthTx
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .reduce<Record<string, Transaction[]>>((acc, tx) => {
-      acc[tx.date] = [...(acc[tx.date] ?? []), tx];
-      return acc;
-    }, {});
+  // Modals
+  const [incomeModal, setIncomeModal] = useState({ open: false, edit: null as Transaction | null });
+  const [expenseModal, setExpenseModal] = useState({ open: false, edit: null as Transaction | null });
+  const [debtModal, setDebtModal] = useState({ open: false, edit: null as Debt | null });
+  const [budgetModal, setBudgetModal] = useState({ open: false, edit: null as Budget | null });
+  const [logPaymentModal, setLogPaymentModal] = useState({ open: false, debt: null as Debt | null });
+  const [deleteModal, setDeleteModal] = useState({ open: false, type: '', id: '', name: '' });
+
+  // Helper function
+  const getMonthTransactions = (txs: Transaction[], month: string) => txs.filter(tx => tx.date.startsWith(month));
+
+  // Computed values
+  const monthTransactions = getMonthTransactions(transactions, selectedMonth);
+  const incomeTransactions = monthTransactions.filter(tx => tx.type === 'Income');
+  const expenseTransactions = monthTransactions.filter(tx => tx.type === 'Expense');
+
+  // KPI calculations
+  const totalIncome = incomeTransactions.filter(tx => tx.status === 'Received').reduce((sum, tx) => sum + tx.amount, 0);
+  const totalExpenses = expenseTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+  const netCashFlow = totalIncome - totalExpenses;
+
+  // Month navigation
+  const handlePrevMonth = () => {
+    const newMonth = format(subMonths(parse(selectedMonth, 'yyyy-MM', new Date()), 1), 'yyyy-MM');
+    setSelectedMonth(newMonth);
+  };
+
+  const handleNextMonth = () => {
+    const newMonth = format(addMonths(parse(selectedMonth, 'yyyy-MM', new Date()), 1), 'yyyy-MM');
+    setSelectedMonth(newMonth);
+  };
+
+  // CRUD handlers
+  const handleSaveIncome = async (data: any) => {
+    if (!data.source.trim() || data.amount <= 0 || !data.date) {
+      toast.error('Please fill in all required fields correctly.');
+      return;
+    }
+    try {
+      if (incomeModal.edit) {
+        await updateDocById(COLLECTIONS.TRANSACTIONS, incomeModal.edit.id, data);
+        toast.success('Income updated');
+      } else {
+        await createDoc(COLLECTIONS.TRANSACTIONS, { ...data, userId, type: 'Income', createdAt: new Date().toISOString() });
+        toast.success('Income added');
+      }
+      setIncomeModal({ open: false, edit: null });
+    } catch {
+      toast.error('Failed to save income');
+    }
+  };
+
+  const handleSaveExpense = async (data: any) => {
+    if (!data.description.trim() || data.amount <= 0 || !data.date) {
+      toast.error('Please fill in all required fields correctly.');
+      return;
+    }
+    try {
+      if (expenseModal.edit) {
+        await updateDocById(COLLECTIONS.TRANSACTIONS, expenseModal.edit.id, data);
+        toast.success('Expense updated');
+      } else {
+        await createDoc(COLLECTIONS.TRANSACTIONS, { ...data, userId, type: 'Expense', createdAt: new Date().toISOString() });
+        toast.success('Expense added');
+      }
+      setExpenseModal({ open: false, edit: null });
+    } catch {
+      toast.error('Failed to save expense');
+    }
+  };
+
+  const handleSaveDebt = async (data: any) => {
+    if (!data.name.trim() || data.totalAmount <= 0 || data.remainingBalance < 0 || data.remainingBalance > data.totalAmount) {
+      toast.error('Please fill in all required fields correctly.');
+      return;
+    }
+    try {
+      if (debtModal.edit) {
+        await updateDocById(COLLECTIONS.DEBTS, debtModal.edit.id, data);
+        toast.success('Debt updated');
+      } else {
+        await createDoc(COLLECTIONS.DEBTS, { ...data, userId, status: 'Active', createdAt: new Date().toISOString() });
+        toast.success('Debt added');
+      }
+      setDebtModal({ open: false, edit: null });
+    } catch {
+      toast.error('Failed to save debt');
+    }
+  };
+
+  const handleSaveBudget = async (data: any) => {
+    if (!data.category || data.monthlyLimit <= 0) {
+      toast.error('Please fill in all required fields correctly.');
+      return;
+    }
+    const existing = budgets.find(b => b.category === data.category && b.monthYear === data.monthYear);
+    if (existing && (!budgetModal.edit || existing.id !== budgetModal.edit.id)) {
+      toast.error('A budget for this category already exists for this period');
+      return;
+    }
+    try {
+      if (budgetModal.edit) {
+        await updateDocById(COLLECTIONS.BUDGETS, budgetModal.edit.id, data);
+        toast.success('Budget updated');
+      } else {
+        await createDoc(COLLECTIONS.BUDGETS, { ...data, userId, createdAt: new Date().toISOString() });
+        toast.success('Budget added');
+      }
+      setBudgetModal({ open: false, edit: null });
+    } catch {
+      toast.error('Failed to save budget');
+    }
+  };
+
+  const handleLogPayment = async (amount: number) => {
+    if (!logPaymentModal.debt || amount <= 0 || amount > logPaymentModal.debt.remainingBalance) {
+      toast.error('Invalid payment amount');
+      return;
+    }
+    const newBalance = logPaymentModal.debt.remainingBalance - amount;
+    try {
+      await updateDocById(COLLECTIONS.DEBTS, logPaymentModal.debt.id, {
+        remainingBalance: newBalance,
+        status: newBalance <= 0 ? 'Paid Off' : 'Active'
+      });
+      toast.success(newBalance <= 0 ? 'Debt fully paid off!' : `Payment logged. Remaining: ${formatCurrency(newBalance)}`);
+      setLogPaymentModal({ open: false, debt: null });
+    } catch {
+      toast.error('Failed to log payment');
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      if (deleteModal.type === 'transaction') {
+        await deleteDocById(COLLECTIONS.TRANSACTIONS, deleteModal.id);
+      } else if (deleteModal.type === 'debt') {
+        await deleteDocById(COLLECTIONS.DEBTS, deleteModal.id);
+      } else if (deleteModal.type === 'budget') {
+        await deleteDocById(COLLECTIONS.BUDGETS, deleteModal.id);
+      }
+      toast.success(`${deleteModal.type} deleted`);
+      setDeleteModal({ open: false, type: '', id: '', name: '' });
+    } catch {
+      toast.error('Failed to delete');
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-dvh">
+      {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-[#2A2A2A]">
-        <h1 className="text-xl font-bold text-[#F0F0F0] mb-3">Finance</h1>
-        {/* Month selector */}
-        <div className="flex items-center gap-3 mb-4">
-          <button onClick={() => setMonthOffset((m) => m - 1)} className="w-8 h-8 flex items-center justify-center text-[#8A8A8A] bg-[#1C1C1C] rounded-button">←</button>
-          <span className="flex-1 text-center text-sm font-medium text-[#F0F0F0]">{monthLabel}</span>
-          <button onClick={() => setMonthOffset((m) => m + 1)} className="w-8 h-8 flex items-center justify-center text-[#8A8A8A] bg-[#1C1C1C] rounded-button">→</button>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold text-[#F0F0F0]">Finance</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handlePrevMonth}>
+              <ChevronLeft size={16} />
+            </Button>
+            <span className="text-sm font-medium text-[#F0F0F0] min-w-[100px] text-center">
+              {format(parse(selectedMonth, 'yyyy-MM', new Date()), 'MMMM yyyy')}
+            </span>
+            <Button variant="ghost" size="sm" onClick={handleNextMonth}>
+              <ChevronRight size={16} />
+            </Button>
+          </div>
         </div>
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A]"><p className="text-xs text-[#8A8A8A]">Income</p><p className="text-base font-bold text-[#1ABC9C]">{formatAED(income)}</p></div>
-          <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A]"><p className="text-xs text-[#8A8A8A]">Expenses</p><p className="text-base font-bold text-[#FF4F6D]">{formatAED(expenses)}</p></div>
-          <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A]"><p className="text-xs text-[#8A8A8A]">{surplus >= 0 ? 'Surplus' : 'Deficit'}</p><p className={cn('text-base font-bold', surplus >= 0 ? 'text-[#1ABC9C]' : 'text-[#FF4F6D]')}>{formatAED(Math.abs(surplus))}</p></div>
-          <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A]"><p className="text-xs text-[#8A8A8A]">Savings Rate</p><p className={cn('text-base font-bold', savingsRate >= 20 ? 'text-[#1ABC9C]' : savingsRate >= 10 ? 'text-[#FFD700]' : 'text-[#FF4F6D]')}>{savingsRate}%</p></div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="glass-card p-3 text-center">
+            <p className="section-label">Income</p>
+            <p className="text-lg font-bold text-green-400">{formatCurrency(totalIncome)}</p>
+            <TrendingUp size={16} className="mx-auto mt-1 text-green-400" />
+          </div>
+          <div className="glass-card p-3 text-center">
+            <p className="section-label">Expenses</p>
+            <p className="text-lg font-bold text-red-400">{formatCurrency(totalExpenses)}</p>
+            <TrendingDown size={16} className="mx-auto mt-1 text-red-400" />
+          </div>
+          <div className="glass-card p-3 text-center">
+            <p className={`section-label ${netCashFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {netCashFlow >= 0 ? 'Surplus' : 'Deficit'}
+            </p>
+            <p className={`text-lg font-bold ${netCashFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {formatCurrency(Math.abs(netCashFlow))}
+            </p>
+            {netCashFlow >= 0 ? <TrendingUp size={16} className="mx-auto mt-1 text-green-400" /> : <TrendingDown size={16} className="mx-auto mt-1 text-red-400" />}
+          </div>
         </div>
-        {/* Tabs */}
-        <div className="flex gap-1">
-          {(['transactions','budgets','debts'] as Tab[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={cn('flex-1 h-8 text-xs font-medium capitalize rounded-chip transition-colors', tab === t ? 'bg-[#FF6B35] text-white' : 'bg-[#141414] text-[#8A8A8A] border border-[#2A2A2A]')}>{t}</button>
+      </div>
+
+      {/* Sections */}
+      <div className="flex-1 px-4 py-4 space-y-4">
+        {/* Income Tracker */}
+        <div className="glass-card">
+          <button
+            className="w-full flex items-center justify-between p-4 text-left"
+            onClick={() => setIncomeOpen(!incomeOpen)}
+          >
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-[#F0F0F0]">Income Tracker</h2>
+              <Badge label={incomeTransactions.length.toString()} />
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setIncomeModal({ open: true, edit: null })}>
+              <Plus size={16} />
+            </Button>
+          </button>
+          {incomeOpen && (
+            <div className="px-4 pb-4">
+              {incomeTransactions.length === 0 ? (
+                <EmptyState icon={DollarSign} title="No income recorded" subtitle="Add your first income entry for this month" />
+              ) : (
+                <div className="space-y-2">
+                  {incomeTransactions.sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
+                    <div key={tx.id} className="glass-card p-3 flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-[#F0F0F0]">{tx.source}</p>
+                        <Badge label={tx.category} />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-[#8A8A8A]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
+                        <p className="font-semibold text-green-400">{formatCurrency(tx.amount)}</p>
+                        <Badge label={tx.status || 'Received'} color={tx.status === 'Received' ? 'green' : tx.status === 'Pending' ? 'amber' : 'blue'} />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setIncomeModal({ open: true, edit: tx })}>Edit</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeleteModal({ open: true, type: 'transaction', id: tx.id, name: tx.source || tx.category })}>Delete</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Expense Tracker */}
+        <div className="glass-card">
+          <button
+            className="w-full flex items-center justify-between p-4 text-left"
+            onClick={() => setExpenseOpen(!expenseOpen)}
+          >
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-[#F0F0F0]">Expense Tracker</h2>
+              <Badge label={expenseTransactions.length.toString()} />
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setExpenseModal({ open: true, edit: null })}>
+              <Plus size={16} />
+            </Button>
+          </button>
+          {expenseOpen && (
+            <div className="px-4 pb-4">
+              {/* Category Summary */}
+              <div className="mb-4 p-3 bg-[#1C1C1C] rounded-card">
+                <h3 className="text-sm font-medium text-[#F0F0F0] mb-2">By Category</h3>
+                <div className="space-y-1">
+                  {Object.entries(
+                    expenseTransactions.reduce((acc, tx) => {
+                      acc[tx.category] = (acc[tx.category] || 0) + tx.amount;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  ).sort(([,a], [,b]) => b - a).map(([cat, amt]) => (
+                    <div key={cat} className="flex justify-between text-sm">
+                      <span className="text-[#8A8A8A]">{cat}</span>
+                      <span className="text-[#F0F0F0]">{formatCurrency(amt)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {expenseTransactions.length === 0 ? (
+                <EmptyState icon={ShoppingCart} title="No expenses recorded" subtitle="Add your first expense for this month" />
+              ) : (
+                <div className="space-y-2">
+                  {expenseTransactions.sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
+                    <div key={tx.id} className="glass-card p-3 flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-[#F0F0F0]">{tx.description}</p>
+                        <Badge label={tx.category} />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-[#8A8A8A]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
+                        <Badge label={tx.expenseType || 'Optional'} color={tx.expenseType === 'Mandatory' ? 'blue' : 'gray'} />
+                        <p className="font-semibold text-red-400">{formatCurrency(tx.amount)}</p>
+                        <p className="text-xs text-[#8A8A8A]">{tx.paymentMethod}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setExpenseModal({ open: true, edit: tx })}>Edit</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeleteModal({ open: true, type: 'transaction', id: tx.id, name: tx.description || tx.category })}>Delete</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Debt / Credit Tracker */}
+        <div className="glass-card">
+          <button
+            className="w-full flex items-center justify-between p-4 text-left"
+            onClick={() => setDebtOpen(!debtOpen)}
+          >
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-[#F0F0F0]">Debt / Credit Tracker</h2>
+              <Badge label={debts.filter(d => d.status === 'Active').length.toString()} />
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setDebtModal({ open: true, edit: null })}>
+              <Plus size={16} />
+            </Button>
+          </button>
+          {debtOpen && (
+            <div className="px-4 pb-4">
+              {debts.filter(d => d.status === 'Active').length === 0 ? (
+                <EmptyState icon={CreditCard} title="No active debts" subtitle="Add a debt or credit account to start tracking" />
+              ) : (
+                <div className="space-y-3">
+                  {debts.filter(d => d.status === 'Active').sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(debt => {
+                    const progress = debt.totalAmount > 0 ? ((debt.totalAmount - debt.remainingBalance) / debt.totalAmount) * 100 : 0;
+                    return (
+                      <div key={debt.id} className="glass-card p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-semibold text-[#F0F0F0]">{debt.name}</h3>
+                          <Badge label="Active" color="amber" />
+                        </div>
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="text-lg font-bold text-red-400">{formatCurrency(debt.remainingBalance)}</p>
+                          <p className="text-sm text-[#8A8A8A]">of {formatCurrency(debt.totalAmount)}</p>
+                        </div>
+                        <div className="progress-track mb-2">
+                          <div className="progress-fill" style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: 'green' }}></div>
+                        </div>
+                        <div className="text-xs text-[#8A8A8A] space-y-1 mb-3">
+                          {debt.monthlyPayment && <p>Monthly: {formatCurrency(debt.monthlyPayment)}</p>}
+                          {debt.interestRate && <p>Interest: {debt.interestRate}%</p>}
+                          {debt.dueDay && <p>Due day: {debt.dueDay}</p>}
+                          {debt.targetPayoffDate && <p>Target: {debt.targetPayoffDate}</p>}
+                          {debt.notes && <p>{debt.notes}</p>}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="primary" size="sm" onClick={() => setLogPaymentModal({ open: true, debt })}>Log Payment</Button>
+                          <Button variant="ghost" size="sm" onClick={() => setDebtModal({ open: true, edit: debt })}>Edit</Button>
+                          <Button variant="primary" size="sm" onClick={() => {
+                            updateDocById(COLLECTIONS.DEBTS, debt.id, { status: 'Paid Off', remainingBalance: 0 });
+                            toast.success('Debt marked as paid off');
+                          }}>Mark Paid Off</Button>
+                          <Button variant="danger" size="sm" onClick={() => setDeleteModal({ open: true, type: 'debt', id: debt.id, name: debt.name })}>Delete</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {/* Paid Off Debts */}
+              {debts.filter(d => d.status === 'Paid Off').length > 0 && (
+                <div className="mt-4">
+                  <button
+                    className="w-full flex items-center justify-between text-left text-sm font-medium text-[#8A8A8A] mb-2"
+                    onClick={() => setPaidOffOpen(!paidOffOpen)}
+                  >
+                    Paid Off ({debts.filter(d => d.status === 'Paid Off').length})
+                    <ChevronRight size={14} className={`transform transition-transform ${paidOffOpen ? 'rotate-90' : ''}`} />
+                  </button>
+                  {paidOffOpen && (
+                    <div className="space-y-2">
+                      {debts.filter(d => d.status === 'Paid Off').map(debt => (
+                        <div key={debt.id} className="glass-card p-3 flex justify-between items-center opacity-60">
+                          <div>
+                            <p className="font-semibold text-[#F0F0F0] line-through">{debt.name}</p>
+                            <p className="text-sm text-[#8A8A8A]">{formatCurrency(debt.totalAmount)}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Badge label="Paid Off" color="green" />
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              updateDocById(COLLECTIONS.DEBTS, debt.id, { status: 'Active', remainingBalance: debt.totalAmount });
+                              toast.success('Debt reopened');
+                            }}>Reopen</Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Budget Planner */}
+        <div className="glass-card">
+          <button
+            className="w-full flex items-center justify-between p-4 text-left"
+            onClick={() => setBudgetOpen(!budgetOpen)}
+          >
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-[#F0F0F0]">Budget Planner</h2>
+              <Badge label={budgets.filter(b => !b.monthYear || b.monthYear === selectedMonth).length.toString()} />
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setBudgetModal({ open: true, edit: null })}>
+              <Plus size={16} />
+            </Button>
+          </button>
+          {budgetOpen && (
+            <div className="px-4 pb-4">
+              {budgets.length === 0 ? (
+                <EmptyState icon={PieChart} title="No budgets set" subtitle="Set monthly spending limits to stay on track" />
+              ) : (
+                <div className="space-y-3">
+                  {budgets.filter(b => !b.monthYear || b.monthYear === selectedMonth).map(budget => {
+                    const spent = expenseTransactions.filter(tx => tx.category === budget.category).reduce((sum, tx) => sum + tx.amount, 0);
+                    const percentage = budget.monthlyLimit > 0 ? (spent / budget.monthlyLimit) * 100 : 0;
+                    const isOver = percentage > 100;
+                    const color = percentage > 100 ? 'red' : percentage > 75 ? 'orange' : 'green';
+                    return (
+                      <div key={budget.id} className="glass-card p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-semibold text-[#F0F0F0]">{budget.category}</h3>
+                          <span className="text-sm text-[#8A8A8A]">{formatCurrency(budget.monthlyLimit)}</span>
+                        </div>
+                        <p className={`text-lg font-bold mb-2 ${isOver ? 'text-red-400' : 'text-green-400'}`}>
+                          {formatCurrency(spent)} spent
+                        </p>
+                        <div className="progress-track mb-2">
+                          <div className="progress-fill" style={{ width: `${Math.min(percentage, 100)}%`, backgroundColor: color }}></div>
+                        </div>
+                        {isOver ? (
+                          <p className="text-sm text-red-400">Over by {formatCurrency(spent - budget.monthlyLimit)}</p>
+                        ) : (
+                          <p className="text-sm text-green-400">{formatCurrency(budget.monthlyLimit - spent)} remaining</p>
+                        )}
+                        <div className="flex justify-end mt-2 gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setBudgetModal({ open: true, edit: budget })}>Edit</Button>
+                          <Button variant="ghost" size="sm" onClick={() => setDeleteModal({ open: true, type: 'budget', id: budget.id, name: budget.category })}>Delete</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      {/* Income Modal */}
+      <Modal open={incomeModal.open} onClose={() => setIncomeModal({ open: false, edit: null })} title={incomeModal.edit ? 'Edit Income' : 'Add Income'}>
+        <IncomeForm
+          initial={incomeModal.edit}
+          onSave={handleSaveIncome}
+          onCancel={() => setIncomeModal({ open: false, edit: null })}
+        />
+      </Modal>
+
+      {/* Expense Modal */}
+      <Modal open={expenseModal.open} onClose={() => setExpenseModal({ open: false, edit: null })} title={expenseModal.edit ? 'Edit Expense' : 'Add Expense'}>
+        <ExpenseForm
+          initial={expenseModal.edit}
+          onSave={handleSaveExpense}
+          onCancel={() => setExpenseModal({ open: false, edit: null })}
+        />
+      </Modal>
+
+      {/* Debt Modal */}
+      <Modal open={debtModal.open} onClose={() => setDebtModal({ open: false, edit: null })} title={debtModal.edit ? 'Edit Debt' : 'Add Debt'}>
+        <DebtForm
+          initial={debtModal.edit}
+          onSave={handleSaveDebt}
+          onCancel={() => setDebtModal({ open: false, edit: null })}
+        />
+      </Modal>
+
+      {/* Budget Modal */}
+      <Modal open={budgetModal.open} onClose={() => setBudgetModal({ open: false, edit: null })} title={budgetModal.edit ? 'Edit Budget' : 'Add Budget'}>
+        <BudgetForm
+          initial={budgetModal.edit}
+          onSave={handleSaveBudget}
+          onCancel={() => setBudgetModal({ open: false, edit: null })}
+        />
+      </Modal>
+
+      {/* Log Payment Modal */}
+      <Modal open={logPaymentModal.open} onClose={() => setLogPaymentModal({ open: false, debt: null })} title={`Log Payment — ${logPaymentModal.debt?.name}`}>
+        <LogPaymentForm
+          debt={logPaymentModal.debt}
+          onSave={handleLogPayment}
+          onCancel={() => setLogPaymentModal({ open: false, debt: null })}
+        />
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal open={deleteModal.open} onClose={() => setDeleteModal({ open: false, type: '', id: '', name: '' })} title={`Delete ${deleteModal.type}`}>
+        <div className="p-4">
+          <p className="text-[#F0F0F0] mb-4">Delete "{deleteModal.name}"? This cannot be undone.</p>
+          <div className="flex gap-3">
+            <Button variant="secondary" fullWidth onClick={() => setDeleteModal({ open: false, type: '', id: '', name: '' })}>Cancel</Button>
+            <Button variant="danger" fullWidth onClick={handleDelete}>Delete</Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+// ─── FORM COMPONENTS ─────────────────────────────────────────────────────────
+function IncomeForm({ initial, onSave, onCancel }: { initial: Transaction | null; onSave: (data: any) => void; onCancel: () => void }) {
+  const [form, setForm] = useState({
+    source: initial?.source || '',
+    amount: initial?.amount?.toString() || '',
+    date: initial?.date || new Date().toISOString().split('T')[0],
+    category: initial?.category || 'Salary',
+    status: initial?.status || 'Received',
+    notes: initial?.notes || '',
+  });
+
+  const handleSave = () => {
+    onSave({
+      source: form.source.trim(),
+      amount: parseFloat(form.amount),
+      date: form.date,
+      category: form.category,
+      status: form.status,
+      notes: form.notes.trim() || undefined,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Input label="Source" value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} required />
+      <Input label="Amount (AED)" type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
+      <Input label="Date" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
+      <Select label="Category" value={form.category} onChange={e => setForm(f => ({ ...f, category: (e.target as HTMLSelectElement).value }))} options={INCOME_CATEGORIES.map(c => ({ value: c, label: c }))} />
+      <div>
+        <p className="text-sm font-medium text-[#F0F0F0] mb-2">Status</p>
+        <div className="flex gap-2">
+          {INCOME_STATUSES.map(s => (
+            <Button
+              key={s}
+              variant={form.status === s ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setForm(f => ({ ...f, status: s }))}
+            >
+              {s}
+            </Button>
           ))}
         </div>
       </div>
-
-      <div className="flex-1 px-4 py-4 pb-6">
-        {tab === 'transactions' && (
-          txLoading ? (
-            <>{[1,2,3,4].map((i) => <SkeletonCard key={i} />)}</>
-          ) : Object.keys(grouped).length === 0 ? (
-            <EmptyState icon={Wallet} title="No transactions" subtitle="Record your first income or expense." actionLabel="Add Transaction" onAction={() => { setEditTx(null); setDefaultType('Expense'); setTxModalOpen(true); }} />
-          ) : (
-            <div className="flex flex-col gap-4">
-              {Object.entries(grouped).map(([date, txs]) => (
-                <div key={date}>
-                  <p className="text-xs text-[#8A8A8A] mb-2 font-medium">{date}</p>
-                  <div className="bg-[#141414] rounded-card border border-[#2A2A2A] overflow-hidden">
-                    {txs.map((tx, idx) => (
-                      <div key={tx.id} onClick={() => { setEditTx(tx); setTxModalOpen(true); }}
-                        className={cn('flex items-center gap-3 px-4 py-3 active:bg-[#1C1C1C] transition-colors', idx < txs.length - 1 && 'border-b border-[#2A2A2A]')}
-                      >
-                        <div className={cn('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0', tx.type === 'Income' ? 'bg-[#1ABC9C]/15' : 'bg-[#FF4F6D]/15')}>
-                          {tx.type === 'Income' ? <TrendingUp size={14} className="text-[#1ABC9C]" /> : <TrendingDown size={14} className="text-[#FF4F6D]" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[#F0F0F0] truncate">{tx.description || tx.category}</p>
-                          <Badge label={tx.category} />
-                        </div>
-                        <p className={cn('text-sm font-semibold flex-shrink-0', tx.type === 'Income' ? 'text-[#1ABC9C]' : 'text-[#FF4F6D]')}>
-                          {tx.type === 'Income' ? '+' : '-'}{formatAED(tx.amount)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        )}
-        {tab === 'budgets' && (
-          budgetsLoading ? <SkeletonCard /> :
-          budgets.length === 0 ? <EmptyState icon={Wallet} title="No budgets set" subtitle="Set spending limits to track your money." /> :
-          <div className="flex flex-col gap-3">
-            {budgets.map((b) => {
-              const spent = monthTx.filter((t) => t.type === 'Expense' && t.category === b.category).reduce((s, t) => s + t.amount, 0);
-              const pct = b.monthlyLimit > 0 ? Math.min(100, (spent / b.monthlyLimit) * 100) : 0;
-              const color = pct >= 100 ? '#FF4F6D' : pct >= 90 ? '#FFD700' : '#1ABC9C';
-              return (
-                <div key={b.id} className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4">
-                  <div className="flex justify-between mb-2"><span className="text-sm font-medium text-[#F0F0F0]">{b.category}</span><span className="text-xs text-[#8A8A8A]">{formatAED(spent)} / {formatAED(b.monthlyLimit)}</span></div>
-                  <ProgressBar value={pct} color={color} />
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {tab === 'debts' && (
-          budgetsLoading ? <SkeletonCard /> :
-          debts.length === 0 ? <EmptyState icon={Wallet} title="No debts tracked" subtitle="Add any loans or credit card balances." /> :
-          <div className="flex flex-col gap-3">
-            {debts.map((d) => {
-              const pct = d.totalAmount > 0 ? Math.round(((d.totalAmount - d.remainingBalance) / d.totalAmount) * 100) : 0;
-              return (
-                <div key={d.id} className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4">
-                  <div className="flex justify-between mb-1"><span className="text-sm font-semibold text-[#F0F0F0]">{d.name}</span><Badge label={d.status} color={d.status === 'Paid Off' ? '#1ABC9C' : '#FF4F6D'} /></div>
-                  <p className="text-xs text-[#8A8A8A] mb-2">Remaining: {formatAED(d.remainingBalance)} of {formatAED(d.totalAmount)}</p>
-                  <ProgressBar value={pct} color="#1ABC9C" showLabel />
-                </div>
-              );
-            })}
-          </div>
-        )}
+      <Textarea label="Notes (optional)" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+      <div className="flex gap-3">
+        <Button variant="secondary" fullWidth onClick={onCancel}>Cancel</Button>
+        <Button fullWidth onClick={handleSave}>{initial ? 'Update Income' : 'Save Income'}</Button>
       </div>
+    </div>
+  );
+}
 
-      <button onClick={() => { setEditTx(null); setDefaultType('Expense'); setTxModalOpen(true); }} className="fixed bottom-[80px] right-4 w-14 h-14 bg-[#FF6B35] rounded-full flex items-center justify-center shadow-fab active:scale-95 transition-transform sm:hidden z-30"><Plus size={24} className="text-white" /></button>
+function ExpenseForm({ initial, onSave, onCancel }: { initial: Transaction | null; onSave: (data: any) => void; onCancel: () => void }) {
+  const [form, setForm] = useState({
+    description: initial?.description || '',
+    amount: initial?.amount?.toString() || '',
+    date: initial?.date || new Date().toISOString().split('T')[0],
+    category: initial?.category || 'Other',
+    expenseType: initial?.expenseType || 'Optional',
+    paymentMethod: initial?.paymentMethod || 'Cash',
+    notes: initial?.notes || '',
+  });
 
-      <TransactionModal open={txModalOpen} onClose={() => setTxModalOpen(false)} tx={editTx} userId={user?.uid ?? ''} defaultType={defaultType} />
-      <ConfirmModal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={async () => { if (deleteTarget) { await deleteDocById(COLLECTIONS.TRANSACTIONS, deleteTarget.id); toast.success('Transaction deleted.'); setDeleteTarget(null); } }} title="Delete Transaction" message="Delete this transaction?" />
+  const handleSave = () => {
+    onSave({
+      description: form.description.trim(),
+      amount: parseFloat(form.amount),
+      date: form.date,
+      category: form.category,
+      expenseType: form.expenseType,
+      paymentMethod: form.paymentMethod,
+      notes: form.notes.trim() || undefined,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Input label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} required />
+      <Input label="Amount (AED)" type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
+      <Input label="Date" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
+      <Select label="Category" value={form.category} onChange={e => setForm(f => ({ ...f, category: (e.target as HTMLSelectElement).value }))} options={EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }))} />
+      <div>
+        <p className="text-sm font-medium text-[#F0F0F0] mb-2">Type</p>
+        <div className="flex gap-2">
+          {EXPENSE_TYPES.map(t => (
+            <Button
+              key={t}
+              variant={form.expenseType === t ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setForm(f => ({ ...f, expenseType: t }))}
+            >
+              {t}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <Select label="Payment Method" value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: (e.target as HTMLSelectElement).value }))} options={PAYMENT_METHODS.map(m => ({ value: m, label: m }))} />
+      <Textarea label="Notes (optional)" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+      <div className="flex gap-3">
+        <Button variant="secondary" fullWidth onClick={onCancel}>Cancel</Button>
+        <Button fullWidth onClick={handleSave}>{initial ? 'Update Expense' : 'Save Expense'}</Button>
+      </div>
+    </div>
+  );
+}
+
+function DebtForm({ initial, onSave, onCancel }: { initial: Debt | null; onSave: (data: any) => void; onCancel: () => void }) {
+  const [form, setForm] = useState({
+    name: initial?.name || '',
+    totalAmount: initial?.totalAmount?.toString() || '',
+    remainingBalance: initial?.remainingBalance?.toString() || '',
+    monthlyPayment: initial?.monthlyPayment?.toString() || '',
+    interestRate: initial?.interestRate?.toString() || '',
+    dueDay: initial?.dueDay?.toString() || '',
+    targetPayoffDate: initial?.targetPayoffDate || '',
+    notes: initial?.notes || '',
+  });
+
+  const handleTotalChange = (val: string) => {
+    setForm(f => ({ ...f, totalAmount: val, remainingBalance: f.remainingBalance || val }));
+  };
+
+  const handleSave = () => {
+    onSave({
+      name: form.name.trim(),
+      totalAmount: parseFloat(form.totalAmount),
+      remainingBalance: parseFloat(form.remainingBalance),
+      monthlyPayment: form.monthlyPayment ? parseFloat(form.monthlyPayment) : undefined,
+      interestRate: form.interestRate ? parseFloat(form.interestRate) : undefined,
+      dueDay: form.dueDay ? parseInt(form.dueDay) : undefined,
+      targetPayoffDate: form.targetPayoffDate || undefined,
+      notes: form.notes.trim() || undefined,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Input label="Debt / Credit Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+      <Input label="Total Amount (AED)" type="number" value={form.totalAmount} onChange={e => handleTotalChange(e.target.value)} required />
+      <Input label="Remaining Balance (AED)" type="number" value={form.remainingBalance} onChange={e => setForm(f => ({ ...f, remainingBalance: e.target.value }))} required />
+      <Input label="Monthly Payment (AED, optional)" type="number" value={form.monthlyPayment} onChange={e => setForm(f => ({ ...f, monthlyPayment: e.target.value }))} />
+      <Input label="Interest Rate % (optional)" type="number" value={form.interestRate} onChange={e => setForm(f => ({ ...f, interestRate: e.target.value }))} />
+      <Input label="Payment Due Day (optional)" type="number" value={form.dueDay} onChange={e => setForm(f => ({ ...f, dueDay: e.target.value }))} min="1" max="31" />
+      <Input label="Target Payoff Date (optional)" type="date" value={form.targetPayoffDate} onChange={e => setForm(f => ({ ...f, targetPayoffDate: e.target.value }))} />
+      <Textarea label="Notes (optional)" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+      <div className="flex gap-3">
+        <Button variant="secondary" fullWidth onClick={onCancel}>Cancel</Button>
+        <Button fullWidth onClick={handleSave}>{initial ? 'Update Debt' : 'Save Debt'}</Button>
+      </div>
+    </div>
+  );
+}
+
+function BudgetForm({ initial, onSave, onCancel }: { initial: Budget | null; onSave: (data: any) => void; onCancel: () => void }) {
+  const [form, setForm] = useState({
+    category: initial?.category || 'Other',
+    monthlyLimit: initial?.monthlyLimit?.toString() || '',
+    monthYear: initial?.monthYear || '',
+  });
+
+  const handleSave = () => {
+    onSave({
+      category: form.category,
+      monthlyLimit: parseFloat(form.monthlyLimit),
+      monthYear: form.monthYear || undefined,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Select label="Category" value={form.category} onChange={e => setForm(f => ({ ...f, category: (e.target as HTMLSelectElement).value }))} options={EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }))} />
+      <Input label="Monthly Limit (AED)" type="number" value={form.monthlyLimit} onChange={e => setForm(f => ({ ...f, monthlyLimit: e.target.value }))} required />
+      <Input label="Month (leave blank for recurring every month)" type="month" value={form.monthYear} onChange={e => setForm(f => ({ ...f, monthYear: e.target.value }))} />
+      <div className="flex gap-3">
+        <Button variant="secondary" fullWidth onClick={onCancel}>Cancel</Button>
+        <Button fullWidth onClick={handleSave}>{initial ? 'Update Budget' : 'Save Budget'}</Button>
+      </div>
+    </div>
+  );
+}
+
+function LogPaymentForm({ debt, onSave, onCancel }: { debt: Debt | null; onSave: (amount: number) => void; onCancel: () => void }) {
+  const [amount, setAmount] = useState('');
+
+  const handleSave = () => {
+    const amt = parseFloat(amount);
+    if (amt <= 0 || amt > (debt?.remainingBalance || 0)) return;
+    onSave(amt);
+  };
+
+  return (
+    <div className="space-y-4">
+      <Input label="Payment Amount (AED)" type="number" value={amount} onChange={e => setAmount(e.target.value)} required />
+      <p className="text-sm text-[#8A8A8A]">Current remaining balance: {formatCurrency(debt?.remainingBalance || 0)}</p>
+      <div className="flex gap-3">
+        <Button variant="secondary" fullWidth onClick={onCancel}>Cancel</Button>
+        <Button fullWidth onClick={handleSave}>Log Payment</Button>
+      </div>
     </div>
   );
 }

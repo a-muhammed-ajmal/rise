@@ -87,7 +87,7 @@ Statuses: **Complete** (usable end-to-end), **Partial** (works but missing plan 
 | Dashboard | §9.1 | **Partial** | TASK 3 done: greeting, Today’s Focus, Be Consistent, Get Things Done. Missing: stats grid, goal progress, Winner’s Mindset (moved to Wellness — pending) |
 | Actions | §9.2 | **Complete** | Five tabs (Today/Inbox/Upcoming/Completed/Targets), TaskModal + ProjectModal, bulk select, recurring auto-create next instance; overdue red label; 7-day completed cutoff (no auto-delete); Targets grouped by realm with ProgressBar — full §9.2 parity verified |
 | Visions | §9.3 | **Complete** | NICE info box, timeline filters, vision cards with progress slider + debounced Firestore writes + progress history, collapsible details, milestones modal (Milestones + Steps tabs, milestone completion recalculates goal progress), create/edit modal with NICE fields + timeline pills, completed Visions section |
-| Finance | §9.4 | **Partial** | Transactions, budgets, debts; field/category sets per `constants.ts` |
+| Finance | §9.4 | **Complete** | Rich income/expense/debt/budget per spec; month selector, KPI cards, four collapsible sections with full CRUD, category summaries, progress bars, status badges, validation, date-fns handling, formatCurrency usage |
 | Wellness | §9.5 | **Complete** | Rhythms KPIs, cards, popup, Pomodoro hook — closest to plan |
 | Professional CRM | §9.6 | **Partial** | Leads/Deals tabs, modals; Deal modal fields subset vs full plan |
 | Relationships | §9.7 | **Partial** | Connections CRUD, filters, upcoming birthdays; modal fields subset vs plan (e.g. date types/reminders) |
