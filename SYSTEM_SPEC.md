@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-11 (TASK 3 dashboard: Section 1 dynamic greeting with date-fns clock; Section 3 Today's Focus (isMyDay tasks); Section 4 Be Consistent (habits with Done/Failed/streak); Section 5 Get Things Done (today/isMyDay tasks); Winner's Mindset removed from dashboard — pending move to Wellness page; shared TaskCard extracted to components/tasks/TaskCard.tsx; date-fns installed; formatCurrency + formatTime added to lib/utils.ts; glass-card + section-label CSS added to globals.css)
+**Last updated:** 2026-04-11 (TASK 4 actions page: verified full parity with §9.2 — five tabs Today/Inbox/Upcoming/Completed/Targets all implemented; Today tab shows overdue (red label) + due-today tasks sorted overdue-first; Inbox filters no-targetId incomplete tasks; Upcoming sorted by dueDate ascending; Completed cutoff 7-day completedAt with no auto-deletion; Targets tab groups all projects by realm with ProgressBar per project; TaskModal + ProjectModal + bulk select + recurring auto-create all confirmed complete; Actions status promoted from Partial → Complete)
 
 ---
 
@@ -62,7 +62,7 @@ These are notable differences between `# RISE — System Specification.txt` and 
 | Topic | Plan (`.txt`) | Code (as-built) |
 |-------|----------------|-------------------|
 | §2 Technology table | Next 15, React 19, Tailwind 4, Serwist, etc. | Next 14, React 18, Tailwind 3, `next-pwa` |
-| §4 Project structure | `components/tasks/TaskCard.tsx`, `app/sw.ts` Serwist | `TaskCard` is **inline** in `app/(main)/tasks/page.tsx`; **no** `app/sw.ts` |
+| §4 Project structure | `components/tasks/TaskCard.tsx`, `app/sw.ts` Serwist | `TaskCard` extracted to `components/tasks/TaskCard.tsx` (TASK 3); `app/(main)/tasks/page.tsx` still has a local duplicate — future refactor only; **no** `app/sw.ts` |
 | §5.4 Global FAB | Most quick actions “disabled/coming soon” | **Action** opens new Task flow via `/tasks?create=true` (Task modal on Actions page); **other** FAB slots show “Coming soon” and are disabled |
 | §9.1 Dashboard | Quick stats, Today’s Focus, Be Consistent list, Get Things Done, Target Progress | **TASK 3 complete**: dynamic greeting (date-fns, surname), Today’s Focus (top 3 isMyDay tasks), Be Consistent (pending habits + Done/Failed buttons + streak recalc + show-more), Get Things Done (top 5 today/isMyDay tasks); **no** stats grid, **no** goal progress; Winner’s Mindset removed from dashboard — **pending** move to Wellness page |
 | §9.3 Visions | NICE box, milestones, rich cards | Vision **CRUD**, filters, modal with NICE fields, cards with progress — **no** milestone UI, **no** separate NICE info box |
@@ -85,7 +85,7 @@ Statuses: **Complete** (usable end-to-end), **Partial** (works but missing plan 
 | Auth / session | §6 | **Complete** | `AuthProvider`; `initializeAuth` + `browserLocalPersistence` (client); `(main)/layout.tsx` guard; `FullPageLoader` = centered pulsing RISE until auth resolves |
 | Login | §9.12 | **Complete** | Google sign-in; login UI only when no user (no flash if session exists); authed users → `/` — **no** `onboardingComplete` gate; sign-out only from explicit actions in layout |
 | Dashboard | §9.1 | **Partial** | TASK 3 done: greeting, Today’s Focus, Be Consistent, Get Things Done. Missing: stats grid, goal progress, Winner’s Mindset (moved to Wellness — pending) |
-| Actions | §9.2 | **Partial** | Five tabs, modals, bulk select, recurring behavior in code — verify parity with plan in a future pass |
+| Actions | §9.2 | **Complete** | Five tabs (Today/Inbox/Upcoming/Completed/Targets), TaskModal + ProjectModal, bulk select, recurring auto-create next instance; overdue red label; 7-day completed cutoff (no auto-delete); Targets grouped by realm with ProgressBar — full §9.2 parity verified |
 | Visions | §9.3 | **Partial** | CRUD + filters; no milestone management UI |
 | Finance | §9.4 | **Partial** | Transactions, budgets, debts; field/category sets per `constants.ts` |
 | Wellness | §9.5 | **Complete** | Rhythms KPIs, cards, popup, Pomodoro hook — closest to plan |
@@ -157,7 +157,7 @@ rise/
   # RISE — System Specification.txt
 ```
 
-There is **no** `components/tasks/` directory: task UI lives in `app/(main)/tasks/page.tsx`.
+`components/tasks/TaskCard.tsx` exists (extracted in TASK 3). `app/(main)/tasks/page.tsx` also contains a local `TaskCard` duplicate — the page uses the local copy; the shared one is used by the dashboard.
 
 ---
 
