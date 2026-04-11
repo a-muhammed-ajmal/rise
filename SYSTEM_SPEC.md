@@ -197,7 +197,8 @@ These rules replace the former `CLAUDE.md` instructions. Follow them on **every*
 3. **Do not add** new files, folders, tooling, or editor config (including under `.cursor/`, new markdown docs, scripts, or dependencies) **unless the user explicitly asked for that addition.** “Optional” in an old plan is not permission—only the user’s message is.  
 4. **Do not guess.** If scope, behavior, or repo state is unclear, **read** `# RISE — System Specification.txt` and this file, and/or **ask the user**. Do not invent workflows, filenames, or git identity.  
 5. After completing a **code** task: update **this** `SYSTEM_SPEC.md` if behavior or structure changed, run **`npm run build`** (zero errors), then **commit** and **push** only when the task says so **and** git author config exists—**do not** fabricate `user.name` / `user.email`; if commit is blocked, tell the user to configure identity or commit themselves.  
-6. No assumptions, no extras, no “while I’m here” changes.
+6. No assumptions, no extras, no “while I’m here” changes.  
+7. **Always commit and push directly to `main`.** Never create a feature branch. All commits go to `main` unless the user explicitly names a different branch for that specific task.
 
 ### 8.3 UI terminology (non-negotiable)
 
