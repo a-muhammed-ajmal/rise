@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-12 (feat: Vision AI Coach — `VisionAIPanel` added to `app/(main)/goals/page.tsx`; gold sparkle button in Visions header opens a full-screen AI chat overlay that passes the user's active visions as context to `/api/chat`; includes NICE-framework quick-prompt chips, markdown rendering, typing indicator; session-only, no Firestore persistence)
+**Last updated:** 2026-04-12 (feat: Vision AI Coach guided mode — `VisionAIPanel` now opens with a pre-seeded NICE-framework greeting listing all 6 life areas with UAE-context examples; area-selection chips (Personal/Professional/Financial/Relationships/Health/Learning) shown at step 1; follow-up chips appear after 3+ messages; `POST /api/chat` extended with `visionMode: boolean` — when true, uses a dedicated Vision Coach system prompt that applies NICE (Near-term/Input-based/Controllable/Energizing), asks one question at a time, and guides user through Title → Why → Metric → Crystal Clear fields; pre-seeded greeting excluded from Gemini history to avoid model-first history error)
 
 ---
 

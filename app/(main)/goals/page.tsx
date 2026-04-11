@@ -659,15 +659,34 @@ function renderMarkdown(text: string) {
   return <>{nodes}</>;
 }
 
-const VISION_AI_CHIPS = [
-  'Help me create a new vision',
-  'Review my visions for the NICE framework',
-  'Suggest milestones for my top vision',
-  'How can I improve my existing goals?',
+// Pre-seeded opening message — displayed immediately, NOT sent to Gemini history
+const INITIAL_GREETING = `Welcome! I'm your **Vision AI Coach** — here to guide you step-by-step in setting powerful, life-changing visions using the **NICE framework** (Near-term, Input-based, Controllable, Energizing).
+
+Let's start by choosing one area of your life to focus on. Here are the 6 areas with real examples:
+
+- **Personal** — Build a morning routine, develop self-discipline, grow your mindset
+- **Professional** — Get promoted, launch a business, become a team leader
+- **Financial** — Save AED 30,000 this year, pay off debt, start investing
+- **Relationships** — Weekly quality time with family, deepen friendships, improve communication
+- **Health** — Run 5km, lose weight sustainably, sleep consistently, boost daily energy
+- **Learning** — Complete a certification, master a new skill, read 24 books this year
+
+**Which area calls to you most right now?** Tap one below or type what is on your mind.`;
+
+// Shown while only the opening greeting is visible (area selection step)
+const VISION_AREA_CHIPS = ['Personal', 'Professional', 'Financial', 'Relationships', 'Health', 'Learning'];
+
+// Shown after the conversation is underway (3+ messages)
+const VISION_FOLLOW_UP_CHIPS = [
+  'Check this against the NICE framework',
+  'Suggest milestones for this vision',
+  'Help me write the Why and Metric fields',
 ];
 
 function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void }) {
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
+    { role: 'assistant', content: INITIAL_GREETING },
+  ]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -708,7 +727,8 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
       const token = await getIdToken();
       if (!token) throw new Error('Not authenticated');
 
-      const history = messages.map(m => ({
+      // Skip index 0 (the pre-seeded INITIAL_GREETING) — it's not a real Gemini exchange
+      const history = messages.slice(1).map(m => ({
         role: m.role === 'user' ? 'user' as const : 'model' as const,
         parts: [{ text: m.content }],
       }));
@@ -716,7 +736,7 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: text, history, context: buildContext() }),
+        body: JSON.stringify({ message: text, history, context: buildContext(), visionMode: true }),
       });
 
       if (!res.ok) throw new Error('API error');
@@ -755,31 +775,7 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
-        {messages.length === 0 && !sending && (
-          <div className="flex flex-col items-center justify-center h-full gap-6">
-            <div className="w-16 h-16 bg-[#FFD700]/15 rounded-full flex items-center justify-center">
-              <Sparkles size={28} className="text-[#FFD700]" />
-            </div>
-            <div className="text-center px-4">
-              <p className="text-base font-semibold text-[#F0F0F0]">Your Vision AI Coach</p>
-              <p className="text-sm text-[#8A8A8A] mt-1 leading-relaxed">
-                I can help you set powerful visions, apply the NICE framework, suggest milestones, and guide your long-term goals.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 w-full max-w-sm">
-              {VISION_AI_CHIPS.map(chip => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => send(chip)}
-                  className="p-3 bg-[#141414] border border-[#2A2A2A] rounded-card text-xs text-[#F0F0F0] text-left hover:bg-[#1C1C1C] active:scale-[0.98] transition-colors"
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* No empty-state needed — messages always has the initial greeting */}
 
         {messages.map((msg, i) => (
           <div
@@ -816,10 +812,26 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
           </div>
         )}
 
-        {/* Show chips above input once conversation has started */}
-        {messages.length > 0 && !sending && (
-          <div className="flex flex-wrap gap-2 pt-2">
-            {VISION_AI_CHIPS.slice(0, 2).map(chip => (
+        {/* Area-selection chips — shown only on the opening step (just the greeting visible) */}
+        {messages.length === 1 && !sending && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {VISION_AREA_CHIPS.map(area => (
+              <button
+                key={area}
+                type="button"
+                onClick={() => send(area)}
+                className="px-3 py-1.5 bg-[#1C1C1C] border border-[#FFD700]/30 rounded-chip text-xs font-medium text-[#FFD700] hover:bg-[#FFD700]/10 transition-colors active:scale-[0.97]"
+              >
+                {area}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Follow-up chips — shown after conversation is underway */}
+        {messages.length > 2 && !sending && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {VISION_FOLLOW_UP_CHIPS.map(chip => (
               <button
                 key={chip}
                 type="button"
@@ -845,7 +857,7 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
             }}
-            placeholder="Ask about your visions..."
+            placeholder="Reply to your coach..."
             disabled={sending}
             rows={1}
             className="flex-1 bg-[#1C1C1C] border border-[#2A2A2A] rounded-input px-3 py-2.5 text-sm text-[#F0F0F0] placeholder-[#505050] outline-none focus:border-[#FFD700] resize-none transition-colors disabled:opacity-50"
