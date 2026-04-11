@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   description: 'Your personal operating system. Manage your life, goals, habits, and growth in one place.',
   manifest: '/manifest.json',
   appleWebApp: {
+    capable: false,
     statusBarStyle: 'black-translucent',
     title: 'RISE',
   },

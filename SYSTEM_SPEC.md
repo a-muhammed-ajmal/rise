@@ -70,7 +70,7 @@ These are notable differences between `# RISE — System Specification.txt` and 
 | §9.11 AI Chat | Rich context blob, markdown rendering, TTS, voice pipeline | Firestore history, `/api/chat` with **optional** `context` (client **does not** send full sanitized app context today); **no** TTS buttons; **no** markdown renderer in UI; voice uses `/api/transcribe` which is a **stub** |
 | §11 API | POST `/api/ai-tip` with body, daily rate limit | **`GET`** `/api/ai-tip` — no separate daily tip rate limiter in code |
 | §11 `/api/transcribe` | Gemini multimodal + cleanup | **Stub**: returns placeholder; `useVoiceRecorder` expects `data.text` — **transcription does not populate** from API |
-| §16 PWA | Serwist `app/sw.ts`, custom runtime cache order | **`next-pwa`** — `pwa.dest: 'public'` so `sw.js` / precache ship under `public/`; `navigateFallback: '/offline.html'` (Workbox v4); root metadata includes `mobile-web-app-capable` (avoids deprecated `apple-mobile-web-app-capable` from `appleWebApp.capable`) |
+| §16 PWA | Serwist `app/sw.ts`, custom runtime cache order | **`next-pwa`** — `pwa.dest: 'public'` so `sw.js` / precache ship under `public/`; `navigateFallback: '/'` (Workbox v4); root metadata includes `mobile-web-app-capable` (avoids deprecated `apple-mobile-web-app-capable` from `appleWebApp.capable: false`) |
 | §18 Env | `.env.example` | **No** committed `.env.example` / `.env.local.example` in repo (add in next steps) |
 | Vision categories (plan §17.10) | Six categories including Relationship, Wellness, Vision naming | **`lib/constants.ts`** `VISION_CATEGORIES`: includes `Relationships`, `Health`, `Learning` — align with code when implementing UI |
 
