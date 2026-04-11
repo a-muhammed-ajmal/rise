@@ -90,6 +90,17 @@ body {
   50% { opacity: 0.7; text-shadow: 0 0 40px rgba(255, 107, 53, 0.8); }
 }
 
+@keyframes logo-breathe {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 16px rgba(255, 107, 53, 0.3));
+  }
+  50% {
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 32px rgba(255, 107, 53, 0.65));
+  }
+}
+
 .animate-slide-up {
   animation: slide-up 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
@@ -100,6 +111,10 @@ body {
 
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-logo-breathe {
+  animation: logo-breathe 2s ease-in-out infinite;
 }
 
 /* Shimmer override for skeleton */

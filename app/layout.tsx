@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   },
   other: {
     'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
   },
 };
 
@@ -36,8 +37,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body>
+    <html lang="en" className="dark" style={{ backgroundColor: '#0A0A0A' }}>
+      <body style={{ backgroundColor: '#0A0A0A' }}>
         <AuthProvider>
           <SWRegistrar />
           {children}

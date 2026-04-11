@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface LoadingSpinnerProps {
@@ -24,12 +25,24 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
 export function FullPageLoader() {
   return (
     <div
-      className="fixed inset-0 bg-[#0A0A0A] flex items-center justify-center z-50"
+      className="fixed inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center z-50 gap-6"
       role="status"
       aria-live="polite"
     >
+      {/* Bee logo with breathe animation */}
+      <div className="w-24 h-24 sm:w-32 sm:h-32 animate-logo-breathe">
+        <Image
+          src="/icons/icon-512.png"
+          alt="RISE"
+          width={128}
+          height={128}
+          className="w-full h-full"
+          priority
+        />
+      </div>
+      {/* RISE wordmark with existing glow animation */}
       <span
-        className="text-5xl font-bold text-[#FF6B35] tracking-widest animate-pulse-glow"
+        className="text-4xl font-bold text-[#FF6B35] tracking-widest animate-pulse-glow"
         aria-hidden
       >
         RISE
