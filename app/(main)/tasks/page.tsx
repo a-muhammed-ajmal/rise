@@ -604,9 +604,19 @@ function TaskCard({
           )}
         </div>
 
-        <span className="text-[10px] text-[#505050] max-w-[72px] text-right truncate">
-          {targetProject ? targetProject.title : task.realm}
-        </span>
+        <div className="flex flex-col items-end gap-0.5">
+          {targetProject && (
+            <span className="text-[10px] text-[#8A8A8A] max-w-[80px] text-right truncate leading-tight">
+              {targetProject.title}
+            </span>
+          )}
+          <span
+            className="text-[10px] max-w-[80px] text-right truncate leading-tight font-medium"
+            style={{ color: REALM_CONFIG[task.realm]?.color ?? '#8A8A8A' }}
+          >
+            {task.realm}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -855,11 +865,12 @@ export default function ActionsPage() {
   // ── Project actions ───────────────────────────────────────────────────────
   const handleDeleteProject = useCallback(async () => {
     if (!deleteProject) return;
-    // Orphan actions: remove targetId/projectId
+    // Orphan actions: set targetId/projectId to null so they are no longer linked
     const linked = tasks.filter((t) => (t.targetId ?? t.projectId) === deleteProject.id);
     await Promise.all(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       linked.map((t) =>
-        updateDocById(COLLECTIONS.TASKS, t.id, { targetId: undefined, projectId: undefined })
+        updateDocById(COLLECTIONS.TASKS, t.id, { targetId: null, projectId: null } as any)
       )
     );
     await deleteDocById(COLLECTIONS.PROJECTS, deleteProject.id);

@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-11 (TASK 4 actions page: verified full parity with §9.2 — five tabs Today/Inbox/Upcoming/Completed/Targets all implemented; Today tab shows overdue (red label) + due-today tasks sorted overdue-first; Inbox filters no-targetId incomplete tasks; Upcoming sorted by dueDate ascending; Completed cutoff 7-day completedAt with no auto-deletion; Targets tab groups all projects by realm with ProgressBar per project; TaskModal + ProjectModal + bulk select + recurring auto-create all confirmed complete; Actions status promoted from Partial → Complete)
+**Last updated:** 2026-04-11 (TASKS 5-8: TaskCard right side now shows both Target name and Realm label — previously showed one or the other; handleDeleteProject fixed to set targetId/projectId to null (not undefined which was stripped by stripUndefined, leaving fields unchanged); TASK 6 TaskModal and TASK 8 Targets tab verified complete with no additional changes needed; Actions remains Complete)
 
 ---
 

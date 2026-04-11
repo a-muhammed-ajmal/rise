@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { cn, formatTime, todayISO } from '@/lib/utils';
-import { PRIORITY_COLORS, PRIORITY_LABELS } from '@/lib/constants';
+import { PRIORITY_COLORS, PRIORITY_LABELS, REALM_CONFIG } from '@/lib/constants';
 import type { Task, Project, Recurrence } from '@/lib/types';
 
 const RECURRENCE_LETTER: Record<Recurrence, string> = {
@@ -190,9 +190,19 @@ export function TaskCard({
           )}
         </div>
 
-        <span className="text-[10px] text-[#505050] max-w-[72px] text-right truncate">
-          {targetProject ? targetProject.title : task.realm}
-        </span>
+        <div className="flex flex-col items-end gap-0.5">
+          {targetProject && (
+            <span className="text-[10px] text-[#8A8A8A] max-w-[80px] text-right truncate leading-tight">
+              {targetProject.title}
+            </span>
+          )}
+          <span
+            className="text-[10px] max-w-[80px] text-right truncate leading-tight font-medium"
+            style={{ color: REALM_CONFIG[task.realm]?.color ?? '#8A8A8A' }}
+          >
+            {task.realm}
+          </span>
+        </div>
       </div>
     </div>
   );
