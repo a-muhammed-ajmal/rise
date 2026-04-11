@@ -18,7 +18,7 @@ module.exports = withPWA({
     skipWaiting: true,
     clientsClaim: true,
     cleanupOutdatedCaches: true,
-    // Workbox v4 (bundled with next-pwa 2.x): single fallback for failed navigations
-    navigateFallback: '/',
+    // Workbox v4 (bundled with next-pwa 2.x): serve offline.html on navigation failure
+    navigateFallback: '/offline.html',
   },
 });

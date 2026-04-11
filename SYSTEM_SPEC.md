@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-11 (TASK 2 layout/nav + PWA meta/sw; `pwa` key triggers Next config warning but is required by `next-pwa`)
+**Last updated:** 2026-04-11 (TASK 3 service worker; fixed navigateFallback no-response error with offline.html fallback)
 
 ---
 
@@ -246,7 +246,7 @@ For local development, configure Firebase and `GEMINI_API_KEY` in `.env.local` (
 | **Chat context** | Rich, sanitized context pipeline from plan is **not** wired from client to `/api/chat`. |
 | **Missing env template** | No `.env.example` in repo; onboarding for new devs is harder. |
 | **Onboarding page** | Redirect-only; conflicts with any expectation of a multi-step flow until implemented or removed. |
-| **`next.config.js` + `next-pwa`** | Next may log “Unrecognized key(s): `pwa`” — expected; `next-pwa` reads `pwa` at webpack time. Service worker output should live in `public/` (`pwa.dest`) so `/sw.js` matches registration. |
+| **`next.config.js` + `next-pwa`** | Next may log "Unrecognized key(s): `pwa`" — expected; `next-pwa` reads `pwa` at webpack time. Service worker output should live in `public/` (`pwa.dest`) so `/sw.js` matches registration. `navigateFallback` set to `/offline.html` provides offline fallback for failed navigations. |
 
 ---
 
