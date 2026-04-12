@@ -100,9 +100,10 @@ export function GlobalFabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'fixed z-50 w-14 h-14 bg-[#FF6B35] rounded-full flex items-center justify-center shadow-fab',
+        'fixed z-50 w-14 h-14 bg-[#FF6B35] rounded-full items-center justify-center shadow-fab',
         'active:scale-95 transition-transform',
-        'bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] right-4',
+        // Hidden on mobile — the + button lives in MobileBottomNav on small screens
+        'hidden sm:flex',
         'sm:bottom-6 sm:right-6'
       )}
       aria-expanded={open}

@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav } from './MobileBottomNav';
-import { MoreSheet } from './MoreSheet';
+import { MobileSidebar } from './MobileSidebar';
 import { DesktopSidebar } from './DesktopSidebar';
 import { QuickCreateSheet, GlobalFabButton } from './GlobalFab';
 import { ToastContainer } from '@/components/ui/ToastContainer';
@@ -15,7 +15,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const router = useRouter();
 
@@ -30,9 +30,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-dvh bg-[#0A0A0A]">
       <DesktopSidebar />
 
-      <MobileHeader />
+      <MobileHeader onMenuClick={() => setMobileNavOpen(true)} />
 
-      <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
+      <MobileSidebar open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <QuickCreateSheet
         open={fabOpen}
@@ -40,18 +40,22 @@ export function AppLayout({ children }: AppLayoutProps) {
         onAction={handleQuickAction}
       />
 
+      {/* Desktop-only FAB — on mobile the + lives in MobileBottomNav */}
       <GlobalFabButton onClick={() => setFabOpen((o) => !o)} open={fabOpen} />
 
       <main
         className="
-          pt-10 pb-14 min-h-dvh
+          pt-14 pb-16 min-h-dvh
           sm:pt-0 sm:pb-0 sm:pl-[200px]
         "
       >
         {children}
       </main>
 
-      <MobileBottomNav onMoreClick={() => setMoreOpen(true)} />
+      <MobileBottomNav
+        onPlusClick={() => setFabOpen((o) => !o)}
+        plusOpen={fabOpen}
+      />
 
       <ToastContainer />
 

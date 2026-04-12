@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-12 (refine: branding layout — login page, desktop sidebar, and mobile header all now show bee logo and "RISE" on the same row; login icon 52px + text-4xl with slogan below; sidebar icon 26px + text-base with slogan below; mobile header icon 20px + text-base; previously each location had the icon stacked above the wordmark)
+**Last updated:** 2026-04-12 (mobile UX overhaul — mobile header h-14 with hamburger + bell; logout removed from header, notification bell added; MobileSidebar drawer added (full nav, user profile, sign-out); MobileBottomNav simplified to Home | + | Chat; GlobalFab hidden on mobile (+ lives in bottom nav); useNotifications hook added for permission management, badge count, and task/habit notification scheduling)
 
 ---
 

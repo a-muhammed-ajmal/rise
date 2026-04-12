@@ -2,57 +2,63 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CheckSquare, Eye, Wallet, MoreHorizontal } from 'lucide-react';
+import { Home, Plus, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MobileBottomNavProps {
-  onMoreClick: () => void;
+  onPlusClick: () => void;
+  plusOpen?: boolean;
 }
 
-export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
+export function MobileBottomNav({ onPlusClick, plusOpen = false }: MobileBottomNavProps) {
   const pathname = usePathname();
-
-  const tabs: { href: string; label: string; icon: typeof Home }[] = [
-    { href: '/', label: 'Home', icon: Home },
-    { href: '/tasks', label: 'Actions', icon: CheckSquare },
-    { href: '/goals', label: 'Visions', icon: Eye },
-    { href: '/finance', label: 'Finance', icon: Wallet },
-  ];
 
   return (
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0A0A0A] border-t border-[#2A2A2A] pb-safe">
-      <div className="h-12 flex items-stretch">
-        {tabs.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'relative flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] min-w-0 px-0.5',
-                active ? 'text-[#FF6B35]' : 'text-[#8A8A8A]'
-              )}
-            >
-              {active && (
-                <span
-                  className="absolute top-0 left-2 right-2 h-0.5 rounded-full bg-[#FF6B35]"
-                  aria-hidden
-                />
-              )}
-              <Icon size={20} className={cn('shrink-0', active && 'text-[#FF6B35]')} />
-              <span className="truncate max-w-full">{label}</span>
-            </Link>
-          );
-        })}
+      <div className="h-16 flex items-center justify-around px-4">
+        {/* Home */}
+        <Link
+          href="/"
+          className={cn(
+            'flex flex-col items-center justify-center gap-1 w-12',
+            pathname === '/' ? 'text-[#FF6B35]' : 'text-[#8A8A8A]'
+          )}
+          aria-label="Home"
+        >
+          <Home size={22} />
+          <span className="text-[10px] font-medium">Home</span>
+        </Link>
 
+        {/* Global add button — centered, elevated */}
         <button
           type="button"
-          onClick={onMoreClick}
-          className="relative flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] text-[#8A8A8A] min-w-0 px-0.5"
+          onClick={onPlusClick}
+          className={cn(
+            'w-14 h-14 rounded-full flex items-center justify-center shadow-fab',
+            'active:scale-95 transition-transform',
+            plusOpen ? 'bg-[#CC4F1E]' : 'bg-[#FF6B35]'
+          )}
+          aria-label={plusOpen ? 'Close quick create' : 'Quick create'}
+          aria-expanded={plusOpen ? 'true' : 'false'}
         >
-          <MoreHorizontal size={20} className="shrink-0" />
-          <span className="truncate max-w-full">More</span>
+          <Plus
+            size={26}
+            className={cn('text-white transition-transform duration-200 ease-out', plusOpen && 'rotate-45')}
+          />
         </button>
+
+        {/* AI Chat */}
+        <Link
+          href="/chat"
+          className={cn(
+            'flex flex-col items-center justify-center gap-1 w-12',
+            pathname === '/chat' ? 'text-[#FF9933]' : 'text-[#8A8A8A]'
+          )}
+          aria-label="AI Chat"
+        >
+          <MessageSquare size={22} />
+          <span className="text-[10px] font-medium">AI Chat</span>
+        </Link>
       </div>
     </nav>
   );
