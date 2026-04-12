@@ -38,19 +38,21 @@ export default function LoginPage() {
     <div className="min-h-dvh bg-[#0A0A0A] flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
         {/* Logo */}
-        <div className="flex flex-col items-center gap-3">
-          <Image
-            src="/icons/icon-maskable-912.png"
-            alt="RISE"
-            width={88}
-            height={88}
-            className="animate-logo-pulse-glow"
-            priority
-          />
-          <h1 className="text-5xl font-bold text-[#FF9933] tracking-widest animate-pulse-glow">
-            RISE
-          </h1>
-          <p className="text-sm text-[#8A8A8A] text-center">
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/icons/icon-maskable-912.png"
+              alt="RISE"
+              width={52}
+              height={52}
+              className="animate-logo-pulse-glow"
+              priority
+            />
+            <h1 className="text-4xl font-bold text-[#FF9933] tracking-widest animate-pulse-glow">
+              RISE
+            </h1>
+          </div>
+          <p className="text-xs text-[#8A8A8A] text-center">
             My Organized Hub for Everything
           </p>
         </div>

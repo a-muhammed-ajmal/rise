@@ -44,21 +44,21 @@ export function DesktopSidebar() {
   return (
     <aside className="hidden sm:flex flex-col w-[200px] h-screen fixed left-0 top-0 bg-[#0A0A0A] border-r border-[#2A2A2A] z-30">
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-[#2A2A2A] flex items-center gap-2.5">
-        <Image
-          src="/icons/icon-maskable-912.png"
-          alt="RISE"
-          width={32}
-          height={32}
-          className="flex-shrink-0"
-          priority
-        />
-        <div>
-          <span className="text-xl font-bold text-[#FF9933] tracking-widest">RISE</span>
-          <p className="text-[10px] text-[#505050] mt-0.5 leading-tight">
-            Realms · Targets · Actions
-          </p>
+      <div className="px-4 py-3.5 border-b border-[#2A2A2A]">
+        <div className="flex items-center gap-2">
+          <Image
+            src="/icons/icon-maskable-912.png"
+            alt="RISE"
+            width={26}
+            height={26}
+            className="flex-shrink-0"
+            priority
+          />
+          <span className="text-base font-bold text-[#FF9933] tracking-widest">RISE</span>
         </div>
+        <p className="text-[10px] text-[#505050] mt-0.5 leading-tight">
+          Realms · Targets · Actions
+        </p>
       </div>
 
       {/* Nav Links */}

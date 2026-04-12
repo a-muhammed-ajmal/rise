@@ -9,15 +9,15 @@ export function MobileHeader() {
 
   return (
     <header className="sm:hidden h-10 bg-[#0A0A0A] border-b border-[#2A2A2A] flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <Image
           src="/icons/icon-maskable-912.png"
           alt="RISE"
-          width={24}
-          height={24}
+          width={20}
+          height={20}
           priority
         />
-        <span className="text-lg font-bold text-[#FF9933] tracking-widest">RISE</span>
+        <span className="text-base font-bold text-[#FF9933] tracking-widest">RISE</span>
       </div>
 
       <button
