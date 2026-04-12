@@ -199,11 +199,11 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-[calc(100dvh-48px-64px)] sm:h-[calc(100dvh)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#2A2A2A] bg-[#0A0A0A]">
-        <h1 className="text-base font-bold text-[#F0F0F0]">AI Chat</h1>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E5EA] bg-[#F2F2F7]">
+        <h1 className="text-base font-bold text-[#1C1C1E]">AI Chat</h1>
         <button
           onClick={() => setClearOpen(true)}
-          className="w-8 h-8 flex items-center justify-center text-[#8A8A8A] hover:text-[#FF4F6D]"
+          className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#FF4F6D]"
           title="Clear chat"
         >
           <Trash2 size={16} />
@@ -218,15 +218,15 @@ export default function ChatPage() {
               <MessageSquare size={28} className="text-[#FF9933]" />
             </div>
             <div className="text-center">
-              <p className="text-base font-semibold text-[#F0F0F0]">How can I help you today, {firstName}?</p>
-              <p className="text-sm text-[#8A8A8A] mt-1">Powered by Gemini AI</p>
+              <p className="text-base font-semibold text-[#1C1C1E]">How can I help you today, {firstName}?</p>
+              <p className="text-sm text-[#6C6C70] mt-1">Powered by Gemini AI</p>
             </div>
             <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
               {SUGGESTION_CHIPS.map((chip) => (
                 <button
                   key={chip}
                   onClick={() => sendMessage(chip)}
-                  className="p-3 bg-[#141414] border border-[#2A2A2A] rounded-card text-xs text-[#F0F0F0] text-left hover:bg-[#1C1C1C] transition-colors active:scale-[0.98]"
+                  className="p-3 bg-[#FFFFFF] border border-[#E5E5EA] rounded-card text-xs text-[#1C1C1E] text-left hover:bg-[#F5F5F5] transition-colors active:scale-[0.98]"
                 >
                   {chip}
                 </button>
@@ -250,12 +250,12 @@ export default function ChatPage() {
                 'rounded-card px-4 py-3 text-sm',
                 msg.role === 'user'
                   ? 'bg-[#FF6B35] text-white leading-relaxed'
-                  : 'bg-[#141414] text-[#F0F0F0] border border-[#2A2A2A]'
+                  : 'bg-[#FFFFFF] text-[#1C1C1E] border border-[#E5E5EA]'
               )}
             >
               {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
             </div>
-            <span className="text-[10px] text-[#505050]">
+            <span className="text-[10px] text-[#AEAEB2]">
               {new Date(msg.timestamp).toLocaleTimeString('en-AE', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
@@ -267,11 +267,11 @@ export default function ChatPage() {
             <div className="w-6 h-6 bg-[#FF9933]/15 rounded-full flex items-center justify-center mb-1">
               <span className="text-xs font-bold text-[#FF9933]">R</span>
             </div>
-            <div className="bg-[#141414] border border-[#2A2A2A] rounded-card px-4 py-3 flex gap-1">
+            <div className="bg-[#FFFFFF] border border-[#E5E5EA] rounded-card px-4 py-3 flex gap-1">
               {[0,1,2].map((i) => (
                 <span
                   key={i}
-                  className="w-1.5 h-1.5 bg-[#8A8A8A] rounded-full animate-bounce"
+                  className="w-1.5 h-1.5 bg-[#6C6C70] rounded-full animate-bounce"
                   style={{ animationDelay: `${i * 0.15}s` }}
                 />
               ))}
@@ -282,7 +282,7 @@ export default function ChatPage() {
       </div>
 
       {/* Input area */}
-      <div className="px-4 py-3 border-t border-[#2A2A2A] bg-[#0A0A0A] pb-safe">
+      <div className="px-4 py-3 border-t border-[#E5E5EA] bg-[#F2F2F7] pb-safe">
         <div className="flex gap-2 items-end">
           {/* Voice button */}
           <button
@@ -293,11 +293,11 @@ export default function ChatPage() {
             disabled={sending}
             className={cn(
               'w-11 h-11 flex-shrink-0 rounded-full flex items-center justify-center transition-colors',
-              isRecording ? 'bg-[#FF4F6D]' : 'bg-[#1C1C1C] border border-[#2A2A2A]'
+              isRecording ? 'bg-[#FF4F6D]' : 'bg-[#F5F5F5] border border-[#E5E5EA]'
             )}
             aria-label="Voice input"
           >
-            {isRecording ? <MicOff size={17} className="text-white" /> : <Mic size={17} className="text-[#8A8A8A]" />}
+            {isRecording ? <MicOff size={17} className="text-white" /> : <Mic size={17} className="text-[#6C6C70]" />}
           </button>
 
           {/* Text input */}
@@ -314,7 +314,7 @@ export default function ChatPage() {
             placeholder="Ask RISE anything..."
             disabled={sending || isTranscribing}
             rows={1}
-            className="flex-1 bg-[#1C1C1C] border border-[#2A2A2A] rounded-input px-3 py-2.5 text-sm text-[#F0F0F0] placeholder-[#505050] outline-none focus:border-[#FF6B35] resize-none transition-colors disabled:opacity-50"
+            className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] resize-none transition-colors disabled:opacity-50"
           />
 
           {/* Send button */}
@@ -327,7 +327,7 @@ export default function ChatPage() {
             <Send size={17} className="text-white" />
           </button>
         </div>
-        <p className="text-[10px] text-[#505050] text-center mt-2">Powered by Gemini</p>
+        <p className="text-[10px] text-[#AEAEB2] text-center mt-2">Powered by Gemini</p>
       </div>
 
       <ConfirmModal

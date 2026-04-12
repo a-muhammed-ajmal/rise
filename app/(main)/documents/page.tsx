@@ -54,7 +54,7 @@ function DocumentModal({ open, onClose, doc, userId }: { open: boolean; onClose:
 
 const CAT_COLORS: Record<string, string> = {
   Legal: '#FF4F6D', Financial: '#1ABC9C', Medical: '#FF6B35', Travel: '#1E4AFF',
-  Educational: '#FFD700', Personal: '#800080', Work: '#8E95A9', Other: '#505050',
+  Educational: '#FFD700', Personal: '#800080', Work: '#8E95A9', Other: '#AEAEB2',
 };
 
 export default function DocumentsPage() {
@@ -75,17 +75,17 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex flex-col min-h-dvh">
-      <div className="px-4 pt-4 pb-3 border-b border-[#2A2A2A]">
-        <h1 className="text-xl font-bold text-[#F0F0F0] mb-3">Documents</h1>
+      <div className="px-4 pt-4 pb-3 border-b border-[#E5E5EA]">
+        <h1 className="text-xl font-bold text-[#1C1C1E] mb-3">Documents</h1>
         {/* Search */}
         <div className="relative mb-3">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#505050]" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search documents..." className="w-full bg-[#1C1C1C] border border-[#2A2A2A] rounded-input pl-9 pr-3 py-2 text-sm text-[#F0F0F0] placeholder-[#505050] outline-none focus:border-[#FF6B35]" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AEAEB2]" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search documents..." className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input pl-9 pr-3 py-2 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35]" />
         </div>
         {/* Category chips */}
         <div className="flex gap-2 overflow-x-auto -mx-4 px-4">
           {['All', ...DOCUMENT_CATEGORIES].map((cat) => (
-            <button key={cat} onClick={() => setFilter(cat)} className={cn('flex-shrink-0 h-7 px-3 rounded-chip text-xs font-medium transition-colors', filter === cat ? 'bg-[#8E95A9]/20 text-[#8E95A9] border border-[#8E95A9]' : 'bg-[#141414] text-[#8A8A8A] border border-[#2A2A2A]')}>{cat}</button>
+            <button key={cat} onClick={() => setFilter(cat)} className={cn('flex-shrink-0 h-7 px-3 rounded-chip text-xs font-medium transition-colors', filter === cat ? 'bg-[#8E95A9]/20 text-[#8E95A9] border border-[#8E95A9]' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{cat}</button>
           ))}
         </div>
       </div>
@@ -93,13 +93,13 @@ export default function DocumentsPage() {
         {loading ? <>{[1,2,3].map((i) => <SkeletonCard key={i} />)}</> :
          filtered.length === 0 ? <EmptyState icon={FileText} title="No documents saved" subtitle="Add links to your important documents." actionLabel="Add Document" onAction={() => { setEditDoc(null); setModalOpen(true); }} /> :
          filtered.map((doc) => (
-          <div key={doc.id} onClick={() => { setEditDoc(doc); setModalOpen(true); }} className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 active:bg-[#1C1C1C] transition-colors">
+          <div key={doc.id} onClick={() => { setEditDoc(doc); setModalOpen(true); }} className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-4 active:bg-[#F5F5F5] transition-colors">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#F0F0F0] truncate">{doc.title}</p>
+                <p className="text-sm font-semibold text-[#1C1C1E] truncate">{doc.title}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge label={doc.category} color={CAT_COLORS[doc.category]} />
-                  {doc.notes && <span className="text-xs text-[#8A8A8A] truncate">{doc.notes}</span>}
+                  {doc.notes && <span className="text-xs text-[#6C6C70] truncate">{doc.notes}</span>}
                 </div>
               </div>
               {doc.url && (

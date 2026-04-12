@@ -40,7 +40,7 @@ function ReviewModal({ open, onClose, review, reviewType, userId }: { open: bool
       <div className="flex flex-col gap-4">
         {reviewType === 'weekly' && <Input label="Week Start" type="date" value={form.weekStart} onChange={(e) => set('weekStart', e.target.value)} />}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-[#F0F0F0]">Rating: {form.rating}/10</label>
+          <label className="text-sm font-medium text-[#1C1C1E]">Rating: {form.rating}/10</label>
           <input type="range" min={1} max={10} value={form.rating} onChange={(e) => set('rating', parseInt(e.target.value))} className="w-full accent-[#FF6B35]" />
         </div>
         <Textarea label="Wins *" value={form.wins} onChange={(e) => set('wins', e.target.value)} rows={3} placeholder="What went well this week?" required />
@@ -64,11 +64,11 @@ export default function ReviewsPage() {
 
   return (
     <div className="flex flex-col min-h-dvh">
-      <div className="px-4 pt-4 pb-3 border-b border-[#2A2A2A]">
-        <h1 className="text-xl font-bold text-[#F0F0F0] mb-3">Reviews</h1>
+      <div className="px-4 pt-4 pb-3 border-b border-[#E5E5EA]">
+        <h1 className="text-xl font-bold text-[#1C1C1E] mb-3">Reviews</h1>
         <div className="flex gap-1">
           {REVIEW_TYPES.map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={cn('flex-1 h-8 text-xs font-medium capitalize rounded-chip transition-colors', tab === t ? 'bg-[#FFD700] text-[#0A0A0A]' : 'bg-[#141414] text-[#8A8A8A] border border-[#2A2A2A]')}>{t}</button>
+            <button key={t} onClick={() => setTab(t)} className={cn('flex-1 h-8 text-xs font-medium capitalize rounded-chip transition-colors', tab === t ? 'bg-[#FFD700] text-[#1C1C1E]' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{t}</button>
           ))}
         </div>
       </div>
@@ -76,21 +76,21 @@ export default function ReviewsPage() {
         {loading ? <>{[1,2].map((i) => <SkeletonCard key={i} />)}</> :
          filtered.length === 0 ? <EmptyState icon={Compass} title="No reviews yet" subtitle="Start your first review to build self-awareness." actionLabel={`Start ${tab} review`} onAction={() => { setEditReview(null); setModalOpen(true); }} /> :
          filtered.map((r) => (
-          <div key={r.id} onClick={() => { setEditReview(r); setModalOpen(true); }} className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 active:bg-[#1C1C1C] transition-colors">
+          <div key={r.id} onClick={() => { setEditReview(r); setModalOpen(true); }} className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-4 active:bg-[#F5F5F5] transition-colors">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-[#F0F0F0]">{r.weekStartDate ?? r.monthYear ?? r.quarter ?? r.year ?? r.createdAt.split('T')[0]}</span>
+              <span className="text-sm font-semibold text-[#1C1C1E]">{r.weekStartDate ?? r.monthYear ?? r.quarter ?? r.year ?? r.createdAt.split('T')[0]}</span>
               <div className="flex">
                 {Array.from({ length: 10 }).map((_, i) => (
-                  <span key={i} className={cn('text-xs', i < r.rating ? 'text-[#FFD700]' : 'text-[#2A2A2A]')}>★</span>
+                  <span key={i} className={cn('text-xs', i < r.rating ? 'text-[#FFD700]' : 'text-[#E5E5EA]')}>★</span>
                 ))}
               </div>
             </div>
-            <p className="text-xs text-[#8A8A8A] line-clamp-2">{r.wins}</p>
+            <p className="text-xs text-[#6C6C70] line-clamp-2">{r.wins}</p>
           </div>
          ))
         }
       </div>
-      <button onClick={() => { setEditReview(null); setModalOpen(true); }} className="fixed bottom-[80px] right-4 w-14 h-14 bg-[#FFD700] rounded-full flex items-center justify-center shadow-fab active:scale-95 transition-transform sm:hidden z-30"><Plus size={24} className="text-[#0A0A0A]" /></button>
+      <button onClick={() => { setEditReview(null); setModalOpen(true); }} className="fixed bottom-[80px] right-4 w-14 h-14 bg-[#FFD700] rounded-full flex items-center justify-center shadow-fab active:scale-95 transition-transform sm:hidden z-30"><Plus size={24} className="text-[#1C1C1E]" /></button>
       <ReviewModal open={modalOpen} onClose={() => setModalOpen(false)} review={editReview} reviewType={tab} userId={user?.uid ?? ''} />
     </div>
   );

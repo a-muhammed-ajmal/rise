@@ -211,7 +211,7 @@ function TaskModal({
 
         {/* Priority (4 buttons) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[#F0F0F0]">Priority</label>
+          <label className="text-sm font-medium text-[#1C1C1E]">Priority</label>
           <div className="grid grid-cols-4 gap-2">
             {priorityButtons.map(({ value, label }) => (
               <button
@@ -221,7 +221,7 @@ function TaskModal({
                   'h-9 px-2 rounded-button text-xs font-semibold transition-all border',
                   form.priority === value
                     ? 'text-white border-transparent'
-                    : 'bg-[#1C1C1C] text-[#8A8A8A] border-[#2A2A2A]'
+                    : 'bg-[#F5F5F5] text-[#6C6C70] border-[#E5E5EA]'
                 )}
                 style={form.priority === value ? { backgroundColor: PRIORITY_COLORS[value] } : {}}
               >
@@ -277,7 +277,7 @@ function TaskModal({
             'flex items-center gap-3 px-4 py-3 rounded-card border transition-colors',
             form.isMyDay
               ? 'bg-[#FF6B35]/10 border-[#FF6B35] text-[#FF6B35]'
-              : 'bg-[#1C1C1C] border-[#2A2A2A] text-[#8A8A8A]'
+              : 'bg-[#F5F5F5] border-[#E5E5EA] text-[#6C6C70]'
           )}
         >
           <Sun size={18} />
@@ -288,7 +288,7 @@ function TaskModal({
           <div
             className={cn(
               'ml-auto w-10 h-6 rounded-full transition-colors flex items-center px-1',
-              form.isMyDay ? 'bg-[#FF6B35]' : 'bg-[#2A2A2A]'
+              form.isMyDay ? 'bg-[#FF6B35]' : 'bg-[#E5E5EA]'
             )}
           >
             <div
@@ -411,11 +411,11 @@ function ProjectModal({
         />
         {/* Realm preview */}
         {form.realm && (
-          <div className="flex items-center gap-3 px-3 py-2 bg-[#1C1C1C] rounded-card border border-[#2A2A2A]">
+          <div className="flex items-center gap-3 px-3 py-2 bg-[#F5F5F5] rounded-card border border-[#E5E5EA]">
             <span className="text-2xl">{REALM_CONFIG[form.realm]?.emoji}</span>
             <div>
-              <p className="text-sm font-medium text-[#F0F0F0]">{form.realm}</p>
-              <p className="text-xs text-[#8A8A8A]">{REALM_CONFIG[form.realm]?.description}</p>
+              <p className="text-sm font-medium text-[#1C1C1E]">{form.realm}</p>
+              <p className="text-xs text-[#6C6C70]">{REALM_CONFIG[form.realm]?.description}</p>
             </div>
           </div>
         )}
@@ -456,7 +456,7 @@ function TaskCard({
 
   const targetProject = projects.find((p) => p.id === (task.targetId ?? task.projectId));
   const recurringLetter = task.recurring ? RECURRENCE_LETTER[task.recurring] : '';
-  const priorityColor = PRIORITY_COLORS[task.priority] ?? '#8A8A8A';
+  const priorityColor = PRIORITY_COLORS[task.priority] ?? '#6C6C70';
   const priorityLabel = PRIORITY_LABELS[task.priority] ?? task.priority;
 
   // Close menu on outside click
@@ -490,8 +490,8 @@ function TaskCard({
   return (
     <div
       className={cn(
-        'relative flex items-start gap-0 border-b border-[#2A2A2A] last:border-0',
-        'active:bg-[#1A1A1A] transition-colors select-none',
+        'relative flex items-start gap-0 border-b border-[#E5E5EA] last:border-0',
+        'active:bg-[#F5F5F5] transition-colors select-none',
         selected && 'bg-[#FF6B35]/8'
       )}
       onPointerDown={handlePointerDown}
@@ -512,7 +512,7 @@ function TaskCard({
           <div
             className={cn(
               'w-5 h-5 rounded-full border-2 flex items-center justify-center',
-              selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#505050]'
+              selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
             )}
           >
             {selected && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -533,8 +533,8 @@ function TaskCard({
       {/* Content */}
       <div className="flex-1 min-w-0 py-3 pl-2 pr-2">
         <p className={cn(
-          'text-sm text-[#F0F0F0] leading-snug',
-          task.isCompleted && 'line-through text-[#505050]'
+          'text-sm text-[#1C1C1E] leading-snug',
+          task.isCompleted && 'line-through text-[#AEAEB2]'
         )}>
           {task.title}
         </p>
@@ -563,7 +563,7 @@ function TaskCard({
         {task.dueDate && (
           <p className={cn(
             'text-xs mt-1',
-            isOverdue ? 'text-[#FF4F6D]' : 'text-[#8A8A8A]'
+            isOverdue ? 'text-[#FF4F6D]' : 'text-[#6C6C70]'
           )}>
             {isOverdue ? '⚠ Overdue · ' : ''}{task.dueDate === today ? 'Today' : task.dueDate}
             {task.dueTime && ` · ${formatTime12(task.dueTime)}`}
@@ -576,27 +576,27 @@ function TaskCard({
         <div ref={menuRef} className="relative">
           <button
             onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-            className="w-7 h-7 flex items-center justify-center text-[#505050] hover:text-[#F0F0F0] rounded-full hover:bg-[#1C1C1C]"
+            className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]"
           >
             <MoreVertical size={15} />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-8 z-50 bg-[#1C1C1C] border border-[#2A2A2A] rounded-card shadow-card min-w-[160px]">
+            <div className="absolute right-0 top-8 z-50 bg-[#F5F5F5] border border-[#E5E5EA] rounded-card shadow-card min-w-[160px]">
               <button
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onEdit(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#F0F0F0] hover:bg-[#2A2A2A]"
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#1C1C1E] hover:bg-[#E5E5EA]"
               >
                 <Pencil size={14} /> Edit Action
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDuplicate(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#F0F0F0] hover:bg-[#2A2A2A]"
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#1C1C1E] hover:bg-[#E5E5EA]"
               >
                 <Copy size={14} /> Duplicate
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#FF4F6D] hover:bg-[#2A2A2A]"
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#FF4F6D] hover:bg-[#E5E5EA]"
               >
                 <Trash2 size={14} /> Delete
               </button>
@@ -606,13 +606,13 @@ function TaskCard({
 
         <div className="flex flex-col items-end gap-0.5">
           {targetProject && (
-            <span className="text-[10px] text-[#8A8A8A] max-w-[80px] text-right truncate leading-tight">
+            <span className="text-[10px] text-[#6C6C70] max-w-[80px] text-right truncate leading-tight">
               {targetProject.title}
             </span>
           )}
           <span
             className="text-[10px] max-w-[80px] text-right truncate leading-tight font-medium"
-            style={{ color: REALM_CONFIG[task.realm]?.color ?? '#8A8A8A' }}
+            style={{ color: REALM_CONFIG[task.realm]?.color ?? '#6C6C70' }}
           >
             {task.realm}
           </span>
@@ -644,19 +644,19 @@ function TargetCard({
   const cfg = REALM_CONFIG[project.realm] ?? { emoji: '🎯', color: '#FF6B35' };
 
   return (
-    <div className="bg-[#141414] rounded-card border border-[#2A2A2A] p-3 flex items-start gap-3">
+    <div className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-3 flex items-start gap-3">
       <span className="text-2xl flex-shrink-0">{project.icon || cfg.emoji}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#F0F0F0] truncate">{project.title}</p>
+        <p className="text-sm font-semibold text-[#1C1C1E] truncate">{project.title}</p>
         <div className="flex items-center gap-2 mt-1">
           <Badge label={project.realm} color={cfg.color} />
           {project.dueDate && (
-            <span className="text-xs text-[#8A8A8A]">{project.dueDate}</span>
+            <span className="text-xs text-[#6C6C70]">{project.dueDate}</span>
           )}
         </div>
         <div className="mt-2">
           <ProgressBar value={done} max={total || 1} color={cfg.color} height={4} />
-          <p className="text-xs text-[#8A8A8A] mt-1">{done}/{total} actions done</p>
+          <p className="text-xs text-[#6C6C70] mt-1">{done}/{total} actions done</p>
         </div>
       </div>
       <div className="flex flex-col items-center gap-2 flex-shrink-0">
@@ -667,19 +667,19 @@ function TargetCard({
         >
           <Star
             size={15}
-            className={project.isFavorite ? 'text-[#FFD700]' : 'text-[#505050]'}
+            className={project.isFavorite ? 'text-[#FFD700]' : 'text-[#AEAEB2]'}
             fill={project.isFavorite ? '#FFD700' : 'none'}
           />
         </button>
         <button
           onClick={() => onEdit(project)}
-          className="w-7 h-7 flex items-center justify-center text-[#505050] hover:text-[#F0F0F0]"
+          className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#1C1C1E]"
         >
           <Pencil size={14} />
         </button>
         <button
           onClick={() => onDelete(project)}
-          className="w-7 h-7 flex items-center justify-center text-[#505050] hover:text-[#FF4F6D]"
+          className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#FF4F6D]"
         >
           <Trash2 size={14} />
         </button>
@@ -909,9 +909,9 @@ export default function ActionsPage() {
   return (
     <div className="flex flex-col min-h-dvh">
       {/* Header */}
-      <div className="px-4 pt-4 pb-2 border-b border-[#2A2A2A]">
+      <div className="px-4 pt-4 pb-2 border-b border-[#E5E5EA]">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-[#F0F0F0]">Actions</h1>
+          <h1 className="text-xl font-bold text-[#1C1C1E]">Actions</h1>
           <Button size="sm" onClick={openCreateTask}>
             <Plus size={15} /> New Action
           </Button>
@@ -927,7 +927,7 @@ export default function ActionsPage() {
                 'flex-shrink-0 h-8 px-4 rounded-chip text-xs font-medium transition-colors',
                 activeTab === tab.id
                   ? 'bg-[#FF6B35] text-white'
-                  : 'bg-[#141414] text-[#8A8A8A] border border-[#2A2A2A]'
+                  : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]'
               )}
             >
               {tab.label}
@@ -948,8 +948,8 @@ export default function ActionsPage() {
 
       {/* Bulk mode toolbar */}
       {inBulkMode && selectedTasks.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-[#1C1C1C] border-b border-[#2A2A2A]">
-          <span className="text-xs text-[#F0F0F0] flex-1">
+        <div className="flex items-center gap-3 px-4 py-2 bg-[#F5F5F5] border-b border-[#E5E5EA]">
+          <span className="text-xs text-[#1C1C1E] flex-1">
             {selectedTasks.size} selected
           </span>
           <Button size="sm" variant="secondary" onClick={() => { setInBulkMode(false); setSelectedTasks(new Set()); }}>
@@ -976,7 +976,7 @@ export default function ActionsPage() {
             {loading ? (
               <div className="flex flex-col gap-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 bg-[#141414] rounded-card border border-[#2A2A2A] animate-pulse" />
+                  <div key={i} className="h-24 bg-[#FFFFFF] rounded-card border border-[#E5E5EA] animate-pulse" />
                 ))}
               </div>
             ) : realmGroups.length === 0 ? (
@@ -994,8 +994,8 @@ export default function ActionsPage() {
                   <div key={realm}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-base">{cfg.emoji}</span>
-                      <h2 className="text-sm font-semibold text-[#F0F0F0]">{realm}</h2>
-                      <div className="flex-1 h-px bg-[#2A2A2A]" />
+                      <h2 className="text-sm font-semibold text-[#1C1C1E]">{realm}</h2>
+                      <div className="flex-1 h-px bg-[#E5E5EA]" />
                     </div>
                     <div className="flex flex-col gap-2">
                       {rProjects.map((p) => (
@@ -1020,7 +1020,7 @@ export default function ActionsPage() {
         {activeTab !== 'targets' && (
           <>
             {loading ? (
-              <div className="bg-[#141414] rounded-card border border-[#2A2A2A] overflow-hidden">
+              <div className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] overflow-hidden">
                 {[1, 2, 3, 4].map((i) => <SkeletonListItem key={i} />)}
               </div>
             ) : currentTabTasks.length === 0 ? (
@@ -1032,10 +1032,10 @@ export default function ActionsPage() {
                 onAction={activeTab === 'today' || activeTab === 'inbox' ? openCreateTask : undefined}
               />
             ) : (
-              <div className="bg-[#141414] rounded-card border border-[#2A2A2A] overflow-hidden">
+              <div className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] overflow-hidden">
                 {/* Overdue section header for Today tab */}
                 {activeTab === 'today' && todayTasks.some((t) => t.dueDate && t.dueDate < today) && (
-                  <div className="px-4 py-1.5 bg-[#FF4F6D]/10 border-b border-[#2A2A2A]">
+                  <div className="px-4 py-1.5 bg-[#FF4F6D]/10 border-b border-[#E5E5EA]">
                     <p className="text-xs font-semibold text-[#FF4F6D]">
                       ⚠ Overdue — {todayTasks.filter((t) => t.dueDate && t.dueDate < today).length} action(s)
                     </p>

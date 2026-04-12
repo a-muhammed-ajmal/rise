@@ -42,18 +42,18 @@ function JournalModal({ open, onClose, entry, userId }: { open: boolean; onClose
     <Modal open={open} onClose={onClose} title={entry ? 'Edit Entry' : 'New Entry'} footer={<div className="flex gap-3"><Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button><Button fullWidth loading={saving} onClick={handleSave}>Save</Button></div>}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[#F0F0F0]">Energy: {form.energy}/5</label>
+          <label className="text-sm font-medium text-[#1C1C1E]">Energy: {form.energy}/5</label>
           <div className="flex gap-2">
             {[1,2,3,4,5].map((n) => (
-              <button key={n} onClick={() => setForm((f) => ({ ...f, energy: n }))} className={cn('flex-1 h-10 rounded-button text-sm font-semibold transition-colors border', form.energy === n ? 'bg-[#FF6B35] border-[#FF6B35] text-white' : 'bg-[#141414] border-[#2A2A2A] text-[#8A8A8A]')}>{n}</button>
+              <button key={n} onClick={() => setForm((f) => ({ ...f, energy: n }))} className={cn('flex-1 h-10 rounded-button text-sm font-semibold transition-colors border', form.energy === n ? 'bg-[#FF6B35] border-[#FF6B35] text-white' : 'bg-[#FFFFFF] border-[#E5E5EA] text-[#6C6C70]')}>{n}</button>
             ))}
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[#F0F0F0]">Mood</label>
+          <label className="text-sm font-medium text-[#1C1C1E]">Mood</label>
           <div className="grid grid-cols-4 gap-2">
             {MOODS.map((m) => (
-              <button key={m} onClick={() => setForm((f) => ({ ...f, mood: f.mood === m ? '' : m as Mood }))} className={cn('flex flex-col items-center gap-1 p-2 rounded-card border text-xs transition-colors', form.mood === m ? 'bg-[#FF6B35]/15 border-[#FF6B35] text-[#FF6B35]' : 'bg-[#141414] border-[#2A2A2A] text-[#8A8A8A]')}>
+              <button key={m} onClick={() => setForm((f) => ({ ...f, mood: f.mood === m ? '' : m as Mood }))} className={cn('flex flex-col items-center gap-1 p-2 rounded-card border text-xs transition-colors', form.mood === m ? 'bg-[#FF6B35]/15 border-[#FF6B35] text-[#FF6B35]' : 'bg-[#FFFFFF] border-[#E5E5EA] text-[#6C6C70]')}>
                 <span>{MOOD_EMOJIS[m]}</span><span>{m}</span>
               </button>
             ))}
@@ -61,17 +61,17 @@ function JournalModal({ open, onClose, entry, userId }: { open: boolean; onClose
         </div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-[#F0F0F0]">Entry *</label>
+            <label className="text-sm font-medium text-[#1C1C1E]">Entry *</label>
             <button
               onMouseDown={startRecording} onMouseUp={stopRecording}
               onTouchStart={startRecording} onTouchEnd={stopRecording}
-              className={cn('w-8 h-8 rounded-full flex items-center justify-center', isRecording ? 'bg-[#FF4F6D] text-white' : 'bg-[#1C1C1C] text-[#8A8A8A]')}
+              className={cn('w-8 h-8 rounded-full flex items-center justify-center', isRecording ? 'bg-[#FF4F6D] text-white' : 'bg-[#F5F5F5] text-[#6C6C70]')}
             >
               {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
             </button>
           </div>
           <Textarea value={form.text} onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))} rows={8} placeholder="Write your thoughts..." />
-          {isTranscribing && <p className="text-xs text-[#8A8A8A]">Transcribing...</p>}
+          {isTranscribing && <p className="text-xs text-[#6C6C70]">Transcribing...</p>}
         </div>
       </div>
     </Modal>
@@ -96,8 +96,8 @@ export default function JournalPage() {
 
   return (
     <div className="flex flex-col min-h-dvh">
-      <div className="px-4 pt-4 pb-3 border-b border-[#2A2A2A]">
-        <h1 className="text-xl font-bold text-[#F0F0F0] mb-3">Journal</h1>
+      <div className="px-4 pt-4 pb-3 border-b border-[#E5E5EA]">
+        <h1 className="text-xl font-bold text-[#1C1C1E] mb-3">Journal</h1>
         <div className="flex gap-3">
           {days.map((date) => {
             const d = new Date(date + 'T00:00:00');
@@ -105,8 +105,8 @@ export default function JournalPage() {
             const hasEntry = entryDates.has(date);
             return (
               <div key={date} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] text-[#8A8A8A]">{'SMTWTFS'[d.getDay()]}</span>
-                <span className={cn('text-sm font-semibold', isToday ? 'text-[#FF6B35]' : 'text-[#F0F0F0]')}>{d.getDate()}</span>
+                <span className="text-[10px] text-[#6C6C70]">{'SMTWTFS'[d.getDay()]}</span>
+                <span className={cn('text-sm font-semibold', isToday ? 'text-[#FF6B35]' : 'text-[#1C1C1E]')}>{d.getDate()}</span>
                 <span className={cn('w-1.5 h-1.5 rounded-full', hasEntry ? 'bg-[#800080]' : 'bg-transparent')} />
               </div>
             );
@@ -117,17 +117,17 @@ export default function JournalPage() {
         {loading ? <>{[1,2,3].map((i) => <SkeletonCard key={i} />)}</> :
          sorted.length === 0 ? <EmptyState icon={BookOpen} title="No journal entries yet" subtitle="Write your first entry today." actionLabel="Write Entry" onAction={() => { setEditEntry(null); setModalOpen(true); }} /> :
          sorted.map((entry) => (
-          <div key={entry.id} onClick={() => { setEditEntry(entry); setModalOpen(true); }} className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 active:bg-[#1C1C1C] transition-colors">
+          <div key={entry.id} onClick={() => { setEditEntry(entry); setModalOpen(true); }} className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-4 active:bg-[#F5F5F5] transition-colors">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-base">{entry.mood ? MOOD_EMOJIS[entry.mood] : '📝'}</span>
-              <span className="text-xs text-[#8A8A8A]">{entry.date}</span>
+              <span className="text-xs text-[#6C6C70]">{entry.date}</span>
               <div className="flex ml-auto">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <span key={i} className={cn('text-xs', i < entry.energy ? 'text-[#FF6B35]' : 'text-[#2A2A2A]')}>●</span>
+                  <span key={i} className={cn('text-xs', i < entry.energy ? 'text-[#FF6B35]' : 'text-[#E5E5EA]')}>●</span>
                 ))}
               </div>
             </div>
-            <p className="text-sm text-[#F0F0F0] line-clamp-3">{entry.text}</p>
+            <p className="text-sm text-[#1C1C1E] line-clamp-3">{entry.text}</p>
           </div>
          ))
         }

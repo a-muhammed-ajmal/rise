@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0A0A0A',
+  themeColor: '#FFFFFF',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -37,8 +37,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" style={{ backgroundColor: '#0A0A0A' }}>
-      <body style={{ backgroundColor: '#0A0A0A' }}>
+    <html lang="en" style={{ backgroundColor: '#F2F2F7' }}>
+      <body style={{ backgroundColor: '#F2F2F7' }}>
         <AuthProvider>
           <SWRegistrar />
           {children}

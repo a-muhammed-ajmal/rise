@@ -195,14 +195,14 @@ export default function FinancePage() {
   return (
     <div className="flex flex-col min-h-dvh">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-[#2A2A2A]">
+      <div className="px-4 pt-4 pb-3 border-b border-[#E5E5EA]">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-[#F0F0F0]">Finance</h1>
+          <h1 className="text-xl font-bold text-[#1C1C1E]">Finance</h1>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={handlePrevMonth}>
               <ChevronLeft size={16} />
             </Button>
-            <span className="text-sm font-medium text-[#F0F0F0] min-w-[100px] text-center">
+            <span className="text-sm font-medium text-[#1C1C1E] min-w-[100px] text-center">
               {format(parse(selectedMonth, 'yyyy-MM', new Date()), 'MMMM yyyy')}
             </span>
             <Button variant="ghost" size="sm" onClick={handleNextMonth}>
@@ -244,7 +244,7 @@ export default function FinancePage() {
             onClick={() => setIncomeOpen(!incomeOpen)}
           >
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-[#F0F0F0]">Income Tracker</h2>
+              <h2 className="text-lg font-semibold text-[#1C1C1E]">Income Tracker</h2>
               <Badge label={incomeTransactions.length.toString()} />
             </div>
             <Button variant="ghost" size="sm" onClick={() => setIncomeModal({ open: true, edit: null })}>
@@ -260,11 +260,11 @@ export default function FinancePage() {
                   {incomeTransactions.sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
                     <div key={tx.id} className="glass-card p-3 flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="font-semibold text-[#F0F0F0]">{tx.source}</p>
+                        <p className="font-semibold text-[#1C1C1E]">{tx.source}</p>
                         <Badge label={tx.category} />
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-[#8A8A8A]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
+                        <p className="text-sm text-[#6C6C70]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
                         <p className="font-semibold text-green-400">{formatCurrency(tx.amount)}</p>
                         <Badge label={tx.status || 'Received'} color={tx.status === 'Received' ? 'green' : tx.status === 'Pending' ? 'amber' : 'blue'} />
                       </div>
@@ -287,7 +287,7 @@ export default function FinancePage() {
             onClick={() => setExpenseOpen(!expenseOpen)}
           >
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-[#F0F0F0]">Expense Tracker</h2>
+              <h2 className="text-lg font-semibold text-[#1C1C1E]">Expense Tracker</h2>
               <Badge label={expenseTransactions.length.toString()} />
             </div>
             <Button variant="ghost" size="sm" onClick={() => setExpenseModal({ open: true, edit: null })}>
@@ -297,8 +297,8 @@ export default function FinancePage() {
           {expenseOpen && (
             <div className="px-4 pb-4">
               {/* Category Summary */}
-              <div className="mb-4 p-3 bg-[#1C1C1C] rounded-card">
-                <h3 className="text-sm font-medium text-[#F0F0F0] mb-2">By Category</h3>
+              <div className="mb-4 p-3 bg-[#F5F5F5] rounded-card">
+                <h3 className="text-sm font-medium text-[#1C1C1E] mb-2">By Category</h3>
                 <div className="space-y-1">
                   {Object.entries(
                     expenseTransactions.reduce((acc, tx) => {
@@ -307,8 +307,8 @@ export default function FinancePage() {
                     }, {} as Record<string, number>)
                   ).sort(([,a], [,b]) => b - a).map(([cat, amt]) => (
                     <div key={cat} className="flex justify-between text-sm">
-                      <span className="text-[#8A8A8A]">{cat}</span>
-                      <span className="text-[#F0F0F0]">{formatCurrency(amt)}</span>
+                      <span className="text-[#6C6C70]">{cat}</span>
+                      <span className="text-[#1C1C1E]">{formatCurrency(amt)}</span>
                     </div>
                   ))}
                 </div>
@@ -321,14 +321,14 @@ export default function FinancePage() {
                   {expenseTransactions.sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
                     <div key={tx.id} className="glass-card p-3 flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="font-semibold text-[#F0F0F0]">{tx.description}</p>
+                        <p className="font-semibold text-[#1C1C1E]">{tx.description}</p>
                         <Badge label={tx.category} />
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-[#8A8A8A]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
+                        <p className="text-sm text-[#6C6C70]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
                         <Badge label={tx.expenseType || 'Optional'} color={tx.expenseType === 'Mandatory' ? 'blue' : 'gray'} />
                         <p className="font-semibold text-red-400">{formatCurrency(tx.amount)}</p>
-                        <p className="text-xs text-[#8A8A8A]">{tx.paymentMethod}</p>
+                        <p className="text-xs text-[#6C6C70]">{tx.paymentMethod}</p>
                       </div>
                       <div className="flex gap-2">
                         <Button variant="ghost" size="sm" onClick={() => setExpenseModal({ open: true, edit: tx })}>Edit</Button>
@@ -349,7 +349,7 @@ export default function FinancePage() {
             onClick={() => setDebtOpen(!debtOpen)}
           >
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-[#F0F0F0]">Debt / Credit Tracker</h2>
+              <h2 className="text-lg font-semibold text-[#1C1C1E]">Debt / Credit Tracker</h2>
               <Badge label={debts.filter(d => d.status === 'Active').length.toString()} />
             </div>
             <Button variant="ghost" size="sm" onClick={() => setDebtModal({ open: true, edit: null })}>
@@ -367,17 +367,17 @@ export default function FinancePage() {
                     return (
                       <div key={debt.id} className="glass-card p-4">
                         <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-semibold text-[#F0F0F0]">{debt.name}</h3>
+                          <h3 className="font-semibold text-[#1C1C1E]">{debt.name}</h3>
                           <Badge label="Active" color="amber" />
                         </div>
                         <div className="flex justify-between items-center mb-2">
                           <p className="text-lg font-bold text-red-400">{formatCurrency(debt.remainingBalance)}</p>
-                          <p className="text-sm text-[#8A8A8A]">of {formatCurrency(debt.totalAmount)}</p>
+                          <p className="text-sm text-[#6C6C70]">of {formatCurrency(debt.totalAmount)}</p>
                         </div>
                         <div className="progress-track mb-2">
                           <div className="progress-fill" style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: 'green' }}></div>
                         </div>
-                        <div className="text-xs text-[#8A8A8A] space-y-1 mb-3">
+                        <div className="text-xs text-[#6C6C70] space-y-1 mb-3">
                           {debt.monthlyPayment && <p>Monthly: {formatCurrency(debt.monthlyPayment)}</p>}
                           {debt.interestRate && <p>Interest: {debt.interestRate}%</p>}
                           {debt.dueDay && <p>Due day: {debt.dueDay}</p>}
@@ -402,7 +402,7 @@ export default function FinancePage() {
               {debts.filter(d => d.status === 'Paid Off').length > 0 && (
                 <div className="mt-4">
                   <button
-                    className="w-full flex items-center justify-between text-left text-sm font-medium text-[#8A8A8A] mb-2"
+                    className="w-full flex items-center justify-between text-left text-sm font-medium text-[#6C6C70] mb-2"
                     onClick={() => setPaidOffOpen(!paidOffOpen)}
                   >
                     Paid Off ({debts.filter(d => d.status === 'Paid Off').length})
@@ -413,8 +413,8 @@ export default function FinancePage() {
                       {debts.filter(d => d.status === 'Paid Off').map(debt => (
                         <div key={debt.id} className="glass-card p-3 flex justify-between items-center opacity-60">
                           <div>
-                            <p className="font-semibold text-[#F0F0F0] line-through">{debt.name}</p>
-                            <p className="text-sm text-[#8A8A8A]">{formatCurrency(debt.totalAmount)}</p>
+                            <p className="font-semibold text-[#1C1C1E] line-through">{debt.name}</p>
+                            <p className="text-sm text-[#6C6C70]">{formatCurrency(debt.totalAmount)}</p>
                           </div>
                           <div className="flex gap-2">
                             <Badge label="Paid Off" color="green" />
@@ -440,7 +440,7 @@ export default function FinancePage() {
             onClick={() => setBudgetOpen(!budgetOpen)}
           >
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-[#F0F0F0]">Budget Planner</h2>
+              <h2 className="text-lg font-semibold text-[#1C1C1E]">Budget Planner</h2>
               <Badge label={budgets.filter(b => !b.monthYear || b.monthYear === selectedMonth).length.toString()} />
             </div>
             <Button variant="ghost" size="sm" onClick={() => setBudgetModal({ open: true, edit: null })}>
@@ -461,8 +461,8 @@ export default function FinancePage() {
                     return (
                       <div key={budget.id} className="glass-card p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-semibold text-[#F0F0F0]">{budget.category}</h3>
-                          <span className="text-sm text-[#8A8A8A]">{formatCurrency(budget.monthlyLimit)}</span>
+                          <h3 className="font-semibold text-[#1C1C1E]">{budget.category}</h3>
+                          <span className="text-sm text-[#6C6C70]">{formatCurrency(budget.monthlyLimit)}</span>
                         </div>
                         <p className={`text-lg font-bold mb-2 ${isOver ? 'text-red-400' : 'text-green-400'}`}>
                           {formatCurrency(spent)} spent
@@ -538,7 +538,7 @@ export default function FinancePage() {
       {/* Delete Modal */}
       <Modal open={deleteModal.open} onClose={() => setDeleteModal({ open: false, type: '', id: '', name: '' })} title={`Delete ${deleteModal.type}`}>
         <div className="p-4">
-          <p className="text-[#F0F0F0] mb-4">Delete "{deleteModal.name}"? This cannot be undone.</p>
+          <p className="text-[#1C1C1E] mb-4">Delete "{deleteModal.name}"? This cannot be undone.</p>
           <div className="flex gap-3">
             <Button variant="secondary" fullWidth onClick={() => setDeleteModal({ open: false, type: '', id: '', name: '' })}>Cancel</Button>
             <Button variant="danger" fullWidth onClick={handleDelete}>Delete</Button>
@@ -578,7 +578,7 @@ function IncomeForm({ initial, onSave, onCancel }: { initial: Transaction | null
       <Input label="Date" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
       <Select label="Category" value={form.category} onChange={e => setForm(f => ({ ...f, category: (e.target as HTMLSelectElement).value }))} options={INCOME_CATEGORIES.map(c => ({ value: c, label: c }))} />
       <div>
-        <p className="text-sm font-medium text-[#F0F0F0] mb-2">Status</p>
+        <p className="text-sm font-medium text-[#1C1C1E] mb-2">Status</p>
         <div className="flex gap-2">
           {INCOME_STATUSES.map(s => (
             <Button
@@ -631,7 +631,7 @@ function ExpenseForm({ initial, onSave, onCancel }: { initial: Transaction | nul
       <Input label="Date" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
       <Select label="Category" value={form.category} onChange={e => setForm(f => ({ ...f, category: (e.target as HTMLSelectElement).value }))} options={EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }))} />
       <div>
-        <p className="text-sm font-medium text-[#F0F0F0] mb-2">Type</p>
+        <p className="text-sm font-medium text-[#1C1C1E] mb-2">Type</p>
         <div className="flex gap-2">
           {EXPENSE_TYPES.map(t => (
             <Button
@@ -742,7 +742,7 @@ function LogPaymentForm({ debt, onSave, onCancel }: { debt: Debt | null; onSave:
   return (
     <div className="space-y-4">
       <Input label="Payment Amount (AED)" type="number" value={amount} onChange={e => setAmount(e.target.value)} required />
-      <p className="text-sm text-[#8A8A8A]">Current remaining balance: {formatCurrency(debt?.remainingBalance || 0)}</p>
+      <p className="text-sm text-[#6C6C70]">Current remaining balance: {formatCurrency(debt?.remainingBalance || 0)}</p>
       <div className="flex gap-3">
         <Button variant="secondary" fullWidth onClick={onCancel}>Cancel</Button>
         <Button fullWidth onClick={handleSave}>Log Payment</Button>

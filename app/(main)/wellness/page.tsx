@@ -146,7 +146,7 @@ function RhythmFormFields({
           'flex items-center gap-3 px-4 py-3 rounded-card border transition-colors text-left',
           form.reminderEnabled
             ? 'bg-[#1ABC9C]/10 border-[#1ABC9C] text-[#1ABC9C]'
-            : 'bg-[#1C1C1C] border-[#2A2A2A] text-[#8A8A8A]'
+            : 'bg-[#F5F5F5] border-[#E5E5EA] text-[#6C6C70]'
         )}
       >
         <div className="flex-1">
@@ -160,7 +160,7 @@ function RhythmFormFields({
         <div
           className={cn(
             'w-10 h-6 rounded-full transition-colors flex items-center px-1',
-            form.reminderEnabled ? 'bg-[#1ABC9C]' : 'bg-[#2A2A2A]'
+            form.reminderEnabled ? 'bg-[#1ABC9C]' : 'bg-[#E5E5EA]'
           )}
         >
           <div
@@ -327,7 +327,7 @@ function RhythmPopup({
     }
   };
 
-  const catColor = CATEGORY_COLORS[habit.category] ?? '#8A8A8A';
+  const catColor = CATEGORY_COLORS[habit.category] ?? '#6C6C70';
   const streak = habit.streak;
   const today = todayISO();
 
@@ -367,37 +367,37 @@ function RhythmPopup({
         <div className="flex flex-col gap-4">
           {/* Note */}
           {habit.note && (
-            <p className="text-sm text-[#8A8A8A] leading-relaxed">{habit.note}</p>
+            <p className="text-sm text-[#6C6C70] leading-relaxed">{habit.note}</p>
           )}
 
           {/* 2x3 info grid */}
           <div className="grid grid-cols-2 gap-3">
             {/* Time */}
-            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
-              <p className="text-xs text-[#505050] mb-1 flex items-center gap-1">
+            <div className="bg-[#F5F5F5] rounded-card p-3 border border-[#E5E5EA]">
+              <p className="text-xs text-[#AEAEB2] mb-1 flex items-center gap-1">
                 <Clock size={10} /> Time
               </p>
-              <p className="text-sm font-semibold text-[#F0F0F0]">
+              <p className="text-sm font-semibold text-[#1C1C1E]">
                 {habit.time ? formatTime12(habit.time) : '—'}
               </p>
             </div>
 
             {/* Category */}
-            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
-              <p className="text-xs text-[#505050] mb-1">Category</p>
+            <div className="bg-[#F5F5F5] rounded-card p-3 border border-[#E5E5EA]">
+              <p className="text-xs text-[#AEAEB2] mb-1">Category</p>
               <Badge label={habit.category} color={catColor} />
             </div>
 
             {/* Frequency */}
-            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
-              <p className="text-xs text-[#505050] mb-1">Frequency</p>
-              <p className="text-sm font-semibold text-[#F0F0F0] capitalize">{habit.frequency}</p>
+            <div className="bg-[#F5F5F5] rounded-card p-3 border border-[#E5E5EA]">
+              <p className="text-xs text-[#AEAEB2] mb-1">Frequency</p>
+              <p className="text-sm font-semibold text-[#1C1C1E] capitalize">{habit.frequency}</p>
             </div>
 
             {/* Reminder */}
-            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
-              <p className="text-xs text-[#505050] mb-1">Reminder</p>
-              <p className="text-sm font-semibold text-[#F0F0F0]">
+            <div className="bg-[#F5F5F5] rounded-card p-3 border border-[#E5E5EA]">
+              <p className="text-xs text-[#AEAEB2] mb-1">Reminder</p>
+              <p className="text-sm font-semibold text-[#1C1C1E]">
                 {habit.reminder?.enabled
                   ? habit.time ? formatTime12(habit.time) : 'ON'
                   : 'OFF'}
@@ -405,21 +405,21 @@ function RhythmPopup({
             </div>
 
             {/* Current Streak */}
-            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
-              <p className="text-xs text-[#505050] mb-1 flex items-center gap-1">
+            <div className="bg-[#F5F5F5] rounded-card p-3 border border-[#E5E5EA]">
+              <p className="text-xs text-[#AEAEB2] mb-1 flex items-center gap-1">
                 <Flame size={10} /> Streak
               </p>
-              <p className="text-sm font-semibold text-[#F0F0F0]">
+              <p className="text-sm font-semibold text-[#1C1C1E]">
                 {streak}d {streak > 3 ? '🔥' : ''}
               </p>
             </div>
 
             {/* Best Streak */}
-            <div className="bg-[#1C1C1C] rounded-card p-3 border border-[#2A2A2A]">
-              <p className="text-xs text-[#505050] mb-1 flex items-center gap-1">
+            <div className="bg-[#F5F5F5] rounded-card p-3 border border-[#E5E5EA]">
+              <p className="text-xs text-[#AEAEB2] mb-1 flex items-center gap-1">
                 <Trophy size={10} /> Best
               </p>
-              <p className="text-sm font-semibold text-[#F0F0F0]">
+              <p className="text-sm font-semibold text-[#1C1C1E]">
                 {habit.bestStreak}d 🏆
               </p>
             </div>
@@ -427,7 +427,7 @@ function RhythmPopup({
 
           {/* 7-day activity strip */}
           <div className="flex flex-col gap-1.5">
-            <p className="text-xs text-[#505050]">Last 7 days</p>
+            <p className="text-xs text-[#AEAEB2]">Last 7 days</p>
             <div className="flex gap-1.5">
               {Array.from({ length: 7 }, (_, i) => {
                 const d = new Date(today + 'T00:00:00');
@@ -436,11 +436,11 @@ function RhythmPopup({
                 const s = habit.statusLog[dateStr] as HabitStatus | undefined;
                 return (
                   <div key={dateStr} className="flex-1 flex flex-col items-center gap-1">
-                    <span className="text-[9px] text-[#505050]">{d.getDate()}</span>
+                    <span className="text-[9px] text-[#AEAEB2]">{d.getDate()}</span>
                     <div
                       className={cn(
                         'w-full h-6 rounded-sm flex items-center justify-center text-xs',
-                        s === 'done' ? 'bg-[#1ABC9C]' : s === 'failed' ? 'bg-[#FF4F6D]' : 'bg-[#2A2A2A]'
+                        s === 'done' ? 'bg-[#1ABC9C]' : s === 'failed' ? 'bg-[#FF4F6D]' : 'bg-[#E5E5EA]'
                       )}
                     >
                       {s === 'done' ? '✓' : s === 'failed' ? '✕' : ''}
@@ -468,7 +468,7 @@ function RhythmCard({
   onOpenPopup: (h: Habit) => void;
 }) {
   const status = (habit.statusLog[today] ?? 'pending') as HabitStatus;
-  const catColor = CATEGORY_COLORS[habit.category] ?? '#8A8A8A';
+  const catColor = CATEGORY_COLORS[habit.category] ?? '#6C6C70';
   const isDoneOrFailed = status === 'done' || status === 'failed';
 
   const markDone = async (e: React.MouseEvent) => {
@@ -509,7 +509,7 @@ function RhythmCard({
   return (
     <div
       className={cn(
-        'bg-[#141414] rounded-card border border-[#2A2A2A] p-3 flex items-center gap-3 transition-opacity active:bg-[#1A1A1A] cursor-pointer',
+        'bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-3 flex items-center gap-3 transition-opacity active:bg-[#F5F5F5] cursor-pointer',
         isDoneOrFailed && 'opacity-50'
       )}
       onClick={() => onOpenPopup(habit)}
@@ -517,14 +517,14 @@ function RhythmCard({
       {/* Left: name + time + category */}
       <div className="flex-1 min-w-0">
         <p className={cn(
-          'text-sm font-semibold text-[#F0F0F0] truncate',
-          status === 'done' && 'line-through text-[#505050]'
+          'text-sm font-semibold text-[#1C1C1E] truncate',
+          status === 'done' && 'line-through text-[#AEAEB2]'
         )}>
           {habit.name}
         </p>
         <div className="flex items-center gap-2 mt-1">
           {habit.time && (
-            <span className="text-xs text-[#8A8A8A] flex items-center gap-0.5">
+            <span className="text-xs text-[#6C6C70] flex items-center gap-0.5">
               <Clock size={10} /> {formatTime12(habit.time)}
             </span>
           )}
@@ -616,7 +616,7 @@ function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => voi
 
   return (
     <>
-      <div className="fixed bottom-[72px] right-4 z-50 sm:bottom-6 sm:right-6 bg-[#141414] border border-[#2A2A2A] rounded-card p-4 w-60 shadow-card">
+      <div className="fixed bottom-[72px] right-4 z-50 sm:bottom-6 sm:right-6 bg-[#FFFFFF] border border-[#E5E5EA] rounded-card p-4 w-60 shadow-card">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold" style={{ color }}>
@@ -627,7 +627,7 @@ function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => voi
               type="button"
               onClick={() => setSettingsOpen(true)}
               aria-label="Timer settings"
-              className="w-6 h-6 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0]"
+              className="w-6 h-6 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E]"
             >
               <Settings size={14} />
             </button>
@@ -635,7 +635,7 @@ function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => voi
               type="button"
               onClick={onClose}
               aria-label="Close timer"
-              className="w-6 h-6 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0] text-xs"
+              className="w-6 h-6 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] text-xs"
             >
               ✕
             </button>
@@ -646,7 +646,7 @@ function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => voi
         <div className="flex justify-center mb-3">
           <div className="relative w-28 h-28">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="44" fill="none" stroke="#2A2A2A" strokeWidth="8" />
+              <circle cx="50" cy="50" r="44" fill="none" stroke="#E5E5EA" strokeWidth="8" />
               <circle
                 cx="50" cy="50" r="44" fill="none"
                 stroke={color} strokeWidth="8"
@@ -657,8 +657,8 @@ function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => voi
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-bold text-[#F0F0F0] tabular-nums">{display}</span>
-              <span className="text-[10px] text-[#8A8A8A]">Session {sessionsCompleted + 1}</span>
+              <span className="text-2xl font-bold text-[#1C1C1E] tabular-nums">{display}</span>
+              <span className="text-[10px] text-[#6C6C70]">Session {sessionsCompleted + 1}</span>
             </div>
           </div>
         </div>
@@ -669,7 +669,7 @@ function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => voi
             type="button"
             onClick={reset}
             aria-label="Reset timer"
-            className="w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#2A2A2A] flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0]"
+            className="w-10 h-10 rounded-full bg-[#F5F5F5] border border-[#E5E5EA] flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E]"
           >
             <RotateCcw size={14} />
           </button>
@@ -686,7 +686,7 @@ function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => voi
             type="button"
             onClick={skip}
             aria-label="Skip session"
-            className="w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#2A2A2A] flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0]"
+            className="w-10 h-10 rounded-full bg-[#F5F5F5] border border-[#E5E5EA] flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E]"
           >
             <SkipForward size={14} />
           </button>
@@ -805,15 +805,15 @@ export default function WellnessPage() {
   return (
     <div className="flex flex-col min-h-dvh">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-[#2A2A2A]">
+      <div className="px-4 pt-4 pb-3 border-b border-[#E5E5EA]">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-[#F0F0F0]">My Rhythms</h1>
+          <h1 className="text-xl font-bold text-[#1C1C1E]">My Rhythms</h1>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setPomodoroOpen(!pomodoroOpen)}
               aria-label="Pomodoro timer"
-              className="w-9 h-9 bg-[#141414] border border-[#2A2A2A] rounded-full flex items-center justify-center text-[#FF6B35]"
+              className="w-9 h-9 bg-[#FFFFFF] border border-[#E5E5EA] rounded-full flex items-center justify-center text-[#FF6B35]"
             >
               <Timer size={16} />
             </button>
@@ -827,9 +827,9 @@ export default function WellnessPage() {
         {activeHabits.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
             {/* Today's Completion */}
-            <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A] col-span-2">
+            <div className="bg-[#FFFFFF] rounded-card p-3 border border-[#E5E5EA] col-span-2">
               <div className="flex justify-between items-center mb-1.5">
-                <p className="text-xs text-[#8A8A8A]">Today&apos;s Completion</p>
+                <p className="text-xs text-[#6C6C70]">Today&apos;s Completion</p>
                 <span className="text-xs font-semibold text-[#1ABC9C]">
                   {doneToday}/{activeHabits.length}
                 </span>
@@ -838,18 +838,18 @@ export default function WellnessPage() {
               <p className="text-xs text-[#1ABC9C] mt-1">{completionPct}%</p>
             </div>
             {/* Avg Streak */}
-            <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A]">
-              <p className="text-xs text-[#8A8A8A] mb-1">Avg Streak</p>
+            <div className="bg-[#FFFFFF] rounded-card p-3 border border-[#E5E5EA]">
+              <p className="text-xs text-[#6C6C70] mb-1">Avg Streak</p>
               <p className="text-lg font-bold text-[#FF6B35]">{avgStreak}d</p>
             </div>
             {/* Best Streak */}
-            <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A]">
-              <p className="text-xs text-[#8A8A8A] mb-1">Best Streak</p>
+            <div className="bg-[#FFFFFF] rounded-card p-3 border border-[#E5E5EA]">
+              <p className="text-xs text-[#6C6C70] mb-1">Best Streak</p>
               <p className="text-lg font-bold text-[#FFD700]">{bestStreak}d</p>
             </div>
             {/* Pending */}
-            <div className="bg-[#141414] rounded-card p-3 border border-[#2A2A2A] col-span-2">
-              <p className="text-xs text-[#8A8A8A] mb-1">Pending Today</p>
+            <div className="bg-[#FFFFFF] rounded-card p-3 border border-[#E5E5EA] col-span-2">
+              <p className="text-xs text-[#6C6C70] mb-1">Pending Today</p>
               <p className="text-lg font-bold text-[#FF9933]">{pendingToday}</p>
             </div>
           </div>

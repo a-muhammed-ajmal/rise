@@ -67,12 +67,12 @@ function NiceInfoBox() {
         className="flex items-center justify-between w-full"
       >
         <div className="text-left">
-          <p className="text-sm font-semibold text-[#F0F0F0]">NICE Framework</p>
-          <p className="text-xs text-[#8A8A8A] mt-0.5">A proven system for setting goals that stick</p>
+          <p className="text-sm font-semibold text-[#1C1C1E]">NICE Framework</p>
+          <p className="text-xs text-[#6C6C70] mt-0.5">A proven system for setting goals that stick</p>
         </div>
         {isNiceExpanded
-          ? <ChevronUp size={16} className="text-[#8A8A8A] flex-shrink-0 ml-2" />
-          : <ChevronDown size={16} className="text-[#8A8A8A] flex-shrink-0 ml-2" />}
+          ? <ChevronUp size={16} className="text-[#6C6C70] flex-shrink-0 ml-2" />
+          : <ChevronDown size={16} className="text-[#6C6C70] flex-shrink-0 ml-2" />}
       </button>
 
       {isNiceExpanded && (
@@ -85,8 +85,8 @@ function NiceInfoBox() {
               >
                 <span className="text-sm font-bold text-[#FF6B35]">{item.letter}</span>
               </div>
-              <p className="text-xs font-semibold text-[#F0F0F0]">{item.title}</p>
-              <p className="text-xs text-[#8A8A8A] leading-relaxed">{item.description}</p>
+              <p className="text-xs font-semibold text-[#1C1C1E]">{item.title}</p>
+              <p className="text-xs text-[#6C6C70] leading-relaxed">{item.description}</p>
             </div>
           ))}
         </div>
@@ -201,7 +201,7 @@ function VisionModal({
 
         {/* Timeline pills */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[#F0F0F0]">Timeline</label>
+          <label className="text-sm font-medium text-[#1C1C1E]">Timeline</label>
           <div className="flex gap-2">
             {(['1yr', '3yr', '5yr'] as GoalTimeline[]).map(t => (
               <button
@@ -212,7 +212,7 @@ function VisionModal({
                   'flex-1 h-9 rounded-button text-sm font-medium transition-colors',
                   form.timeline === t
                     ? 'bg-[#FF6B35] text-white'
-                    : 'border border-[#2A2A2A] text-[#8A8A8A] hover:bg-[#1C1C1C]'
+                    : 'border border-[#E5E5EA] text-[#6C6C70] hover:bg-[#F5F5F5]'
                 )}
               >
                 {TIMELINE_LABELS[t]}
@@ -359,14 +359,14 @@ function MilestonesModal({
   return (
     <Modal open={open} onClose={onClose} title={`Milestones — ${goal.title}`}>
       {/* Tab row */}
-      <div className="flex border-b border-[#2A2A2A] mb-4 -mx-4 px-4">
+      <div className="flex border-b border-[#E5E5EA] mb-4 -mx-4 px-4">
         <button
           onClick={() => setActiveTab('milestones')}
           className={cn(
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'milestones'
               ? 'border-[#FF6B35] text-[#FF6B35]'
-              : 'border-transparent text-[#8A8A8A] hover:text-[#F0F0F0]'
+              : 'border-transparent text-[#6C6C70] hover:text-[#1C1C1E]'
           )}
         >
           Milestones
@@ -377,7 +377,7 @@ function MilestonesModal({
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'steps'
               ? 'border-[#FF6B35] text-[#FF6B35]'
-              : 'border-transparent text-[#8A8A8A] hover:text-[#F0F0F0]'
+              : 'border-transparent text-[#6C6C70] hover:text-[#1C1C1E]'
           )}
         >
           Steps
@@ -395,7 +395,7 @@ function MilestonesModal({
           )}
 
           {showAddMilestone && (
-            <div className="flex flex-col gap-3 p-3 rounded-card border border-[#2A2A2A] bg-[#1C1C1C]">
+            <div className="flex flex-col gap-3 p-3 rounded-card border border-[#E5E5EA] bg-[#F5F5F5]">
               <Input
                 label="Milestone"
                 value={milestoneForm.text}
@@ -428,10 +428,10 @@ function MilestonesModal({
           {/* Upcoming milestones */}
           {upcomingMilestones.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-[#8A8A8A] uppercase tracking-wide mb-2">Upcoming</p>
+              <p className="text-xs font-semibold text-[#6C6C70] uppercase tracking-wide mb-2">Upcoming</p>
               <div className="flex flex-col gap-2">
                 {upcomingMilestones.map(m => (
-                  <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-card border border-[#2A2A2A]">
+                  <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-card border border-[#E5E5EA]">
                     <input
                       type="checkbox"
                       checked={m.done}
@@ -440,21 +440,21 @@ function MilestonesModal({
                       className="flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#F0F0F0]">{m.text}</p>
+                      <p className="text-sm text-[#1C1C1E]">{m.text}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {m.date && (
-                          <span className="text-xs text-[#8A8A8A]">
+                          <span className="text-xs text-[#6C6C70]">
                             {format(parseISO(m.date), 'MMM d, yyyy')}
                           </span>
                         )}
-                        <span className="text-xs border border-[#2A2A2A] text-[#8A8A8A] rounded-chip px-1.5 py-0.5">{m.type}</span>
+                        <span className="text-xs border border-[#E5E5EA] text-[#6C6C70] rounded-chip px-1.5 py-0.5">{m.type}</span>
                       </div>
                     </div>
                     <button
                       type="button"
                       aria-label="Delete milestone"
                       onClick={() => deleteDocById(COLLECTIONS.MILESTONES, m.id)}
-                      className="text-[#505050] hover:text-[#FF4F6D] transition-colors flex-shrink-0"
+                      className="text-[#AEAEB2] hover:text-[#FF4F6D] transition-colors flex-shrink-0"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -467,10 +467,10 @@ function MilestonesModal({
           {/* Completed milestones */}
           {completedMilestones.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-[#8A8A8A] uppercase tracking-wide mb-2">Completed</p>
+              <p className="text-xs font-semibold text-[#6C6C70] uppercase tracking-wide mb-2">Completed</p>
               <div className="flex flex-col gap-2">
                 {completedMilestones.map(m => (
-                  <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-card border border-[#2A2A2A] opacity-60">
+                  <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-card border border-[#E5E5EA] opacity-60">
                     <input
                       type="checkbox"
                       checked={m.done}
@@ -479,21 +479,21 @@ function MilestonesModal({
                       className="flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#8A8A8A] line-through">{m.text}</p>
+                      <p className="text-sm text-[#6C6C70] line-through">{m.text}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {m.date && (
-                          <span className="text-xs text-[#8A8A8A]">
+                          <span className="text-xs text-[#6C6C70]">
                             {format(parseISO(m.date), 'MMM d, yyyy')}
                           </span>
                         )}
-                        <span className="text-xs border border-[#2A2A2A] text-[#8A8A8A] rounded-chip px-1.5 py-0.5">{m.type}</span>
+                        <span className="text-xs border border-[#E5E5EA] text-[#6C6C70] rounded-chip px-1.5 py-0.5">{m.type}</span>
                       </div>
                     </div>
                     <button
                       type="button"
                       aria-label="Delete milestone"
                       onClick={() => deleteDocById(COLLECTIONS.MILESTONES, m.id)}
-                      className="text-[#505050] hover:text-[#FF4F6D] transition-colors flex-shrink-0"
+                      className="text-[#AEAEB2] hover:text-[#FF4F6D] transition-colors flex-shrink-0"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -504,7 +504,7 @@ function MilestonesModal({
           )}
 
           {goalMilestones.length === 0 && !showAddMilestone && (
-            <p className="text-sm text-[#8A8A8A] text-center py-4">No milestones yet. Add one above.</p>
+            <p className="text-sm text-[#6C6C70] text-center py-4">No milestones yet. Add one above.</p>
           )}
         </div>
       )}
@@ -520,7 +520,7 @@ function MilestonesModal({
           )}
 
           {showAddStep && (
-            <div className="flex flex-col gap-3 p-3 rounded-card border border-[#2A2A2A] bg-[#1C1C1C]">
+            <div className="flex flex-col gap-3 p-3 rounded-card border border-[#E5E5EA] bg-[#F5F5F5]">
               <Input
                 label="Step"
                 value={stepForm.text}
@@ -556,7 +556,7 @@ function MilestonesModal({
                 <div
                   key={step.id}
                   className={cn(
-                    'flex items-center gap-3 p-2.5 rounded-card border border-[#2A2A2A]',
+                    'flex items-center gap-3 p-2.5 rounded-card border border-[#E5E5EA]',
                     step.done && 'opacity-60'
                   )}
                 >
@@ -568,7 +568,7 @@ function MilestonesModal({
                     className="flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className={cn('text-sm', step.done ? 'text-[#8A8A8A] line-through' : 'text-[#F0F0F0]')}>
+                    <p className={cn('text-sm', step.done ? 'text-[#6C6C70] line-through' : 'text-[#1C1C1E]')}>
                       {step.text}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -583,7 +583,7 @@ function MilestonesModal({
                         {step.priority}
                       </span>
                       {step.dueDate && (
-                        <span className="text-xs text-[#8A8A8A]">
+                        <span className="text-xs text-[#6C6C70]">
                           {format(parseISO(step.dueDate), 'MMM d')}
                         </span>
                       )}
@@ -593,7 +593,7 @@ function MilestonesModal({
                     type="button"
                     aria-label="Delete step"
                     onClick={() => deleteDocById(COLLECTIONS.GOAL_ACTIONS, step.id)}
-                    className="text-[#505050] hover:text-[#FF4F6D] transition-colors flex-shrink-0"
+                    className="text-[#AEAEB2] hover:text-[#FF4F6D] transition-colors flex-shrink-0"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -603,7 +603,7 @@ function MilestonesModal({
           )}
 
           {goalSteps.length === 0 && !showAddStep && (
-            <p className="text-sm text-[#8A8A8A] text-center py-4">No steps yet. Add one above.</p>
+            <p className="text-sm text-[#6C6C70] text-center py-4">No steps yet. Add one above.</p>
           )}
         </div>
       )}
@@ -751,22 +751,22 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0A0A0A] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-[#F2F2F7] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#2A2A2A] flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E5EA] flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-[#FFD700]/15 flex items-center justify-center flex-shrink-0">
             <Sparkles size={15} className="text-[#FFD700]" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#F0F0F0]">Vision AI Coach</p>
-            <p className="text-[10px] text-[#8A8A8A]">Powered by Gemini</p>
+            <p className="text-sm font-bold text-[#1C1C1E]">Vision AI Coach</p>
+            <p className="text-[10px] text-[#6C6C70]">Powered by Gemini</p>
           </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0] transition-colors"
+          className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] transition-colors"
           aria-label="Close Vision AI Coach"
         >
           <X size={18} />
@@ -791,7 +791,7 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
               'rounded-card px-4 py-3 text-sm',
               msg.role === 'user'
                 ? 'bg-[#FF6B35] text-white leading-relaxed'
-                : 'bg-[#141414] text-[#F0F0F0] border border-[#2A2A2A]'
+                : 'bg-[#FFFFFF] text-[#1C1C1E] border border-[#E5E5EA]'
             )}>
               {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
             </div>
@@ -804,9 +804,9 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
             <div className="w-6 h-6 bg-[#FFD700]/15 rounded-full flex items-center justify-center mb-1">
               <Sparkles size={12} className="text-[#FFD700]" />
             </div>
-            <div className="bg-[#141414] border border-[#2A2A2A] rounded-card px-4 py-3 flex gap-1">
+            <div className="bg-[#FFFFFF] border border-[#E5E5EA] rounded-card px-4 py-3 flex gap-1">
               {[0, 1, 2].map(i => (
-                <span key={i} className="w-1.5 h-1.5 bg-[#8A8A8A] rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                <span key={i} className="w-1.5 h-1.5 bg-[#6C6C70] rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
               ))}
             </div>
           </div>
@@ -820,7 +820,7 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
                 key={area}
                 type="button"
                 onClick={() => send(area)}
-                className="px-3 py-1.5 bg-[#1C1C1C] border border-[#FFD700]/30 rounded-chip text-xs font-medium text-[#FFD700] hover:bg-[#FFD700]/10 transition-colors active:scale-[0.97]"
+                className="px-3 py-1.5 bg-[#F5F5F5] border border-[#FFD700]/30 rounded-chip text-xs font-medium text-[#FFD700] hover:bg-[#FFD700]/10 transition-colors active:scale-[0.97]"
               >
                 {area}
               </button>
@@ -836,7 +836,7 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
                 key={chip}
                 type="button"
                 onClick={() => send(chip)}
-                className="px-3 py-1.5 bg-[#141414] border border-[#2A2A2A] rounded-chip text-xs text-[#8A8A8A] hover:text-[#F0F0F0] hover:bg-[#1C1C1C] transition-colors"
+                className="px-3 py-1.5 bg-[#FFFFFF] border border-[#E5E5EA] rounded-chip text-xs text-[#6C6C70] hover:text-[#1C1C1E] hover:bg-[#F5F5F5] transition-colors"
               >
                 {chip}
               </button>
@@ -848,7 +848,7 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
       </div>
 
       {/* Input bar */}
-      <div className="px-4 py-3 border-t border-[#2A2A2A] bg-[#0A0A0A] flex-shrink-0 pb-safe">
+      <div className="px-4 py-3 border-t border-[#E5E5EA] bg-[#F2F2F7] flex-shrink-0 pb-safe">
         <div className="flex gap-2 items-end">
           <textarea
             ref={textareaRef}
@@ -860,7 +860,7 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
             placeholder="Reply to your coach..."
             disabled={sending}
             rows={1}
-            className="flex-1 bg-[#1C1C1C] border border-[#2A2A2A] rounded-input px-3 py-2.5 text-sm text-[#F0F0F0] placeholder-[#505050] outline-none focus:border-[#FFD700] resize-none transition-colors disabled:opacity-50"
+            className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FFD700] resize-none transition-colors disabled:opacity-50"
           />
           <button
             type="button"
@@ -898,7 +898,7 @@ function VisionCard({
   }, [goal.progress]);
 
   const milestoneCount = milestones.filter(m => m.goalId === goal.id).length;
-  const categoryColor = CATEGORY_COLORS[goal.category] ?? '#8A8A8A';
+  const categoryColor = CATEGORY_COLORS[goal.category] ?? '#6C6C70';
   const sortedHistory = [...(goal.progressHistory || [])].sort((a, b) => b.date.localeCompare(a.date));
 
   const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -918,7 +918,7 @@ function VisionCard({
     <div className="glass-card p-4 flex flex-col gap-3">
       {/* TOP ROW */}
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-bold text-[#F0F0F0] truncate flex-1">{goal.title}</p>
+        <p className="text-sm font-bold text-[#1C1C1E] truncate flex-1">{goal.title}</p>
         <span
           className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-chip text-xs font-medium"
           style={{
@@ -933,11 +933,11 @@ function VisionCard({
 
       {/* SECOND ROW */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-chip text-xs font-medium border border-[#2A2A2A] text-[#8A8A8A]">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-chip text-xs font-medium border border-[#E5E5EA] text-[#6C6C70]">
           {TIMELINE_LABELS[goal.timeline]}
         </span>
         {goal.targetDate && (
-          <span className="text-xs text-[#8A8A8A]">
+          <span className="text-xs text-[#6C6C70]">
             Due: {format(parseISO(goal.targetDate), 'MMM d, yyyy')}
           </span>
         )}
@@ -946,8 +946,8 @@ function VisionCard({
       {/* PROGRESS ROW */}
       <div>
         <div className="flex justify-between items-center mb-1.5">
-          <span className="text-xs text-[#8A8A8A]">Progress</span>
-          <span className="text-xs font-medium text-[#F0F0F0]">{displayProgress}%</span>
+          <span className="text-xs text-[#6C6C70]">Progress</span>
+          <span className="text-xs font-medium text-[#1C1C1E]">{displayProgress}%</span>
         </div>
         <div className="progress-track">
           <div className="progress-fill" style={{ width: displayProgress + '%' }} />
@@ -969,7 +969,7 @@ function VisionCard({
       {/* DETAILS TOGGLE */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center justify-between text-xs text-[#8A8A8A] hover:text-[#F0F0F0] transition-colors pt-1 border-t border-[#2A2A2A]"
+        className="flex items-center justify-between text-xs text-[#6C6C70] hover:text-[#1C1C1E] transition-colors pt-1 border-t border-[#E5E5EA]"
       >
         <span>Details</span>
         {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -980,32 +980,32 @@ function VisionCard({
         <div className="flex flex-col gap-3">
           {goal.why && (
             <div>
-              <p className="text-xs font-medium text-[#8A8A8A] mb-0.5">Why</p>
-              <p className="text-sm text-[#F0F0F0]">{goal.why}</p>
+              <p className="text-xs font-medium text-[#6C6C70] mb-0.5">Why</p>
+              <p className="text-sm text-[#1C1C1E]">{goal.why}</p>
             </div>
           )}
           {goal.metric && (
             <div>
-              <p className="text-xs font-medium text-[#8A8A8A] mb-0.5">Success Metric</p>
-              <p className="text-sm text-[#F0F0F0]">{goal.metric}</p>
+              <p className="text-xs font-medium text-[#6C6C70] mb-0.5">Success Metric</p>
+              <p className="text-sm text-[#1C1C1E]">{goal.metric}</p>
             </div>
           )}
           {goal.crystal && (
             <div>
-              <p className="text-xs font-medium text-[#8A8A8A] mb-0.5">Crystal Clear</p>
-              <p className="text-sm text-[#F0F0F0]">{goal.crystal}</p>
+              <p className="text-xs font-medium text-[#6C6C70] mb-0.5">Crystal Clear</p>
+              <p className="text-sm text-[#1C1C1E]">{goal.crystal}</p>
             </div>
           )}
 
           {/* PROGRESS HISTORY */}
           {sortedHistory.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-[#8A8A8A] mb-1.5">Progress History</p>
+              <p className="text-xs font-medium text-[#6C6C70] mb-1.5">Progress History</p>
               <div className="flex flex-col gap-1">
                 {sortedHistory.map((entry, i) => (
                   <div key={i} className="flex justify-between text-xs">
-                    <span className="text-[#8A8A8A]">{format(parseISO(entry.date), 'MMM d, yyyy')}</span>
-                    <span className="text-[#F0F0F0]">{entry.progress}%</span>
+                    <span className="text-[#6C6C70]">{format(parseISO(entry.date), 'MMM d, yyyy')}</span>
+                    <span className="text-[#1C1C1E]">{entry.progress}%</span>
                   </div>
                 ))}
               </div>
@@ -1015,7 +1015,7 @@ function VisionCard({
       )}
 
       {/* CARD ACTIONS ROW */}
-      <div className="flex items-center gap-1 border-t border-[#2A2A2A] pt-2">
+      <div className="flex items-center gap-1 border-t border-[#E5E5EA] pt-2">
         <Button variant="ghost" size="sm" onClick={onEdit}>
           <Pencil size={14} />
           Edit
@@ -1051,13 +1051,13 @@ function VisionCard({
 // ─── COMPLETED VISION CARD ───────────────────────────────────────────────────
 
 function CompletedVisionCard({ goal, onReopen }: { goal: Goal; onReopen: (g: Goal) => void }) {
-  const categoryColor = CATEGORY_COLORS[goal.category] ?? '#8A8A8A';
+  const categoryColor = CATEGORY_COLORS[goal.category] ?? '#6C6C70';
   return (
     <div className="glass-card p-4 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Check size={14} className="text-[#1ABC9C] flex-shrink-0" />
-          <p className="text-sm font-semibold text-[#8A8A8A] line-through truncate">{goal.title}</p>
+          <p className="text-sm font-semibold text-[#6C6C70] line-through truncate">{goal.title}</p>
         </div>
         <span
           className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-chip text-xs font-medium"
@@ -1071,7 +1071,7 @@ function CompletedVisionCard({ goal, onReopen }: { goal: Goal; onReopen: (g: Goa
         </span>
       </div>
       {goal.completedAt && (
-        <p className="text-xs text-[#8A8A8A]">
+        <p className="text-xs text-[#6C6C70]">
           Achieved: {format(parseISO(goal.completedAt), 'MMM d, yyyy')}
         </p>
       )}
@@ -1169,7 +1169,7 @@ export default function VisionsPage() {
     <div className="flex flex-col min-h-dvh">
       {/* SECTION 2 — Page header */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#F0F0F0]">My Visions</h1>
+        <h1 className="text-xl font-bold text-[#1C1C1E]">My Visions</h1>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -1202,7 +1202,7 @@ export default function VisionsPage() {
                 'flex-shrink-0 h-8 px-4 rounded-chip text-xs font-medium transition-colors',
                 selectedTimeline === t
                   ? 'bg-[#FF6B35] text-white'
-                  : 'border border-[#2A2A2A] text-[#8A8A8A]'
+                  : 'border border-[#E5E5EA] text-[#6C6C70]'
               )}
             >
               {t}
@@ -1244,12 +1244,12 @@ export default function VisionsPage() {
               onClick={() => setIsCompletedExpanded(!isCompletedExpanded)}
               className="flex items-center justify-between w-full py-2"
             >
-              <span className="text-sm font-semibold text-[#8A8A8A]">
+              <span className="text-sm font-semibold text-[#6C6C70]">
                 Achieved Visions ({completedGoals.length})
               </span>
               {isCompletedExpanded
-                ? <ChevronUp size={16} className="text-[#8A8A8A]" />
-                : <ChevronDown size={16} className="text-[#8A8A8A]" />}
+                ? <ChevronUp size={16} className="text-[#6C6C70]" />
+                : <ChevronDown size={16} className="text-[#6C6C70]" />}
             </button>
             {isCompletedExpanded && (
               <div className="flex flex-col gap-3 mt-2">

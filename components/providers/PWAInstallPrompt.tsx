@@ -52,13 +52,13 @@ export function PWAInstallPrompt() {
 
   return (
     <div className="fixed bottom-[72px] left-4 right-4 z-50 sm:bottom-4 sm:left-auto sm:right-4 sm:max-w-sm">
-      <div className="bg-[#1C1C1C] border border-[#2A2A2A] rounded-card p-4 shadow-card flex items-center gap-3">
+      <div className="bg-white border border-[#E5E5EA] rounded-card p-4 shadow-card flex items-center gap-3">
         <div className="w-10 h-10 bg-[#FF6B35]/20 rounded-full flex items-center justify-center flex-shrink-0">
           <Download size={18} className="text-[#FF6B35]" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#F0F0F0]">Add RISE to Home Screen</p>
-          <p className="text-xs text-[#8A8A8A]">Install for the best experience</p>
+          <p className="text-sm font-semibold text-[#1C1C1E]">Add RISE to Home Screen</p>
+          <p className="text-xs text-[#6C6C70]">Install for the best experience</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -69,7 +69,7 @@ export function PWAInstallPrompt() {
           </button>
           <button
             onClick={handleDismiss}
-            className="text-[#8A8A8A] p-1"
+            className="text-[#6C6C70] p-1"
             aria-label="Dismiss"
           >
             <X size={16} />

@@ -89,11 +89,11 @@ export default function RelationshipsPage() {
 
   return (
     <div className="flex flex-col min-h-dvh">
-      <div className="px-4 pt-4 pb-3 border-b border-[#2A2A2A]">
-        <h1 className="text-xl font-bold text-[#F0F0F0] mb-3">Relationships</h1>
+      <div className="px-4 pt-4 pb-3 border-b border-[#E5E5EA]">
+        <h1 className="text-xl font-bold text-[#1C1C1E] mb-3">Relationships</h1>
         <div className="flex gap-2 overflow-x-auto -mx-4 px-4">
           {filterTabs.map((f) => (
-            <button key={f.id} onClick={() => setFilter(f.id)} className={cn('flex-shrink-0 h-8 px-4 rounded-chip text-xs font-medium transition-colors', filter === f.id ? 'bg-[#FF4F6D] text-white' : 'bg-[#141414] text-[#8A8A8A] border border-[#2A2A2A]')}>{f.label}</button>
+            <button key={f.id} onClick={() => setFilter(f.id)} className={cn('flex-shrink-0 h-8 px-4 rounded-chip text-xs font-medium transition-colors', filter === f.id ? 'bg-[#FF4F6D] text-white' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{f.label}</button>
           ))}
         </div>
       </div>
@@ -111,10 +111,10 @@ export default function RelationshipsPage() {
         {loading ? <>{[1,2,3].map((i) => <SkeletonCard key={i} />)}</> :
          filtered.length === 0 ? <EmptyState icon={Users} title="No connections yet" subtitle="Add people who matter to you." actionLabel="Add Connection" onAction={() => { setEditConn(null); setModalOpen(true); }} /> :
          filtered.map((conn) => (
-          <div key={conn.id} onClick={() => { setEditConn(conn); setModalOpen(true); }} className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 flex items-center gap-3 active:bg-[#1C1C1C] transition-colors">
+          <div key={conn.id} onClick={() => { setEditConn(conn); setModalOpen(true); }} className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-4 flex items-center gap-3 active:bg-[#F5F5F5] transition-colors">
             <Avatar name={conn.name} size="md" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#F0F0F0]">{conn.name}</p>
+              <p className="text-sm font-semibold text-[#1C1C1E]">{conn.name}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <Badge label={conn.type} color="#FF4F6D" />
                 {conn.birthday && getDaysUntil(conn.birthday) >= 0 && getDaysUntil(conn.birthday) <= 30 && (

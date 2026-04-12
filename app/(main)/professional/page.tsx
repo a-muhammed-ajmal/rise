@@ -121,11 +121,11 @@ export default function ProfessionalPage() {
 
   return (
     <div className="flex flex-col min-h-dvh">
-      <div className="px-4 pt-4 pb-3 border-b border-[#2A2A2A]">
-        <h1 className="text-xl font-bold text-[#F0F0F0] mb-3">Professional</h1>
+      <div className="px-4 pt-4 pb-3 border-b border-[#E5E5EA]">
+        <h1 className="text-xl font-bold text-[#1C1C1E] mb-3">Professional</h1>
         <div className="flex gap-1">
           {(['leads','deals'] as Tab[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={cn('flex-1 h-8 text-xs font-medium capitalize rounded-chip transition-colors', tab === t ? 'bg-[#1E4AFF] text-white' : 'bg-[#141414] text-[#8A8A8A] border border-[#2A2A2A]')}>{t}</button>
+            <button key={t} onClick={() => setTab(t)} className={cn('flex-1 h-8 text-xs font-medium capitalize rounded-chip transition-colors', tab === t ? 'bg-[#1E4AFF] text-white' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{t}</button>
           ))}
         </div>
       </div>
@@ -135,18 +135,18 @@ export default function ProfessionalPage() {
           leadsLoading ? <>{[1,2,3].map((i) => <SkeletonCard key={i} />)}</> :
           leads.length === 0 ? <EmptyState icon={UserPlus} title="No leads yet" subtitle="Add your first lead." actionLabel="Add Lead" onAction={() => { setEditLead(null); setLeadModalOpen(true); }} /> :
           leads.map((lead) => (
-            <div key={lead.id} onClick={() => { setEditLead(lead); setLeadModalOpen(true); }} className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 active:bg-[#1C1C1C] transition-colors">
+            <div key={lead.id} onClick={() => { setEditLead(lead); setLeadModalOpen(true); }} className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-4 active:bg-[#F5F5F5] transition-colors">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-[#F0F0F0]">{lead.name}</p>
-                  {lead.company && <p className="text-xs text-[#8A8A8A]">{lead.company}</p>}
+                  <p className="text-sm font-semibold text-[#1C1C1E]">{lead.name}</p>
+                  {lead.company && <p className="text-xs text-[#6C6C70]">{lead.company}</p>}
                   {lead.salary && <p className="text-xs text-[#1ABC9C]">{formatAED(lead.salary)} · {lead.salaryBank}</p>}
                 </div>
                 <StatusBadge status={lead.status} colorMap={LEAD_STATUS_COLORS} />
               </div>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                {lead.product && <span className="text-xs text-[#8A8A8A]">{lead.product}</span>}
-                {lead.bank && <span className="text-xs text-[#8A8A8A]">· {lead.bank}</span>}
+                {lead.product && <span className="text-xs text-[#6C6C70]">{lead.product}</span>}
+                {lead.bank && <span className="text-xs text-[#6C6C70]">· {lead.bank}</span>}
                 {lead.phone && (
                   <a href={`tel:${lead.phone}`} onClick={(e) => e.stopPropagation()} className="text-xs text-[#1E4AFF] ml-auto">{lead.phone}</a>
                 )}
@@ -159,12 +159,12 @@ export default function ProfessionalPage() {
           dealsLoading ? <>{[1,2,3].map((i) => <SkeletonCard key={i} />)}</> :
           deals.length === 0 ? <EmptyState icon={Briefcase} title="No deals yet" subtitle="Convert a lead or add a deal directly." actionLabel="Add Deal" onAction={() => { setEditDeal(null); setDealModalOpen(true); }} /> :
           deals.map((deal) => (
-            <div key={deal.id} onClick={() => { setEditDeal(deal); setDealModalOpen(true); }} className="bg-[#141414] rounded-card border border-[#2A2A2A] p-4 active:bg-[#1C1C1C] transition-colors">
+            <div key={deal.id} onClick={() => { setEditDeal(deal); setDealModalOpen(true); }} className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-4 active:bg-[#F5F5F5] transition-colors">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-[#F0F0F0]">{deal.name}</p>
-                  {deal.bank && <p className="text-xs text-[#8A8A8A]">{deal.bank} · {deal.product}</p>}
-                  {deal.applicationNumber && <p className="text-xs text-[#505050]">App: {deal.applicationNumber}</p>}
+                  <p className="text-sm font-semibold text-[#1C1C1E]">{deal.name}</p>
+                  {deal.bank && <p className="text-xs text-[#6C6C70]">{deal.bank} · {deal.product}</p>}
+                  {deal.applicationNumber && <p className="text-xs text-[#AEAEB2]">App: {deal.applicationNumber}</p>}
                 </div>
                 <StatusBadge status={deal.status} colorMap={DEAL_STATUS_COLORS} />
               </div>
