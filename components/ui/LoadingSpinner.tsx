@@ -29,10 +29,9 @@ export function FullPageLoader() {
       role="status"
       aria-live="polite"
     >
-      {/* Bee logo with breathe animation */}
-      <div className="w-24 h-24 sm:w-32 sm:h-32 animate-logo-breathe">
+      <div className="w-24 h-24 sm:w-32 sm:h-32 animate-logo-pulse-glow">
         <Image
-          src="/icons/icon-512.png"
+          src="/icons/icon-maskable-912.png"
           alt="RISE"
           width={128}
           height={128}
@@ -40,9 +39,8 @@ export function FullPageLoader() {
           priority
         />
       </div>
-      {/* RISE wordmark with existing glow animation */}
       <span
-        className="text-4xl font-bold text-[#FF6B35] tracking-widest animate-pulse-glow"
+        className="text-4xl font-bold text-[#FF9933] tracking-widest animate-pulse-glow"
         aria-hidden
       >
         RISE

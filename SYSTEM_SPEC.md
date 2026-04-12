@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-12 (feat: Splash / loading screen — black background on all devices, no white flash. `FullPageLoader` now shows bee logo (`/icons/icon-512.png`) with `animate-logo-breathe` CSS animation (scale + orange drop-shadow pulse) above the `RISE` wordmark with existing `animate-pulse-glow`; inline `style={{ backgroundColor: '#0A0A0A' }}` added to `<html>` and `<body>` in `app/layout.tsx` to prevent FOUC before CSS loads; `apple-mobile-web-app-capable: yes` meta tag added for iOS PWA splash screen compatibility; `logo-breathe` keyframe added to `globals.css`)
+**Last updated:** 2026-04-12 (feat: branding — transparent bee logo (`/icons/icon-maskable-912.png`) used in login page, desktop sidebar, mobile header, and `FullPageLoader` (responsive sizing, `animate-logo-pulse-glow` drop-shadow); primary orange updated from `#FF6B35` to `#FF9933` in all branding components and `globals.css`; `pulse-glow`/`logo-pulse-glow`/`logo-breathe` animations updated to `rgba(255,153,51,…)`; `manifest.json` updated — removed deleted `icon-maskable-192.png`, added `icon-maskable-912.png`; FOUC fix: `style={{ backgroundColor: '#0A0A0A' }}` on `<html>`/`<body>` in `app/layout.tsx`; `mobile-web-app-capable: yes` for iOS PWA)
 
 ---
 

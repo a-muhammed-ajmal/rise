@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner, FullPageLoader } from '@/components/ui/LoadingSpinner';
 
@@ -37,8 +38,16 @@ export default function LoginPage() {
     <div className="min-h-dvh bg-[#0A0A0A] flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
         {/* Logo */}
-        <div className="flex flex-col items-center gap-2">
-          <h1 className="text-5xl font-bold text-[#FF6B35] tracking-widest animate-pulse-glow">
+        <div className="flex flex-col items-center gap-3">
+          <Image
+            src="/icons/icon-maskable-912.png"
+            alt="RISE"
+            width={88}
+            height={88}
+            className="animate-logo-pulse-glow"
+            priority
+          />
+          <h1 className="text-5xl font-bold text-[#FF9933] tracking-widest animate-pulse-glow">
             RISE
           </h1>
           <p className="text-sm text-[#8A8A8A] text-center">

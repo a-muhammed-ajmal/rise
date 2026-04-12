@@ -11,7 +11,7 @@
   --text-primary: #F0F0F0;
   --text-secondary: #8A8A8A;
   --text-placeholder: #505050;
-  --orange: #FF6B35;
+  --orange: #FF9933;
   --green: #1ABC9C;
   --red: #FF4F6D;
   --blue: #1E4AFF;
@@ -86,18 +86,23 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; text-shadow: 0 0 20px rgba(255, 107, 53, 0.4); }
-  50% { opacity: 0.7; text-shadow: 0 0 40px rgba(255, 107, 53, 0.8); }
+  0%, 100% { opacity: 1; text-shadow: 0 0 20px rgba(255, 153, 51, 0.4); }
+  50% { opacity: 0.7; text-shadow: 0 0 40px rgba(255, 153, 51, 0.8); }
+}
+
+@keyframes logo-pulse-glow {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 20px rgba(255, 153, 51, 0.5)); }
+  50% { opacity: 0.85; filter: drop-shadow(0 0 40px rgba(255, 153, 51, 0.9)); }
 }
 
 @keyframes logo-breathe {
   0%, 100% {
     transform: scale(1);
-    filter: drop-shadow(0 0 16px rgba(255, 107, 53, 0.3));
+    filter: drop-shadow(0 0 16px rgba(255, 153, 51, 0.3));
   }
   50% {
     transform: scale(1.06);
-    filter: drop-shadow(0 0 32px rgba(255, 107, 53, 0.65));
+    filter: drop-shadow(0 0 32px rgba(255, 153, 51, 0.65));
   }
 }
 
@@ -115,6 +120,10 @@ body {
 
 .animate-logo-breathe {
   animation: logo-breathe 2s ease-in-out infinite;
+}
+
+.animate-logo-pulse-glow {
+  animation: logo-pulse-glow 2s ease-in-out infinite;
 }
 
 /* Shimmer override for skeleton */

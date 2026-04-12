@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Home,
@@ -34,7 +35,7 @@ const NAV_LINKS = [
   { href: '/chat', icon: MessageSquare, label: 'AI Chat' },
 ];
 
-const ORANGE = '#FF6B35';
+const ORANGE = '#FF9933';
 
 export function DesktopSidebar() {
   const pathname = usePathname();
@@ -43,11 +44,21 @@ export function DesktopSidebar() {
   return (
     <aside className="hidden sm:flex flex-col w-[200px] h-screen fixed left-0 top-0 bg-[#0A0A0A] border-r border-[#2A2A2A] z-30">
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-[#2A2A2A]">
-        <span className="text-xl font-bold text-[#FF6B35] tracking-widest">RISE</span>
-        <p className="text-[10px] text-[#505050] mt-0.5 leading-tight">
-          Realms · Targets · Actions
-        </p>
+      <div className="px-4 py-4 border-b border-[#2A2A2A] flex items-center gap-2.5">
+        <Image
+          src="/icons/icon-maskable-912.png"
+          alt="RISE"
+          width={32}
+          height={32}
+          className="flex-shrink-0"
+          priority
+        />
+        <div>
+          <span className="text-xl font-bold text-[#FF9933] tracking-widest">RISE</span>
+          <p className="text-[10px] text-[#505050] mt-0.5 leading-tight">
+            Realms · Targets · Actions
+          </p>
+        </div>
       </div>
 
       {/* Nav Links */}
@@ -61,18 +72,18 @@ export function DesktopSidebar() {
               className={cn(
                 'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors relative',
                 active
-                  ? 'text-[#F0F0F0] bg-[#FF6B35]/12'
+                  ? 'text-[#F0F0F0] bg-[#FF9933]/12'
                   : 'text-[#8A8A8A] hover:text-[#F0F0F0] hover:bg-[#141414]'
               )}
             >
               <Icon
                 size={18}
-                className={cn(active ? 'text-[#FF6B35]' : 'text-[#8A8A8A]')}
+                className={cn(active ? 'text-[#FF9933]' : 'text-[#8A8A8A]')}
               />
               <span>{label}</span>
               {active && (
                 <span
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-5 rounded-l-full bg-[#FF6B35]"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-5 rounded-l-full bg-[#FF9933]"
                   style={{ boxShadow: `0 0 8px ${ORANGE}` }}
                 />
               )}
