@@ -8,12 +8,12 @@ import type { ToastType } from '@/lib/toast';
 
 const TOAST_CONFIG: Record<
   ToastType,
-  { icon: typeof CheckCircle; color: string; bg: string }
+  { icon: typeof CheckCircle; color: string; bg: string; border: string }
 > = {
-  success: { icon: CheckCircle, color: '#1ABC9C', bg: '#1ABC9C22' },
-  error: { icon: XCircle, color: '#FF4F6D', bg: '#FF4F6D22' },
-  info: { icon: Info, color: '#1E4AFF', bg: '#1E4AFF22' },
-  warning: { icon: AlertTriangle, color: '#FFD700', bg: '#FFD70022' },
+  success: { icon: CheckCircle, color: '#1ABC9C', bg: '#F0FDF4', border: '#D1FAE5' },
+  error: { icon: XCircle, color: '#FF4F6D', bg: '#FFF1F2', border: '#FFE4E8' },
+  info: { icon: Info, color: '#007AFF', bg: '#EFF6FF', border: '#DBEAFE' },
+  warning: { icon: AlertTriangle, color: '#F59E0B', bg: '#FFFBEB', border: '#FEF3C7' },
 };
 
 const AUTO_DISMISS_MS = 3500;
@@ -31,7 +31,7 @@ function ToastItem({
   action?: { label: string; onClick: () => void };
   onDismiss: (id: string) => void;
 }) {
-  const { icon: Icon, color, bg } = TOAST_CONFIG[type];
+  const { icon: Icon, color, bg, border } = TOAST_CONFIG[type];
 
   useEffect(() => {
     const timer = setTimeout(() => onDismiss(id), AUTO_DISMISS_MS);
@@ -41,14 +41,14 @@ function ToastItem({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 px-4 py-3 rounded-card shadow-card border border-[#2A2A2A] min-w-[280px] max-w-sm',
+        'flex items-start gap-3 px-4 py-3 rounded-card shadow-card min-w-[280px] max-w-sm border',
         'animate-slide-up'
       )}
-      style={{ backgroundColor: bg }}
+      style={{ backgroundColor: bg, borderColor: border }}
     >
       <Icon size={18} style={{ color }} className="flex-shrink-0 mt-0.5" />
       <div className="flex-1">
-        <p className="text-sm text-[#F0F0F0] leading-snug">{message}</p>
+        <p className="text-sm text-[#1C1C1E] leading-snug">{message}</p>
         {action && (
           <button
             onClick={() => {
@@ -64,7 +64,7 @@ function ToastItem({
       </div>
       <button
         onClick={() => onDismiss(id)}
-        className="text-[#8A8A8A] hover:text-[#F0F0F0] flex-shrink-0"
+        className="text-[#AEAEB2] hover:text-[#6C6C70] flex-shrink-0"
         aria-label="Dismiss"
       >
         <X size={14} />

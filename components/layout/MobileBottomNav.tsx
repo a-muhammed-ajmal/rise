@@ -14,14 +14,14 @@ export function MobileBottomNav({ onPlusClick, plusOpen = false }: MobileBottomN
   const pathname = usePathname();
 
   return (
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0A0A0A] border-t border-[#2A2A2A] pb-safe">
+    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E5E5EA] pb-safe">
       <div className="h-16 flex items-center justify-around px-4">
         {/* Home */}
         <Link
           href="/"
           className={cn(
             'flex flex-col items-center justify-center gap-1 w-12',
-            pathname === '/' ? 'text-[#FF6B35]' : 'text-[#8A8A8A]'
+            pathname === '/' ? 'text-[#FF6B35]' : 'text-[#AEAEB2]'
           )}
           aria-label="Home"
         >
@@ -52,7 +52,7 @@ export function MobileBottomNav({ onPlusClick, plusOpen = false }: MobileBottomN
           href="/chat"
           className={cn(
             'flex flex-col items-center justify-center gap-1 w-12',
-            pathname === '/chat' ? 'text-[#FF9933]' : 'text-[#8A8A8A]'
+            pathname === '/chat' ? 'text-[#FF9933]' : 'text-[#AEAEB2]'
           )}
           aria-label="AI Chat"
         >

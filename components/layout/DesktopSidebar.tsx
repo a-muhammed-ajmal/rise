@@ -42,9 +42,9 @@ export function DesktopSidebar() {
   const { user, signOut } = useAuth();
 
   return (
-    <aside className="hidden sm:flex flex-col w-[200px] h-screen fixed left-0 top-0 bg-[#0A0A0A] border-r border-[#2A2A2A] z-30">
+    <aside className="hidden sm:flex flex-col w-[200px] h-screen fixed left-0 top-0 bg-white border-r border-[#E5E5EA] z-30">
       {/* Logo */}
-      <div className="px-4 py-3.5 border-b border-[#2A2A2A]">
+      <div className="px-4 py-3.5 border-b border-[#E5E5EA]">
         <div className="flex items-center gap-2">
           <Image
             src="/icons/icon-maskable-912.png"
@@ -56,7 +56,7 @@ export function DesktopSidebar() {
           />
           <span className="text-base font-bold text-[#FF9933] tracking-widest">RISE</span>
         </div>
-        <p className="text-[10px] text-[#505050] mt-0.5 leading-tight">
+        <p className="text-[10px] text-[#AEAEB2] mt-0.5 leading-tight">
           Realms · Targets · Actions
         </p>
       </div>
@@ -72,13 +72,13 @@ export function DesktopSidebar() {
               className={cn(
                 'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors relative',
                 active
-                  ? 'text-[#F0F0F0] bg-[#FF9933]/12'
-                  : 'text-[#8A8A8A] hover:text-[#F0F0F0] hover:bg-[#141414]'
+                  ? 'text-[#1C1C1E] bg-[#FF9933]/10'
+                  : 'text-[#6C6C70] hover:text-[#1C1C1E] hover:bg-[#F2F2F7]'
               )}
             >
               <Icon
                 size={18}
-                className={cn(active ? 'text-[#FF9933]' : 'text-[#8A8A8A]')}
+                className={cn(active ? 'text-[#FF9933]' : 'text-[#AEAEB2]')}
               />
               <span>{label}</span>
               {active && (
@@ -94,7 +94,7 @@ export function DesktopSidebar() {
 
       {/* User Profile */}
       {user && (
-        <div className="border-t border-[#2A2A2A] p-3">
+        <div className="border-t border-[#E5E5EA] p-3">
           <div className="flex items-center gap-2">
             <Avatar
               name={user.displayName ?? user.email ?? 'U'}
@@ -102,15 +102,15 @@ export function DesktopSidebar() {
               size="sm"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-[#F0F0F0] truncate">
+              <p className="text-xs font-medium text-[#1C1C1E] truncate">
                 {user.displayName ?? 'User'}
               </p>
-              <p className="text-[10px] text-[#8A8A8A] truncate">{user.email}</p>
+              <p className="text-[10px] text-[#6C6C70] truncate">{user.email}</p>
             </div>
             <button
               type="button"
               onClick={signOut}
-              className="text-[#8A8A8A] hover:text-[#FF4F6D] p-1"
+              className="text-[#AEAEB2] hover:text-[#FF4F6D] p-1"
               title="Sign out"
               aria-label="Sign out"
             >

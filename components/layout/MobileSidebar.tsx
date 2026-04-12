@@ -60,15 +60,15 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
       {/* Backdrop */}
       <button
         type="button"
-        className="absolute inset-0 bg-black/60 border-0 cursor-default"
+        className="absolute inset-0 bg-black/30 border-0 cursor-default"
         onClick={onClose}
         aria-label="Close menu"
       />
 
       {/* Drawer panel */}
-      <aside className="relative z-10 w-[260px] h-full flex flex-col bg-[#0A0A0A] border-r border-[#2A2A2A] shadow-xl">
+      <aside className="relative z-10 w-[260px] h-full flex flex-col bg-white border-r border-[#E5E5EA] shadow-xl">
         {/* Header with logo and close button */}
-        <div className="px-4 py-3.5 border-b border-[#2A2A2A] flex items-center justify-between">
+        <div className="px-4 py-3.5 border-b border-[#E5E5EA] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Image
               src="/icons/icon-maskable-912.png"
@@ -80,7 +80,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
             />
             <div>
               <span className="text-base font-bold text-[#FF9933] tracking-widest">RISE</span>
-              <p className="text-[10px] text-[#505050] leading-tight">
+              <p className="text-[10px] text-[#AEAEB2] leading-tight">
                 Realms · Targets · Actions
               </p>
             </div>
@@ -88,7 +88,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0] rounded-full hover:bg-[#1C1C1C]"
+            className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F2F2F7]"
             aria-label="Close menu"
           >
             <X size={18} />
@@ -106,13 +106,13 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 text-sm transition-colors relative',
                   active
-                    ? 'text-[#F0F0F0] bg-[#FF9933]/12'
-                    : 'text-[#8A8A8A] hover:text-[#F0F0F0] hover:bg-[#141414]'
+                    ? 'text-[#1C1C1E] bg-[#FF9933]/10'
+                    : 'text-[#6C6C70] hover:text-[#1C1C1E] hover:bg-[#F2F2F7]'
                 )}
               >
                 <Icon
                   size={18}
-                  className={cn(active ? 'text-[#FF9933]' : 'text-[#8A8A8A]')}
+                  className={cn(active ? 'text-[#FF9933]' : 'text-[#AEAEB2]')}
                 />
                 <span>{label}</span>
                 {active && (
@@ -128,7 +128,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
 
         {/* User profile + sign out */}
         {user && (
-          <div className="border-t border-[#2A2A2A] p-3">
+          <div className="border-t border-[#E5E5EA] p-3">
             <div className="flex items-center gap-2">
               <Avatar
                 name={user.displayName ?? user.email ?? 'U'}
@@ -136,15 +136,15 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                 size="sm"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-[#F0F0F0] truncate">
+                <p className="text-xs font-medium text-[#1C1C1E] truncate">
                   {user.displayName ?? 'User'}
                 </p>
-                <p className="text-[10px] text-[#8A8A8A] truncate">{user.email}</p>
+                <p className="text-[10px] text-[#6C6C70] truncate">{user.email}</p>
               </div>
               <button
                 type="button"
                 onClick={signOut}
-                className="text-[#8A8A8A] hover:text-[#FF4F6D] p-1.5 rounded"
+                className="text-[#AEAEB2] hover:text-[#FF4F6D] p-1.5 rounded"
                 title="Sign out"
                 aria-label="Sign out"
               >

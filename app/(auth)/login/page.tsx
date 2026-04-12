@@ -35,10 +35,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-[#0A0A0A] flex items-center justify-center px-6">
+    <div className="min-h-dvh bg-[#F2F2F7] flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
         {/* Logo */}
-        <div className="flex flex-col items-center gap-1.5">
+        <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-3">
             <Image
               src="/icons/icon-maskable-912.png"
@@ -52,26 +52,26 @@ export default function LoginPage() {
               RISE
             </h1>
           </div>
-          <p className="text-xs text-[#8A8A8A] text-center">
+          <p className="text-sm text-[#6C6C70] text-center">
             My Organized Hub for Everything
           </p>
         </div>
 
         {/* Sign In Card */}
-        <div className="w-full bg-[#141414] rounded-card p-6 border border-[#2A2A2A] flex flex-col gap-4">
+        <div className="w-full bg-white rounded-2xl p-6 border border-[#E5E5EA] shadow-card flex flex-col gap-5">
           <div className="text-center">
-            <h2 className="text-base font-semibold text-[#F0F0F0]">Welcome back</h2>
-            <p className="text-sm text-[#8A8A8A] mt-1">Sign in to continue your journey</p>
+            <h2 className="text-lg font-bold text-[#1C1C1E]">Welcome back</h2>
+            <p className="text-sm text-[#6C6C70] mt-1">Sign in to continue your journey</p>
           </div>
 
           {/* Google Sign In */}
           <button
             onClick={handleSignIn}
             disabled={loading}
-            className="w-full h-12 bg-white text-[#1a1a1a] rounded-button flex items-center justify-center gap-3 font-semibold text-sm hover:bg-gray-100 active:bg-gray-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full h-12 bg-white border border-[#E5E5EA] text-[#1C1C1E] rounded-button flex items-center justify-center gap-3 font-semibold text-sm hover:bg-[#F5F5F5] active:bg-[#EBEBEB] transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
           >
             {loading ? (
-              <LoadingSpinner size="sm" className="text-[#1a1a1a]" />
+              <LoadingSpinner size="sm" className="text-[#6C6C70]" />
             ) : (
               <>
                 {/* Google SVG icon */}
@@ -87,12 +87,14 @@ export default function LoginPage() {
           </button>
 
           {error && (
-            <p className="text-xs text-[#FF4F6D] text-center">{error}</p>
+            <div className="bg-[#FFF1F2] border border-[#FFE4E8] rounded-lg px-3 py-2">
+              <p className="text-xs text-[#FF4F6D] text-center">{error}</p>
+            </div>
           )}
         </div>
 
         {/* Footer note */}
-        <p className="text-xs text-[#505050] text-center">
+        <p className="text-xs text-[#AEAEB2] text-center">
           Single user · UAE · Your data stays yours
         </p>
       </div>

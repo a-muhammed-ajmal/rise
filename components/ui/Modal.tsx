@@ -62,7 +62,7 @@ export function Modal({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/30"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -71,28 +71,28 @@ export function Modal({
       <div
         ref={sheetRef}
         className={cn(
-          'relative z-10 bg-[#141414] w-full max-h-[92dvh] flex flex-col',
-          'animate-slide-up',
+          'relative z-10 bg-white w-full max-h-[92dvh] flex flex-col',
+          'animate-slide-up border border-[#E5E5EA]',
           forceModal
-            ? 'rounded-card max-w-lg mx-4'
-            : 'rounded-t-sheet sm:rounded-card sm:max-w-lg sm:mx-4',
+            ? 'rounded-card max-w-lg mx-4 shadow-card'
+            : 'rounded-t-sheet sm:rounded-card sm:max-w-lg sm:mx-4 shadow-sheet sm:shadow-card',
           className
         )}
       >
         {/* Drag handle (mobile only) */}
         {!forceModal && (
           <div className="flex justify-center pt-3 pb-1 sm:hidden">
-            <div className="w-10 h-1 rounded-full bg-[#2A2A2A]" />
+            <div className="w-10 h-1 rounded-full bg-[#E5E5EA]" />
           </div>
         )}
 
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#2A2A2A]">
-            <h2 className="text-base font-semibold text-[#F0F0F0]">{title}</h2>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E5EA]">
+            <h2 className="text-base font-semibold text-[#1C1C1E]">{title}</h2>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#1C1C1C] text-[#8A8A8A]"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F2F2F7] text-[#6C6C70]"
               aria-label="Close"
             >
               <X size={18} />
@@ -105,7 +105,7 @@ export function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="px-4 py-4 border-t border-[#2A2A2A] pb-safe">{footer}</div>
+          <div className="px-4 py-4 border-t border-[#E5E5EA] pb-safe">{footer}</div>
         )}
       </div>
     </div>
@@ -143,7 +143,7 @@ export function ConfirmModal({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 h-11 rounded-button border border-[#2A2A2A] text-sm text-[#F0F0F0] hover:bg-[#1C1C1C] transition-colors"
+            className="flex-1 h-11 rounded-button border border-[#E5E5EA] text-sm text-[#1C1C1E] hover:bg-[#F5F5F5] transition-colors"
           >
             Cancel
           </button>
@@ -160,7 +160,7 @@ export function ConfirmModal({
         </div>
       }
     >
-      <p className="text-sm text-[#8A8A8A] leading-relaxed">{message}</p>
+      <p className="text-sm text-[#6C6C70] leading-relaxed">{message}</p>
     </Modal>
   );
 }

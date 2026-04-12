@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-12 (mobile UX overhaul — mobile header h-14 with hamburger + bell; logout removed from header, notification bell added; MobileSidebar drawer added (full nav, user profile, sign-out); MobileBottomNav simplified to Home | + | Chat; GlobalFab hidden on mobile (+ lives in bottom nav); useNotifications hook added for permission management, badge count, and task/habit notification scheduling)
+**Last updated:** 2026-04-12 (light theme overhaul + dashboard redesign — replaced dark theme (#0A0A0A/black surfaces) with clean bright theme (#F2F2F7 background, #FFFFFF cards, #E5E5EA borders, #1C1C1E text); dashboard overview page redesigned: section titles now live inside unified white cards as a header row (icon + title + "See all" link), eliminating the visual disconnect between floating section labels and content boxes; all layout, UI, and page components updated to light theme; ToastContainer uses color-coded light backgrounds; build verified zero errors)
 
 ---
 

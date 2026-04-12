@@ -26,13 +26,13 @@ export function ProgressBar({
   return (
     <div className={cn('flex flex-col gap-1', className)}>
       {(showLabel || label) && (
-        <div className="flex justify-between text-xs text-[#8A8A8A]">
+        <div className="flex justify-between text-xs text-[#6C6C70]">
           {label && <span>{label}</span>}
           {showLabel && <span>{Math.round(pct)}%</span>}
         </div>
       )}
       <div
-        className="w-full bg-[#2A2A2A] rounded-full overflow-hidden"
+        className="w-full bg-[#E5E5EA] rounded-full overflow-hidden"
         style={{ height }}
       >
         <div

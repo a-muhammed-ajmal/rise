@@ -27,7 +27,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="min-h-dvh bg-[#0A0A0A]">
+    <div className="min-h-dvh bg-[#F2F2F7]">
       <DesktopSidebar />
 
       <MobileHeader onMenuClick={() => setMobileNavOpen(true)} />

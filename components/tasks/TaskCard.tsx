@@ -43,7 +43,7 @@ export function TaskCard({
 
   const targetProject = projects.find((p) => p.id === (task.targetId ?? task.projectId));
   const recurringLetter = task.recurring ? RECURRENCE_LETTER[task.recurring] : '';
-  const priorityColor = PRIORITY_COLORS[task.priority] ?? '#8A8A8A';
+  const priorityColor = PRIORITY_COLORS[task.priority] ?? '#6C6C70';
   const priorityLabel = PRIORITY_LABELS[task.priority] ?? task.priority;
 
   useEffect(() => {
@@ -76,9 +76,9 @@ export function TaskCard({
   return (
     <div
       className={cn(
-        'relative flex items-start gap-0 border-b border-[#2A2A2A] last:border-0',
-        'active:bg-[#1A1A1A] transition-colors select-none',
-        selected && 'bg-[#FF6B35]/8'
+        'relative flex items-start gap-0 border-b border-[#E5E5EA] last:border-0',
+        'active:bg-[#F5F5F5] transition-colors select-none',
+        selected && 'bg-[#FF6B35]/6'
       )}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -98,7 +98,7 @@ export function TaskCard({
           <div
             className={cn(
               'w-5 h-5 rounded-full border-2 flex items-center justify-center',
-              selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#505050]'
+              selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
             )}
           >
             {selected && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -119,8 +119,8 @@ export function TaskCard({
       {/* Content */}
       <div className="flex-1 min-w-0 py-3 pl-2 pr-2">
         <p className={cn(
-          'text-sm text-[#F0F0F0] leading-snug',
-          task.isCompleted && 'line-through text-[#505050]'
+          'text-sm text-[#1C1C1E] leading-snug',
+          task.isCompleted && 'line-through text-[#AEAEB2]'
         )}>
           {task.title}
         </p>
@@ -149,7 +149,7 @@ export function TaskCard({
         {task.dueDate && (
           <p className={cn(
             'text-xs mt-1',
-            isOverdue ? 'text-[#FF4F6D]' : 'text-[#8A8A8A]'
+            isOverdue ? 'text-[#FF4F6D]' : 'text-[#6C6C70]'
           )}>
             {isOverdue ? '⚠ Overdue · ' : ''}{task.dueDate === today ? 'Today' : task.dueDate}
             {task.dueTime && ` · ${formatTime(task.dueTime)}`}
@@ -162,27 +162,27 @@ export function TaskCard({
         <div ref={menuRef} className="relative">
           <button
             onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-            className="w-7 h-7 flex items-center justify-center text-[#505050] hover:text-[#F0F0F0] rounded-full hover:bg-[#1C1C1C]"
+            className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#6C6C70] rounded-full hover:bg-[#F2F2F7]"
           >
             <MoreVertical size={15} />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-8 z-50 bg-[#1C1C1C] border border-[#2A2A2A] rounded-card shadow-card min-w-[160px]">
+            <div className="absolute right-0 top-8 z-50 bg-white border border-[#E5E5EA] rounded-card shadow-card min-w-[160px]">
               <button
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onEdit(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#F0F0F0] hover:bg-[#2A2A2A]"
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#1C1C1E] hover:bg-[#F5F5F5]"
               >
                 <Pencil size={14} /> Edit Action
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDuplicate(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#F0F0F0] hover:bg-[#2A2A2A]"
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#1C1C1E] hover:bg-[#F5F5F5]"
               >
                 <Copy size={14} /> Duplicate
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#FF4F6D] hover:bg-[#2A2A2A]"
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#FF4F6D] hover:bg-[#FFF1F2]"
               >
                 <Trash2 size={14} /> Delete
               </button>
@@ -192,13 +192,13 @@ export function TaskCard({
 
         <div className="flex flex-col items-end gap-0.5">
           {targetProject && (
-            <span className="text-[10px] text-[#8A8A8A] max-w-[80px] text-right truncate leading-tight">
+            <span className="text-[10px] text-[#6C6C70] max-w-[80px] text-right truncate leading-tight">
               {targetProject.title}
             </span>
           )}
           <span
             className="text-[10px] max-w-[80px] text-right truncate leading-tight font-medium"
-            style={{ color: REALM_CONFIG[task.realm]?.color ?? '#8A8A8A' }}
+            style={{ color: REALM_CONFIG[task.realm]?.color ?? '#6C6C70' }}
           >
             {task.realm}
           </span>

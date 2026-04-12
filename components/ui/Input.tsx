@@ -23,7 +23,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-[#F0F0F0]">
+          <label htmlFor={inputId} className="text-sm font-medium text-[#1C1C1E]">
             {label}
             {props.required && <span className="text-[#FF4F6D] ml-0.5">*</span>}
           </label>
@@ -32,16 +32,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full bg-[#1C1C1C] border rounded-input px-3 py-2.5 text-sm text-[#F0F0F0] placeholder-[#505050] outline-none transition-colors',
-            'focus:border-[#FF6B35]',
-            error ? 'border-[#FF4F6D]' : 'border-[#2A2A2A]',
+            'w-full bg-[#F5F5F5] border rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none transition-colors',
+            'focus:border-[#FF6B35] focus:bg-white',
+            error ? 'border-[#FF4F6D]' : 'border-[#E5E5EA]',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             className
           )}
           {...props}
         />
         {error && <p className="text-xs text-[#FF4F6D]">{error}</p>}
-        {helper && !error && <p className="text-xs text-[#8A8A8A]">{helper}</p>}
+        {helper && !error && <p className="text-xs text-[#6C6C70]">{helper}</p>}
       </div>
     );
   }
@@ -58,7 +58,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-[#F0F0F0]">
+          <label htmlFor={inputId} className="text-sm font-medium text-[#1C1C1E]">
             {label}
             {props.required && <span className="text-[#FF4F6D] ml-0.5">*</span>}
           </label>
@@ -67,16 +67,16 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full bg-[#1C1C1C] border rounded-input px-3 py-2.5 text-sm text-[#F0F0F0] placeholder-[#505050] outline-none transition-colors resize-none',
-            'focus:border-[#FF6B35]',
-            error ? 'border-[#FF4F6D]' : 'border-[#2A2A2A]',
+            'w-full bg-[#F5F5F5] border rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none transition-colors resize-none',
+            'focus:border-[#FF6B35] focus:bg-white',
+            error ? 'border-[#FF4F6D]' : 'border-[#E5E5EA]',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             className
           )}
           {...props}
         />
         {error && <p className="text-xs text-[#FF4F6D]">{error}</p>}
-        {helper && !error && <p className="text-xs text-[#8A8A8A]">{helper}</p>}
+        {helper && !error && <p className="text-xs text-[#6C6C70]">{helper}</p>}
       </div>
     );
   }
@@ -95,7 +95,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-[#F0F0F0]">
+          <label htmlFor={inputId} className="text-sm font-medium text-[#1C1C1E]">
             {label}
             {props.required && <span className="text-[#FF4F6D] ml-0.5">*</span>}
           </label>
@@ -104,9 +104,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full bg-[#1C1C1C] border rounded-input px-3 py-2.5 text-sm text-[#F0F0F0] outline-none transition-colors appearance-none',
-            'focus:border-[#FF6B35]',
-            error ? 'border-[#FF4F6D]' : 'border-[#2A2A2A]',
+            'w-full bg-[#F5F5F5] border rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none transition-colors appearance-none',
+            'focus:border-[#FF6B35] focus:bg-white',
+            error ? 'border-[#FF4F6D]' : 'border-[#E5E5EA]',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             className
           )}
@@ -119,7 +119,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ))}
         </select>
         {error && <p className="text-xs text-[#FF4F6D]">{error}</p>}
-        {helper && !error && <p className="text-xs text-[#8A8A8A]">{helper}</p>}
+        {helper && !error && <p className="text-xs text-[#6C6C70]">{helper}</p>}
       </div>
     );
   }

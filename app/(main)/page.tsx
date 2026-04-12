@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import {
   ChevronDown, ChevronUp, ArrowRight,
-  CheckCircle2, Circle, Sun, Check,
+  CheckCircle2, Circle, Sun, Check, Activity, CheckSquare,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
@@ -13,7 +13,6 @@ import { updateDocById, deleteDocById, createDoc } from '@/lib/firestore';
 import { COLLECTIONS } from '@/lib/constants';
 import { cn, formatTime, todayISO } from '@/lib/utils';
 import type { Task, Habit, Project, HabitStatus } from '@/lib/types';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { toast } from '@/lib/toast';
 
@@ -47,7 +46,46 @@ function recalcStreak(statusLog: Record<string, HabitStatus>): number {
   return streak;
 }
 
-// ─── SECTION 3: TODAY'S FOCUS ─────────────────────────────────────────────────
+// ─── SECTION CARD WRAPPER ─────────────────────────────────────────────────────
+
+function SectionCard({
+  icon: Icon,
+  title,
+  linkHref,
+  linkLabel,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  linkHref: string;
+  linkLabel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden border border-[#E5E5EA] shadow-sm">
+      {/* Card header — title and "See all" in one unified bar */}
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#E5E5EA]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-[#FF9933]/12 flex items-center justify-center flex-shrink-0">
+            <Icon size={15} className="text-[#FF9933]" />
+          </div>
+          <h2 className="text-[15px] font-semibold text-[#1C1C1E]">{title}</h2>
+        </div>
+        <a
+          href={linkHref}
+          className="flex items-center gap-1 text-[13px] font-medium text-[#FF9933]"
+        >
+          {linkLabel}
+          <ArrowRight size={13} />
+        </a>
+      </div>
+      {/* Card body */}
+      {children}
+    </div>
+  );
+}
+
+// ─── SECTION: TODAY'S FOCUS ───────────────────────────────────────────────────
 
 function TodayFocus({
   tasks,
@@ -70,17 +108,14 @@ function TodayFocus({
     .slice(0, 3);
 
   return (
-    <div>
-      <p className="section-label mb-3">Today&apos;s Focus</p>
+    <SectionCard icon={Sun} title="Today's Focus" linkHref="/tasks" linkLabel="See all">
       {focusTasks.length === 0 ? (
-        <div className="glass-card p-5 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <Sun size={28} className="text-[#505050]" />
-            <p className="text-sm text-[#8A8A8A]">No focus actions. Mark actions as My Day.</p>
-          </div>
+        <div className="px-4 py-8 flex flex-col items-center gap-2 text-center">
+          <Sun size={28} className="text-[#AEAEB2]" />
+          <p className="text-sm text-[#6C6C70]">No focus actions. Mark actions as My Day.</p>
         </div>
       ) : (
-        <div className="glass-card overflow-hidden">
+        <div>
           {focusTasks.map((task) => (
             <TaskCard
               key={task.id}
@@ -97,11 +132,11 @@ function TodayFocus({
           ))}
         </div>
       )}
-    </div>
+    </SectionCard>
   );
 }
 
-// ─── SECTION 4: BE CONSISTENT ─────────────────────────────────────────────────
+// ─── SECTION: BE CONSISTENT ───────────────────────────────────────────────────
 
 function BeConsistent({ habits }: { habits: Habit[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -162,49 +197,48 @@ function BeConsistent({ habits }: { habits: Habit[] }) {
   };
 
   return (
-    <div>
-      <p className="section-label mb-3">Be Consistent</p>
+    <SectionCard icon={Activity} title="Be Consistent" linkHref="/wellness" linkLabel="See all">
       {allDoneOrFailed ? (
-        <div className="glass-card p-4 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#1ABC9C]/15 flex items-center justify-center flex-shrink-0">
+        <div className="px-4 py-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[#1ABC9C]/12 flex items-center justify-center flex-shrink-0">
             <Check size={16} className="text-[#1ABC9C]" />
           </div>
           <p className="text-sm text-[#1ABC9C] font-medium">All rhythms completed for today!</p>
         </div>
       ) : pendingHabits.length === 0 ? (
-        <div className="glass-card p-5 flex items-center justify-center">
-          <p className="text-sm text-[#8A8A8A]">No active rhythms.</p>
+        <div className="px-4 py-8 flex items-center justify-center">
+          <p className="text-sm text-[#6C6C70]">No active rhythms.</p>
         </div>
       ) : (
-        <div className="glass-card overflow-hidden">
+        <div>
           {visible.map((habit, idx) => (
             <div
               key={habit.id}
               className={cn(
                 'flex items-center gap-3 px-4 py-3',
-                idx < visible.length - 1 && 'border-b border-[#2A2A2A]'
+                idx < visible.length - 1 && 'border-b border-[#E5E5EA]'
               )}
             >
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-[#F0F0F0] truncate">{habit.name}</p>
+                <p className="text-sm text-[#1C1C1E] truncate font-medium">{habit.name}</p>
                 {habit.time && (
-                  <p className="text-xs text-[#8A8A8A] mt-0.5">{formatTime(habit.time)}</p>
+                  <p className="text-xs text-[#6C6C70] mt-0.5">{formatTime(habit.time)}</p>
                 )}
               </div>
               <div className="flex gap-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => markDone(habit)}
-                  className="h-8 px-3 rounded-button bg-[#1ABC9C]/15 text-[#1ABC9C] text-xs font-semibold active:bg-[#1ABC9C]/25"
+                  className="h-8 px-3 rounded-lg bg-[#1ABC9C]/10 text-[#1ABC9C] text-xs font-semibold active:bg-[#1ABC9C]/20 border border-[#1ABC9C]/20"
                 >
                   Done
                 </button>
                 <button
                   type="button"
                   onClick={() => markFailed(habit)}
-                  className="h-8 px-3 rounded-button bg-[#FF4F6D]/15 text-[#FF4F6D] text-xs font-semibold active:bg-[#FF4F6D]/25"
+                  className="h-8 px-3 rounded-lg bg-[#FF4F6D]/10 text-[#FF4F6D] text-xs font-semibold active:bg-[#FF4F6D]/20 border border-[#FF4F6D]/20"
                 >
-                  Failed
+                  Fail
                 </button>
               </div>
             </div>
@@ -214,7 +248,7 @@ function BeConsistent({ habits }: { habits: Habit[] }) {
             <button
               type="button"
               onClick={() => setExpanded(true)}
-              className="w-full flex items-center justify-center gap-1.5 py-3 text-xs text-[#FF6B35] border-t border-[#2A2A2A]"
+              className="w-full flex items-center justify-center gap-1.5 py-3 text-xs text-[#FF9933] font-medium border-t border-[#E5E5EA]"
             >
               <ChevronDown size={14} />
               Show {remaining} more
@@ -224,7 +258,7 @@ function BeConsistent({ habits }: { habits: Habit[] }) {
             <button
               type="button"
               onClick={() => setExpanded(false)}
-              className="w-full flex items-center justify-center gap-1.5 py-3 text-xs text-[#8A8A8A] border-t border-[#2A2A2A]"
+              className="w-full flex items-center justify-center gap-1.5 py-3 text-xs text-[#6C6C70] border-t border-[#E5E5EA]"
             >
               <ChevronUp size={14} />
               Show less
@@ -232,18 +266,11 @@ function BeConsistent({ habits }: { habits: Habit[] }) {
           )}
         </div>
       )}
-
-      <a
-        href="/wellness"
-        className="flex items-center gap-1.5 mt-3 text-xs text-[#FF6B35]"
-      >
-        View all rhythms <ArrowRight size={12} />
-      </a>
-    </div>
+    </SectionCard>
   );
 }
 
-// ─── SECTION 5: GET THINGS DONE ───────────────────────────────────────────────
+// ─── SECTION: GET THINGS DONE ─────────────────────────────────────────────────
 
 function GetThingsDone({
   tasks,
@@ -271,17 +298,14 @@ function GetThingsDone({
     .slice(0, 5);
 
   return (
-    <div>
-      <p className="section-label mb-3">Get Things Done</p>
+    <SectionCard icon={CheckSquare} title="Get Things Done" linkHref="/tasks" linkLabel="See all">
       {todayTasks.length === 0 ? (
-        <div className="glass-card p-5 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <Circle size={28} className="text-[#505050]" />
-            <p className="text-sm text-[#8A8A8A]">No actions for today. You&apos;re all clear!</p>
-          </div>
+        <div className="px-4 py-8 flex flex-col items-center gap-2 text-center">
+          <Circle size={28} className="text-[#AEAEB2]" />
+          <p className="text-sm text-[#6C6C70]">No actions for today. You&apos;re all clear!</p>
         </div>
       ) : (
-        <div className="glass-card overflow-hidden">
+        <div>
           {todayTasks.map((task) => (
             <TaskCard
               key={task.id}
@@ -298,13 +322,7 @@ function GetThingsDone({
           ))}
         </div>
       )}
-      <a
-        href="/tasks"
-        className="flex items-center gap-1.5 mt-3 text-xs text-[#FF6B35]"
-      >
-        View all actions <ArrowRight size={12} />
-      </a>
-    </div>
+    </SectionCard>
   );
 }
 
@@ -350,10 +368,10 @@ export default function DashboardPage() {
       isCompleted: true,
       completedAt: new Date().toISOString(),
     });
-    toast.success('Action completed! 🎉');
+    toast.success('Action completed!');
   }, []);
 
-  const handleEdit = useCallback((task: Task) => {
+  const handleEdit = useCallback((_task: Task) => {
     router.push('/tasks');
   }, [router]);
 
@@ -375,15 +393,15 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="page-content flex flex-col gap-6 pb-6">
+    <div className="page-content flex flex-col gap-4 pb-6">
 
-      {/* ── Section 1: Dynamic Greeting ──────────────────────────────────────── */}
-      <div className="pt-2">
-        <h1 className="text-xl font-bold text-[#F0F0F0]">{greeting}</h1>
-        <p className="text-xs text-[#8A8A8A] mt-0.5">{dateTime}</p>
+      {/* ── Greeting card ──────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl px-4 py-5 border border-[#E5E5EA] shadow-sm">
+        <h1 className="text-xl font-bold text-[#1C1C1E] leading-tight">{greeting}</h1>
+        <p className="text-[13px] text-[#6C6C70] mt-1">{dateTime}</p>
       </div>
 
-      {/* ── Section 3: Today's Focus ──────────────────────────────────────────── */}
+      {/* ── Today's Focus ─────────────────────────────────────────────────── */}
       <TodayFocus
         tasks={tasks}
         projects={projects}
@@ -393,10 +411,10 @@ export default function DashboardPage() {
         onDuplicate={handleDuplicate}
       />
 
-      {/* ── Section 4: Be Consistent ─────────────────────────────────────────── */}
+      {/* ── Be Consistent ─────────────────────────────────────────────────── */}
       <BeConsistent habits={habits} />
 
-      {/* ── Section 5: Get Things Done ───────────────────────────────────────── */}
+      {/* ── Get Things Done ───────────────────────────────────────────────── */}
       <GetThingsDone
         tasks={tasks}
         projects={projects}

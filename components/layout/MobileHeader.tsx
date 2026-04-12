@@ -36,13 +36,13 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
   };
 
   return (
-    <header className="sm:hidden h-14 bg-[#0A0A0A] border-b border-[#2A2A2A] flex items-center justify-between px-3 fixed top-0 left-0 right-0 z-40">
+    <header className="sm:hidden h-14 bg-white border-b border-[#E5E5EA] flex items-center justify-between px-3 fixed top-0 left-0 right-0 z-40">
       {/* Left: hamburger + logo + name */}
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onMenuClick}
-          className="w-9 h-9 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0] rounded-full hover:bg-[#1C1C1C] -ml-1"
+          className="w-9 h-9 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F2F2F7] -ml-1"
           aria-label="Open menu"
         >
           <Menu size={22} />
@@ -63,7 +63,7 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
       <button
         type="button"
         onClick={handleBellClick}
-        className="relative w-10 h-10 flex items-center justify-center text-[#8A8A8A] hover:text-[#F0F0F0] rounded-full hover:bg-[#1C1C1C] -mr-1"
+        className="relative w-10 h-10 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F2F2F7] -mr-1"
         aria-label={
           permission === 'granted'
             ? `Notifications (${pendingCount} pending)`
@@ -72,7 +72,7 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
       >
         <Bell
           size={20}
-          className={permission === 'granted' ? 'text-[#F0F0F0]' : 'text-[#8A8A8A]'}
+          className={permission === 'granted' ? 'text-[#1C1C1E]' : 'text-[#6C6C70]'}
         />
         {permission === 'granted' && pendingCount > 0 && (
           <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-0.5 rounded-full bg-[#FF4F6D] flex items-center justify-center text-[10px] font-bold text-white leading-none">

@@ -20,13 +20,14 @@ export function Badge({ label, color, className }: BadgeProps) {
       style={
         color
           ? {
-              backgroundColor: color + '22',
+              backgroundColor: color + '18',
               color: color,
-              border: `1px solid ${color}33`,
+              border: `1px solid ${color}30`,
             }
           : {
-              backgroundColor: '#2A2A2A',
-              color: '#8A8A8A',
+              backgroundColor: '#F2F2F7',
+              color: '#6C6C70',
+              border: '1px solid #E5E5EA',
             }
       }
     >
@@ -59,6 +60,6 @@ export function StatusBadge({
   status: string;
   colorMap: Record<string, string>;
 }) {
-  const color = colorMap[status] ?? '#8A8A8A';
+  const color = colorMap[status] ?? '#6C6C70';
   return <Badge label={status} color={color} />;
 }

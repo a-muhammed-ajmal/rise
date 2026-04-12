@@ -20,12 +20,12 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center text-center py-16 px-6 gap-4">
-      <div className="w-20 h-20 rounded-full bg-[#1C1C1C] flex items-center justify-center">
-        <Icon size={36} className="text-[#505050]" />
+      <div className="w-20 h-20 rounded-full bg-[#F2F2F7] flex items-center justify-center">
+        <Icon size={36} className="text-[#AEAEB2]" />
       </div>
       <div className="flex flex-col gap-1">
-        <h3 className="text-base font-semibold text-[#F0F0F0]">{title}</h3>
-        <p className="text-sm text-[#8A8A8A] max-w-xs">{subtitle}</p>
+        <h3 className="text-base font-semibold text-[#1C1C1E]">{title}</h3>
+        <p className="text-sm text-[#6C6C70] max-w-xs">{subtitle}</p>
       </div>
       {actionLabel && onAction && (
         <Button variant="primary" size="md" onClick={onAction}>

@@ -10,7 +10,7 @@ function Skeleton({ className }: SkeletonProps) {
   return (
     <div
       className={cn(
-        'bg-[#1C1C1C] rounded animate-pulse',
+        'bg-[#E8E8ED] rounded animate-pulse',
         className
       )}
     />
@@ -19,7 +19,7 @@ function Skeleton({ className }: SkeletonProps) {
 
 export function SkeletonCard() {
   return (
-    <div className="bg-[#141414] rounded-card p-4 flex flex-col gap-3 border border-[#2A2A2A]">
+    <div className="bg-white rounded-card p-4 flex flex-col gap-3 border border-[#E5E5EA] shadow-card">
       <div className="flex items-center gap-3">
         <Skeleton className="w-8 h-8 rounded-full" />
         <div className="flex-1 flex flex-col gap-2">
@@ -36,7 +36,7 @@ export function SkeletonCard() {
 
 export function SkeletonListItem() {
   return (
-    <div className="flex items-center gap-3 py-3 px-4 border-b border-[#2A2A2A]">
+    <div className="flex items-center gap-3 py-3 px-4 border-b border-[#E5E5EA]">
       <Skeleton className="w-5 h-5 rounded" />
       <div className="flex-1 flex flex-col gap-2">
         <Skeleton className="h-4 w-2/3" />
@@ -51,7 +51,7 @@ export function SkeletonStats() {
   return (
     <div className="grid grid-cols-2 gap-3">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="bg-[#141414] rounded-card p-4 border border-[#2A2A2A]">
+        <div key={i} className="bg-white rounded-card p-4 border border-[#E5E5EA] shadow-card">
           <Skeleton className="h-3 w-1/2 mb-2" />
           <Skeleton className="h-7 w-3/4" />
         </div>

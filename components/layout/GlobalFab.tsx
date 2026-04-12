@@ -18,7 +18,7 @@ const QUICK_ITEMS: {
   color: string;
 }[] = [
   { label: 'Action', icon: CheckSquare, color: '#FF6B35' },
-  { label: 'Lead', icon: UserPlus, color: '#1E4AFF' },
+  { label: 'Lead', icon: UserPlus, color: '#007AFF' },
   { label: 'Deal', icon: Briefcase, color: '#1ABC9C' },
   { label: 'Connection', icon: UserPlus, color: '#FF4F6D' },
   { label: 'Income', icon: TrendingUp, color: '#1ABC9C' },
@@ -42,15 +42,15 @@ export function QuickCreateSheet({
     <div className="fixed inset-0 z-[60] flex items-end sm:items-end justify-center">
       <button
         type="button"
-        className="absolute inset-0 bg-black/50 border-0 cursor-default"
+        className="absolute inset-0 bg-black/30 border-0 cursor-default"
         onClick={onClose}
         aria-label="Close quick create"
       />
-      <div className="relative z-10 bg-[#141414] rounded-t-sheet sm:rounded-card w-full sm:max-w-md mx-0 sm:mx-4 sm:mb-24 p-4 pb-safe max-h-[90dvh] overflow-y-auto">
+      <div className="relative z-10 bg-white rounded-t-sheet sm:rounded-card w-full sm:max-w-md mx-0 sm:mx-4 sm:mb-24 p-4 pb-safe max-h-[90dvh] overflow-y-auto shadow-sheet border border-[#E5E5EA]">
         <div className="flex justify-center mb-4 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-[#2A2A2A]" />
+          <div className="w-10 h-1 rounded-full bg-[#E5E5EA]" />
         </div>
-        <p className="text-xs text-[#8A8A8A] text-center mb-4 font-medium uppercase tracking-wider">
+        <p className="text-xs text-[#AEAEB2] text-center mb-4 font-semibold uppercase tracking-wider">
           Quick Create
         </p>
         <div className="grid grid-cols-2 gap-3">
@@ -65,19 +65,19 @@ export function QuickCreateSheet({
                   if (enabled) onAction(label);
                 }}
                 className={cn(
-                  'flex flex-col items-center gap-1.5 p-3 rounded-card bg-[#1C1C1C] transition-transform',
-                  enabled ? 'active:scale-95 hover:bg-[#222]' : 'opacity-50 cursor-not-allowed'
+                  'flex flex-col items-center gap-1.5 p-3 rounded-card bg-[#F5F5F5] border border-[#E5E5EA] transition-transform',
+                  enabled ? 'active:scale-95 hover:bg-[#EBEBEB]' : 'opacity-40 cursor-not-allowed'
                 )}
               >
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: `${color}22` }}
+                  style={{ backgroundColor: `${color}18` }}
                 >
                   <Icon size={18} style={{ color }} />
                 </div>
-                <span className="text-xs text-[#F0F0F0]">{label}</span>
+                <span className="text-xs text-[#1C1C1E] font-medium">{label}</span>
                 {!enabled && (
-                  <span className="text-[10px] text-[#8A8A8A] leading-tight">Coming soon</span>
+                  <span className="text-[10px] text-[#AEAEB2] leading-tight">Coming soon</span>
                 )}
               </button>
             );

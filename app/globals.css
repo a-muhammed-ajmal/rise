@@ -4,17 +4,17 @@
 
 /* ─── ROOT & FONTS ────────────────────────────────────────────────────────── */
 :root {
-  --background: #0A0A0A;
-  --surface: #141414;
-  --surface-elevated: #1C1C1C;
-  --border: #2A2A2A;
-  --text-primary: #F0F0F0;
-  --text-secondary: #8A8A8A;
-  --text-placeholder: #505050;
+  --background: #F2F2F7;
+  --surface: #FFFFFF;
+  --surface-elevated: #F5F5F5;
+  --border: #E5E5EA;
+  --text-primary: #1C1C1E;
+  --text-secondary: #6C6C70;
+  --text-placeholder: #AEAEB2;
   --orange: #FF9933;
   --green: #1ABC9C;
   --red: #FF4F6D;
-  --blue: #1E4AFF;
+  --blue: #007AFF;
 }
 
 * {
@@ -23,7 +23,7 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
   background-color: var(--background);
 }
 
@@ -126,13 +126,13 @@ body {
   animation: logo-pulse-glow 2s ease-in-out infinite;
 }
 
-/* Shimmer override for skeleton */
+/* Shimmer override for skeleton — light theme */
 .animate-pulse {
   background: linear-gradient(
     90deg,
-    var(--surface-elevated) 0%,
-    #242424 50%,
-    var(--surface-elevated) 100%
+    #E8E8ED 0%,
+    #F0F0F5 50%,
+    #E8E8ED 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
@@ -143,11 +143,11 @@ body {
   transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* ─── INPUT DATE/TIME (dark theme fix) ────────────────────────────────────── */
+/* ─── INPUT DATE/TIME (light theme) ──────────────────────────────────────── */
 input[type='date'],
 input[type='time'],
 input[type='datetime-local'] {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 /* ─── CHECKBOX ────────────────────────────────────────────────────────────── */
@@ -160,7 +160,7 @@ input[type='checkbox'] {
 
 /* ─── SELECT ARROW FIX ────────────────────────────────────────────────────── */
 select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238A8A8A' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236C6C70' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 36px !important;
@@ -179,27 +179,28 @@ select {
   margin: 0 auto;
 }
 
-/* ─── GLASS CARD ──────────────────────────────────────────────────────────── */
+/* ─── GLASS CARD (now a clean white card with shadow) ─────────────────────── */
 .glass-card {
-  background-color: #141414;
-  border-radius: 12px;
-  border: 1px solid #2A2A2A;
+  background-color: #FFFFFF;
+  border-radius: 14px;
+  border: 1px solid #E5E5EA;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 /* ─── SECTION LABEL ───────────────────────────────────────────────────────── */
 .section-label {
   font-size: 0.65rem;
   font-weight: 600;
-  color: #8A8A8A;
+  color: #6C6C70;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-/* ─── PROGRESS BAR (Visions page) ────────────────────────────────────────── */
+/* ─── PROGRESS BAR ────────────────────────────────────────────────────────── */
 .progress-track {
   width: 100%;
   height: 6px;
-  background-color: #2A2A2A;
+  background-color: #E5E5EA;
   border-radius: 9999px;
   overflow: hidden;
 }

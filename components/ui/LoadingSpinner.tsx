@@ -25,7 +25,7 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
 export function FullPageLoader() {
   return (
     <div
-      className="fixed inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center z-50 gap-6"
+      className="fixed inset-0 bg-white flex flex-col items-center justify-center z-50 gap-6"
       role="status"
       aria-live="polite"
     >
