@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-13 (complete light theme — all 19 pages and components fully converted from dark theme (#0A0A0A/black surfaces) to clean bright theme (#F2F2F7 background, #FFFFFF cards, #E5E5EA borders, #1C1C1E text); dashboard overview redesigned with unified SectionCard components; dashboard task detail popup now includes an Edit action option and task edit flow to the Actions page; dashboard task detail modal spacing tightened; app/layout.tsx: themeColor → #FFFFFF, className="dark" removed; all pages (tasks, goals, finance, wellness, professional, relationships, reviews, journal, documents, chat) updated with light palette; reviews yellow-button text contrast fixed to #1C1C1E; build verified zero errors)
+**Last updated:** 2026-04-13 (fixed React error #310 in tasks/page.tsx — moved useState hooks before early return in ActionDetailPopup; fixed chat API 500 errors in lib/gemini.ts — systemInstruction now set via getGenerativeModel config instead of prepended to user message, chat history sanitized to ensure valid Gemini format, GEMINI_API_KEY validated with clear error on missing key; app/api/chat/route.ts returns 503 with descriptive message when API key is not configured; build verified zero errors)
 
 ---
 
@@ -67,7 +67,7 @@ These are notable differences between `# RISE — System Specification.txt` and 
 | §9.1 Dashboard | Quick stats, Today’s Focus, Be Consistent list, Get Things Done, Target Progress | **TASK 3 complete**: dynamic greeting (date-fns, surname), Today’s Focus (top 3 isMyDay tasks), Be Consistent (pending habits + Done/Failed buttons + streak recalc + show-more), Get Things Done (top 5 today/isMyDay tasks); **no** stats grid, **no** goal progress; Winner’s Mindset removed from dashboard — **pending** move to Wellness page |
 | §9.3 Visions | NICE box, milestones, rich cards | Full implementation: NICE info box (collapsible), timeline filter pills, rich vision cards (progress bar, slider, details, history), Milestones + Steps modal, completed Visions section — all per spec |
 | §9.4 Finance | Rich income/expense/debt/budget per spec | **Transactions / Budgets / Debts** tabs with CRUD; categories from `lib/constants.ts` — **not** identical lists to plan §17.7 in all labels |
-| §9.11 AI Chat | Rich context blob, markdown rendering, TTS, voice pipeline | Firestore history, `/api/chat` with **optional** `context` (client **does not** send full sanitized app context today); **no** TTS buttons; **no** markdown renderer in UI; voice uses `/api/transcribe` which is a **stub** |
+| §9.11 AI Chat | Rich context blob, markdown rendering, TTS, voice pipeline | Firestore history, `/api/chat` with **optional** `context` (client **does not** send full sanitized app context today); `systemInstruction` passed via `getGenerativeModel()` config; chat history sanitized before sending to Gemini API; **no** TTS buttons; markdown renderer added in chat UI; voice uses `/api/transcribe` which is a **stub** |
 | §11 API | POST `/api/ai-tip` with body, daily rate limit | **`GET`** `/api/ai-tip` — no separate daily tip rate limiter in code |
 | §11 `/api/transcribe` | Gemini multimodal + cleanup | **Stub**: returns placeholder; `useVoiceRecorder` expects `data.text` — **transcription does not populate** from API |
 | §16 PWA | Serwist `app/sw.ts`, custom runtime cache order | **`next-pwa`** — `pwa.dest: 'public'` so `sw.js` / precache ship under `public/`; `navigateFallback` omitted (Workbox v4 `registerNavigationRoute` intercepts all navigations — wrong for SSR); root metadata includes `mobile-web-app-capable` (avoids deprecated `apple-mobile-web-app-capable` from `appleWebApp.capable: false`) |
@@ -94,7 +94,7 @@ Statuses: **Complete** (usable end-to-end), **Partial** (works but missing plan 
 | Reviews | §9.8 | **Partial** | Weekly/monthly/quarterly/yearly tabs, GPS fields; not full plan matrix |
 | Journal | §9.9 | **Partial** | Energy, mood, text, voice hook (same transcribe limitation) |
 | Documents | §9.10 | **Partial** | Filter, search, CRUD; categories per `DOCUMENT_CATEGORIES` |
-| AI Chat | §9.11 | **Partial** | Persistence, Gemini reply; missing rich context, TTS, markdown, working server transcription |
+| AI Chat | §9.11 | **Partial** | Persistence, Gemini reply with `systemInstruction` via model config, history sanitization; missing rich context, TTS, working server transcription |
 | Onboarding | (not in old §9.12 only) | **Stub** | `app/onboarding/page.tsx` immediately redirects to `/`; `useOnboarding` exists but **not** wired from login |
 | PWA | §16 | **Partial** | `next-pwa` + install prompt; not Serwist strategy from plan |
 
