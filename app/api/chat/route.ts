@@ -81,6 +81,13 @@ Formatting rules (follow strictly):
     return NextResponse.json({ reply });
   } catch (error) {
     console.error('Chat API error:', error);
+    const msg = error instanceof Error ? error.message : '';
+    if (msg.includes('GEMINI_API_KEY')) {
+      return NextResponse.json(
+        { error: 'AI service is not configured. Please set the GEMINI_API_KEY environment variable.' },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: 'AI assistant is temporarily unavailable.' },
       { status: 500 }
