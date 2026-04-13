@@ -21,9 +21,42 @@ function parseDueDate(s: string): Date | null {
     const [d, m, y] = s.split('/').map(Number);
     if (!isNaN(d) && !isNaN(m) && !isNaN(y)) return new Date(y, m - 1, d);
   }
-  // Legacy YYYY-MM-DD
   if (s.includes('-') && s.length === 10) return new Date(s + 'T00:00:00');
   return null;
+}
+
+function parseDueDateTime(date: string, time?: string): Date | null {
+  const parsedDate = parseDueDate(date);
+  if (!parsedDate) return null;
+  if (!time) return parsedDate;
+
+  const normalized = time.trim();
+  const ampmMatch = normalized.match(/(am|pm)$/i);
+  const timePart = ampmMatch ? normalized.replace(/(am|pm)$/i, '').trim() : normalized;
+  const [hour, minute] = timePart.split(':').map((part) => Number(part));
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return parsedDate;
+
+  let normalizedHour = hour;
+  if (ampmMatch) {
+    const ampm = ampmMatch[1].toLowerCase();
+    if (hour === 12) {
+      normalizedHour = ampm === 'am' ? 0 : 12;
+    } else if (ampm === 'pm') {
+      normalizedHour = hour + 12;
+    }
+  }
+
+  parsedDate.setHours(normalizedHour, minute, 0, 0);
+  return parsedDate;
+}
+
+function formatCardDate(date: string): string {
+  const parsed = parseDueDate(date);
+  if (!parsed) return date;
+  const m = String(parsed.getMonth() + 1).padStart(2, '0');
+  const d = String(parsed.getDate()).padStart(2, '0');
+  const y = parsed.getFullYear();
+  return `${m}/${d}/${y}`;
 }
 
 function todayMidnight(): Date {
@@ -38,36 +71,38 @@ interface DueDateInfo {
 
 function getDueDateInfo(dueDate: string | undefined, dueTime: string | undefined): DueDateInfo | null {
   if (!dueDate) return null;
-  const parsed = parseDueDate(dueDate);
-  if (!parsed) return null;
+  const due = parseDueDateTime(dueDate, dueTime);
+  if (!due) return null;
+  const now = new Date();
   const today = todayMidnight();
   const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-  const ts = parsed.getTime();
 
   let label: string;
-  let color: string;
-
-  if (ts === today.getTime()) {
+  if (
+    due.getFullYear() === today.getFullYear() &&
+    due.getMonth() === today.getMonth() &&
+    due.getDate() === today.getDate()
+  ) {
     label = 'Today';
-    color = '#1C1C1E';
-  } else if (ts === yesterday.getTime()) {
+  } else if (
+    due.getFullYear() === yesterday.getFullYear() &&
+    due.getMonth() === yesterday.getMonth() &&
+    due.getDate() === yesterday.getDate()
+  ) {
     label = 'Yesterday';
-    color = '#EF4444';
-  } else if (ts === tomorrow.getTime()) {
+  } else if (
+    due.getFullYear() === tomorrow.getFullYear() &&
+    due.getMonth() === tomorrow.getMonth() &&
+    due.getDate() === tomorrow.getDate()
+  ) {
     label = 'Tomorrow';
-    color = '#1ABC9C';
-  } else if (ts < today.getTime()) {
-    // Past — show DD/MM/YYYY in red
-    label = dueDate.includes('/') ? dueDate : dueDate.split('-').reverse().join('/');
-    color = '#EF4444';
   } else {
-    // Future — show DD/MM/YYYY in muted green
-    label = dueDate.includes('/') ? dueDate : dueDate.split('-').reverse().join('/');
-    color = '#1ABC9C';
+    label = formatCardDate(dueDate);
   }
 
   if (dueTime) label += ` ${dueTime}`;
+  const color = due.getTime() > now.getTime() ? '#1ABC9C' : '#EF4444';
   return { label, color };
 }
 
@@ -169,25 +204,20 @@ export function TaskCard({
         </p>
       </div>
 
-      {/* LINE 2: Due date (left) + Realm name (right) — left-aligned under title */}
-      {(dueDateInfo || task.realm) && (
+      {/* LINE 2: Due date/time (left) + Area of Life | Target (right) */}
+      {(dueDateInfo || task.realm || targetDisplay) && (
         <div className="flex items-center justify-between ml-10">
           {dueDateInfo ? (
             <span className="text-xs" style={{ color: dueDateInfo.color }}>
               {dueDateInfo.label}
             </span>
-          ) : <span />}
-          {task.realm && (
-            <span className="text-xs text-[#AEAEB2]">
-              {task.realm}
-            </span>
+          ) : (
+            <span />
           )}
+          <span className="text-xs text-[#AEAEB2]">
+            {task.realm || 'Default'}{targetDisplay ? ` | ${targetDisplay}` : ''}
+          </span>
         </div>
-      )}
-
-      {/* LINE 3: Target title — only if targetId set */}
-      {(task.targetId || task.projectId) && targetDisplay && (
-        <p className="text-xs text-[#AEAEB2] ml-10">{targetDisplay}</p>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  useState, useRef, useEffect, useCallback, useMemo,
+  useState, useRef, useEffect, useCallback, useMemo, KeyboardEvent,
 } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -10,6 +10,7 @@ import {
   CheckSquare, Keyboard, Clock,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 import { useCollection } from '@/hooks/useFirestore';
 import { updateDocById, deleteDocById, createDoc } from '@/lib/firestore';
 import { COLLECTIONS, REALM_CONFIG, REALMS } from '@/lib/constants';
@@ -821,6 +822,7 @@ function TaskModal({
   const [recurringPickerOpen, setRecurringPickerOpen] = useState(false);
   const [reminderPickerOpen, setReminderPickerOpen] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -845,11 +847,14 @@ function TaskModal({
         setForm({ ...DEFAULT_FORM });
         setSelectedFileName('');
       }
+      setIsDirty(false);
     }
   }, [open, task]);
 
-  const set = <K extends keyof TaskForm>(k: K, v: TaskForm[K]) =>
+  const set = <K extends keyof TaskForm>(k: K, v: TaskForm[K]) => {
+    setIsDirty(true);
     setForm((f) => ({ ...f, [k]: v }));
+  };
 
   const realmProjects = projects.filter((p) => p.realm === form.realm);
 
@@ -893,6 +898,52 @@ function TaskModal({
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!form.title.trim()) { toast.error('Action title is required'); return; }
+    setSaving(true);
+    try {
+      await createDoc(COLLECTIONS.TASKS, {
+        userId,
+        title: sanitize(`${form.title.trim()} (Copy)`, 200),
+        description: form.description.trim() || undefined,
+        steps: form.steps.length > 0 ? form.steps : undefined,
+        realm: form.realm,
+        targetId: form.targetId || undefined,
+        projectId: form.targetId || undefined,
+        priority: form.priority,
+        dueDate: form.dueDate || undefined,
+        dueTime: form.dueTime || undefined,
+        recurring: form.recurring,
+        customDays: form.customDays.length > 0 ? form.customDays : undefined,
+        reminder: form.reminder,
+        isMyDay: form.isMyDay,
+        isStarred: task?.isStarred ?? false,
+        isCompleted: task?.isCompleted ?? false,
+        completedAt: task?.completedAt,
+        order: Date.now(),
+        createdAt: new Date().toISOString(),
+      });
+      toast.success('Action duplicated');
+    } catch {
+      toast.error('Failed to duplicate action');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (task) {
+      await deleteDocById(COLLECTIONS.TASKS, task.id);
+      toast.success('Action deleted');
+      onClose();
+      return;
+    }
+    setForm({ ...DEFAULT_FORM });
+    setSelectedFileName('');
+    setIsDirty(false);
+    toast.success('Draft cleared');
+  };
+
   const dueDateInfo = getDueDateDisplay(form.dueDate, form.dueTime);
   const recurringLabel = form.recurring === 'None' ? 'Does not repeat'
     : form.recurring === 'Custom' ? `Custom (${form.customDays.map(i => CUSTOM_DAYS_LABELS[i]).join(', ')})`
@@ -908,13 +959,20 @@ function TaskModal({
       <Modal
         open={open}
         onClose={onClose}
-        title={task ? 'Edit Action' : 'New Action'}
+        title={task ? 'Edit Action' : 'Add Action'}
         footer={
           <div className="flex gap-3">
-            <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
-            <Button fullWidth loading={saving} onClick={handleSave}>
-              {task ? 'Save Changes' : 'Create Action'}
-            </Button>
+            <Button variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
+            <Button variant="danger" fullWidth onClick={handleDelete}>Delete</Button>
+            {task ? (
+              isDirty ? (
+                <Button fullWidth loading={saving} onClick={handleSave}>Update</Button>
+              ) : (
+                <Button fullWidth variant="secondary" onClick={onClose}>Cancel</Button>
+              )
+            ) : (
+              <Button fullWidth loading={saving} onClick={handleSave}>Add</Button>
+            )}
           </div>
         }
       >
@@ -924,7 +982,6 @@ function TaskModal({
             type="text"
             placeholder="Action title"
             maxLength={200}
-            autoFocus
             value={form.title}
             onChange={(e) => set('title', e.target.value)}
             className="w-full text-base text-[#1C1C1E] placeholder-[#AEAEB2] outline-none bg-transparent border-b border-[#E5E5EA] pb-2 focus:border-[#FF6B35]"
@@ -945,116 +1002,85 @@ function TaskModal({
           {/* Steps */}
           <StepsEditor steps={form.steps} onChange={(s) => set('steps', s)} />
 
-          {/* Realm */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[#1C1C1E]">Realm</label>
-            <select
-              value={form.realm}
-              onChange={(e) => { set('realm', e.target.value); set('targetId', ''); }}
-              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#FF6B35] appearance-none"
-            >
-              {REALMS.map((r) => (
-                <option key={r} value={r}>{REALM_CONFIG[r].emoji} {r}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Target */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[#1C1C1E]">Target</label>
-            <select
-              value={form.targetId}
-              onChange={(e) => set('targetId', e.target.value)}
-              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#FF6B35] appearance-none"
-            >
-              <option value="">No target</option>
-              {realmProjects.length === 0 ? (
-                <option value="" disabled>No targets in this Realm yet</option>
-              ) : (
-                realmProjects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)
-              )}
-            </select>
-          </div>
-
-          {/* Priority */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[#1C1C1E]">Priority</label>
-            <select
-              value={form.priority}
-              onChange={(e) => set('priority', e.target.value as Priority)}
-              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#FF6B35] appearance-none"
-            >
-              {(['P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => (
-                <option key={p} value={p}>● {TASK_PRIORITY_LABELS[p]} ({p})</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Date & Time row */}
-          <button
-            type="button"
-            onClick={() => setDtPickerOpen(true)}
-            className="flex items-center gap-3 px-3 py-3 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input hover:bg-[#EBEBEB] transition-colors"
-          >
-            <Calendar size={16} className="text-[#6C6C70] flex-shrink-0" />
-            <span className={cn('flex-1 text-sm text-left', dueDateInfo ? 'text-[#1C1C1E]' : 'text-[#AEAEB2]')}>
-              {dueDateInfo ? dueDateInfo.label : 'Set date'}
-            </span>
-            {(form.dueDate || form.dueTime) && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); set('dueDate', ''); set('dueTime', ''); }}
-                className="w-5 h-5 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]"
+          <div className="grid grid-cols-3 gap-2">
+            <div className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2">
+              <span className="text-base">{REALM_CONFIG[form.realm]?.emoji}</span>
+              <select
+                value={form.realm}
+                onChange={(e) => { set('realm', e.target.value); set('targetId', ''); }}
+                className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none appearance-none"
               >
-                <X size={14} />
-              </button>
-            )}
-          </button>
-
-          {/* Recurring row */}
-          <button
-            type="button"
-            onClick={() => setRecurringPickerOpen(true)}
-            className="flex items-center gap-3 px-3 py-3 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input hover:bg-[#EBEBEB] transition-colors"
-          >
-            <Repeat size={16} className="text-[#6C6C70] flex-shrink-0" />
-            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{recurringLabel}</span>
-            {form.recurring !== 'None' && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); set('recurring', 'None'); set('customDays', []); }}
-                className="w-5 h-5 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </button>
-
-          {/* Reminder row */}
-          <button
-            type="button"
-            onClick={() => setReminderPickerOpen(true)}
-            className="flex items-center gap-3 px-3 py-3 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input hover:bg-[#EBEBEB] transition-colors"
-          >
-            <Bell size={16} className="text-[#6C6C70] flex-shrink-0" />
-            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{reminderLabel}</span>
-          </button>
-
-          {/* My Day row */}
-          <button
-            type="button"
-            onClick={() => set('isMyDay', !form.isMyDay)}
-            className={cn(
-              'flex items-center gap-3 px-3 py-3 rounded-input border transition-colors',
-              form.isMyDay ? 'bg-[#FF6B35]/10 border-[#FF6B35]' : 'bg-[#F5F5F5] border-[#E5E5EA]'
-            )}
-          >
-            <Sun size={16} className={form.isMyDay ? 'text-[#FF6B35]' : 'text-[#6C6C70]'} />
-            <span className="flex-1 text-sm text-left text-[#1C1C1E]">My Day</span>
-            <div className={cn('w-10 h-6 rounded-full transition-colors flex items-center px-1', form.isMyDay ? 'bg-[#FF6B35]' : 'bg-[#E5E5EA]')}>
-              <div className={cn('w-4 h-4 rounded-full bg-white transition-transform', form.isMyDay ? 'translate-x-4' : 'translate-x-0')} />
+                {REALMS.map((r) => (
+                  <option key={r} value={r}>{REALM_CONFIG[r].emoji} {r}</option>
+                ))}
+              </select>
             </div>
-          </button>
+            <div className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2">
+              <span className="text-[#6C6C70]">⊙</span>
+              <select
+                value={form.targetId}
+                onChange={(e) => set('targetId', e.target.value)}
+                className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none appearance-none"
+              >
+                <option value="">No target</option>
+                {realmProjects.length === 0 ? (
+                  <option value="" disabled>No targets in this Realm yet</option>
+                ) : (
+                  realmProjects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)
+                )}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => set('isMyDay', !form.isMyDay)}
+              className={cn(
+                'flex items-center gap-2 rounded-input border px-3 py-2 text-sm font-medium transition-colors',
+                form.isMyDay ? 'border-[#FF6B35] bg-[#FF6B35]/10 text-[#FF6B35]' : 'border-[#E5E5EA] bg-[#F5F5F5] text-[#1C1C1E]'
+              )}
+            >
+              <Sun size={16} className={form.isMyDay ? 'text-[#FF6B35]' : 'text-[#6C6C70]'} />
+              Focus Day
+            </button>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 pt-2">
+            <div className="flex flex-col gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-3">
+              <label className="text-xs font-medium uppercase text-[#6C6C70]">Priority</label>
+              <select
+                value={form.priority}
+                onChange={(e) => set('priority', e.target.value as Priority)}
+                className="bg-transparent text-sm text-[#1C1C1E] outline-none"
+              >
+                {(['P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => (
+                  <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]} ({p})</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDtPickerOpen(true)}
+              className="flex flex-col items-start gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-3 text-left"
+            >
+              <span className="text-xs font-medium uppercase text-[#6C6C70]">Due Date</span>
+              <span className="text-sm text-[#1C1C1E]">{dueDateInfo?.label || 'Set date'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRecurringPickerOpen(true)}
+              className="flex flex-col items-start gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-3 text-left"
+            >
+              <span className="text-xs font-medium uppercase text-[#6C6C70]">Repeat</span>
+              <span className="text-sm text-[#1C1C1E]">{recurringLabel}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setReminderPickerOpen(true)}
+              className="flex flex-col items-start gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-3 text-left"
+            >
+              <span className="text-xs font-medium uppercase text-[#6C6C70]">Reminders</span>
+              <span className="text-sm text-[#1C1C1E]">{reminderLabel}</span>
+            </button>
+          </div>
 
           {/* Add File row */}
           <button
@@ -1120,10 +1146,10 @@ function ActionDetailPopup({
   userId: string;
   onComplete: (t: Task) => void;
 }) {
-  const [editingTitle, setEditingTitle] = useState(false);
   const [titleVal, setTitleVal] = useState('');
-  const [editingDesc, setEditingDesc] = useState(false);
   const [descVal, setDescVal] = useState('');
+  const [targetName, setTargetName] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
   const [subSheet, setSubSheet] = useState<'realm' | 'target' | 'priority' | 'datetime' | 'recurring' | 'reminder' | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [addStepInput, setAddStepInput] = useState('');
@@ -1131,19 +1157,23 @@ function ActionDetailPopup({
   const [editingStepText, setEditingStepText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  if (!task) return null;
+
+  const realmProjects = projects.filter((p) => p.realm === task.realm);
+  const targetProject = projects.find((p) => p.id === (task.targetId ?? task.projectId));
+
   useEffect(() => {
     if (open && task) {
       setTitleVal(task.title);
       setDescVal(task.description ?? '');
-      setEditingTitle(false);
-      setEditingDesc(false);
+      setTargetName(targetProject?.title ?? '');
+      setIsDirty(false);
       setSubSheet(null);
       setEditingStepId(null);
       setEditingStepText('');
+      setAddStepInput('');
     }
-  }, [open, task]);
-
-  if (!task) return null;
+  }, [open, task, targetProject]);
 
   const save = async (fields: Partial<Task>) => {
     try {
@@ -1153,28 +1183,20 @@ function ActionDetailPopup({
     }
   };
 
-  const handleTitleSave = async () => {
-    if (!titleVal.trim()) { toast.error('Action title is required'); return; }
-    setEditingTitle(false);
-    await save({ title: sanitize(titleVal.trim(), 200) });
-  };
-
-  const handleDescSave = async () => {
-    setEditingDesc(false);
-    await save({ description: descVal.trim() || undefined });
-  };
-
   const handleToggleStep = async (stepId: string) => {
+    setIsDirty(true);
     const steps = (task.steps ?? []).map(s => s.id === stepId ? { ...s, done: !s.done } : s);
     await save({ steps });
   };
 
   const handleDeleteStep = async (stepId: string) => {
+    setIsDirty(true);
     const steps = (task.steps ?? []).filter(s => s.id !== stepId);
     await save({ steps });
   };
 
   const handleAddStep = async (text: string) => {
+    setIsDirty(true);
     const steps = [...(task.steps ?? []), { id: Date.now().toString(), text, done: false }];
     await save({ steps });
     setAddStepInput('');
@@ -1182,12 +1204,41 @@ function ActionDetailPopup({
 
   const handleEditStep = async () => {
     if (!editingStepId || !editingStepText.trim()) return;
+    setIsDirty(true);
     const steps = (task.steps ?? []).map((s) => (
       s.id === editingStepId ? { ...s, text: editingStepText.trim() } : s
     ));
     await save({ steps });
     setEditingStepId(null);
     setEditingStepText('');
+  };
+
+  const handleTargetInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const title = targetName.trim();
+    if (!title) return;
+    const existing = realmProjects.find((p) => p.title.toLowerCase() === title.toLowerCase());
+    if (existing) {
+      setIsDirty(true);
+      await save({ targetId: existing.id, projectId: existing.id });
+      toast.success('Target selected.');
+      return;
+    }
+    const cfg = REALM_CONFIG[task.realm] ?? { emoji: '🎯', color: '#FF6B35' };
+    const newProjectId = await createDoc(COLLECTIONS.PROJECTS, {
+      userId,
+      title: sanitize(title, 100),
+      realm: task.realm,
+      color: cfg.color,
+      icon: cfg.emoji,
+      isFavorite: false,
+      order: Date.now(),
+      createdAt: new Date().toISOString(),
+    });
+    setIsDirty(true);
+    await save({ targetId: newProjectId, projectId: newProjectId });
+    toast.success('Target created and assigned.');
   };
 
   const handleDuplicate = async () => {
@@ -1212,8 +1263,6 @@ function ActionDetailPopup({
     onClose();
   };
 
-  const realmProjects = projects.filter((p) => p.realm === task.realm);
-  const targetProject = projects.find((p) => p.id === (task.targetId ?? task.projectId));
   const priorityColor = TASK_PRIORITY_COLORS[task.priority] ?? '#6B7280';
   const dueDateInfo = getDueDateDisplay(task.dueDate, task.dueTime);
   const recurringLabel = !task.recurring || task.recurring === 'None' ? 'Does not repeat'
@@ -1227,91 +1276,72 @@ function ActionDetailPopup({
 
 
 
+  const handleSaveChanges = async () => {
+    if (!titleVal.trim()) { toast.error('Action title is required'); return; }
+    const updateFields: Partial<Task> = {};
+    if (titleVal.trim() !== task.title) updateFields.title = sanitize(titleVal.trim(), 200);
+    if (descVal.trim() !== (task.description ?? '')) updateFields.description = descVal.trim() || undefined;
+    if (Object.keys(updateFields).length > 0) {
+      await save(updateFields);
+      setIsDirty(false);
+      toast.success('Action updated');
+    }
+  };
+
   return (
     <>
       <Modal
         open={open}
         onClose={onClose}
       >
-        {/* Header */}
-        <div className="flex items-start gap-3 pb-4 border-b border-[#E5E5EA] mb-4">
-          {/* Completion circle */}
+        {/* Top line */}
+        <div className="flex items-center justify-between pb-3 border-b border-[#E5E5EA] mb-4">
+          <span className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Edit Action</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Title row */}
+        <div className="flex items-center gap-3 pb-4 border-b border-[#E5E5EA] mb-4">
           <button
             type="button"
             onClick={() => onComplete(task)}
-            className="flex-shrink-0 mt-1 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors"
+            className="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center"
             style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
           >
-            {task.isCompleted && <Check size={14} style={{ color: priorityColor }} />}
+            {task.isCompleted && <Check size={12} style={{ color: priorityColor }} />}
           </button>
-
-          {/* Title */}
-          <div className="flex-1 min-w-0">
-            {editingTitle ? (
-              <input
-                type="text"
-                value={titleVal}
-                onChange={(e) => setTitleVal(e.target.value)}
-                onBlur={handleTitleSave}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSave(); }}
-                className="w-full text-lg font-semibold text-[#1C1C1E] outline-none border-b border-[#FF6B35] bg-transparent"
-                autoFocus
-              />
-            ) : (
-              <p
-                className={cn('text-lg font-semibold text-[#1C1C1E] cursor-text', task.isCompleted && 'line-through text-[#AEAEB2]')}
-                onClick={() => setEditingTitle(true)}
-              >
-                {task.title}
-              </p>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button type="button" onClick={handleDuplicate}
-              className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]">
-              <Copy size={16} />
-            </button>
-            <button type="button" onClick={() => setDeleteConfirmOpen(true)}
-              className="w-8 h-8 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444] rounded-full hover:bg-[#FEF2F2]">
-              <Trash2 size={16} />
-            </button>
-            <button type="button" onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]">
-              <X size={16} />
-            </button>
-          </div>
+          <input
+            type="text"
+            value={titleVal}
+            onChange={(e) => { setTitleVal(e.target.value); setIsDirty(true); }}
+            placeholder="Action title"
+            className="flex-1 text-lg font-semibold text-[#1C1C1E] bg-transparent outline-none"
+          />
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex flex-col gap-1">
-          {/* Row 1: Description */}
-          {editingDesc ? (
-            <div className="flex flex-col gap-2 py-2">
-              <textarea
-                value={descVal}
-                onChange={(e) => setDescVal(e.target.value)}
-                onBlur={handleDescSave}
-                rows={3}
-                placeholder="Add notes or description"
-                className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] resize-none"
-                autoFocus
-              />
-              <button type="button" onClick={handleDescSave} className="self-end text-xs text-[#FF6B35] font-medium">Done</button>
+        <div className="flex flex-col gap-3">
+          {/* Add detail section */}
+          <div className="flex flex-col gap-2 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input p-3">
+            <div className="flex items-center gap-2 text-xs font-medium text-[#6C6C70]">
+              <Paperclip size={14} />
+              <span>Add detail</span>
             </div>
-          ) : (
-            <button type="button" onClick={() => setEditingDesc(true)}
-              className="text-left py-2 px-1 text-sm rounded hover:bg-[#F5F5F5] transition-colors">
-              {task.description ? (
-                <span className="text-[#1C1C1E]">{task.description}</span>
-              ) : (
-                <span className="text-[#AEAEB2]">+ Add details</span>
-              )}
-            </button>
-          )}
+            <textarea
+              value={descVal}
+              onChange={(e) => { setDescVal(e.target.value); setIsDirty(true); }}
+              rows={3}
+              placeholder="Write notes or description"
+              className="w-full resize-none bg-transparent text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none"
+            />
+          </div>
 
-          {/* Row 2: Steps */}
+          {/* Add Step section */}
           <div className="py-2 border-t border-[#F2F2F7]">
             {(task.steps ?? []).map((step) => (
               <div key={step.id} className="flex items-center gap-2 py-1.5">
@@ -1326,7 +1356,6 @@ function ActionDetailPopup({
                     onChange={(e) => setEditingStepText(e.target.value)}
                     onBlur={handleEditStep}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleEditStep(); }}
-                    autoFocus
                     className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-2 py-1 text-sm text-[#1C1C1E] outline-none"
                   />
                 ) : (
@@ -1368,73 +1397,89 @@ function ActionDetailPopup({
             </div>
           </div>
 
-          {/* Row 3: Realm */}
-          <button type="button" onClick={() => setSubSheet('realm')}
-            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
-            <span className="text-base">{REALM_CONFIG[task.realm]?.emoji}</span>
-            <span className="flex-1 text-sm text-[#1C1C1E] text-left">{task.realm}</span>
-            <ChevronRight size={16} className="text-[#AEAEB2]" />
-          </button>
-
-          {/* Row 4: Target */}
-          <button type="button" onClick={() => setSubSheet('target')}
-            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
-            <span className="text-[#6C6C70]">⊙</span>
-            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{targetProject?.title ?? 'No target'}</span>
-            <ChevronRight size={16} className="text-[#AEAEB2]" />
-          </button>
-
-          {/* Row 5: Priority */}
-          <button type="button" onClick={() => setSubSheet('priority')}
-            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
-            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: priorityColor }} />
-            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{TASK_PRIORITY_LABELS[task.priority]}</span>
-            <ChevronRight size={16} className="text-[#AEAEB2]" />
-          </button>
-
-          {/* Row 6: Date & Time */}
-          <button type="button" onClick={() => setSubSheet('datetime')}
-            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
-            <Calendar size={16} className="text-[#6C6C70] flex-shrink-0" />
-            <span className={cn('flex-1 text-sm text-left', dueDateInfo ? 'text-[#1C1C1E]' : 'text-[#AEAEB2]')}>
-              {dueDateInfo ? dueDateInfo.label : 'Set due date'}
-            </span>
-            <ChevronRight size={16} className="text-[#AEAEB2]" />
-          </button>
-
-          {/* Row 7: Recurring */}
-          <button type="button" onClick={() => setSubSheet('recurring')}
-            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
-            <Repeat size={16} className="text-[#6C6C70] flex-shrink-0" />
-            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{recurringLabel}</span>
-            <ChevronRight size={16} className="text-[#AEAEB2]" />
-          </button>
-
-          {/* Row 8: Reminder */}
-          <button type="button" onClick={() => setSubSheet('reminder')}
-            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
-            <Bell size={16} className="text-[#6C6C70] flex-shrink-0" />
-            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{reminderLabel}</span>
-            <ChevronRight size={16} className="text-[#AEAEB2]" />
-          </button>
-
-          {/* Row 9: My Day */}
-          <button type="button" onClick={() => save({ isMyDay: !task.isMyDay })}
-            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
-            <Sun size={16} className={task.isMyDay ? 'text-[#FF6B35]' : 'text-[#6C6C70]'} />
-            <span className="flex-1 text-sm text-left text-[#1C1C1E]">My Day</span>
-            <div className={cn('w-10 h-6 rounded-full transition-colors flex items-center px-1', task.isMyDay ? 'bg-[#FF6B35]' : 'bg-[#E5E5EA]')}>
-              <div className={cn('w-4 h-4 rounded-full bg-white transition-transform', task.isMyDay ? 'translate-x-4' : 'translate-x-0')} />
+          {/* Realm / Target / Focus Day row */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2">
+              <span className="text-base">{REALM_CONFIG[task.realm]?.emoji}</span>
+              <select
+                value={task.realm}
+                onChange={async (e) => {
+                  const realm = e.target.value;
+                  setIsDirty(true);
+                  await save({ realm, targetId: undefined, projectId: undefined });
+                  setTargetName('');
+                }}
+                className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none appearance-none"
+              >
+                {REALMS.map((r) => (
+                  <option key={r} value={r}>{REALM_CONFIG[r].emoji} {r}</option>
+                ))}
+              </select>
             </div>
-          </button>
+            <div className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2">
+              <span className="text-[#6C6C70]">⊙</span>
+              <input
+                list="task-target-options"
+                value={targetName}
+                onChange={(e) => { setTargetName(e.target.value); setIsDirty(true); }}
+                onKeyDown={handleTargetInputKeyDown}
+                placeholder="Target"
+                className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none"
+              />
+              <datalist id="task-target-options">
+                {realmProjects.map((p) => (
+                  <option key={p.id} value={p.title} />
+                ))}
+              </datalist>
+            </div>
+            <button
+              type="button"
+              onClick={async () => { setIsDirty(true); await save({ isMyDay: !task.isMyDay }); }}
+              className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2"
+            >
+              <Sun size={16} className={task.isMyDay ? 'text-[#FF6B35]' : 'text-[#6C6C70]'} />
+              <span className="text-sm text-[#1C1C1E]">Focus Day</span>
+            </button>
+          </div>
 
-          {/* Row 10: File */}
-          <button type="button"
-            onClick={() => { fileInputRef.current?.click(); toast.info('File upload coming soon'); }}
-            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
-            <Paperclip size={16} className="text-[#6C6C70] flex-shrink-0" />
-            <span className="flex-1 text-sm text-left text-[#AEAEB2]">Add file</span>
-          </button>
+          {/* Priority / Due Date / Repeat / Reminders row */}
+          <div className="grid grid-cols-4 gap-2 pt-2">
+            <button type="button" onClick={() => setSubSheet('priority')}
+              className="flex flex-col items-start gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-3 text-left">
+              <div className="flex items-center gap-2 text-sm text-[#6C6C70]"><span className="w-3 h-3 rounded-full" style={{ backgroundColor: priorityColor }} /></div>
+              <span className="text-sm font-medium text-[#1C1C1E]">Priority</span>
+            </button>
+            <button type="button" onClick={() => setSubSheet('datetime')}
+              className="flex flex-col items-start gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-3 text-left">
+              <div className="flex items-center gap-2 text-sm text-[#6C6C70]">
+                <Calendar size={16} />
+              </div>
+              <span className="text-sm font-medium text-[#1C1C1E]">Due Date</span>
+            </button>
+            <button type="button" onClick={() => setSubSheet('recurring')}
+              className="flex flex-col items-start gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-3 text-left">
+              <div className="flex items-center gap-2 text-sm text-[#6C6C70]"><Repeat size={16} /></div>
+              <span className="text-sm font-medium text-[#1C1C1E]">Repeat</span>
+            </button>
+            <button type="button" onClick={() => setSubSheet('reminder')}
+              className="flex flex-col items-start gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-3 text-left">
+              <div className="flex items-center gap-2 text-sm text-[#6C6C70]"><Bell size={16} /></div>
+              <span className="text-sm font-medium text-[#1C1C1E]">Reminders</span>
+            </button>
+          </div>
+
+          {/* Bottom buttons */}
+          <div className="flex gap-3 pt-3 border-t border-[#E5E5EA]">
+            <Button variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
+            <Button variant="danger" fullWidth onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
+            {isDirty ? (
+              <Button fullWidth onClick={handleSaveChanges}>Update</Button>
+            ) : (
+              <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
+            )}
+          </div>
+
+          {/* File input for details */}
           <input ref={fileInputRef} type="file" className="hidden" />
         </div>
       </Modal>
@@ -1788,34 +1833,62 @@ function TargetCard({
   onDelete: (p: Project) => void;
   onToggleFavorite: (p: Project) => void;
 }) {
-  const linked = tasks.filter((t) => (t.targetId ?? t.projectId) === project.id);
+  const linked = tasks
+    .filter((t) => (t.targetId ?? t.projectId) === project.id)
+    .sort((a, b) => {
+      const aDue = a.dueDate ? parseDueDate(a.dueDate)?.getTime() ?? 0 : 0;
+      const bDue = b.dueDate ? parseDueDate(b.dueDate)?.getTime() ?? 0 : 0;
+      return aDue - bDue;
+    });
   const done = linked.filter((t) => t.isCompleted).length;
   const total = linked.length;
   const cfg = REALM_CONFIG[project.realm] ?? { emoji: '🎯', color: '#FF6B35' };
 
   return (
-    <div className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-3 flex items-start gap-3">
-      <span className="text-2xl flex-shrink-0">{project.icon || cfg.emoji}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1C1C1E] truncate">{project.title}</p>
-        <div className="flex items-center gap-2 mt-1">
-          <Badge label={project.realm} color={cfg.color} />
+    <div className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-3">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl flex-shrink-0">{project.icon || cfg.emoji}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[#1C1C1E] truncate">{project.title}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge label={project.realm} color={cfg.color} />
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <button type="button" onClick={() => onToggleFavorite(project)} className="w-7 h-7 flex items-center justify-center">
+                <Star size={15} className={project.isFavorite ? 'text-[#FFD700]' : 'text-[#AEAEB2]'} fill={project.isFavorite ? '#FFD700' : 'none'} />
+              </button>
+              <button type="button" onClick={() => onEdit(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#1C1C1E]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+              <button type="button" onClick={() => onDelete(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <ProgressBar value={done} max={total || 1} color={cfg.color} height={4} />
+            <p className="text-xs text-[#6C6C70] mt-1">{done}/{total} actions done</p>
+          </div>
+
+          {linked.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              {linked.slice(0, 3).map((task) => (
+                <div key={task.id} className="rounded-lg bg-[#F8F8F9] px-3 py-2">
+                  <p className="text-xs font-medium text-[#1C1C1E] truncate">{task.title}</p>
+                  <p className="text-[11px] text-[#6C6C70] mt-0.5">
+                    {task.dueDate ? `${task.dueDate}${task.dueTime ? ` ${task.dueTime}` : ''}` : 'No due date'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-[#6C6C70] mt-3">No actions yet.</p>
+          )}
         </div>
-        <div className="mt-2">
-          <ProgressBar value={done} max={total || 1} color={cfg.color} height={4} />
-          <p className="text-xs text-[#6C6C70] mt-1">{done}/{total} actions done</p>
-        </div>
-      </div>
-      <div className="flex flex-col items-center gap-2 flex-shrink-0">
-        <button type="button" onClick={() => onToggleFavorite(project)} className="w-7 h-7 flex items-center justify-center">
-          <Star size={15} className={project.isFavorite ? 'text-[#FFD700]' : 'text-[#AEAEB2]'} fill={project.isFavorite ? '#FFD700' : 'none'} />
-        </button>
-        <button type="button" onClick={() => onEdit(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#1C1C1E]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-        </button>
-        <button type="button" onClick={() => onDelete(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]">
-          <Trash2 size={14} />
-        </button>
       </div>
     </div>
   );
@@ -1852,6 +1925,29 @@ export default function ActionsPage() {
   const [inBulkMode, setInBulkMode] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [targetsSubTab, setTargetsSubTab] = useState<string>('All');
+  const { permission, pendingCount, requestPermission } = useNotifications(user?.uid ?? '');
+
+  const handleBellClick = async () => {
+    if (permission === 'denied') {
+      toast.error('Notifications are blocked. Enable them in your browser settings.');
+      return;
+    }
+    if (permission !== 'granted') {
+      const result = await requestPermission();
+      if (result === 'granted') {
+        toast.success('Notifications enabled! You\'ll be reminded about your actions and rhythms.');
+      } else {
+        toast.error('Notification permission denied.');
+      }
+      return;
+    }
+    if (pendingCount > 0) {
+      toast.info(`You have ${pendingCount} pending action${pendingCount !== 1 ? 's' : ''} today.`);
+    } else {
+      toast.success('You\'re all caught up!');
+    }
+  };
 
   // Open create modal if ?create=true in URL
   useEffect(() => {
@@ -1894,7 +1990,7 @@ export default function ActionsPage() {
   }), [tasks, today]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inboxTasks = useMemo(() => tasks.filter(
-    (t) => !t.isCompleted && !t.targetId && !t.projectId
+    (t) => !t.isCompleted && !t.dueDate
   ).sort((a, b) => parseInt(a.priority[1]) - parseInt(b.priority[1])), [tasks]);
 
   const upcomingTasks = useMemo(() => tasks.filter((t) => {
@@ -2003,10 +2099,11 @@ export default function ActionsPage() {
 
   const loading = tasksLoading || projectsLoading;
 
-  const realmGroups = REALMS.map((realm) => ({
-    realm,
-    projects: projects.filter((p) => p.realm === realm),
-  })).filter((g) => g.projects.length > 0);
+  const targetTabs = ['All', ...REALMS];
+  const filteredProjects = useMemo(() => {
+    if (targetsSubTab === 'All') return projects;
+    return projects.filter((p) => p.realm === targetsSubTab);
+  }, [projects, targetsSubTab]);
 
   const overdueCount = todayTasks.filter((t) => isTaskOverdue(t)).length;
 
@@ -2016,9 +2113,32 @@ export default function ActionsPage() {
       <div className="px-4 pt-4 pb-2 border-b border-[#E5E5EA]">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-bold text-[#1C1C1E]">Actions</h1>
-          <Button size="sm" onClick={() => setTaskModalOpen(true)}>
-            <Plus size={15} /> New Action
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBellClick}
+              className="w-10 h-10 flex items-center justify-center text-[#6C6C70] rounded-full hover:bg-[#F5F5F5]"
+              aria-label="Notifications"
+            >
+              <Bell size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (activeTab === 'targets') {
+                  setEditProject(null);
+                  setProjectModalOpen(true);
+                } else {
+                  setEditTask(null);
+                  setTaskModalOpen(true);
+                }
+              }}
+              className="h-10 px-3 rounded-full bg-[#FF6B35] text-white flex items-center gap-2 text-sm"
+            >
+              <Plus size={14} />
+              {activeTab === 'targets' ? 'Target' : 'Action'}
+            </button>
+          </div>
         </div>
         <div className="flex gap-1 overflow-x-auto pb-1 -mx-4 px-4">
           {tabs.map((tab) => (
@@ -2062,39 +2182,46 @@ export default function ActionsPage() {
       {/* Content */}
       <div className="flex-1 px-4 py-4 pb-24">
         {activeTab === 'targets' && (
-          <div className="flex flex-col gap-5">
-            <Button onClick={() => { setEditProject(null); setProjectModalOpen(true); }}>
-              <Plus size={15} /> New Target
-            </Button>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {['All', ...REALMS].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setTargetsSubTab(tab)}
+                  className={cn(
+                    'flex-shrink-0 h-9 px-3 rounded-full text-sm font-medium transition-colors',
+                    targetsSubTab === tab
+                      ? 'bg-[#FF6B35] text-white'
+                      : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]'
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
             {loading ? (
               <div className="flex flex-col gap-3">
                 {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-[#FFFFFF] rounded-card border border-[#E5E5EA] animate-pulse" />)}
               </div>
-            ) : realmGroups.length === 0 ? (
-              <EmptyState icon={Briefcase} title={emptyMessages.targets.title} subtitle={emptyMessages.targets.subtitle}
-                actionLabel="Create Target" onAction={() => { setEditProject(null); setProjectModalOpen(true); }} />
+            ) : filteredProjects.length === 0 ? (
+              <EmptyState
+                icon={Briefcase}
+                title={targetsSubTab === 'All' ? emptyMessages.targets.title : `No targets in ${targetsSubTab}`}
+                subtitle={targetsSubTab === 'All'
+                  ? emptyMessages.targets.subtitle
+                  : `Add targets to the ${targetsSubTab} realm to get started.`}
+              />
             ) : (
-              realmGroups.map(({ realm, projects: rProjects }) => {
-                const cfg = REALM_CONFIG[realm] ?? { emoji: '🎯', color: '#FF6B35' };
-                return (
-                  <div key={realm}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-base">{cfg.emoji}</span>
-                      <h2 className="text-sm font-semibold text-[#1C1C1E]">{realm}</h2>
-                      <div className="flex-1 h-px bg-[#E5E5EA]" />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {rProjects.map((p) => (
-                        <TargetCard key={p.id} project={p} tasks={tasks}
-                          onEdit={(proj) => { setEditProject(proj); setProjectModalOpen(true); }}
-                          onDelete={setDeleteProject}
-                          onToggleFavorite={handleToggleFavorite}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
+              <div className="flex flex-col gap-3">
+                {filteredProjects.map((p) => (
+                  <TargetCard key={p.id} project={p} tasks={tasks}
+                    onEdit={(proj) => { setEditProject(proj); setProjectModalOpen(true); }}
+                    onDelete={setDeleteProject}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -2139,16 +2266,6 @@ export default function ActionsPage() {
           </>
         )}
       </div>
-
-      {/* Mobile FAB */}
-      <button
-        type="button"
-        onClick={() => setTaskModalOpen(true)}
-        className="fixed bottom-[80px] right-4 w-14 h-14 bg-[#FF6B35] rounded-full flex items-center justify-center shadow-fab active:scale-95 transition-transform sm:hidden z-30"
-        aria-label="Create action"
-      >
-        <Plus size={24} className="text-white" />
-      </button>
 
       {/* Modals */}
       <TaskModal
