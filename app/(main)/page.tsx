@@ -14,6 +14,8 @@ import { COLLECTIONS } from '@/lib/constants';
 import { cn, formatTime, todayISO } from '@/lib/utils';
 import type { Task, Habit, Project, HabitStatus } from '@/lib/types';
 import { TaskCard } from '@/components/tasks/TaskCard';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 import { toast } from '@/lib/toast';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -57,13 +59,13 @@ function SectionCard({
 }: {
   icon: React.ElementType;
   title: string;
-  linkHref: string;
-  linkLabel: string;
+  linkHref?: string;
+  linkLabel?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden border border-[#E5E5EA] shadow-sm">
-      {/* Card header — title and "See all" in one unified bar */}
+      {/* Card header — title and optional "See all" in one unified bar */}
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#E5E5EA]">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#FF9933]/12 flex items-center justify-center flex-shrink-0">
@@ -71,13 +73,15 @@ function SectionCard({
           </div>
           <h2 className="text-[15px] font-semibold text-[#1C1C1E]">{title}</h2>
         </div>
-        <a
-          href={linkHref}
-          className="flex items-center gap-1 text-[13px] font-medium text-[#FF9933]"
-        >
-          {linkLabel}
-          <ArrowRight size={13} />
-        </a>
+        {linkHref && linkLabel ? (
+          <a
+            href={linkHref}
+            className="flex items-center gap-1 text-[13px] font-medium text-[#FF9933]"
+          >
+            {linkLabel}
+            <ArrowRight size={13} />
+          </a>
+        ) : null}
       </div>
       {/* Card body */}
       {children}
@@ -108,7 +112,7 @@ function TodayFocus({
     .slice(0, 3);
 
   return (
-    <SectionCard icon={Sun} title="Today's Focus" linkHref="/tasks" linkLabel="See all">
+    <SectionCard icon={Sun} title="Today's Focus">
       {focusTasks.length === 0 ? (
         <div className="px-4 py-8 flex flex-col items-center gap-2 text-center">
           <Sun size={28} className="text-[#AEAEB2]" />
@@ -272,6 +276,127 @@ function BeConsistent({ habits }: { habits: Habit[] }) {
 
 // ─── SECTION: GET THINGS DONE ─────────────────────────────────────────────────
 
+const TASK_PRIORITY_LABELS: Record<string, string> = {
+  P1: 'Do Now',
+  P2: 'Important',
+  P3: 'Get Done',
+  P4: 'Delegate',
+};
+
+const TASK_PRIORITY_COLORS: Record<string, string> = {
+  P1: '#EF4444',
+  P2: '#3B82F6',
+  P3: '#F59E0B',
+  P4: '#6B7280',
+};
+
+function TaskDetailModal({
+  open,
+  onClose,
+  task,
+  projects,
+  onComplete,
+}: {
+  open: boolean;
+  onClose: () => void;
+  task: Task | null;
+  projects: Project[];
+  onComplete: (task: Task) => void;
+}) {
+  if (!task) return null;
+  const target = projects.find((p) => p.id === (task.targetId ?? task.projectId));
+  const reminderLabel = !task.reminder?.enabled
+    ? 'No reminder'
+    : task.reminder.option === 'Custom' && task.reminder.customDateTime
+      ? `Custom (${task.reminder.customDateTime})`
+      : task.reminder.option;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Action details">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: TASK_PRIORITY_COLORS[task.priority] }}
+            />
+            <div>
+              <p className="text-lg font-semibold text-[#1C1C1E]">{task.title}</p>
+              <p className="text-xs text-[#6C6C70]">
+                {task.realm} · {target?.title ?? 'No target'}
+              </p>
+            </div>
+          </div>
+          {task.isCompleted && (
+            <span className="text-xs font-semibold text-[#1ABC9C]">Completed</span>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Details</p>
+            <p className="mt-2 text-sm text-[#1C1C1E]">
+              {task.description || 'No details added.'}
+            </p>
+          </div>
+
+          {task.steps?.length ? (
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Steps</p>
+              <div className="mt-2 space-y-2">
+                {task.steps.map((step) => (
+                  <div key={step.id} className="flex items-center gap-2">
+                    <div className={cn(
+                      'w-4 h-4 rounded-full border flex items-center justify-center',
+                      step.done ? 'bg-[#3B82F6] border-[#3B82F6]' : 'border-[#AEAEB2]'
+                    )}>
+                      {step.done && <Check size={10} className="text-white" />}
+                    </div>
+                    <span className={cn('text-sm', step.done && 'line-through text-[#AEAEB2]')}>
+                      {step.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-2 gap-2 text-sm text-[#1C1C1E]">
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Priority</p>
+              <p>{TASK_PRIORITY_LABELS[task.priority]}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Due</p>
+              <p>{task.dueDate ? `${task.dueDate}${task.dueTime ? ` ${task.dueTime}` : ''}` : 'None'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Repeat</p>
+              <p>{task.recurring || 'Does not repeat'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Reminder</p>
+              <p>{reminderLabel}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-[#6C6C70]">
+            <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
+            <span>My Day: {task.isMyDay ? 'Yes' : 'No'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-3">
+        <Button variant="secondary" fullWidth onClick={onClose}>Close</Button>
+        {!task.isCompleted && (
+          <Button fullWidth onClick={() => onComplete(task)}>Complete</Button>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function GetThingsDone({
   tasks,
   projects,
@@ -279,6 +404,7 @@ function GetThingsDone({
   onEdit,
   onDelete,
   onDuplicate,
+  onSeeAll,
 }: {
   tasks: Task[];
   projects: Project[];
@@ -286,6 +412,7 @@ function GetThingsDone({
   onEdit: (t: Task) => void;
   onDelete: (t: Task) => void;
   onDuplicate: (t: Task) => void;
+  onSeeAll: () => void;
 }) {
   const todayKey = todayISO();
 
@@ -298,7 +425,7 @@ function GetThingsDone({
     .slice(0, 5);
 
   return (
-    <SectionCard icon={CheckSquare} title="Get Things Done" linkHref="/tasks" linkLabel="See all">
+    <SectionCard icon={CheckSquare} title="Get Things Done">
       {todayTasks.length === 0 ? (
         <div className="px-4 py-8 flex flex-col items-center gap-2 text-center">
           <Circle size={28} className="text-[#AEAEB2]" />
@@ -322,6 +449,16 @@ function GetThingsDone({
           ))}
         </div>
       )}
+      <div className="border-t border-[#E5E5EA] px-4 py-3">
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="w-full flex items-center justify-center gap-1.5 text-[13px] font-medium text-[#FF9933]"
+        >
+          See all
+          <ArrowRight size={13} />
+        </button>
+      </div>
     </SectionCard>
   );
 }
@@ -371,9 +508,15 @@ export default function DashboardPage() {
     toast.success('Action completed!');
   }, []);
 
-  const handleEdit = useCallback((_task: Task) => {
-    router.push('/tasks');
-  }, [router]);
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
+
+  const handleEdit = useCallback((task: Task) => {
+    setDetailTask(task);
+  }, []);
+
+  const handleCloseDetail = useCallback(() => {
+    setDetailTask(null);
+  }, []);
 
   const handleDelete = useCallback(async (task: Task) => {
     await deleteDocById(COLLECTIONS.TASKS, task.id);
@@ -422,6 +565,17 @@ export default function DashboardPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onSeeAll={() => router.push('/tasks')}
+      />
+      <TaskDetailModal
+        open={!!detailTask}
+        onClose={handleCloseDetail}
+        task={detailTask}
+        projects={projects}
+        onComplete={(task) => {
+          handleComplete(task);
+          handleCloseDetail();
+        }}
       />
 
     </div>

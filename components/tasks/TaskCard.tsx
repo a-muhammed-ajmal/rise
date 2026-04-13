@@ -3,7 +3,6 @@
 import { useRef } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { REALM_CONFIG } from '@/lib/constants';
 import type { Task, Project } from '@/lib/types';
 
 // ─── PRIORITY COLORS (per spec) ───────────────────────────────────────────────
@@ -141,7 +140,7 @@ export function TaskCard({
         {inBulkMode ? (
           <div
             className={cn(
-              'flex-shrink-0 mt-0.5 w-8 h-8 rounded-full border-2 flex items-center justify-center',
+              'flex-shrink-0 mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center',
               selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
             )}
           >
@@ -149,15 +148,16 @@ export function TaskCard({
           </div>
         ) : (
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onComplete(task); }}
             className={cn(
-              'flex-shrink-0 mt-0.5 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors',
+              'flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
               task.isCompleted && 'bg-opacity-20'
             )}
             style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
             aria-label={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            {task.isCompleted && <Check size={14} style={{ color: priorityColor }} />}
+            {task.isCompleted && <Check size={12} style={{ color: priorityColor }} />}
           </button>
         )}
 
