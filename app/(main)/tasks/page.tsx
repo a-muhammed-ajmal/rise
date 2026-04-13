@@ -1126,6 +1126,9 @@ function ActionDetailPopup({
   const [descVal, setDescVal] = useState('');
   const [subSheet, setSubSheet] = useState<'realm' | 'target' | 'priority' | 'datetime' | 'recurring' | 'reminder' | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [addStepInput, setAddStepInput] = useState('');
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [editingStepText, setEditingStepText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1222,9 +1225,7 @@ function ActionDetailPopup({
       ? `Custom (${task.reminder.customDateTime})`
       : (task.reminder.option || 'No reminder');
 
-  const [addStepInput, setAddStepInput] = useState('');
-  const [editingStepId, setEditingStepId] = useState<string | null>(null);
-  const [editingStepText, setEditingStepText] = useState('');
+
 
   return (
     <>
