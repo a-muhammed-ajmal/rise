@@ -296,12 +296,14 @@ function TaskDetailModal({
   task,
   projects,
   onComplete,
+  onEditAction,
 }: {
   open: boolean;
   onClose: () => void;
   task: Task | null;
   projects: Project[];
   onComplete: (task: Task) => void;
+  onEditAction: (task: Task) => void;
 }) {
   if (!task) return null;
   const target = projects.find((p) => p.id === (task.targetId ?? task.projectId));
@@ -387,11 +389,12 @@ function TaskDetailModal({
         </div>
       </div>
 
-      <div className="flex gap-2 pt-3">
-        <Button variant="secondary" fullWidth onClick={onClose}>Close</Button>
+      <div className="flex flex-col gap-2 pt-3">
+        <Button fullWidth onClick={() => onEditAction(task)}>Edit action</Button>
         {!task.isCompleted && (
-          <Button fullWidth onClick={() => onComplete(task)}>Complete</Button>
+          <Button variant="secondary" fullWidth onClick={() => onComplete(task)}>Complete</Button>
         )}
+        <Button variant="secondary" fullWidth onClick={onClose}>Close</Button>
       </div>
     </Modal>
   );
@@ -518,6 +521,11 @@ export default function DashboardPage() {
     setDetailTask(null);
   }, []);
 
+  const handleEditAction = useCallback((task: Task) => {
+    setDetailTask(null);
+    router.push(`/tasks?edit=${task.id}`);
+  }, [router]);
+
   const handleDelete = useCallback(async (task: Task) => {
     await deleteDocById(COLLECTIONS.TASKS, task.id);
     toast.success('Action deleted.');
@@ -576,6 +584,7 @@ export default function DashboardPage() {
           handleComplete(task);
           handleCloseDetail();
         }}
+        onEditAction={handleEditAction}
       />
 
     </div>

@@ -1740,11 +1740,11 @@ function TaskCard({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onComplete(task); }}
-            className="flex-shrink-0 mt-0.5 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors"
+            className="flex-shrink-0 mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
             style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
             aria-label={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            {task.isCompleted && <Check size={14} style={{ color: priorityColor }} />}
+            {task.isCompleted && <Check size={12} style={{ color: priorityColor }} />}
           </button>
         )}
 
@@ -1842,6 +1842,7 @@ export default function ActionsPage() {
 
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [deleteTask, setDeleteTask] = useState<Task | null>(null);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
@@ -1854,10 +1855,22 @@ export default function ActionsPage() {
   // Open create modal if ?create=true in URL
   useEffect(() => {
     if (searchParams?.get('create') === 'true') {
+      setEditTask(null);
       setTaskModalOpen(true);
       router.replace('/tasks');
+      return;
     }
-  }, [searchParams, router]);
+
+    const editId = searchParams?.get('edit');
+    if (editId && tasks.length > 0) {
+      const taskToEdit = tasks.find((t) => t.id === editId);
+      if (taskToEdit) {
+        setEditTask(taskToEdit);
+        setTaskModalOpen(true);
+        router.replace('/tasks');
+      }
+    }
+  }, [searchParams, router, tasks]);
 
   useEffect(() => {
     if (inBulkMode && selectedTasks.size === 0) setInBulkMode(false);
@@ -2139,8 +2152,11 @@ export default function ActionsPage() {
       {/* Modals */}
       <TaskModal
         open={taskModalOpen}
-        onClose={() => setTaskModalOpen(false)}
-        task={null}
+        onClose={() => {
+          setTaskModalOpen(false);
+          setEditTask(null);
+        }}
+        task={editTask}
         projects={projects}
         userId={user?.uid ?? ''}
       />
