@@ -1,80 +1,810 @@
 'use client';
 
 import {
-  useState, useRef, useEffect, useCallback,
+  useState, useRef, useEffect, useCallback, useMemo,
 } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
-  Plus, Sun, MoreVertical, Trash2, Copy, Pencil,
-  CheckSquare, ChevronDown, Briefcase, Star,
-  CheckCircle2, Circle,
+  Plus, Sun, Repeat, Bell, Paperclip, Calendar, X, Check,
+  ChevronLeft, ChevronRight, Copy, Trash2, Briefcase, Star,
+  CheckSquare, Keyboard, Clock,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
 import { updateDocById, deleteDocById, createDoc } from '@/lib/firestore';
-import {
-  COLLECTIONS, PRIORITY_COLORS, PRIORITY_LABELS, REALM_CONFIG, REALMS,
-} from '@/lib/constants';
-import { todayISO, cn } from '@/lib/utils';
-import type { Task, Project, Priority, Recurrence } from '@/lib/types';
+import { COLLECTIONS, REALM_CONFIG, REALMS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import type { Task, Project, Priority, Recurrence, TaskStep, TaskReminder } from '@/lib/types';
 import { SkeletonListItem } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import { Badge } from '@/components/ui/Badge';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
-import { Input, Textarea, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { toast } from '@/lib/toast';
 import { sanitize } from '@/lib/sanitizer';
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ─── PRIORITY CONFIG (per spec) ──────────────────────────────────────────────
 
-const RECURRENCE_LETTER: Record<Recurrence, string> = {
-  None: '', Daily: 'D', Weekly: 'W', Monthly: 'M', Yearly: 'Y',
+const TASK_PRIORITY_COLORS: Record<string, string> = {
+  P1: '#EF4444',
+  P2: '#3B82F6',
+  P3: '#F59E0B',
+  P4: '#6B7280',
 };
 
-function getNextDueDate(current: string, recurring: Recurrence): string {
-  const d = new Date(current + 'T00:00:00');
-  if (recurring === 'Daily')   d.setDate(d.getDate() + 1);
-  if (recurring === 'Weekly')  d.setDate(d.getDate() + 7);
-  if (recurring === 'Monthly') d.setMonth(d.getMonth() + 1);
-  if (recurring === 'Yearly')  d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().split('T')[0];
+const TASK_PRIORITY_LABELS: Record<string, string> = {
+  P1: 'Do Now',
+  P2: 'Important',
+  P3: 'Get Done',
+  P4: 'Delegate',
+};
+
+const REMINDER_OPTIONS = [
+  'None',
+  'On due date',
+  '5 minutes before',
+  '10 minutes before',
+  '30 minutes before',
+  '1 hour before',
+  '1 day before',
+  '2 days before',
+  '1 week before',
+  'Custom',
+] as const;
+
+const RECURRING_OPTIONS: { value: Recurrence; label: string }[] = [
+  { value: 'Daily', label: 'Daily' },
+  { value: 'Weekdays', label: 'Weekdays' },
+  { value: 'Weekly', label: 'Weekly' },
+  { value: 'Monthly', label: 'Monthly' },
+  { value: 'Yearly', label: 'Yearly' },
+  { value: 'Custom', label: 'Custom' },
+];
+
+const CUSTOM_DAYS_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+// ─── DATE HELPERS ─────────────────────────────────────────────────────────────
+
+function parseDueDate(s: string): Date | null {
+  if (!s) return null;
+  if (s.includes('/')) {
+    const [d, m, y] = s.split('/').map(Number);
+    if (!isNaN(d) && !isNaN(m) && !isNaN(y)) return new Date(y, m - 1, d);
+  }
+  if (s.includes('-') && s.length === 10) return new Date(s + 'T00:00:00');
+  return null;
 }
 
-function formatTime12(time24: string): string {
-  if (!time24) return '';
-  const [h, m] = time24.split(':').map(Number);
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  const hour = h % 12 || 12;
-  return `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
+function toDDMMYYYY(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${d}/${m}/${date.getFullYear()}`;
 }
 
-// ─── TASK MODAL ───────────────────────────────────────────────────────────────
+function todayMidnight(): Date {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+
+function getNextDueDateFromStr(current: string, recurring: Recurrence, customDays?: number[]): string {
+  const parsed = parseDueDate(current);
+  if (!parsed) return current;
+  const d = new Date(parsed);
+  if (recurring === 'Daily') {
+    d.setDate(d.getDate() + 1);
+  } else if (recurring === 'Weekdays') {
+    d.setDate(d.getDate() + 1);
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  } else if (recurring === 'Weekly') {
+    d.setDate(d.getDate() + 7);
+  } else if (recurring === 'Monthly') {
+    d.setMonth(d.getMonth() + 1);
+  } else if (recurring === 'Yearly') {
+    d.setFullYear(d.getFullYear() + 1);
+  } else if (recurring === 'Custom' && customDays && customDays.length > 0) {
+    d.setDate(d.getDate() + 1);
+    for (let i = 0; i < 7; i++) {
+      const jsDay = d.getDay(); // 0=Sun
+      const specDay = jsDay === 0 ? 6 : jsDay - 1; // 0=Mon..6=Sun
+      if (customDays.includes(specDay)) break;
+      d.setDate(d.getDate() + 1);
+    }
+  }
+  return toDDMMYYYY(d);
+}
+
+function getDueDateDisplay(dueDate: string | undefined, dueTime: string | undefined): { label: string; color: string } | null {
+  if (!dueDate) return null;
+  const parsed = parseDueDate(dueDate);
+  if (!parsed) return null;
+  const today = todayMidnight();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const ts = parsed.getTime();
+
+  let label: string;
+  let color: string;
+  if (ts === today.getTime()) {
+    label = 'Today'; color = '#1C1C1E';
+  } else if (ts === yesterday.getTime()) {
+    label = 'Yesterday'; color = '#EF4444';
+  } else if (ts === tomorrow.getTime()) {
+    label = 'Tomorrow'; color = '#1ABC9C';
+  } else if (ts < today.getTime()) {
+    label = dueDate.includes('/') ? dueDate : dueDate.split('-').reverse().join('/');
+    color = '#EF4444';
+  } else {
+    label = dueDate.includes('/') ? dueDate : dueDate.split('-').reverse().join('/');
+    color = '#1ABC9C';
+  }
+  if (dueTime) label += ` ${dueTime}`;
+  return { label, color };
+}
+
+function isTaskOverdue(task: Task): boolean {
+  if (task.isCompleted || !task.dueDate) return false;
+  const parsed = parseDueDate(task.dueDate);
+  if (!parsed) return false;
+  return parsed.getTime() < todayMidnight().getTime();
+}
+
+// ─── CALENDAR GRID ────────────────────────────────────────────────────────────
+
+function CalendarGrid({
+  year, month, selectedDDMMYYYY,
+  onSelectDate, onPrevMonth, onNextMonth,
+}: {
+  year: number; month: number; selectedDDMMYYYY: string;
+  onSelectDate: (day: number) => void;
+  onPrevMonth: () => void; onNextMonth: () => void;
+}) {
+  const today = new Date();
+  const todayD = today.getDate(), todayM = today.getMonth(), todayY = today.getFullYear();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  let selDay = 0, selMonth = -1, selYear = 0;
+  if (selectedDDMMYYYY) {
+    const parts = selectedDDMMYYYY.split('/');
+    if (parts.length === 3) {
+      [selDay, selMonth, selYear] = parts.map(Number);
+      selMonth -= 1;
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 px-2">
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={onPrevMonth} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] text-[#6C6C70]">
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-sm font-semibold text-[#1C1C1E]">{MONTH_NAMES[month]} {year}</span>
+        <button type="button" onClick={onNextMonth} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F5F5F5] text-[#6C6C70]">
+          <ChevronRight size={18} />
+        </button>
+      </div>
+      <div className="grid grid-cols-7">
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+          <div key={i} className="h-8 flex items-center justify-center">
+            <span className="text-[11px] font-medium text-[#AEAEB2]">{d}</span>
+          </div>
+        ))}
+        {cells.map((day, i) => {
+          if (!day) return <div key={i} className="h-10" />;
+          const isToday = day === todayD && month === todayM && year === todayY;
+          const isSelected = day === selDay && month === selMonth && year === selYear;
+          return (
+            <div key={i} className="h-10 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => onSelectDate(day)}
+                className={cn(
+                  'w-9 h-9 rounded-full flex items-center justify-center text-sm transition-colors',
+                  isSelected
+                    ? 'bg-[#3B82F6] text-white font-semibold'
+                    : isToday
+                    ? 'text-[#3B82F6] font-semibold hover:bg-[#F5F5F5]'
+                    : 'text-[#1C1C1E] hover:bg-[#F5F5F5]'
+                )}
+              >
+                {day}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── CLOCK FACE ───────────────────────────────────────────────────────────────
+
+function ClockFaceHour({ hour, onSelect }: { hour: number; onSelect: (h: number) => void }) {
+  const cx = 100, cy = 100, numR = 72, handR = 60;
+  const getPos = (n: number, r: number) => {
+    const norm = n === 12 ? 0 : n;
+    const rad = (norm * 30 - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+  const handEnd = getPos(hour, handR);
+  return (
+    <svg viewBox="0 0 200 200" className="w-52 h-52 mx-auto select-none">
+      <circle cx={cx} cy={cy} r={92} fill="#F2F2F7" />
+      <line x1={cx} y1={cy} x2={handEnd.x} y2={handEnd.y} stroke="#3B82F6" strokeWidth={2} strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r={5} fill="#3B82F6" />
+      {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((n) => {
+        const p = getPos(n, numR);
+        const sel = n === hour;
+        return (
+          <g key={n} style={{ cursor: 'pointer' }} onClick={() => onSelect(n)}>
+            <circle cx={p.x} cy={p.y} r={18} fill={sel ? '#3B82F6' : 'transparent'} />
+            <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central"
+              fontSize={14} fill={sel ? 'white' : '#1C1C1E'} fontFamily="sans-serif">
+              {n}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function ClockFaceMinute({ minute, onSelect }: { minute: number; onSelect: (m: number) => void }) {
+  const cx = 100, cy = 100, numR = 72, handR = 60;
+  const mins = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+  const getPos = (idx: number, r: number) => {
+    const rad = (idx * 30 - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+  const selIdx = Math.round(minute / 5) % 12;
+  const handEnd = getPos(selIdx, handR);
+  return (
+    <svg viewBox="0 0 200 200" className="w-52 h-52 mx-auto select-none">
+      <circle cx={cx} cy={cy} r={92} fill="#F2F2F7" />
+      <line x1={cx} y1={cy} x2={handEnd.x} y2={handEnd.y} stroke="#3B82F6" strokeWidth={2} strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r={5} fill="#3B82F6" />
+      {mins.map((m, idx) => {
+        const p = getPos(idx, numR);
+        const sel = m === minute;
+        return (
+          <g key={m} style={{ cursor: 'pointer' }} onClick={() => onSelect(m)}>
+            <circle cx={p.x} cy={p.y} r={18} fill={sel ? '#3B82F6' : 'transparent'} />
+            <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central"
+              fontSize={13} fill={sel ? 'white' : '#1C1C1E'} fontFamily="sans-serif">
+              {m === 0 ? '00' : String(m)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ─── DATE-TIME PICKER SHEET ───────────────────────────────────────────────────
+
+function DateTimePickerSheet({
+  open, dueDate, dueTime, onSave, onClose,
+}: {
+  open: boolean;
+  dueDate: string; // DD/MM/YYYY or ''
+  dueTime: string; // hh:mm AM/PM or ''
+  onSave: (date: string, time: string) => void;
+  onClose: () => void;
+}) {
+  const today = new Date();
+  const [tab, setTab] = useState<'date' | 'time'>('date');
+  const [pickerYear, setPickerYear] = useState(today.getFullYear());
+  const [pickerMonth, setPickerMonth] = useState(today.getMonth());
+  const [tempDate, setTempDate] = useState('');
+  const [tempHour, setTempHour] = useState(9);
+  const [tempMinute, setTempMinute] = useState(0);
+  const [tempAmPm, setTempAmPm] = useState<'AM' | 'PM'>('AM');
+  const [clockMode, setClockMode] = useState<'hour' | 'minute'>('hour');
+  const [keyboardMode, setKeyboardMode] = useState(false);
+  const [keyboardInput, setKeyboardInput] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setTab('date');
+      setKeyboardMode(false);
+      setClockMode('hour');
+      // Parse existing dueDate
+      if (dueDate) {
+        setTempDate(dueDate);
+        const parsed = parseDueDate(dueDate);
+        if (parsed) {
+          setPickerYear(parsed.getFullYear());
+          setPickerMonth(parsed.getMonth());
+        }
+      } else {
+        setTempDate('');
+        setPickerYear(today.getFullYear());
+        setPickerMonth(today.getMonth());
+      }
+      // Parse existing dueTime (hh:mm AM/PM)
+      if (dueTime) {
+        const match = dueTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (match) {
+          setTempHour(parseInt(match[1]));
+          setTempMinute(parseInt(match[2]));
+          setTempAmPm(match[3].toUpperCase() as 'AM' | 'PM');
+          setKeyboardInput(dueTime);
+        }
+      } else {
+        setTempHour(9); setTempMinute(0); setTempAmPm('AM');
+        setKeyboardInput('');
+      }
+    }
+  }, [open, dueDate, dueTime]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSelectDay = (day: number) => {
+    const d = String(day).padStart(2, '0');
+    const m = String(pickerMonth + 1).padStart(2, '0');
+    setTempDate(`${d}/${m}/${pickerYear}`);
+  };
+
+  const handleHourSelect = (h: number) => {
+    setTempHour(h);
+    setClockMode('minute');
+  };
+
+  const handleMinuteSelect = (m: number) => {
+    setTempMinute(m);
+  };
+
+  const buildTimeStr = () => {
+    if (keyboardMode && keyboardInput.trim()) {
+      const match = keyboardInput.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (match) {
+        const h = parseInt(match[1]);
+        const min = parseInt(match[2]);
+        const ap = match[3] ? match[3].toUpperCase() : (h >= 12 ? 'PM' : 'AM');
+        return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ap}`;
+      }
+    }
+    return `${String(tempHour).padStart(2, '0')}:${String(tempMinute).padStart(2, '0')} ${tempAmPm}`;
+  };
+
+  const displayTime = `${tempHour}:${String(tempMinute).padStart(2, '0')}`;
+
+  const handleSave = () => {
+    const timeStr = tab === 'time' || dueTime ? buildTimeStr() : '';
+    onSave(tempDate, timeStr);
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      footer={
+        <div className="flex gap-3">
+          <Button variant="secondary" fullWidth onClick={onClose}>CANCEL</Button>
+          <Button fullWidth onClick={handleSave}>SAVE</Button>
+        </div>
+      }
+    >
+      {/* Tabs */}
+      <div className="flex border-b border-[#E5E5EA] mb-4">
+        {(['date', 'time'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={cn(
+              'flex-1 pb-2 text-xs font-semibold tracking-wider uppercase transition-colors',
+              tab === t ? 'text-[#3B82F6] border-b-2 border-[#3B82F6]' : 'text-[#AEAEB2]'
+            )}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'date' ? (
+        <div className="flex flex-col gap-2">
+          {/* Selected date display */}
+          <div className="bg-[#3B82F6] rounded-card px-4 py-3 mb-2">
+            {tempDate ? (
+              <p className="text-white text-2xl font-semibold">
+                {(() => {
+                  const parsed = parseDueDate(tempDate);
+                  if (!parsed) return tempDate;
+                  return parsed.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                })()}
+              </p>
+            ) : (
+              <p className="text-white/70 text-2xl font-semibold">Select a date</p>
+            )}
+          </div>
+          <CalendarGrid
+            year={pickerYear}
+            month={pickerMonth}
+            selectedDDMMYYYY={tempDate}
+            onSelectDate={handleSelectDay}
+            onPrevMonth={() => {
+              if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(y => y - 1); }
+              else setPickerMonth(m => m - 1);
+            }}
+            onNextMonth={() => {
+              if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y + 1); }
+              else setPickerMonth(m => m + 1);
+            }}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-4">
+          {/* Time display */}
+          <div className="bg-[#3B82F6] rounded-card w-full px-4 py-3 flex items-center justify-center gap-4">
+            <span className="text-white text-4xl font-semibold tracking-tight">{displayTime}</span>
+            <div className="flex flex-col gap-1">
+              {(['AM', 'PM'] as const).map((ap) => (
+                <button
+                  key={ap}
+                  type="button"
+                  onClick={() => setTempAmPm(ap)}
+                  className={cn(
+                    'text-base font-semibold px-1 leading-none',
+                    ap === tempAmPm ? 'text-white' : 'text-white/40'
+                  )}
+                >
+                  {ap}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {keyboardMode ? (
+            <div className="w-full flex flex-col gap-2">
+              <p className="text-xs text-[#6C6C70] text-center">Enter time (e.g. 9:30 AM)</p>
+              <input
+                type="text"
+                value={keyboardInput}
+                onChange={(e) => setKeyboardInput(e.target.value)}
+                placeholder="9:30 AM"
+                className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#3B82F6] text-center"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setKeyboardMode(false)}
+                className="self-center flex items-center gap-1 text-xs text-[#6C6C70]"
+              >
+                <Clock size={14} /> Switch to clock
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="text-center">
+                <p className="text-xs font-medium text-[#6C6C70] mb-1">
+                  {clockMode === 'hour' ? 'Select hour' : 'Select minute'}
+                </p>
+                {clockMode === 'hour' ? (
+                  <ClockFaceHour hour={tempHour} onSelect={handleHourSelect} />
+                ) : (
+                  <ClockFaceMinute minute={tempMinute} onSelect={handleMinuteSelect} />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setKeyboardMode(true)}
+                className="flex items-center gap-1.5 text-xs text-[#6C6C70] self-start"
+              >
+                <Keyboard size={15} /> Enter time manually
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ─── RECURRING PICKER SHEET ───────────────────────────────────────────────────
+
+function RecurringPickerSheet({
+  open, recurring, customDays, onSave, onClose,
+}: {
+  open: boolean;
+  recurring: Recurrence;
+  customDays: number[];
+  onSave: (r: Recurrence, days: number[]) => void;
+  onClose: () => void;
+}) {
+  const [tempRecurring, setTempRecurring] = useState<Recurrence>(recurring);
+  const [tempDays, setTempDays] = useState<number[]>(customDays);
+
+  useEffect(() => {
+    if (open) { setTempRecurring(recurring); setTempDays(customDays); }
+  }, [open, recurring, customDays]);
+
+  const toggleDay = (d: number) => {
+    setTempDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  };
+
+  if (!open) return null;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Repeat">
+      <div className="flex flex-col gap-1">
+        {RECURRING_OPTIONS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => { setTempRecurring(value); if (value !== 'Custom') { onSave(value, []); onClose(); } }}
+            className="flex items-center gap-3 px-2 py-3 rounded-card hover:bg-[#F5F5F5] transition-colors"
+          >
+            <div className={cn(
+              'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0',
+              tempRecurring === value ? 'border-[#3B82F6] bg-[#3B82F6]' : 'border-[#AEAEB2]'
+            )}>
+              {tempRecurring === value && <Check size={11} className="text-white" />}
+            </div>
+            <span className="text-sm text-[#1C1C1E]">{label}</span>
+          </button>
+        ))}
+
+        {tempRecurring === 'Custom' && (
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="flex gap-2 justify-center">
+              {CUSTOM_DAYS_LABELS.map((label, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => toggleDay(idx)}
+                  className={cn(
+                    'w-10 h-10 rounded-full text-sm font-semibold transition-colors',
+                    tempDays.includes(idx)
+                      ? 'bg-[#3B82F6] text-white'
+                      : 'bg-[#F5F5F5] text-[#6C6C70]'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Button
+              fullWidth
+              onClick={() => { onSave('Custom', tempDays); onClose(); }}
+              disabled={tempDays.length === 0}
+            >
+              Save
+            </Button>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ─── REMINDER PICKER SHEET ────────────────────────────────────────────────────
+
+function ReminderPickerSheet({
+  open, reminder, onSave, onClose,
+}: {
+  open: boolean;
+  reminder: TaskReminder;
+  onSave: (r: TaskReminder) => void;
+  onClose: () => void;
+}) {
+  const [tempOption, setTempOption] = useState(reminder.option || 'None');
+  const [tempCustomDate, setTempCustomDate] = useState('');
+  const [tempCustomTime, setTempCustomTime] = useState('');
+  const [customDtPickerOpen, setCustomDtPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setTempOption(reminder.option || 'None');
+      const parts = (reminder.customDateTime || '').trim().split(' ');
+      if (parts.length >= 3) {
+        setTempCustomDate(parts[0]);
+        setTempCustomTime(`${parts[1]} ${parts[2]}`);
+      } else {
+        setTempCustomDate('');
+        setTempCustomTime('');
+      }
+      setCustomDtPickerOpen(false);
+    }
+  }, [open, reminder]);
+
+  const handleSaveCustom = () => {
+    if (!tempCustomDate || !tempCustomTime) return;
+    onSave({ enabled: true, option: 'Custom', customDateTime: `${tempCustomDate} ${tempCustomTime}` });
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        title="Reminder"
+        footer={tempOption === 'Custom' ? (
+          <div className="flex gap-3">
+            <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
+            <Button fullWidth disabled={!tempCustomDate || !tempCustomTime} onClick={handleSaveCustom}>Save</Button>
+          </div>
+        ) : undefined}
+      >
+        <div className="flex flex-col gap-1">
+          {REMINDER_OPTIONS.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => {
+                setTempOption(opt);
+                if (opt !== 'Custom') {
+                  onSave({ enabled: opt !== 'None', option: opt, customDateTime: undefined });
+                  onClose();
+                }
+              }}
+              className="flex items-center gap-3 px-2 py-3 rounded-card hover:bg-[#F5F5F5] transition-colors"
+            >
+              <div className={cn(
+                'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0',
+                tempOption === opt ? 'border-[#3B82F6] bg-[#3B82F6]' : 'border-[#AEAEB2]'
+              )}>
+                {tempOption === opt && <Check size={11} className="text-white" />}
+              </div>
+              <span className="text-sm text-[#1C1C1E]">{opt}</span>
+            </button>
+          ))}
+
+          {tempOption === 'Custom' && (
+            <div className="mt-3 p-3 bg-[#F5F5F5] rounded-card border border-[#E5E5EA]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-[#1C1C1E]">Custom date and time</p>
+                  <p className="text-xs text-[#6C6C70]">
+                    {tempCustomDate && tempCustomTime ? `${tempCustomDate} ${tempCustomTime}` : 'Set a custom reminder date and time'}
+                  </p>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => setCustomDtPickerOpen(true)}>
+                  Set
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <DateTimePickerSheet
+        open={customDtPickerOpen}
+        dueDate={tempCustomDate}
+        dueTime={tempCustomTime}
+        onSave={(d, t) => {
+          setTempCustomDate(d);
+          setTempCustomTime(t);
+        }}
+        onClose={() => setCustomDtPickerOpen(false)}
+      />
+    </>
+  );
+}
+
+// ─── STEPS EDITOR ─────────────────────────────────────────────────────────────
+
+function StepsEditor({
+  steps,
+  onChange,
+}: {
+  steps: TaskStep[];
+  onChange: (steps: TaskStep[]) => void;
+}) {
+  const [newStepText, setNewStepText] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const addStep = () => {
+    const text = newStepText.trim();
+    if (!text) return;
+    onChange([...steps, { id: Date.now().toString(), text, done: false }]);
+    setNewStepText('');
+    inputRef.current?.focus();
+  };
+
+  const toggleDone = (id: string) => {
+    onChange(steps.map(s => s.id === id ? { ...s, done: !s.done } : s));
+  };
+
+  const deleteStep = (id: string) => {
+    onChange(steps.filter(s => s.id !== id));
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm font-medium text-[#1C1C1E]">Add steps</label>
+      {steps.map((step) => (
+        <div key={step.id} className="flex items-center gap-2 py-1">
+          <button
+            type="button"
+            onClick={() => toggleDone(step.id)}
+            className={cn(
+              'flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+              step.done ? 'bg-[#3B82F6] border-[#3B82F6]' : 'border-[#AEAEB2]'
+            )}
+          >
+            {step.done && <Check size={11} className="text-white" />}
+          </button>
+          <span className={cn('flex-1 text-sm', step.done && 'line-through text-[#AEAEB2]')}>{step.text}</span>
+          <button
+            type="button"
+            onClick={() => deleteStep(step.id)}
+            className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ))}
+      <div className="flex items-center gap-2 mt-1">
+        <input
+          ref={inputRef}
+          type="text"
+          value={newStepText}
+          onChange={(e) => setNewStepText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStep(); } }}
+          placeholder="Add a step"
+          className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white"
+        />
+        <button
+          type="button"
+          onClick={addStep}
+          className="w-8 h-8 rounded-full bg-[#FF6B35] flex items-center justify-center text-white hover:bg-[#E55A25] flex-shrink-0"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── TASK FORM STATE ──────────────────────────────────────────────────────────
 
 interface TaskForm {
   title: string;
+  description: string;
+  steps: TaskStep[];
   realm: string;
   targetId: string;
   priority: Priority;
   dueDate: string;
   dueTime: string;
   recurring: Recurrence;
-  notes: string;
+  customDays: number[];
+  reminder: TaskReminder;
   isMyDay: boolean;
 }
 
 const DEFAULT_FORM: TaskForm = {
   title: '',
-  realm: REALMS[0],
+  description: '',
+  steps: [],
+  realm: 'Personal',
   targetId: '',
   priority: 'P4',
   dueDate: '',
   dueTime: '',
   recurring: 'None',
-  notes: '',
+  customDays: [],
+  reminder: { enabled: false, option: 'None' },
   isMyDay: false,
 };
+
+// ─── TASK MODAL (CREATE & EDIT) ───────────────────────────────────────────────
 
 function TaskModal({
   open, onClose, task, projects, userId,
@@ -86,23 +816,35 @@ function TaskModal({
   userId: string;
 }) {
   const [form, setForm] = useState<TaskForm>(DEFAULT_FORM);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [dtPickerOpen, setDtPickerOpen] = useState(false);
+  const [recurringPickerOpen, setRecurringPickerOpen] = useState(false);
+  const [reminderPickerOpen, setReminderPickerOpen] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
-      setErrors({});
-      setForm(task ? {
-        title: task.title,
-        realm: task.realm || REALMS[0],
-        targetId: task.targetId ?? task.projectId ?? '',
-        priority: task.priority,
-        dueDate: task.dueDate ?? '',
-        dueTime: task.dueTime ?? '',
-        recurring: task.recurring ?? 'None',
-        notes: task.description ?? '',
-        isMyDay: task.isMyDay,
-      } : { ...DEFAULT_FORM });
+      if (task) {
+        setForm({
+          title: task.title,
+          description: task.description ?? '',
+          steps: task.steps ?? [],
+          realm: task.realm || 'Personal',
+          targetId: task.targetId ?? task.projectId ?? '',
+          priority: task.priority,
+          dueDate: task.dueDate ?? '',
+          dueTime: task.dueTime ?? '',
+          recurring: task.recurring ?? 'None',
+          customDays: task.customDays ?? [],
+          reminder: task.reminder ?? { enabled: false, option: 'None' },
+          isMyDay: task.isMyDay,
+        });
+        setSelectedFileName('');
+      } else {
+        setForm({ ...DEFAULT_FORM });
+        setSelectedFileName('');
+      }
     }
   }, [open, task]);
 
@@ -112,17 +854,14 @@ function TaskModal({
   const realmProjects = projects.filter((p) => p.realm === form.realm);
 
   const handleSave = async () => {
-    const e: Record<string, string> = {};
-    if (!form.title.trim()) e.title = 'Title is required';
-    setErrors(e);
-    if (Object.keys(e).length) return;
-
+    if (!form.title.trim()) { toast.error('Action title is required'); return; }
     setSaving(true);
     try {
       const data = {
         userId,
-        title: sanitize(form.title, 200),
-        description: sanitize(form.notes),
+        title: sanitize(form.title.trim(), 200),
+        description: form.description.trim() || undefined,
+        steps: form.steps.length > 0 ? form.steps : undefined,
         realm: form.realm,
         targetId: form.targetId || undefined,
         projectId: form.targetId || undefined,
@@ -130,177 +869,681 @@ function TaskModal({
         dueDate: form.dueDate || undefined,
         dueTime: form.dueTime || undefined,
         recurring: form.recurring,
+        customDays: form.customDays.length > 0 ? form.customDays : undefined,
+        reminder: form.reminder,
         isMyDay: form.isMyDay,
         isStarred: task?.isStarred ?? false,
         isCompleted: task?.isCompleted ?? false,
         completedAt: task?.completedAt,
         order: task?.order ?? Date.now(),
+        createdAt: task?.createdAt ?? new Date().toISOString(),
       };
       if (task) {
         await updateDocById(COLLECTIONS.TASKS, task.id, data);
-        toast.success('Action updated.');
+        toast.success('Action updated');
       } else {
         await createDoc(COLLECTIONS.TASKS, data);
-        toast.success('Action created.');
+        toast.success('Action added');
       }
       onClose();
     } catch {
-      toast.error('Failed to save action.');
+      toast.error('Failed to save action');
     } finally {
       setSaving(false);
     }
   };
 
-  const priorityButtons: { value: Priority; label: string }[] = [
-    { value: 'P1', label: 'Do Now' },
-    { value: 'P2', label: 'Important' },
-    { value: 'P3', label: 'Get Done' },
-    { value: 'P4', label: 'Default' },
-  ];
+  const dueDateInfo = getDueDateDisplay(form.dueDate, form.dueTime);
+  const recurringLabel = form.recurring === 'None' ? 'Does not repeat'
+    : form.recurring === 'Custom' ? `Custom (${form.customDays.map(i => CUSTOM_DAYS_LABELS[i]).join(', ')})`
+    : form.recurring;
+  const reminderLabel = !form.reminder.enabled
+    ? 'No reminder'
+    : form.reminder.option === 'Custom' && form.reminder.customDateTime
+      ? `Custom (${form.reminder.customDateTime})`
+      : form.reminder.option;
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={task ? 'Edit Action' : 'New Action'}
-      footer={
-        <div className="flex gap-3">
-          <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
-          <Button fullWidth loading={saving} onClick={handleSave}>
-            {task ? 'Save Changes' : 'Create Action'}
-          </Button>
-        </div>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        {/* Title */}
-        <Input
-          label="Title"
-          value={form.title}
-          onChange={(e) => set('title', e.target.value)}
-          error={errors.title}
-          required
-          placeholder="What needs to be done?"
-          autoFocus
-        />
-
-        {/* Realm + Target (2-column) */}
-        <div className="grid grid-cols-2 gap-3">
-          <Select
-            label="Realm"
-            value={form.realm}
-            onChange={(e) => {
-              set('realm', (e.target as HTMLSelectElement).value);
-              set('targetId', '');
-            }}
-            options={REALMS.map((r) => ({
-              value: r,
-              label: `${REALM_CONFIG[r].emoji} ${r}`,
-            }))}
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        title={task ? 'Edit Action' : 'New Action'}
+        footer={
+          <div className="flex gap-3">
+            <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
+            <Button fullWidth loading={saving} onClick={handleSave}>
+              {task ? 'Save Changes' : 'Create Action'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          {/* Title */}
+          <input
+            type="text"
+            placeholder="Action title"
+            maxLength={200}
+            autoFocus
+            value={form.title}
+            onChange={(e) => set('title', e.target.value)}
+            className="w-full text-base text-[#1C1C1E] placeholder-[#AEAEB2] outline-none bg-transparent border-b border-[#E5E5EA] pb-2 focus:border-[#FF6B35]"
           />
-          <Select
-            label="Target (optional)"
-            value={form.targetId}
-            onChange={(e) => set('targetId', (e.target as HTMLSelectElement).value)}
-            options={[
-              { value: '', label: 'No Target' },
-              ...realmProjects.map((p) => ({ value: p.id, label: p.title })),
-            ]}
-          />
-        </div>
 
-        {/* Priority (4 buttons) */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[#1C1C1E]">Priority</label>
-          <div className="grid grid-cols-4 gap-2">
-            {priorityButtons.map(({ value, label }) => (
+          {/* Details */}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-[#1C1C1E]">Add details</label>
+            <textarea
+              placeholder="Add notes or description"
+              rows={3}
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white resize-none"
+            />
+          </div>
+
+          {/* Steps */}
+          <StepsEditor steps={form.steps} onChange={(s) => set('steps', s)} />
+
+          {/* Realm */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[#1C1C1E]">Realm</label>
+            <select
+              value={form.realm}
+              onChange={(e) => { set('realm', e.target.value); set('targetId', ''); }}
+              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#FF6B35] appearance-none"
+            >
+              {REALMS.map((r) => (
+                <option key={r} value={r}>{REALM_CONFIG[r].emoji} {r}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Target */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[#1C1C1E]">Target</label>
+            <select
+              value={form.targetId}
+              onChange={(e) => set('targetId', e.target.value)}
+              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#FF6B35] appearance-none"
+            >
+              <option value="">No target</option>
+              {realmProjects.length === 0 ? (
+                <option value="" disabled>No targets in this Realm yet</option>
+              ) : (
+                realmProjects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)
+              )}
+            </select>
+          </div>
+
+          {/* Priority */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[#1C1C1E]">Priority</label>
+            <select
+              value={form.priority}
+              onChange={(e) => set('priority', e.target.value as Priority)}
+              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#FF6B35] appearance-none"
+            >
+              {(['P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => (
+                <option key={p} value={p}>● {TASK_PRIORITY_LABELS[p]} ({p})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date & Time row */}
+          <button
+            type="button"
+            onClick={() => setDtPickerOpen(true)}
+            className="flex items-center gap-3 px-3 py-3 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input hover:bg-[#EBEBEB] transition-colors"
+          >
+            <Calendar size={16} className="text-[#6C6C70] flex-shrink-0" />
+            <span className={cn('flex-1 text-sm text-left', dueDateInfo ? 'text-[#1C1C1E]' : 'text-[#AEAEB2]')}>
+              {dueDateInfo ? dueDateInfo.label : 'Set date'}
+            </span>
+            {(form.dueDate || form.dueTime) && (
               <button
-                key={value}
-                onClick={() => set('priority', value)}
-                className={cn(
-                  'h-9 px-2 rounded-button text-xs font-semibold transition-all border',
-                  form.priority === value
-                    ? 'text-white border-transparent'
-                    : 'bg-[#F5F5F5] text-[#6C6C70] border-[#E5E5EA]'
-                )}
-                style={form.priority === value ? { backgroundColor: PRIORITY_COLORS[value] } : {}}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); set('dueDate', ''); set('dueTime', ''); }}
+                className="w-5 h-5 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]"
               >
-                {label}
+                <X size={14} />
+              </button>
+            )}
+          </button>
+
+          {/* Recurring row */}
+          <button
+            type="button"
+            onClick={() => setRecurringPickerOpen(true)}
+            className="flex items-center gap-3 px-3 py-3 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input hover:bg-[#EBEBEB] transition-colors"
+          >
+            <Repeat size={16} className="text-[#6C6C70] flex-shrink-0" />
+            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{recurringLabel}</span>
+            {form.recurring !== 'None' && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); set('recurring', 'None'); set('customDays', []); }}
+                className="w-5 h-5 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </button>
+
+          {/* Reminder row */}
+          <button
+            type="button"
+            onClick={() => setReminderPickerOpen(true)}
+            className="flex items-center gap-3 px-3 py-3 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input hover:bg-[#EBEBEB] transition-colors"
+          >
+            <Bell size={16} className="text-[#6C6C70] flex-shrink-0" />
+            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{reminderLabel}</span>
+          </button>
+
+          {/* My Day row */}
+          <button
+            type="button"
+            onClick={() => set('isMyDay', !form.isMyDay)}
+            className={cn(
+              'flex items-center gap-3 px-3 py-3 rounded-input border transition-colors',
+              form.isMyDay ? 'bg-[#FF6B35]/10 border-[#FF6B35]' : 'bg-[#F5F5F5] border-[#E5E5EA]'
+            )}
+          >
+            <Sun size={16} className={form.isMyDay ? 'text-[#FF6B35]' : 'text-[#6C6C70]'} />
+            <span className="flex-1 text-sm text-left text-[#1C1C1E]">My Day</span>
+            <div className={cn('w-10 h-6 rounded-full transition-colors flex items-center px-1', form.isMyDay ? 'bg-[#FF6B35]' : 'bg-[#E5E5EA]')}>
+              <div className={cn('w-4 h-4 rounded-full bg-white transition-transform', form.isMyDay ? 'translate-x-4' : 'translate-x-0')} />
+            </div>
+          </button>
+
+          {/* Add File row */}
+          <button
+            type="button"
+            onClick={() => { fileInputRef.current?.click(); }}
+            className="flex items-center gap-3 px-3 py-3 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input hover:bg-[#EBEBEB] transition-colors"
+          >
+            <Paperclip size={16} className="text-[#6C6C70] flex-shrink-0" />
+            <span className="flex-1 text-sm text-left text-[#1C1C1E]">
+              {selectedFileName || 'Add file'}
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                setSelectedFileName(file.name);
+                toast.info('File upload coming soon');
+              }
+            }}
+          />
+        </div>
+      </Modal>
+
+      <DateTimePickerSheet
+        open={dtPickerOpen}
+        dueDate={form.dueDate}
+        dueTime={form.dueTime}
+        onSave={(d, t) => { set('dueDate', d); set('dueTime', t); }}
+        onClose={() => setDtPickerOpen(false)}
+      />
+
+      <RecurringPickerSheet
+        open={recurringPickerOpen}
+        recurring={form.recurring}
+        customDays={form.customDays}
+        onSave={(r, d) => { set('recurring', r); set('customDays', d); }}
+        onClose={() => setRecurringPickerOpen(false)}
+      />
+
+      <ReminderPickerSheet
+        open={reminderPickerOpen}
+        reminder={form.reminder}
+        onSave={(r) => set('reminder', r)}
+        onClose={() => setReminderPickerOpen(false)}
+      />
+    </>
+  );
+}
+
+// ─── ACTION DETAIL POPUP ──────────────────────────────────────────────────────
+
+function ActionDetailPopup({
+  open, onClose, task, projects, userId, onComplete,
+}: {
+  open: boolean;
+  onClose: () => void;
+  task: Task | null;
+  projects: Project[];
+  userId: string;
+  onComplete: (t: Task) => void;
+}) {
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleVal, setTitleVal] = useState('');
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descVal, setDescVal] = useState('');
+  const [subSheet, setSubSheet] = useState<'realm' | 'target' | 'priority' | 'datetime' | 'recurring' | 'reminder' | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open && task) {
+      setTitleVal(task.title);
+      setDescVal(task.description ?? '');
+      setEditingTitle(false);
+      setEditingDesc(false);
+      setSubSheet(null);
+      setEditingStepId(null);
+      setEditingStepText('');
+    }
+  }, [open, task]);
+
+  if (!task) return null;
+
+  const save = async (fields: Partial<Task>) => {
+    try {
+      await updateDocById(COLLECTIONS.TASKS, task.id, fields);
+    } catch {
+      toast.error('Failed to update');
+    }
+  };
+
+  const handleTitleSave = async () => {
+    if (!titleVal.trim()) { toast.error('Action title is required'); return; }
+    setEditingTitle(false);
+    await save({ title: sanitize(titleVal.trim(), 200) });
+  };
+
+  const handleDescSave = async () => {
+    setEditingDesc(false);
+    await save({ description: descVal.trim() || undefined });
+  };
+
+  const handleToggleStep = async (stepId: string) => {
+    const steps = (task.steps ?? []).map(s => s.id === stepId ? { ...s, done: !s.done } : s);
+    await save({ steps });
+  };
+
+  const handleDeleteStep = async (stepId: string) => {
+    const steps = (task.steps ?? []).filter(s => s.id !== stepId);
+    await save({ steps });
+  };
+
+  const handleAddStep = async (text: string) => {
+    const steps = [...(task.steps ?? []), { id: Date.now().toString(), text, done: false }];
+    await save({ steps });
+    setAddStepInput('');
+  };
+
+  const handleEditStep = async () => {
+    if (!editingStepId || !editingStepText.trim()) return;
+    const steps = (task.steps ?? []).map((s) => (
+      s.id === editingStepId ? { ...s, text: editingStepText.trim() } : s
+    ));
+    await save({ steps });
+    setEditingStepId(null);
+    setEditingStepText('');
+  };
+
+  const handleDuplicate = async () => {
+    const { id: _id, completedAt: _ca, ...rest } = task;
+    void _id; void _ca;
+    await createDoc(COLLECTIONS.TASKS, {
+      ...rest,
+      title: `${task.title} (Copy)`,
+      isCompleted: false,
+      completedAt: undefined,
+      order: Date.now(),
+      createdAt: new Date().toISOString(),
+    });
+    toast.success('Action duplicated');
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    await deleteDocById(COLLECTIONS.TASKS, task.id);
+    toast.success('Action deleted');
+    setDeleteConfirmOpen(false);
+    onClose();
+  };
+
+  const realmProjects = projects.filter((p) => p.realm === task.realm);
+  const targetProject = projects.find((p) => p.id === (task.targetId ?? task.projectId));
+  const priorityColor = TASK_PRIORITY_COLORS[task.priority] ?? '#6B7280';
+  const dueDateInfo = getDueDateDisplay(task.dueDate, task.dueTime);
+  const recurringLabel = !task.recurring || task.recurring === 'None' ? 'Does not repeat'
+    : task.recurring === 'Custom' ? `Custom (${(task.customDays ?? []).map(i => CUSTOM_DAYS_LABELS[i]).join(', ')})`
+    : task.recurring;
+  const reminderLabel = !task.reminder?.enabled
+    ? 'No reminder'
+    : task.reminder?.option === 'Custom' && task.reminder?.customDateTime
+      ? `Custom (${task.reminder.customDateTime})`
+      : (task.reminder.option || 'No reminder');
+
+  const [addStepInput, setAddStepInput] = useState('');
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [editingStepText, setEditingStepText] = useState('');
+
+  return (
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+      >
+        {/* Header */}
+        <div className="flex items-start gap-3 pb-4 border-b border-[#E5E5EA] mb-4">
+          {/* Completion circle */}
+          <button
+            type="button"
+            onClick={() => onComplete(task)}
+            className="flex-shrink-0 mt-1 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors"
+            style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
+          >
+            {task.isCompleted && <Check size={14} style={{ color: priorityColor }} />}
+          </button>
+
+          {/* Title */}
+          <div className="flex-1 min-w-0">
+            {editingTitle ? (
+              <input
+                type="text"
+                value={titleVal}
+                onChange={(e) => setTitleVal(e.target.value)}
+                onBlur={handleTitleSave}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSave(); }}
+                className="w-full text-lg font-semibold text-[#1C1C1E] outline-none border-b border-[#FF6B35] bg-transparent"
+                autoFocus
+              />
+            ) : (
+              <p
+                className={cn('text-lg font-semibold text-[#1C1C1E] cursor-text', task.isCompleted && 'line-through text-[#AEAEB2]')}
+                onClick={() => setEditingTitle(true)}
+              >
+                {task.title}
+              </p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button type="button" onClick={handleDuplicate}
+              className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]">
+              <Copy size={16} />
+            </button>
+            <button type="button" onClick={() => setDeleteConfirmOpen(true)}
+              className="w-8 h-8 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444] rounded-full hover:bg-[#FEF2F2]">
+              <Trash2 size={16} />
+            </button>
+            <button type="button" onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex flex-col gap-1">
+          {/* Row 1: Description */}
+          {editingDesc ? (
+            <div className="flex flex-col gap-2 py-2">
+              <textarea
+                value={descVal}
+                onChange={(e) => setDescVal(e.target.value)}
+                onBlur={handleDescSave}
+                rows={3}
+                placeholder="Add notes or description"
+                className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] resize-none"
+                autoFocus
+              />
+              <button type="button" onClick={handleDescSave} className="self-end text-xs text-[#FF6B35] font-medium">Done</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setEditingDesc(true)}
+              className="text-left py-2 px-1 text-sm rounded hover:bg-[#F5F5F5] transition-colors">
+              {task.description ? (
+                <span className="text-[#1C1C1E]">{task.description}</span>
+              ) : (
+                <span className="text-[#AEAEB2]">+ Add details</span>
+              )}
+            </button>
+          )}
+
+          {/* Row 2: Steps */}
+          <div className="py-2 border-t border-[#F2F2F7]">
+            {(task.steps ?? []).map((step) => (
+              <div key={step.id} className="flex items-center gap-2 py-1.5">
+                <button type="button" onClick={() => handleToggleStep(step.id)}
+                  className={cn('flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center',
+                    step.done ? 'bg-[#3B82F6] border-[#3B82F6]' : 'border-[#AEAEB2]')}>
+                  {step.done && <Check size={10} className="text-white" />}
+                </button>
+                {editingStepId === step.id ? (
+                  <input
+                    value={editingStepText}
+                    onChange={(e) => setEditingStepText(e.target.value)}
+                    onBlur={handleEditStep}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleEditStep(); }}
+                    autoFocus
+                    className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-2 py-1 text-sm text-[#1C1C1E] outline-none"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setEditingStepId(step.id); setEditingStepText(step.text); }}
+                    className={cn('flex-1 text-sm text-left', step.done && 'line-through text-[#AEAEB2]')}
+                  >
+                    {step.text}
+                  </button>
+                )}
+                <button type="button" onClick={() => handleDeleteStep(step.id)}
+                  className="w-6 h-6 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]">
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="text"
+                value={addStepInput}
+                onChange={(e) => setAddStepInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && addStepInput.trim()) {
+                    e.preventDefault();
+                    handleAddStep(addStepInput.trim());
+                  }
+                }}
+                placeholder="Add a step"
+                className="flex-1 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none bg-transparent py-1"
+              />
+              <button
+                type="button"
+                onClick={() => { if (addStepInput.trim()) handleAddStep(addStepInput.trim()); }}
+                className="w-8 h-8 rounded-full bg-[#FF6B35] flex items-center justify-center text-white hover:bg-[#E55A25]"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Row 3: Realm */}
+          <button type="button" onClick={() => setSubSheet('realm')}
+            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
+            <span className="text-base">{REALM_CONFIG[task.realm]?.emoji}</span>
+            <span className="flex-1 text-sm text-[#1C1C1E] text-left">{task.realm}</span>
+            <ChevronRight size={16} className="text-[#AEAEB2]" />
+          </button>
+
+          {/* Row 4: Target */}
+          <button type="button" onClick={() => setSubSheet('target')}
+            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
+            <span className="text-[#6C6C70]">⊙</span>
+            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{targetProject?.title ?? 'No target'}</span>
+            <ChevronRight size={16} className="text-[#AEAEB2]" />
+          </button>
+
+          {/* Row 5: Priority */}
+          <button type="button" onClick={() => setSubSheet('priority')}
+            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
+            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: priorityColor }} />
+            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{TASK_PRIORITY_LABELS[task.priority]}</span>
+            <ChevronRight size={16} className="text-[#AEAEB2]" />
+          </button>
+
+          {/* Row 6: Date & Time */}
+          <button type="button" onClick={() => setSubSheet('datetime')}
+            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
+            <Calendar size={16} className="text-[#6C6C70] flex-shrink-0" />
+            <span className={cn('flex-1 text-sm text-left', dueDateInfo ? 'text-[#1C1C1E]' : 'text-[#AEAEB2]')}>
+              {dueDateInfo ? dueDateInfo.label : 'Set due date'}
+            </span>
+            <ChevronRight size={16} className="text-[#AEAEB2]" />
+          </button>
+
+          {/* Row 7: Recurring */}
+          <button type="button" onClick={() => setSubSheet('recurring')}
+            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
+            <Repeat size={16} className="text-[#6C6C70] flex-shrink-0" />
+            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{recurringLabel}</span>
+            <ChevronRight size={16} className="text-[#AEAEB2]" />
+          </button>
+
+          {/* Row 8: Reminder */}
+          <button type="button" onClick={() => setSubSheet('reminder')}
+            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
+            <Bell size={16} className="text-[#6C6C70] flex-shrink-0" />
+            <span className="flex-1 text-sm text-left text-[#1C1C1E]">{reminderLabel}</span>
+            <ChevronRight size={16} className="text-[#AEAEB2]" />
+          </button>
+
+          {/* Row 9: My Day */}
+          <button type="button" onClick={() => save({ isMyDay: !task.isMyDay })}
+            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
+            <Sun size={16} className={task.isMyDay ? 'text-[#FF6B35]' : 'text-[#6C6C70]'} />
+            <span className="flex-1 text-sm text-left text-[#1C1C1E]">My Day</span>
+            <div className={cn('w-10 h-6 rounded-full transition-colors flex items-center px-1', task.isMyDay ? 'bg-[#FF6B35]' : 'bg-[#E5E5EA]')}>
+              <div className={cn('w-4 h-4 rounded-full bg-white transition-transform', task.isMyDay ? 'translate-x-4' : 'translate-x-0')} />
+            </div>
+          </button>
+
+          {/* Row 10: File */}
+          <button type="button"
+            onClick={() => { fileInputRef.current?.click(); toast.info('File upload coming soon'); }}
+            className="flex items-center gap-3 py-3 px-1 border-t border-[#F2F2F7] hover:bg-[#F5F5F5] rounded transition-colors">
+            <Paperclip size={16} className="text-[#6C6C70] flex-shrink-0" />
+            <span className="flex-1 text-sm text-left text-[#AEAEB2]">Add file</span>
+          </button>
+          <input ref={fileInputRef} type="file" className="hidden" />
+        </div>
+      </Modal>
+
+      {/* Sub-sheet: Realm selector */}
+      {subSheet === 'realm' && (
+        <Modal open={true} onClose={() => setSubSheet(null)} title="Select Realm">
+          <div className="flex flex-col gap-1">
+            {REALMS.map((r) => (
+              <button key={r} type="button"
+                onClick={async () => {
+                  setSubSheet(null);
+                  await save({ realm: r, targetId: undefined, projectId: undefined });
+                }}
+                className={cn('flex items-center gap-3 py-3 px-2 rounded-card hover:bg-[#F5F5F5] transition-colors',
+                  task.realm === r && 'bg-[#F5F5F5]')}>
+                <span className="text-xl">{REALM_CONFIG[r].emoji}</span>
+                <span className="flex-1 text-sm text-[#1C1C1E]">{r}</span>
+                {task.realm === r && <Check size={16} className="text-[#3B82F6]" />}
               </button>
             ))}
           </div>
-        </div>
+        </Modal>
+      )}
 
-        {/* Due Date + Time (same row) */}
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Due Date"
-            type="date"
-            value={form.dueDate}
-            onChange={(e) => set('dueDate', e.target.value)}
-          />
-          <Input
-            label="Due Time"
-            type="time"
-            value={form.dueTime}
-            onChange={(e) => set('dueTime', e.target.value)}
-          />
-        </div>
-
-        {/* Recurring */}
-        <Select
-          label="Recurring"
-          value={form.recurring}
-          onChange={(e) => set('recurring', (e.target as HTMLSelectElement).value as Recurrence)}
-          options={[
-            { value: 'None', label: 'None' },
-            { value: 'Daily', label: 'Daily' },
-            { value: 'Weekly', label: 'Weekly' },
-            { value: 'Monthly', label: 'Monthly' },
-            { value: 'Yearly', label: 'Yearly' },
-          ]}
-        />
-
-        {/* Notes */}
-        <Textarea
-          label="Notes"
-          value={form.notes}
-          onChange={(e) => set('notes', e.target.value)}
-          rows={3}
-          placeholder="Add details..."
-        />
-
-        {/* Today's Focus toggle */}
-        <button
-          onClick={() => set('isMyDay', !form.isMyDay)}
-          className={cn(
-            'flex items-center gap-3 px-4 py-3 rounded-card border transition-colors',
-            form.isMyDay
-              ? 'bg-[#FF6B35]/10 border-[#FF6B35] text-[#FF6B35]'
-              : 'bg-[#F5F5F5] border-[#E5E5EA] text-[#6C6C70]'
-          )}
-        >
-          <Sun size={18} />
-          <div className="text-left">
-            <p className="text-sm font-semibold">Today&apos;s Focus</p>
-            <p className="text-xs opacity-70">Add to your day&apos;s spotlight</p>
-          </div>
-          <div
-            className={cn(
-              'ml-auto w-10 h-6 rounded-full transition-colors flex items-center px-1',
-              form.isMyDay ? 'bg-[#FF6B35]' : 'bg-[#E5E5EA]'
+      {/* Sub-sheet: Target selector */}
+      {subSheet === 'target' && (
+        <Modal open={true} onClose={() => setSubSheet(null)} title="Select Target">
+          <div className="flex flex-col gap-1">
+            <button type="button"
+              onClick={async () => { setSubSheet(null); await save({ targetId: undefined, projectId: undefined }); }}
+              className={cn('flex items-center gap-3 py-3 px-2 rounded-card hover:bg-[#F5F5F5] transition-colors',
+                !task.targetId && !task.projectId && 'bg-[#F5F5F5]')}>
+              <span className="flex-1 text-sm text-[#1C1C1E]">No target</span>
+              {!task.targetId && !task.projectId && <Check size={16} className="text-[#3B82F6]" />}
+            </button>
+            {realmProjects.length === 0 ? (
+              <p className="text-xs text-[#AEAEB2] px-2 py-2">No targets in this Realm yet</p>
+            ) : (
+              realmProjects.map((p) => (
+                <button key={p.id} type="button"
+                  onClick={async () => {
+                    setSubSheet(null);
+                    await save({ targetId: p.id, projectId: p.id });
+                  }}
+                  className={cn('flex items-center gap-3 py-3 px-2 rounded-card hover:bg-[#F5F5F5] transition-colors',
+                    (task.targetId === p.id || task.projectId === p.id) && 'bg-[#F5F5F5]')}>
+                  <span className="flex-1 text-sm text-[#1C1C1E]">{p.title}</span>
+                  {(task.targetId === p.id || task.projectId === p.id) && <Check size={16} className="text-[#3B82F6]" />}
+                </button>
+              ))
             )}
-          >
-            <div
-              className={cn(
-                'w-4 h-4 rounded-full bg-white transition-transform',
-                form.isMyDay ? 'translate-x-4' : 'translate-x-0'
-              )}
-            />
           </div>
-        </button>
-      </div>
-    </Modal>
+        </Modal>
+      )}
+
+      {/* Sub-sheet: Priority selector */}
+      {subSheet === 'priority' && (
+        <Modal open={true} onClose={() => setSubSheet(null)} title="Select Priority">
+          <div className="flex flex-col gap-1">
+            {(['P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => (
+              <button key={p} type="button"
+                onClick={async () => { setSubSheet(null); await save({ priority: p }); }}
+                className={cn('flex items-center gap-3 py-3 px-2 rounded-card hover:bg-[#F5F5F5] transition-colors',
+                  task.priority === p && 'bg-[#F5F5F5]')}>
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: TASK_PRIORITY_COLORS[p] }} />
+                <span className="flex-1 text-sm text-[#1C1C1E]">{TASK_PRIORITY_LABELS[p]}</span>
+                {task.priority === p && <Check size={16} className="text-[#3B82F6]" />}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Sub-sheet: Date & Time */}
+      <DateTimePickerSheet
+        open={subSheet === 'datetime'}
+        dueDate={task.dueDate ?? ''}
+        dueTime={task.dueTime ?? ''}
+        onSave={async (d, t) => { await save({ dueDate: d || undefined, dueTime: t || undefined }); }}
+        onClose={() => setSubSheet(null)}
+      />
+
+      {/* Sub-sheet: Recurring */}
+      <RecurringPickerSheet
+        open={subSheet === 'recurring'}
+        recurring={task.recurring ?? 'None'}
+        customDays={task.customDays ?? []}
+        onSave={async (r, days) => { await save({ recurring: r, customDays: days }); }}
+        onClose={() => setSubSheet(null)}
+      />
+
+      {/* Sub-sheet: Reminder */}
+      <ReminderPickerSheet
+        open={subSheet === 'reminder'}
+        reminder={task.reminder ?? { enabled: false, option: 'None' }}
+        onSave={async (r) => { await save({ reminder: r }); }}
+        onClose={() => setSubSheet(null)}
+      />
+
+      {/* Delete confirm */}
+      <ConfirmModal
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete this action?"
+        message={`"${task.title}" will be permanently deleted.`}
+        confirmLabel="Delete"
+      />
+    </>
   );
 }
 
@@ -339,7 +1582,6 @@ function ProjectModal({
     if (!form.title.trim()) e.title = 'Target name is required';
     setErrors(e);
     if (Object.keys(e).length) return;
-
     setSaving(true);
     const cfg = REALM_CONFIG[form.realm] ?? { emoji: '🎯', color: '#FF6B35' };
     try {
@@ -383,33 +1625,33 @@ function ProjectModal({
       }
     >
       <div className="flex flex-col gap-4">
-        <Input
-          label="Target Name"
-          value={form.title}
-          onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-          error={errors.title}
-          required
-          placeholder="What do you want to achieve?"
-          autoFocus
-        />
-        <Select
-          label="Realm"
-          value={form.realm}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, realm: (e.target as HTMLSelectElement).value }))
-          }
-          options={REALMS.map((r) => ({
-            value: r,
-            label: `${REALM_CONFIG[r].emoji} ${r}`,
-          }))}
-        />
-        <Input
-          label="Due Date (optional)"
-          type="date"
-          value={form.dueDate}
-          onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-        />
-        {/* Realm preview */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-[#1C1C1E]">Target Name<span className="text-[#FF4F6D] ml-0.5">*</span></label>
+          <input
+            type="text"
+            value={form.title}
+            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            placeholder="What do you want to achieve?"
+            autoFocus
+            className={cn(
+              'w-full bg-[#F5F5F5] border rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none transition-colors focus:border-[#FF6B35] focus:bg-white',
+              errors.title ? 'border-[#FF4F6D]' : 'border-[#E5E5EA]'
+            )}
+          />
+          {errors.title && <p className="text-xs text-[#FF4F6D]">{errors.title}</p>}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-[#1C1C1E]">Realm</label>
+          <select
+            value={form.realm}
+            onChange={(e) => setForm((f) => ({ ...f, realm: e.target.value }))}
+            className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#FF6B35] appearance-none"
+          >
+            {REALMS.map((r) => (
+              <option key={r} value={r}>{REALM_CONFIG[r].emoji} {r}</option>
+            ))}
+          </select>
+        </div>
         {form.realm && (
           <div className="flex items-center gap-3 px-3 py-2 bg-[#F5F5F5] rounded-card border border-[#E5E5EA]">
             <span className="text-2xl">{REALM_CONFIG[form.realm]?.emoji}</span>
@@ -424,15 +1666,13 @@ function ProjectModal({
   );
 }
 
-// ─── TASK CARD ────────────────────────────────────────────────────────────────
+// ─── LOCAL TASK CARD ──────────────────────────────────────────────────────────
 
 function TaskCard({
   task,
   projects,
   onComplete,
-  onEdit,
-  onDelete,
-  onDuplicate,
+  onOpenDetail,
   selected,
   onSelect,
   inBulkMode,
@@ -440,36 +1680,20 @@ function TaskCard({
   task: Task;
   projects: Project[];
   onComplete: (t: Task) => void;
-  onEdit: (t: Task) => void;
-  onDelete: (t: Task) => void;
-  onDuplicate: (t: Task) => void;
+  onOpenDetail: (t: Task) => void;
   selected: boolean;
   onSelect: (t: Task) => void;
   inBulkMode: boolean;
 }) {
-  const today = todayISO();
-  const isOverdue = !task.isCompleted && task.dueDate && task.dueDate < today;
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const priorityColor = TASK_PRIORITY_COLORS[task.priority] ?? '#6B7280';
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchMoved = useRef(false);
 
   const targetProject = projects.find((p) => p.id === (task.targetId ?? task.projectId));
-  const recurringLetter = task.recurring ? RECURRENCE_LETTER[task.recurring] : '';
-  const priorityColor = PRIORITY_COLORS[task.priority] ?? '#6C6C70';
-  const priorityLabel = PRIORITY_LABELS[task.priority] ?? task.priority;
-
-  // Close menu on outside click
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [menuOpen]);
+  const targetTitle = targetProject?.title ?? '';
+  const targetDisplay = targetTitle.length > 15 ? targetTitle.slice(0, 15) + '...' : targetTitle;
+  const dueDateInfo = getDueDateDisplay(task.dueDate, task.dueTime);
+  const isOverdue = isTaskOverdue(task);
 
   const handlePointerDown = () => {
     touchMoved.current = false;
@@ -484,140 +1708,70 @@ function TaskCard({
 
   const handleCardClick = () => {
     if (inBulkMode) { onSelect(task); return; }
-    onEdit(task);
+    onOpenDetail(task);
   };
 
   return (
     <div
       className={cn(
-        'relative flex items-start gap-0 border-b border-[#E5E5EA] last:border-0',
-        'active:bg-[#F5F5F5] transition-colors select-none',
-        selected && 'bg-[#FF6B35]/8'
+        'relative flex flex-col gap-0.5 border-l-4 py-2 pl-3 pr-3',
+        'border-b border-b-[#E5E5EA] last:border-b-0',
+        'active:bg-[#F5F5F5] transition-colors select-none cursor-pointer',
+        selected && 'bg-[#FF6B35]/6',
+        isOverdue && !task.isCompleted && 'bg-[#FEF2F2]'
       )}
+      style={{ borderLeftColor: priorityColor }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onClick={handleCardClick}
     >
-      {/* Priority left border */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-sm"
-        style={{ backgroundColor: priorityColor }}
-      />
-
-      {/* Bulk selection indicator or completion toggle */}
-      <div className="pl-3 pt-3.5 flex-shrink-0">
+      {/* LINE 1: Completion circle + title */}
+      <div className="flex items-start gap-2">
         {inBulkMode ? (
-          <div
-            className={cn(
-              'w-5 h-5 rounded-full border-2 flex items-center justify-center',
-              selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
-            )}
-          >
-            {selected && <div className="w-2 h-2 rounded-full bg-white" />}
+          <div className={cn(
+            'flex-shrink-0 mt-0.5 w-8 h-8 rounded-full border-2 flex items-center justify-center',
+            selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
+          )}>
+            {selected && <Check size={14} className="text-white" />}
           </div>
         ) : (
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onComplete(task); }}
-            className="w-6 h-6 flex items-center justify-center"
+            className="flex-shrink-0 mt-0.5 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors"
+            style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
+            aria-label={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            {task.isCompleted
-              ? <CheckCircle2 size={22} className="text-[#1ABC9C]" />
-              : <Circle size={22} style={{ color: priorityColor }} />
-            }
+            {task.isCompleted && <Check size={14} style={{ color: priorityColor }} />}
           </button>
         )}
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0 py-3 pl-2 pr-2">
         <p className={cn(
-          'text-sm text-[#1C1C1E] leading-snug',
+          'flex-1 text-sm text-[#1C1C1E] leading-snug',
           task.isCompleted && 'line-through text-[#AEAEB2]'
         )}>
           {task.title}
         </p>
-
-        {/* Badges row */}
-        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-          <Badge
-            label={`${task.priority} · ${priorityLabel}`}
-            color={priorityColor}
-          />
-          {recurringLetter && (
-            <span
-              className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white"
-              style={{ backgroundColor: priorityColor }}
-              title={`Recurring: ${task.recurring}`}
-            >
-              {recurringLetter}
-            </span>
-          )}
-          {task.isMyDay && (
-            <Sun size={12} className="text-[#FF6B35]" />
-          )}
-        </div>
-
-        {/* Due date + time / overdue */}
-        {task.dueDate && (
-          <p className={cn(
-            'text-xs mt-1',
-            isOverdue ? 'text-[#FF4F6D]' : 'text-[#6C6C70]'
-          )}>
-            {isOverdue ? '⚠ Overdue · ' : ''}{task.dueDate === today ? 'Today' : task.dueDate}
-            {task.dueTime && ` · ${formatTime12(task.dueTime)}`}
-          </p>
-        )}
       </div>
 
-      {/* Right side: target/realm + menu */}
-      <div className="flex flex-col items-end justify-between py-3 pr-2 gap-2 flex-shrink-0">
-        <div ref={menuRef} className="relative">
-          <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-            className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]"
-          >
-            <MoreVertical size={15} />
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-8 z-50 bg-[#F5F5F5] border border-[#E5E5EA] rounded-card shadow-card min-w-[160px]">
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onEdit(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#1C1C1E] hover:bg-[#E5E5EA]"
-              >
-                <Pencil size={14} /> Edit Action
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDuplicate(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#1C1C1E] hover:bg-[#E5E5EA]"
-              >
-                <Copy size={14} /> Duplicate
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#FF4F6D] hover:bg-[#E5E5EA]"
-              >
-                <Trash2 size={14} /> Delete
-              </button>
-            </div>
+      {/* LINE 2: Due date (left) + Realm name (right) */}
+      {(dueDateInfo || task.realm) && (
+        <div className="flex items-center justify-between ml-10">
+          {dueDateInfo ? (
+            <span className="text-xs" style={{ color: dueDateInfo.color }}>{dueDateInfo.label}</span>
+          ) : <span />}
+          {task.realm && (
+            <span className="text-xs text-[#AEAEB2]">{task.realm}</span>
           )}
         </div>
+      )}
 
-        <div className="flex flex-col items-end gap-0.5">
-          {targetProject && (
-            <span className="text-[10px] text-[#6C6C70] max-w-[80px] text-right truncate leading-tight">
-              {targetProject.title}
-            </span>
-          )}
-          <span
-            className="text-[10px] max-w-[80px] text-right truncate leading-tight font-medium"
-            style={{ color: REALM_CONFIG[task.realm]?.color ?? '#6C6C70' }}
-          >
-            {task.realm}
-          </span>
-        </div>
-      </div>
+      {/* LINE 3: Target title */}
+      {(task.targetId || task.projectId) && targetDisplay && (
+        <p className="text-xs text-[#AEAEB2] ml-10">{targetDisplay}</p>
+      )}
     </div>
   );
 }
@@ -625,11 +1779,7 @@ function TaskCard({
 // ─── TARGET CARD ──────────────────────────────────────────────────────────────
 
 function TargetCard({
-  project,
-  tasks,
-  onEdit,
-  onDelete,
-  onToggleFavorite,
+  project, tasks, onEdit, onDelete, onToggleFavorite,
 }: {
   project: Project;
   tasks: Task[];
@@ -640,7 +1790,6 @@ function TargetCard({
   const linked = tasks.filter((t) => (t.targetId ?? t.projectId) === project.id);
   const done = linked.filter((t) => t.isCompleted).length;
   const total = linked.length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const cfg = REALM_CONFIG[project.realm] ?? { emoji: '🎯', color: '#FF6B35' };
 
   return (
@@ -650,9 +1799,6 @@ function TargetCard({
         <p className="text-sm font-semibold text-[#1C1C1E] truncate">{project.title}</p>
         <div className="flex items-center gap-2 mt-1">
           <Badge label={project.realm} color={cfg.color} />
-          {project.dueDate && (
-            <span className="text-xs text-[#6C6C70]">{project.dueDate}</span>
-          )}
         </div>
         <div className="mt-2">
           <ProgressBar value={done} max={total || 1} color={cfg.color} height={4} />
@@ -660,27 +1806,13 @@ function TargetCard({
         </div>
       </div>
       <div className="flex flex-col items-center gap-2 flex-shrink-0">
-        <button
-          onClick={() => onToggleFavorite(project)}
-          className="w-7 h-7 flex items-center justify-center"
-          title="Toggle favorite"
-        >
-          <Star
-            size={15}
-            className={project.isFavorite ? 'text-[#FFD700]' : 'text-[#AEAEB2]'}
-            fill={project.isFavorite ? '#FFD700' : 'none'}
-          />
+        <button type="button" onClick={() => onToggleFavorite(project)} className="w-7 h-7 flex items-center justify-center">
+          <Star size={15} className={project.isFavorite ? 'text-[#FFD700]' : 'text-[#AEAEB2]'} fill={project.isFavorite ? '#FFD700' : 'none'} />
         </button>
-        <button
-          onClick={() => onEdit(project)}
-          className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#1C1C1E]"
-        >
-          <Pencil size={14} />
+        <button type="button" onClick={() => onEdit(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#1C1C1E]">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
         </button>
-        <button
-          onClick={() => onDelete(project)}
-          className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#FF4F6D]"
-        >
+        <button type="button" onClick={() => onDelete(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]">
           <Trash2 size={14} />
         </button>
       </div>
@@ -710,85 +1842,79 @@ export default function ActionsPage() {
 
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [taskModalOpen, setTaskModalOpen] = useState(false);
-  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [deleteTask, setDeleteTask] = useState<Task | null>(null);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [deleteProject, setDeleteProject] = useState<Project | null>(null);
   const [inBulkMode, setInBulkMode] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-
-  const today = todayISO();
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   // Open create modal if ?create=true in URL
   useEffect(() => {
     if (searchParams?.get('create') === 'true') {
-      setEditTask(null);
       setTaskModalOpen(true);
       router.replace('/tasks');
     }
   }, [searchParams, router]);
 
-  // Exit bulk mode when no items selected
   useEffect(() => {
     if (inBulkMode && selectedTasks.size === 0) setInBulkMode(false);
   }, [selectedTasks, inBulkMode]);
 
   // ── Tab content ──────────────────────────────────────────────────────────
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const sevenDaysAgoISO = sevenDaysAgo.toISOString().split('T')[0];
+  const today = todayMidnight();
+  const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 7);
 
-  const todayTasks = tasks.filter(
-    (t) => !t.isCompleted && t.dueDate && t.dueDate <= today
-  ).sort((a, b) => {
-    // Overdue first, then by priority
-    const aOver = a.dueDate! < today ? 0 : 1;
-    const bOver = b.dueDate! < today ? 0 : 1;
+  const todayTasks = useMemo(() => tasks.filter((t) => {
+    if (t.isCompleted) return false;
+    if (!t.dueDate) return false;
+    const due = parseDueDate(t.dueDate);
+    return due ? due.getTime() <= today.getTime() : false;
+  }).sort((a, b) => {
+    const aOver = isTaskOverdue(a) ? 0 : 1;
+    const bOver = isTaskOverdue(b) ? 0 : 1;
     if (aOver !== bOver) return aOver - bOver;
     return parseInt(a.priority[1]) - parseInt(b.priority[1]);
-  });
+  }), [tasks, today]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const inboxTasks = tasks.filter(
+  const inboxTasks = useMemo(() => tasks.filter(
     (t) => !t.isCompleted && !t.targetId && !t.projectId
-  ).sort((a, b) => parseInt(a.priority[1]) - parseInt(b.priority[1]));
+  ).sort((a, b) => parseInt(a.priority[1]) - parseInt(b.priority[1])), [tasks]);
 
-  const upcomingTasks = tasks.filter(
-    (t) => !t.isCompleted && t.dueDate && t.dueDate > today
-  ).sort((a, b) => a.dueDate!.localeCompare(b.dueDate!));
+  const upcomingTasks = useMemo(() => tasks.filter((t) => {
+    if (t.isCompleted || !t.dueDate) return false;
+    const due = parseDueDate(t.dueDate);
+    return due ? due.getTime() > today.getTime() : false;
+  }).sort((a, b) => {
+    const da = parseDueDate(a.dueDate!)?.getTime() ?? 0;
+    const db = parseDueDate(b.dueDate!)?.getTime() ?? 0;
+    return da - db;
+  }), [tasks, today]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const completedTasks = tasks.filter(
-    (t) => t.isCompleted && t.completedAt && t.completedAt >= sevenDaysAgoISO
-  ).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+  const completedTasks = useMemo(() => tasks.filter(
+    (t) => t.isCompleted && t.completedAt && new Date(t.completedAt) >= sevenDaysAgo
+  ).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')), [tasks, sevenDaysAgo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentTabTasks: Task[] = {
-    today: todayTasks,
-    inbox: inboxTasks,
-    upcoming: upcomingTasks,
-    completed: completedTasks,
-    targets: [],
+    today: todayTasks, inbox: inboxTasks, upcoming: upcomingTasks,
+    completed: completedTasks, targets: [],
   }[activeTab];
 
   // ── Actions ──────────────────────────────────────────────────────────────
-  const openCreateTask = () => {
-    setEditTask(null);
-    setTaskModalOpen(true);
-  };
 
   const handleComplete = useCallback(async (task: Task) => {
     const now = new Date().toISOString();
     const willComplete = !task.isCompleted;
-
     await updateDocById(COLLECTIONS.TASKS, task.id, {
       isCompleted: willComplete,
       completedAt: willComplete ? now : undefined,
     });
-
     if (willComplete) {
-      toast.success('Action completed! 🎉');
-      // Auto-create next recurring instance
+      toast.success('Action completed!');
       if (task.recurring && task.recurring !== 'None' && task.dueDate) {
-        const nextDue = getNextDueDate(task.dueDate, task.recurring);
+        const nextDue = getNextDueDateFromStr(task.dueDate, task.recurring, task.customDays);
         const { id: _id, completedAt: _ca, ...rest } = task;
         void _id; void _ca;
         await createDoc(COLLECTIONS.TASKS, {
@@ -803,34 +1929,6 @@ export default function ActionsPage() {
     }
   }, []);
 
-  const handleDuplicate = useCallback(async (task: Task) => {
-    const { id: _id, ...rest } = task;
-    void _id;
-    await createDoc(COLLECTIONS.TASKS, {
-      ...rest,
-      title: `${task.title} (Copy)`,
-      isCompleted: false,
-      completedAt: undefined,
-      order: Date.now(),
-      createdAt: new Date().toISOString(),
-    });
-    toast.success('Action duplicated.');
-  }, []);
-
-  const handleDelete = useCallback(async () => {
-    if (!deleteTask) return;
-    await deleteDocById(COLLECTIONS.TASKS, deleteTask.id);
-    toast.success('Action deleted.', {
-      label: 'Undo',
-      onClick: async () => {
-        const { id: _id, ...rest } = deleteTask;
-        void _id;
-        await createDoc(COLLECTIONS.TASKS, rest);
-      },
-    });
-    setDeleteTask(null);
-  }, [deleteTask]);
-
   const handleBulkComplete = async () => {
     const now = new Date().toISOString();
     await Promise.all(
@@ -839,39 +1937,30 @@ export default function ActionsPage() {
       )
     );
     toast.success(`${selectedTasks.size} action(s) completed.`);
-    setSelectedTasks(new Set());
-    setInBulkMode(false);
+    setSelectedTasks(new Set()); setInBulkMode(false);
   };
 
   const handleBulkDelete = async () => {
-    await Promise.all(
-      Array.from(selectedTasks).map((id) => deleteDocById(COLLECTIONS.TASKS, id))
-    );
+    await Promise.all(Array.from(selectedTasks).map((id) => deleteDocById(COLLECTIONS.TASKS, id)));
     toast.success(`${selectedTasks.size} action(s) deleted.`);
-    setSelectedTasks(new Set());
-    setInBulkMode(false);
+    setSelectedTasks(new Set()); setInBulkMode(false); setBulkDeleteConfirm(false);
   };
 
   const toggleSelect = useCallback((task: Task) => {
     setInBulkMode(true);
     setSelectedTasks((prev) => {
       const next = new Set(prev);
-      if (next.has(task.id)) next.delete(task.id);
-      else next.add(task.id);
+      if (next.has(task.id)) next.delete(task.id); else next.add(task.id);
       return next;
     });
   }, []);
 
-  // ── Project actions ───────────────────────────────────────────────────────
   const handleDeleteProject = useCallback(async () => {
     if (!deleteProject) return;
-    // Orphan actions: set targetId/projectId to null so they are no longer linked
     const linked = tasks.filter((t) => (t.targetId ?? t.projectId) === deleteProject.id);
     await Promise.all(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      linked.map((t) =>
-        updateDocById(COLLECTIONS.TASKS, t.id, { targetId: null, projectId: null } as any)
-      )
+      linked.map((t) => updateDocById(COLLECTIONS.TASKS, t.id, { targetId: null, projectId: null } as any))
     );
     await deleteDocById(COLLECTIONS.PROJECTS, deleteProject.id);
     toast.success('Target deleted.');
@@ -900,11 +1989,12 @@ export default function ActionsPage() {
 
   const loading = tasksLoading || projectsLoading;
 
-  // Targets grouped by realm
   const realmGroups = REALMS.map((realm) => ({
     realm,
     projects: projects.filter((p) => p.realm === realm),
   })).filter((g) => g.projects.length > 0);
+
+  const overdueCount = todayTasks.filter((t) => isTaskOverdue(t)).length;
 
   return (
     <div className="flex flex-col min-h-dvh">
@@ -912,16 +2002,15 @@ export default function ActionsPage() {
       <div className="px-4 pt-4 pb-2 border-b border-[#E5E5EA]">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-bold text-[#1C1C1E]">Actions</h1>
-          <Button size="sm" onClick={openCreateTask}>
+          <Button size="sm" onClick={() => setTaskModalOpen(true)}>
             <Plus size={15} /> New Action
           </Button>
         </div>
-
-        {/* Tabs */}
         <div className="flex gap-1 overflow-x-auto pb-1 -mx-4 px-4">
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              type="button"
               onClick={() => { setActiveTab(tab.id); setInBulkMode(false); setSelectedTasks(new Set()); }}
               className={cn(
                 'flex-shrink-0 h-8 px-4 rounded-chip text-xs font-medium transition-colors',
@@ -932,12 +2021,12 @@ export default function ActionsPage() {
             >
               {tab.label}
               {tab.id === 'today' && todayTasks.length > 0 && (
-                <span className="ml-1.5 bg-white/20 text-white rounded-full px-1.5 text-[10px]">
+                <span className="ml-1.5 bg-white/20 text-inherit rounded-full px-1.5 text-[10px]">
                   {todayTasks.length}
                 </span>
               )}
               {tab.id === 'inbox' && inboxTasks.length > 0 && (
-                <span className="ml-1.5 bg-white/20 text-white rounded-full px-1.5 text-[10px]">
+                <span className="ml-1.5 bg-white/20 text-inherit rounded-full px-1.5 text-[10px]">
                   {inboxTasks.length}
                 </span>
               )}
@@ -946,47 +2035,30 @@ export default function ActionsPage() {
         </div>
       </div>
 
-      {/* Bulk mode toolbar */}
+      {/* Bulk toolbar */}
       {inBulkMode && selectedTasks.size > 0 && (
         <div className="flex items-center gap-3 px-4 py-2 bg-[#F5F5F5] border-b border-[#E5E5EA]">
-          <span className="text-xs text-[#1C1C1E] flex-1">
-            {selectedTasks.size} selected
-          </span>
-          <Button size="sm" variant="secondary" onClick={() => { setInBulkMode(false); setSelectedTasks(new Set()); }}>
-            Cancel
-          </Button>
-          <Button size="sm" onClick={handleBulkComplete}>
-            Complete
-          </Button>
-          <Button size="sm" variant="danger" onClick={handleBulkDelete}>
-            Delete
-          </Button>
+          <span className="text-xs text-[#1C1C1E] flex-1">{selectedTasks.size} selected</span>
+          <Button size="sm" variant="secondary" onClick={() => { setInBulkMode(false); setSelectedTasks(new Set()); }}>Cancel</Button>
+          <Button size="sm" onClick={handleBulkComplete}>Complete All</Button>
+          <Button size="sm" variant="danger" onClick={() => setBulkDeleteConfirm(true)}>Delete All</Button>
         </div>
       )}
 
       {/* Content */}
       <div className="flex-1 px-4 py-4 pb-24">
-        {/* ── Targets tab ── */}
         {activeTab === 'targets' && (
           <div className="flex flex-col gap-5">
             <Button onClick={() => { setEditProject(null); setProjectModalOpen(true); }}>
               <Plus size={15} /> New Target
             </Button>
-
             {loading ? (
               <div className="flex flex-col gap-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 bg-[#FFFFFF] rounded-card border border-[#E5E5EA] animate-pulse" />
-                ))}
+                {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-[#FFFFFF] rounded-card border border-[#E5E5EA] animate-pulse" />)}
               </div>
             ) : realmGroups.length === 0 ? (
-              <EmptyState
-                icon={Briefcase}
-                title={emptyMessages.targets.title}
-                subtitle={emptyMessages.targets.subtitle}
-                actionLabel="Create Target"
-                onAction={() => { setEditProject(null); setProjectModalOpen(true); }}
-              />
+              <EmptyState icon={Briefcase} title={emptyMessages.targets.title} subtitle={emptyMessages.targets.subtitle}
+                actionLabel="Create Target" onAction={() => { setEditProject(null); setProjectModalOpen(true); }} />
             ) : (
               realmGroups.map(({ realm, projects: rProjects }) => {
                 const cfg = REALM_CONFIG[realm] ?? { emoji: '🎯', color: '#FF6B35' };
@@ -999,10 +2071,7 @@ export default function ActionsPage() {
                     </div>
                     <div className="flex flex-col gap-2">
                       {rProjects.map((p) => (
-                        <TargetCard
-                          key={p.id}
-                          project={p}
-                          tasks={tasks}
+                        <TargetCard key={p.id} project={p} tasks={tasks}
                           onEdit={(proj) => { setEditProject(proj); setProjectModalOpen(true); }}
                           onDelete={setDeleteProject}
                           onToggleFavorite={handleToggleFavorite}
@@ -1016,7 +2085,6 @@ export default function ActionsPage() {
           </div>
         )}
 
-        {/* ── Task list tabs ── */}
         {activeTab !== 'targets' && (
           <>
             {loading ? (
@@ -1029,15 +2097,14 @@ export default function ActionsPage() {
                 title={emptyMessages[activeTab].title}
                 subtitle={emptyMessages[activeTab].subtitle}
                 actionLabel={activeTab === 'today' || activeTab === 'inbox' ? 'New Action' : undefined}
-                onAction={activeTab === 'today' || activeTab === 'inbox' ? openCreateTask : undefined}
+                onAction={activeTab === 'today' || activeTab === 'inbox' ? () => setTaskModalOpen(true) : undefined}
               />
             ) : (
               <div className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] overflow-hidden">
-                {/* Overdue section header for Today tab */}
-                {activeTab === 'today' && todayTasks.some((t) => t.dueDate && t.dueDate < today) && (
-                  <div className="px-4 py-1.5 bg-[#FF4F6D]/10 border-b border-[#E5E5EA]">
-                    <p className="text-xs font-semibold text-[#FF4F6D]">
-                      ⚠ Overdue — {todayTasks.filter((t) => t.dueDate && t.dueDate < today).length} action(s)
+                {activeTab === 'today' && overdueCount > 0 && (
+                  <div className="px-4 py-1.5 bg-[#FEF2F2] border-b border-[#E5E5EA]">
+                    <p className="text-xs font-semibold text-[#EF4444]">
+                      ⚠ Overdue — {overdueCount} action{overdueCount > 1 ? 's' : ''}
                     </p>
                   </div>
                 )}
@@ -1047,9 +2114,7 @@ export default function ActionsPage() {
                     task={task}
                     projects={projects}
                     onComplete={handleComplete}
-                    onEdit={(t) => { setEditTask(t); setTaskModalOpen(true); }}
-                    onDelete={setDeleteTask}
-                    onDuplicate={handleDuplicate}
+                    onOpenDetail={(t) => setDetailTask(t)}
                     selected={selectedTasks.has(task.id)}
                     onSelect={toggleSelect}
                     inBulkMode={inBulkMode}
@@ -1061,9 +2126,10 @@ export default function ActionsPage() {
         )}
       </div>
 
-      {/* FAB (mobile) */}
+      {/* Mobile FAB */}
       <button
-        onClick={openCreateTask}
+        type="button"
+        onClick={() => setTaskModalOpen(true)}
         className="fixed bottom-[80px] right-4 w-14 h-14 bg-[#FF6B35] rounded-full flex items-center justify-center shadow-fab active:scale-95 transition-transform sm:hidden z-30"
         aria-label="Create action"
       >
@@ -1074,24 +2140,39 @@ export default function ActionsPage() {
       <TaskModal
         open={taskModalOpen}
         onClose={() => setTaskModalOpen(false)}
-        task={editTask}
+        task={null}
         projects={projects}
         userId={user?.uid ?? ''}
       />
+
+      <ActionDetailPopup
+        open={!!detailTask}
+        onClose={() => setDetailTask(null)}
+        task={detailTask}
+        projects={projects}
+        userId={user?.uid ?? ''}
+        onComplete={handleComplete}
+      />
+
       <ProjectModal
         open={projectModalOpen}
         onClose={() => setProjectModalOpen(false)}
         project={editProject}
         userId={user?.uid ?? ''}
       />
+
       <ConfirmModal
         open={!!deleteTask}
         onClose={() => setDeleteTask(null)}
-        onConfirm={handleDelete}
+        onConfirm={async () => {
+          if (deleteTask) { await deleteDocById(COLLECTIONS.TASKS, deleteTask.id); toast.success('Action deleted.'); }
+          setDeleteTask(null);
+        }}
         title="Delete Action"
         message={`Delete "${deleteTask?.title}"? This cannot be undone.`}
         confirmLabel="Delete"
       />
+
       <ConfirmModal
         open={!!deleteProject}
         onClose={() => setDeleteProject(null)}
@@ -1099,6 +2180,15 @@ export default function ActionsPage() {
         title="Delete Target"
         message={`Delete "${deleteProject?.title}"? Actions linked to this Target will be kept but unlinked.`}
         confirmLabel="Delete"
+      />
+
+      <ConfirmModal
+        open={bulkDeleteConfirm}
+        onClose={() => setBulkDeleteConfirm(false)}
+        onConfirm={handleBulkDelete}
+        title="Delete Actions"
+        message={`Delete ${selectedTasks.size} selected action(s)? This cannot be undone.`}
+        confirmLabel="Delete All"
       />
     </div>
   );

@@ -29,7 +29,7 @@ export type ReviewType = (typeof REVIEW_TYPES)[number];
 export type Mood = (typeof MOODS)[number];
 export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
 
-export type Recurrence = 'None' | 'Daily' | 'Weekly' | 'Monthly' | 'Yearly';
+export type Recurrence = 'None' | 'Daily' | 'Weekdays' | 'Weekly' | 'Monthly' | 'Yearly' | 'Custom';
 export type HabitFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 export type HabitStatus = 'pending' | 'done' | 'failed';
 export type PomodoroType = 'work' | 'short-break' | 'long-break';
@@ -54,6 +54,18 @@ export interface Reminder {
   time: string;
 }
 
+export interface TaskStep {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface TaskReminder {
+  enabled: boolean;
+  option: string;
+  customDateTime?: string;
+}
+
 // ─── USER META ───────────────────────────────────────────────────────────────
 export interface UserMeta {
   onboardingComplete: boolean;
@@ -69,6 +81,7 @@ export interface Task {
   userId: string;
   title: string;
   description?: string;
+  steps?: TaskStep[];
   realm: string;
   area?: string;
   targetId?: string;
@@ -84,6 +97,8 @@ export interface Task {
   isCompleted: boolean;
   completedAt?: string;
   recurring?: Recurrence;
+  customDays?: number[];
+  reminder?: TaskReminder;
   parentId?: string;
   order: number;
   createdAt: string;

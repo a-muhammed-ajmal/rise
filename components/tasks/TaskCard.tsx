@@ -1,25 +1,86 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import {
-  CheckCircle2, Circle, MoreVertical, Pencil, Copy, Trash2, Sun,
-} from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
-import { cn, formatTime, todayISO } from '@/lib/utils';
-import { PRIORITY_COLORS, PRIORITY_LABELS, REALM_CONFIG } from '@/lib/constants';
-import type { Task, Project, Recurrence } from '@/lib/types';
+import { useRef } from 'react';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { REALM_CONFIG } from '@/lib/constants';
+import type { Task, Project } from '@/lib/types';
 
-const RECURRENCE_LETTER: Record<Recurrence, string> = {
-  None: '', Daily: 'D', Weekly: 'W', Monthly: 'M', Yearly: 'Y',
+// ─── PRIORITY COLORS (per spec) ───────────────────────────────────────────────
+const CARD_PRIORITY_COLORS: Record<string, string> = {
+  P1: '#EF4444',
+  P2: '#3B82F6',
+  P3: '#F59E0B',
+  P4: '#6B7280',
 };
+
+// ─── DATE HELPERS ─────────────────────────────────────────────────────────────
+
+function parseDueDate(s: string): Date | null {
+  if (!s) return null;
+  if (s.includes('/')) {
+    const [d, m, y] = s.split('/').map(Number);
+    if (!isNaN(d) && !isNaN(m) && !isNaN(y)) return new Date(y, m - 1, d);
+  }
+  // Legacy YYYY-MM-DD
+  if (s.includes('-') && s.length === 10) return new Date(s + 'T00:00:00');
+  return null;
+}
+
+function todayMidnight(): Date {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+
+interface DueDateInfo {
+  label: string;
+  color: string;
+}
+
+function getDueDateInfo(dueDate: string | undefined, dueTime: string | undefined): DueDateInfo | null {
+  if (!dueDate) return null;
+  const parsed = parseDueDate(dueDate);
+  if (!parsed) return null;
+  const today = todayMidnight();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const ts = parsed.getTime();
+
+  let label: string;
+  let color: string;
+
+  if (ts === today.getTime()) {
+    label = 'Today';
+    color = '#1C1C1E';
+  } else if (ts === yesterday.getTime()) {
+    label = 'Yesterday';
+    color = '#EF4444';
+  } else if (ts === tomorrow.getTime()) {
+    label = 'Tomorrow';
+    color = '#1ABC9C';
+  } else if (ts < today.getTime()) {
+    // Past — show DD/MM/YYYY in red
+    label = dueDate.includes('/') ? dueDate : dueDate.split('-').reverse().join('/');
+    color = '#EF4444';
+  } else {
+    // Future — show DD/MM/YYYY in muted green
+    label = dueDate.includes('/') ? dueDate : dueDate.split('-').reverse().join('/');
+    color = '#1ABC9C';
+  }
+
+  if (dueTime) label += ` ${dueTime}`;
+  return { label, color };
+}
+
+// ─── TASK CARD ────────────────────────────────────────────────────────────────
 
 export function TaskCard({
   task,
   projects,
   onComplete,
   onEdit,
-  onDelete,
-  onDuplicate,
+  onDelete: _onDelete,
+  onDuplicate: _onDuplicate,
   selected,
   onSelect,
   inBulkMode,
@@ -34,28 +95,15 @@ export function TaskCard({
   onSelect: (t: Task) => void;
   inBulkMode: boolean;
 }) {
-  const today = todayISO();
-  const isOverdue = !task.isCompleted && task.dueDate && task.dueDate < today;
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const priorityColor = CARD_PRIORITY_COLORS[task.priority] ?? '#6B7280';
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchMoved = useRef(false);
 
   const targetProject = projects.find((p) => p.id === (task.targetId ?? task.projectId));
-  const recurringLetter = task.recurring ? RECURRENCE_LETTER[task.recurring] : '';
-  const priorityColor = PRIORITY_COLORS[task.priority] ?? '#6C6C70';
-  const priorityLabel = PRIORITY_LABELS[task.priority] ?? task.priority;
+  const targetTitle = targetProject?.title ?? '';
+  const targetDisplay = targetTitle.length > 15 ? targetTitle.slice(0, 15) + '...' : targetTitle;
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [menuOpen]);
+  const dueDateInfo = getDueDateInfo(task.dueDate, task.dueTime);
 
   const handlePointerDown = () => {
     touchMoved.current = false;
@@ -76,134 +124,71 @@ export function TaskCard({
   return (
     <div
       className={cn(
-        'relative flex items-start gap-0 border-b border-[#E5E5EA] last:border-0',
-        'active:bg-[#F5F5F5] transition-colors select-none',
+        'relative flex flex-col gap-0.5 border-l-4 py-2 pl-3 pr-3',
+        'border-b border-b-[#E5E5EA] last:border-b-0',
+        'active:bg-[#F5F5F5] transition-colors select-none cursor-pointer',
         selected && 'bg-[#FF6B35]/6'
       )}
+      style={{ borderLeftColor: priorityColor }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onClick={handleCardClick}
     >
-      {/* Priority left border */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-sm"
-        style={{ backgroundColor: priorityColor }}
-      />
-
-      {/* Bulk selection indicator or completion toggle */}
-      <div className="pl-3 pt-3.5 flex-shrink-0">
+      {/* LINE 1: Completion circle + title */}
+      <div className="flex items-start gap-2">
         {inBulkMode ? (
           <div
             className={cn(
-              'w-5 h-5 rounded-full border-2 flex items-center justify-center',
+              'flex-shrink-0 mt-0.5 w-8 h-8 rounded-full border-2 flex items-center justify-center',
               selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
             )}
           >
-            {selected && <div className="w-2 h-2 rounded-full bg-white" />}
+            {selected && <Check size={14} className="text-white" />}
           </div>
         ) : (
           <button
             onClick={(e) => { e.stopPropagation(); onComplete(task); }}
-            className="w-6 h-6 flex items-center justify-center"
+            className={cn(
+              'flex-shrink-0 mt-0.5 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors',
+              task.isCompleted && 'bg-opacity-20'
+            )}
+            style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
+            aria-label={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            {task.isCompleted
-              ? <CheckCircle2 size={22} className="text-[#1ABC9C]" />
-              : <Circle size={22} style={{ color: priorityColor }} />
-            }
+            {task.isCompleted && <Check size={14} style={{ color: priorityColor }} />}
           </button>
         )}
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0 py-3 pl-2 pr-2">
         <p className={cn(
-          'text-sm text-[#1C1C1E] leading-snug',
+          'flex-1 text-sm text-[#1C1C1E] leading-snug',
           task.isCompleted && 'line-through text-[#AEAEB2]'
         )}>
           {task.title}
         </p>
-
-        {/* Badges row */}
-        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-          <Badge
-            label={`${task.priority} · ${priorityLabel}`}
-            color={priorityColor}
-          />
-          {recurringLetter && (
-            <span
-              className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white"
-              style={{ backgroundColor: priorityColor }}
-              title={`Recurring: ${task.recurring}`}
-            >
-              {recurringLetter}
-            </span>
-          )}
-          {task.isMyDay && (
-            <Sun size={12} className="text-[#FF6B35]" />
-          )}
-        </div>
-
-        {/* Due date + time / overdue */}
-        {task.dueDate && (
-          <p className={cn(
-            'text-xs mt-1',
-            isOverdue ? 'text-[#FF4F6D]' : 'text-[#6C6C70]'
-          )}>
-            {isOverdue ? '⚠ Overdue · ' : ''}{task.dueDate === today ? 'Today' : task.dueDate}
-            {task.dueTime && ` · ${formatTime(task.dueTime)}`}
-          </p>
-        )}
       </div>
 
-      {/* Right side: target/realm + menu */}
-      <div className="flex flex-col items-end justify-between py-3 pr-2 gap-2 flex-shrink-0">
-        <div ref={menuRef} className="relative">
-          <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-            className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#6C6C70] rounded-full hover:bg-[#F2F2F7]"
-          >
-            <MoreVertical size={15} />
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-8 z-50 bg-white border border-[#E5E5EA] rounded-card shadow-card min-w-[160px]">
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onEdit(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#1C1C1E] hover:bg-[#F5F5F5]"
-              >
-                <Pencil size={14} /> Edit Action
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDuplicate(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#1C1C1E] hover:bg-[#F5F5F5]"
-              >
-                <Copy size={14} /> Duplicate
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(task); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#FF4F6D] hover:bg-[#FFF1F2]"
-              >
-                <Trash2 size={14} /> Delete
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col items-end gap-0.5">
-          {targetProject && (
-            <span className="text-[10px] text-[#6C6C70] max-w-[80px] text-right truncate leading-tight">
-              {targetProject.title}
+      {/* LINE 2: Due date (left) + Realm name (right) — left-aligned under title */}
+      {(dueDateInfo || task.realm) && (
+        <div className="flex items-center justify-between ml-10">
+          {dueDateInfo ? (
+            <span className="text-xs" style={{ color: dueDateInfo.color }}>
+              {dueDateInfo.label}
+            </span>
+          ) : <span />}
+          {task.realm && (
+            <span className="text-xs text-[#AEAEB2]">
+              {task.realm}
             </span>
           )}
-          <span
-            className="text-[10px] max-w-[80px] text-right truncate leading-tight font-medium"
-            style={{ color: REALM_CONFIG[task.realm]?.color ?? '#6C6C70' }}
-          >
-            {task.realm}
-          </span>
         </div>
-      </div>
+      )}
+
+      {/* LINE 3: Target title — only if targetId set */}
+      {(task.targetId || task.projectId) && targetDisplay && (
+        <p className="text-xs text-[#AEAEB2] ml-10">{targetDisplay}</p>
+      )}
     </div>
   );
 }
