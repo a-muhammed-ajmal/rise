@@ -127,8 +127,6 @@ function TodayFocus({
               projects={projects}
               onComplete={onComplete}
               onEdit={onEdit}
-              onDelete={onDelete}
-              onDuplicate={onDuplicate}
               selected={false}
               onSelect={() => {}}
               inBulkMode={false}
@@ -443,8 +441,6 @@ function GetThingsDone({
               projects={projects}
               onComplete={onComplete}
               onEdit={onEdit}
-              onDelete={onDelete}
-              onDuplicate={onDuplicate}
               selected={false}
               onSelect={() => {}}
               inBulkMode={false}

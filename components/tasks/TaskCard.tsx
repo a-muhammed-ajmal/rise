@@ -130,8 +130,6 @@ export function TaskCard({
   projects,
   onComplete,
   onEdit,
-  onDelete: _onDelete,
-  onDuplicate: _onDuplicate,
   selected,
   onSelect,
   inBulkMode,
@@ -140,8 +138,6 @@ export function TaskCard({
   projects: Project[];
   onComplete: (t: Task) => void;
   onEdit: (t: Task) => void;
-  onDelete: (t: Task) => void;
-  onDuplicate: (t: Task) => void;
   selected: boolean;
   onSelect: (t: Task) => void;
   inBulkMode: boolean;
@@ -175,12 +171,11 @@ export function TaskCard({
   return (
     <div
       className={cn(
-        'relative flex flex-col gap-0.5 border-l-4 py-2 pl-3 pr-3',
-        'border-b border-b-[#E5E5EA] last:border-b-0',
+        'relative flex flex-col gap-0.5 border py-2 pl-3 pr-3 rounded-md mb-2 last:mb-0',
         'active:bg-[#F5F5F5] transition-colors select-none cursor-pointer',
         selected && 'bg-[#FF6B35]/6'
       )}
-      style={{ borderLeftColor: priorityColor }}
+      style={{ borderColor: priorityColor }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

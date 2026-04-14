@@ -16,6 +16,7 @@ import { updateDocById, deleteDocById, createDoc } from '@/lib/firestore';
 import { COLLECTIONS, REALM_CONFIG, REALMS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { Task, Project, Priority, Recurrence, TaskStep, TaskReminder } from '@/lib/types';
+import { TaskCard } from '@/components/tasks/TaskCard';
 import { SkeletonListItem } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -215,8 +216,8 @@ function CalendarGrid({
                   isSelected
                     ? 'bg-[#3B82F6] text-white font-semibold'
                     : isToday
-                    ? 'text-[#3B82F6] font-semibold hover:bg-[#F5F5F5]'
-                    : 'text-[#1C1C1E] hover:bg-[#F5F5F5]'
+                      ? 'text-[#3B82F6] font-semibold hover:bg-[#F5F5F5]'
+                      : 'text-[#1C1C1E] hover:bg-[#F5F5F5]'
                 )}
               >
                 {day}
@@ -947,7 +948,7 @@ function TaskModal({
   const dueDateInfo = getDueDateDisplay(form.dueDate, form.dueTime);
   const recurringLabel = form.recurring === 'None' ? 'Does not repeat'
     : form.recurring === 'Custom' ? `Custom (${form.customDays.map(i => CUSTOM_DAYS_LABELS[i]).join(', ')})`
-    : form.recurring;
+      : form.recurring;
   const reminderLabel = !form.reminder.enabled
     ? 'No reminder'
     : form.reminder.option === 'Custom' && form.reminder.customDateTime
@@ -1157,10 +1158,8 @@ function ActionDetailPopup({
   const [editingStepText, setEditingStepText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!task) return null;
-
-  const realmProjects = projects.filter((p) => p.realm === task.realm);
-  const targetProject = projects.find((p) => p.id === (task.targetId ?? task.projectId));
+  const realmProjects = projects.filter((p) => p.realm === task?.realm);
+  const targetProject = projects.find((p) => task && p.id === (task.targetId ?? task.projectId));
 
   useEffect(() => {
     if (open && task) {
@@ -1174,6 +1173,8 @@ function ActionDetailPopup({
       setAddStepInput('');
     }
   }, [open, task, targetProject]);
+
+  if (!task) return null;
 
   const save = async (fields: Partial<Task>) => {
     try {
@@ -1267,7 +1268,7 @@ function ActionDetailPopup({
   const dueDateInfo = getDueDateDisplay(task.dueDate, task.dueTime);
   const recurringLabel = !task.recurring || task.recurring === 'None' ? 'Does not repeat'
     : task.recurring === 'Custom' ? `Custom (${(task.customDays ?? []).map(i => CUSTOM_DAYS_LABELS[i]).join(', ')})`
-    : task.recurring;
+      : task.recurring;
   const reminderLabel = !task.reminder?.enabled
     ? 'No reminder'
     : task.reminder?.option === 'Custom' && task.reminder?.customDateTime
@@ -1712,116 +1713,6 @@ function ProjectModal({
   );
 }
 
-// ─── LOCAL TASK CARD ──────────────────────────────────────────────────────────
-
-function TaskCard({
-  task,
-  projects,
-  onComplete,
-  onOpenDetail,
-  selected,
-  onSelect,
-  inBulkMode,
-}: {
-  task: Task;
-  projects: Project[];
-  onComplete: (t: Task) => void;
-  onOpenDetail: (t: Task) => void;
-  selected: boolean;
-  onSelect: (t: Task) => void;
-  inBulkMode: boolean;
-}) {
-  const priorityColor = TASK_PRIORITY_COLORS[task.priority] ?? '#6B7280';
-  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchMoved = useRef(false);
-
-  const targetProject = projects.find((p) => p.id === (task.targetId ?? task.projectId));
-  const targetTitle = targetProject?.title ?? '';
-  const targetDisplay = targetTitle.length > 15 ? targetTitle.slice(0, 15) + '...' : targetTitle;
-  const dueDateInfo = getDueDateDisplay(task.dueDate, task.dueTime);
-  const isOverdue = isTaskOverdue(task);
-
-  const handlePointerDown = () => {
-    touchMoved.current = false;
-    longPressRef.current = setTimeout(() => {
-      if (!touchMoved.current) onSelect(task);
-    }, 600);
-  };
-  const handlePointerMove = () => { touchMoved.current = true; };
-  const handlePointerUp = () => {
-    if (longPressRef.current) clearTimeout(longPressRef.current);
-  };
-
-  const handleCardClick = () => {
-    if (inBulkMode) { onSelect(task); return; }
-    onOpenDetail(task);
-  };
-
-  return (
-    <div
-      className={cn(
-        'relative flex flex-col gap-0.5 border-l-4 py-2 pl-3 pr-3',
-        'border-b border-b-[#E5E5EA] last:border-b-0',
-        'active:bg-[#F5F5F5] transition-colors select-none cursor-pointer',
-        selected && 'bg-[#FF6B35]/6',
-        isOverdue && !task.isCompleted && 'bg-[#FEF2F2]'
-      )}
-      style={{ borderLeftColor: priorityColor }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      onClick={handleCardClick}
-    >
-      {/* LINE 1: Completion circle + title */}
-      <div className="flex items-start gap-2">
-        {inBulkMode ? (
-          <div className={cn(
-            'flex-shrink-0 mt-0.5 w-8 h-8 rounded-full border-2 flex items-center justify-center',
-            selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
-          )}>
-            {selected && <Check size={14} className="text-white" />}
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onComplete(task); }}
-            className="flex-shrink-0 mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
-            style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
-            aria-label={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
-          >
-            {task.isCompleted && <Check size={12} style={{ color: priorityColor }} />}
-          </button>
-        )}
-
-        <p className={cn(
-          'flex-1 text-sm text-[#1C1C1E] leading-snug',
-          task.isCompleted && 'line-through text-[#AEAEB2]'
-        )}>
-          {task.title}
-        </p>
-      </div>
-
-      {/* LINE 2: Due date (left) + Realm name (right) */}
-      {(dueDateInfo || task.realm) && (
-        <div className="flex items-center justify-between ml-10">
-          {dueDateInfo ? (
-            <span className="text-xs" style={{ color: dueDateInfo.color }}>{dueDateInfo.label}</span>
-          ) : <span />}
-          {task.realm && (
-            <span className="text-xs text-[#AEAEB2]">{task.realm}</span>
-          )}
-        </div>
-      )}
-
-      {/* LINE 3: Target title */}
-      {(task.targetId || task.projectId) && targetDisplay && (
-        <p className="text-xs text-[#AEAEB2] ml-10">{targetDisplay}</p>
-      )}
-    </div>
-  );
-}
-
 // ─── TARGET CARD ──────────────────────────────────────────────────────────────
 
 function TargetCard({
@@ -1861,7 +1752,7 @@ function TargetCard({
                 <Star size={15} className={project.isFavorite ? 'text-[#FFD700]' : 'text-[#AEAEB2]'} fill={project.isFavorite ? '#FFD700' : 'none'} />
               </button>
               <button type="button" onClick={() => onEdit(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#1C1C1E]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
               </button>
               <button type="button" onClick={() => onDelete(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]">
                 <Trash2 size={14} />
@@ -2090,11 +1981,11 @@ export default function ActionsPage() {
   ];
 
   const emptyMessages: Record<TabId, { title: string; subtitle: string }> = {
-    today:     { title: 'All clear today', subtitle: 'No actions due today. Enjoy your day!' },
-    inbox:     { title: 'Inbox is empty', subtitle: 'Actions without a Target appear here.' },
-    upcoming:  { title: 'Nothing upcoming', subtitle: 'Schedule actions with a future due date.' },
+    today: { title: 'All clear today', subtitle: 'No actions due today. Enjoy your day!' },
+    inbox: { title: 'Inbox is empty', subtitle: 'Actions without a Target appear here.' },
+    upcoming: { title: 'Nothing upcoming', subtitle: 'Schedule actions with a future due date.' },
     completed: { title: 'Nothing completed recently', subtitle: 'Complete actions to see them here.' },
-    targets:   { title: 'No Targets yet', subtitle: 'Create your first Target to organise your Actions.' },
+    targets: { title: 'No Targets yet', subtitle: 'Create your first Target to organise your Actions.' },
   };
 
   const loading = tasksLoading || projectsLoading;
@@ -2241,9 +2132,9 @@ export default function ActionsPage() {
                 onAction={activeTab === 'today' || activeTab === 'inbox' ? () => setTaskModalOpen(true) : undefined}
               />
             ) : (
-              <div className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] overflow-hidden">
+              <div className="flex flex-col gap-0 pb-4">
                 {activeTab === 'today' && overdueCount > 0 && (
-                  <div className="px-4 py-1.5 bg-[#FEF2F2] border-b border-[#E5E5EA]">
+                  <div className="px-4 py-1.5 bg-[#FEF2F2] border border-[#E5E5EA] rounded-md mb-2">
                     <p className="text-xs font-semibold text-[#EF4444]">
                       ⚠ Overdue — {overdueCount} action{overdueCount > 1 ? 's' : ''}
                     </p>
@@ -2255,7 +2146,7 @@ export default function ActionsPage() {
                     task={task}
                     projects={projects}
                     onComplete={handleComplete}
-                    onOpenDetail={(t) => setDetailTask(t)}
+                    onEdit={(t) => setDetailTask(t)}
                     selected={selectedTasks.has(task.id)}
                     onSelect={toggleSelect}
                     inBulkMode={inBulkMode}

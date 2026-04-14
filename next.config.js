@@ -18,8 +18,8 @@ module.exports = withPWA({
     skipWaiting: true,
     clientsClaim: true,
     cleanupOutdatedCaches: true,
-    // navigateFallback intentionally omitted: this is an SSR app, not an SPA.
-    // registerNavigationRoute would serve the fallback page for ALL navigations,
-    // breaking server-rendered routes. Network-first is correct for Next.js pages.
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 });

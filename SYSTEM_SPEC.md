@@ -242,7 +242,7 @@ For local development, configure Firebase and `GEMINI_API_KEY` in `.env.local` (
 6. **`/api/ai-tip`:** align method, rate limits, and dashboard fetch with plan §11 if product requires it.  
 7. **AI Chat:** optional injection of sanitized Firestore context into `POST /api/chat` body to match plan §9.11.  
 8. **Dependencies:** align `eslint-config-next` major with Next 14 to reduce tooling drift.  
-9. **`TaskCard` extracted** to `components/tasks/TaskCard.tsx` (done in TASK 3); `app/(main)/tasks/page.tsx` still has a local duplicate — consider removing it in a future refactor pass.
+9. **`TaskCard` extracted and standardized** to `components/tasks/TaskCard.tsx`. `app/(main)/tasks/page.tsx` local duplicate has been removed to ensure consistent Action Card look and behavior everywhere.
 
 ---
 

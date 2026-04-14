@@ -538,7 +538,7 @@ export default function FinancePage() {
       {/* Delete Modal */}
       <Modal open={deleteModal.open} onClose={() => setDeleteModal({ open: false, type: '', id: '', name: '' })} title={`Delete ${deleteModal.type}`}>
         <div className="p-4">
-          <p className="text-[#1C1C1E] mb-4">Delete "{deleteModal.name}"? This cannot be undone.</p>
+          <p className="text-[#1C1C1E] mb-4">Delete &quot;{deleteModal.name}&quot;? This cannot be undone.</p>
           <div className="flex gap-3">
             <Button variant="secondary" fullWidth onClick={() => setDeleteModal({ open: false, type: '', id: '', name: '' })}>Cancel</Button>
             <Button variant="danger" fullWidth onClick={handleDelete}>Delete</Button>
