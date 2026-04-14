@@ -28,7 +28,10 @@ function parseDueDate(s: string): Date | null {
 function parseDueDateTime(date: string, time?: string): Date | null {
   const parsedDate = parseDueDate(date);
   if (!parsedDate) return null;
-  if (!time) return parsedDate;
+  if (!time) {
+    parsedDate.setHours(23, 59, 59, 999);
+    return parsedDate;
+  }
 
   const normalized = time.trim();
   const ampmMatch = normalized.match(/(am|pm)$/i);
@@ -57,6 +60,17 @@ function formatCardDate(date: string): string {
   const d = String(parsed.getDate()).padStart(2, '0');
   const y = parsed.getFullYear();
   return `${m}/${d}/${y}`;
+}
+
+function formatTimeAMPM(time24?: string): string {
+  if (!time24) return '';
+  const normalized = time24.trim();
+  if (normalized.match(/(am|pm)$/i)) return normalized; // Already formatted
+  const [h, m] = normalized.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return time24;
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
 function todayMidnight(): Date {
@@ -101,8 +115,11 @@ function getDueDateInfo(dueDate: string | undefined, dueTime: string | undefined
     label = formatCardDate(dueDate);
   }
 
-  if (dueTime) label += ` ${dueTime}`;
-  const color = due.getTime() > now.getTime() ? '#1ABC9C' : '#EF4444';
+  if (dueTime) {
+    label += ` ${formatTimeAMPM(dueTime)}`;
+  }
+  
+  const color = now.getTime() < due.getTime() ? '#1ABC9C' : '#EF4444';
   return { label, color };
 }
 
@@ -175,24 +192,24 @@ export function TaskCard({
         {inBulkMode ? (
           <div
             className={cn(
-              'flex-shrink-0 mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center',
+              'flex-shrink-0 mt-1 w-[14px] h-[14px] rounded-full border-2 flex items-center justify-center',
               selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
             )}
           >
-            {selected && <Check size={14} className="text-white" />}
+            {selected && <Check size={10} strokeWidth={3} className="text-white" />}
           </div>
         ) : (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onComplete(task); }}
             className={cn(
-              'flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
+              'flex-shrink-0 mt-1 w-[14px] h-[14px] rounded-full border-2 flex items-center justify-center transition-colors',
               task.isCompleted && 'bg-opacity-20'
             )}
             style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
             aria-label={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            {task.isCompleted && <Check size={12} style={{ color: priorityColor }} />}
+            {task.isCompleted && <Check size={10} strokeWidth={3} style={{ color: priorityColor }} />}
           </button>
         )}
 
@@ -206,7 +223,7 @@ export function TaskCard({
 
       {/* LINE 2: Due date/time (left) + Area of Life | Target (right) */}
       {(dueDateInfo || task.realm || targetDisplay) && (
-        <div className="flex items-center justify-between ml-10">
+        <div className="flex items-center justify-between ml-6">
           {dueDateInfo ? (
             <span className="text-xs" style={{ color: dueDateInfo.color }}>
               {dueDateInfo.label}
@@ -215,7 +232,7 @@ export function TaskCard({
             <span />
           )}
           <span className="text-xs text-[#AEAEB2]">
-            {task.realm || 'Default'}{targetDisplay ? ` | ${targetDisplay}` : ''}
+            {targetDisplay ? `${targetDisplay} | ` : ''}{task.realm || 'Default'}
           </span>
         </div>
       )}
