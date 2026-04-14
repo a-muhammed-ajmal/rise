@@ -4,10 +4,11 @@ import {
   useState, useRef, useEffect, useCallback, useMemo, KeyboardEvent,
 } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   Plus, Sun, Repeat, Bell, Paperclip, Calendar, X, Check,
   ChevronLeft, ChevronRight, Copy, Trash2, Briefcase, Star,
-  CheckSquare, Keyboard, Clock,
+  CheckSquare, Keyboard, Clock, Menu, Crosshair, ChevronDown, Edit2,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -23,8 +24,45 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Badge } from '@/components/ui/Badge';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { MobileSidebar } from '@/components/layout/MobileSidebar';
 import { toast } from '@/lib/toast';
 import { sanitize } from '@/lib/sanitizer';
+
+// ─── PREMIUM UI COMPONENTS ──────────────────────────────────────────────────
+
+function ArrowCheck({ 
+  completed, 
+  color, 
+  onClick, 
+  size = 18 
+}: { 
+  completed: boolean; 
+  color: string; 
+  onClick?: (e: React.MouseEvent) => void;
+  size?: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex-shrink-0 flex items-center justify-center transition-all active:scale-90"
+      style={{ width: size, height: size }}
+    >
+      <div 
+        className={cn(
+          "w-full h-full rounded-full border-2 flex items-center justify-center transition-colors",
+          completed ? "border-transparent" : "border-[#AEAEB2]"
+        )}
+        style={{ backgroundColor: completed ? color : 'transparent' }}
+      >
+        {completed && (
+          <Check size={size * 0.6} strokeWidth={3} className="text-white" />
+        )}
+      </div>
+    </button>
+  );
+}
+
 
 // ─── PRIORITY CONFIG (per spec) ──────────────────────────────────────────────
 
@@ -1594,41 +1632,63 @@ function ActionDetailPopup({
   );
 }
 
-// ─── PROJECT MODAL ────────────────────────────────────────────────────────────
+// ─── TARGET POPUP (NEW) ───────────────────────────────────────────────────────
 
-interface ProjectForm {
+interface TargetForm {
   title: string;
   realm: string;
   dueDate: string;
+  isCompleted: boolean;
 }
 
-function ProjectModal({
-  open, onClose, project, userId,
+function TargetPopup({
+  open, onClose, project, tasks, userId,
 }: {
   open: boolean;
   onClose: () => void;
   project: Project | null;
+  tasks: Task[];
   userId: string;
 }) {
-  const [form, setForm] = useState<ProjectForm>({ title: '', realm: REALMS[0], dueDate: '' });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [form, setForm] = useState<TargetForm>({ 
+    title: '', 
+    realm: 'Personal', 
+    dueDate: '',
+    isCompleted: false 
+  });
+  const [isDirty, setIsDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dtPickerOpen, setDtPickerOpen] = useState(false);
+  const [realmDropdownOpen, setRealmDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setErrors({});
-      setForm(project
-        ? { title: project.title, realm: project.realm, dueDate: project.dueDate ?? '' }
-        : { title: '', realm: REALMS[0], dueDate: '' }
-      );
+      if (project) {
+        setForm({
+          title: project.title,
+          realm: project.realm,
+          dueDate: project.dueDate ?? '',
+          isCompleted: project.isCompleted ?? false,
+        });
+      } else {
+        setForm({ 
+          title: '', 
+          realm: 'Personal', 
+          dueDate: '',
+          isCompleted: false 
+        });
+      }
+      setIsDirty(false);
     }
   }, [open, project]);
 
+  const set = <K extends keyof TargetForm>(k: K, v: TargetForm[K]) => {
+    setForm(f => ({ ...f, [k]: v }));
+    setIsDirty(true);
+  };
+
   const handleSave = async () => {
-    const e: Record<string, string> = {};
-    if (!form.title.trim()) e.title = 'Target name is required';
-    setErrors(e);
-    if (Object.keys(e).length) return;
+    if (!form.title.trim()) { toast.error('Target title is required'); return; }
     setSaving(true);
     const cfg = REALM_CONFIG[form.realm] ?? { emoji: '🎯', color: '#FF6B35' };
     try {
@@ -1639,151 +1699,296 @@ function ProjectModal({
         color: cfg.color,
         icon: cfg.emoji,
         isFavorite: project?.isFavorite ?? false,
+        isCompleted: form.isCompleted,
+        completedAt: form.isCompleted ? (project?.completedAt ?? new Date().toISOString()) : undefined,
         order: project?.order ?? Date.now(),
         dueDate: form.dueDate || undefined,
       };
       if (project) {
         await updateDocById(COLLECTIONS.PROJECTS, project.id, data);
-        toast.success('Target updated.');
+        toast.success('Target updated');
       } else {
         await createDoc(COLLECTIONS.PROJECTS, data);
-        toast.success('Target created.');
+        toast.success('Target created');
       }
       onClose();
     } catch {
-      toast.error('Failed to save target.');
+      toast.error('Failed to save target');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!project) return;
+    setSaving(true);
+    try {
+      await createDoc(COLLECTIONS.PROJECTS, {
+        userId,
+        title: sanitize(`${form.title} (Copy)`, 100),
+        realm: form.realm,
+        color: REALM_CONFIG[form.realm]?.color || '#FF6B35',
+        icon: REALM_CONFIG[form.realm]?.emoji || '🎯',
+        isFavorite: false,
+        isCompleted: false,
+        order: Date.now(),
+        dueDate: form.dueDate || undefined,
+      });
+      toast.success('Target duplicated');
+      onClose();
+    } catch {
+      toast.error('Failed to duplicate target');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!project) return;
+    try {
+      await deleteDocById(COLLECTIONS.PROJECTS, project.id);
+      toast.success('Target deleted');
+      onClose();
+    } catch {
+      toast.error('Failed to delete target');
+    }
+  };
+
+  const linkedTasks = tasks.filter(t => (t.targetId ?? t.projectId) === project?.id);
+  const realmColor = REALM_CONFIG[form.realm]?.color || '#FF6B35';
+
+  if (!open) return null;
+
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={project ? 'Edit Target' : 'New Target'}
-      footer={
-        <div className="flex gap-3">
-          <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
-          <Button fullWidth loading={saving} onClick={handleSave}>
-            {project ? 'Save Changes' : 'Create Target'}
-          </Button>
+    <>
+      <Modal open={open} onClose={onClose} forceModal className="max-w-[400px]">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-[18px] font-[600] text-[#1C1C1E]">Set New Target</h1>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+            <X size={20} className="text-[#6C6C70]" />
+          </button>
         </div>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[#1C1C1E]">Target Name<span className="text-[#FF4F6D] ml-0.5">*</span></label>
+
+        {/* Input */}
+        <div className="mb-1">
           <input
             type="text"
             value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            placeholder="What do you want to achieve?"
-            autoFocus
-            className={cn(
-              'w-full bg-[#F5F5F5] border rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none transition-colors focus:border-[#FF6B35] focus:bg-white',
-              errors.title ? 'border-[#FF4F6D]' : 'border-[#E5E5EA]'
-            )}
+            onChange={(e) => set('title', e.target.value)}
+            placeholder="Set a new target…"
+            className="w-full bg-transparent outline-none py-2 text-[12px] text-[#1C1C1E] transition-colors focus:border-b focus:border-[#FF6B35]"
           />
-          {errors.title && <p className="text-xs text-[#FF4F6D]">{errors.title}</p>}
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[#1C1C1E]">Realm</label>
-          <select
-            value={form.realm}
-            onChange={(e) => setForm((f) => ({ ...f, realm: e.target.value }))}
-            className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] outline-none focus:border-[#FF6B35] appearance-none"
+
+        {/* Horizontal line with 4px spacing */}
+        <div className="px-1 py-1">
+          <div className="h-[1px] bg-[#E5E5EA]" />
+        </div>
+
+        {/* Icon + Target Title line */}
+        <div className="flex items-center gap-2 py-2">
+          <ArrowCheck 
+            completed={form.isCompleted} 
+            color={realmColor} 
+            onClick={() => set('isCompleted', !form.isCompleted)} 
+            size={16}
+          />
+          <span className="text-[12px] font-[500] text-[#1C1C1E] truncate">
+            {form.title || "Target title"}
+          </span>
+        </div>
+
+        {/* Relhem Dropdown + Date */}
+        <div className="flex items-center gap-3 py-2">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setRealmDropdownOpen(!realmDropdownOpen)}
+              className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#F5F5F5] border border-[#E5E5EA] active:scale-95 transition-all"
+            >
+              <span className={cn("btn-text", form.realm === 'Personal' && !project ? "" : "font-[400]")}>
+                {project || form.realm !== 'Personal' ? form.realm : "Relhem"}
+              </span>
+              <ChevronDown size={12} className={cn("text-[#AEAEB2] transition-transform", realmDropdownOpen && "rotate-180")} />
+            </button>
+
+            {realmDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-[#E5E5EA] rounded-card shadow-sheet min-w-[140px] p-[2px]">
+                {REALMS.map(r => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => { set('realm', r); setRealmDropdownOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-[#F5F5F5] transition-colors"
+                  >
+                    <span className="text-base">{REALM_CONFIG[r].emoji}</span>
+                    <span className="text-[12px] text-[#1C1C1E]">{r}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setDtPickerOpen(true)}
+            className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#F5F5F5] border border-[#E5E5EA] active:scale-95 transition-all"
           >
-            {REALMS.map((r) => (
-              <option key={r} value={r}>{REALM_CONFIG[r].emoji} {r}</option>
-            ))}
-          </select>
+            <Calendar size={12} className="text-[#AEAEB2]" />
+            <span className="btn-text">
+              {form.dueDate ? form.dueDate : "Set Date"}
+            </span>
+          </button>
         </div>
-        {form.realm && (
-          <div className="flex items-center gap-3 px-3 py-2 bg-[#F5F5F5] rounded-card border border-[#E5E5EA]">
-            <span className="text-2xl">{REALM_CONFIG[form.realm]?.emoji}</span>
-            <div>
-              <p className="text-sm font-medium text-[#1C1C1E]">{form.realm}</p>
-              <p className="text-xs text-[#6C6C70]">{REALM_CONFIG[form.realm]?.description}</p>
+
+        {/* Linked Actions */}
+        {linkedTasks.length > 0 && (
+          <div className="mt-4 flex flex-col gap-2">
+            <p className="text-[10px] uppercase tracking-wider text-[#AEAEB2] font-semibold">Actions</p>
+            <div className="max-h-[200px] overflow-y-auto pr-1">
+              {linkedTasks.map(t => (
+                <TaskCard 
+                  key={t.id} 
+                  task={t} 
+                  projects={project ? [project] : []} 
+                  onComplete={() => {}} // Read-only in this view
+                  onEdit={() => {}}
+                  selected={false}
+                  onSelect={() => {}}
+                  inBulkMode={false}
+                />
+              ))}
             </div>
           </div>
         )}
-      </div>
-    </Modal>
+
+        {/* Divider */}
+        <div className="h-[1px] bg-[#E5E5EA] my-4" />
+
+        {/* Footer buttons */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleDuplicate}
+            disabled={!project}
+            className="flex-1 h-10 rounded bg-[#F5F5F5] border border-[#E5E5EA] text-[12px] font-[500] text-[#1C1C1E] disabled:opacity-40"
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={!project}
+            className="flex-1 h-10 rounded bg-[#F5F5F5] border border-[#E5E5EA] text-[12px] font-[500] text-[#FF4F6D] disabled:opacity-40"
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            onClick={isDirty ? handleSave : (project ? onClose : handleSave)}
+            className="flex-1 h-10 rounded bg-[#FF6B35] text-white text-[12px] font-[500]"
+          >
+            {!project ? "Set" : (isDirty ? "Update" : "Cancel")}
+          </button>
+        </div>
+      </Modal>
+
+      <DateTimePickerSheet
+        open={dtPickerOpen}
+        dueDate={form.dueDate}
+        dueTime=""
+        onSave={(d) => { set('dueDate', d); }}
+        onClose={() => setDtPickerOpen(false)}
+      />
+    </>
   );
 }
 
-// ─── TARGET CARD ──────────────────────────────────────────────────────────────
 
-function TargetCard({
-  project, tasks, onEdit, onDelete, onToggleFavorite,
-}: {
+
+
+
+
+// ─── TARGET CARD (NEW) ────────────────────────────────────────────────────────
+interface TargetCardProps {
   project: Project;
   tasks: Task[];
   onEdit: (p: Project) => void;
-  onDelete: (p: Project) => void;
-  onToggleFavorite: (p: Project) => void;
-}) {
-  const linked = tasks
-    .filter((t) => (t.targetId ?? t.projectId) === project.id)
-    .sort((a, b) => {
-      const aDue = a.dueDate ? parseDueDate(a.dueDate)?.getTime() ?? 0 : 0;
-      const bDue = b.dueDate ? parseDueDate(b.dueDate)?.getTime() ?? 0 : 0;
-      return aDue - bDue;
-    });
-  const done = linked.filter((t) => t.isCompleted).length;
-  const total = linked.length;
-  const cfg = REALM_CONFIG[project.realm] ?? { emoji: '🎯', color: '#FF6B35' };
+  onToggleComplete: (p: Project) => void;
+}
+
+function TargetCard({ project, tasks, onEdit, onToggleComplete }: TargetCardProps) {
+  const projectTasks = tasks.filter(t => (t.targetId ?? t.projectId) === project.id);
+  const completedCount = projectTasks.filter(t => t.isCompleted).length;
+  const totalCount = projectTasks.length;
+  const progressPercent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+
+  // Time remaining % calculation
+  const getTimeRemainingPercent = () => {
+    if (!project.dueDate || !project.createdAt) return 0;
+    const start = new Date(project.createdAt).getTime();
+    const end = new Date(project.dueDate).getTime();
+    const now = Date.now();
+    if (now >= end) return 100;
+    const total = end - start;
+    if (total <= 0) return 0;
+    const elapsed = now - start;
+    return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+  };
+  const timePercent = getTimeRemainingPercent();
+  const realmColor = REALM_CONFIG[project.realm]?.color || '#FF6B35';
 
   return (
-    <div className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] p-3">
-      <div className="flex items-start gap-3">
-        <span className="text-2xl flex-shrink-0">{project.icon || cfg.emoji}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-[#1C1C1E] truncate">{project.title}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge label={project.realm} color={cfg.color} />
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <button type="button" onClick={() => onToggleFavorite(project)} className="w-7 h-7 flex items-center justify-center">
-                <Star size={15} className={project.isFavorite ? 'text-[#FFD700]' : 'text-[#AEAEB2]'} fill={project.isFavorite ? '#FFD700' : 'none'} />
-              </button>
-              <button type="button" onClick={() => onEdit(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#1C1C1E]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
-              </button>
-              <button type="button" onClick={() => onDelete(project)} className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]">
-                <Trash2 size={14} />
-              </button>
-            </div>
-          </div>
+    <div 
+      onClick={() => onEdit(project)}
+      className="bg-white rounded-card border border-[#E5E5EA] p-4 flex flex-col gap-3 active:scale-[0.98] transition-all cursor-pointer shadow-sm hover:shadow-md"
+    >
+      <div className="flex items-center gap-3">
+        <ArrowCheck 
+          completed={project.isCompleted || false} 
+          color={realmColor} 
+          onClick={(e) => { e.stopPropagation(); onToggleComplete(project); }} 
+        />
+        <h3 className={cn(
+          "text-[15px] font-semibold text-[#1C1C1E] flex-1 truncate",
+          project.isCompleted && "line-through text-[#AEAEB2]"
+        )}>
+          {project.title}
+        </h3>
+      </div>
 
-          <div className="mt-3">
-            <ProgressBar value={done} max={total || 1} color={cfg.color} height={4} />
-            <p className="text-xs text-[#6C6C70] mt-1">{done}/{total} actions done</p>
-          </div>
+      <div className="flex items-center justify-between text-[11px] text-[#6C6C70]">
+        <div className="flex items-center gap-1.5">
+          <Calendar size={12} />
+          <span>{project.dueDate ? new Date(project.dueDate).toLocaleDateString('en-GB') : 'No date'}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: realmColor }} />
+          <span>{project.realm}</span>
+        </div>
+      </div>
 
-          {linked.length > 0 ? (
-            <div className="mt-3 space-y-2">
-              {linked.slice(0, 3).map((task) => (
-                <div key={task.id} className="rounded-lg bg-[#F8F8F9] px-3 py-2">
-                  <p className="text-xs font-medium text-[#1C1C1E] truncate">{task.title}</p>
-                  <p className="text-[11px] text-[#6C6C70] mt-0.5">
-                    {task.dueDate ? `${task.dueDate}${task.dueTime ? ` ${task.dueTime}` : ''}` : 'No due date'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-[#6C6C70] mt-3">No actions yet.</p>
-          )}
+      <div className="grid grid-cols-2 gap-3 mt-1">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between text-[10px] font-medium uppercase tracking-wider">
+            <span>Time Used</span>
+            <span>{timePercent}%</span>
+          </div>
+          <ProgressBar value={timePercent} color={timePercent > 90 ? "#FF4F6D" : "#FF9933"} height={4} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between text-[10px] font-medium uppercase tracking-wider">
+            <span>Actions Done</span>
+            <span>{completedCount}/{totalCount} ({progressPercent}%)</span>
+          </div>
+          <ProgressBar value={progressPercent} color="#34C759" height={4} />
         </div>
       </div>
     </div>
   );
 }
+
 
 // ─── ACTIONS PAGE ─────────────────────────────────────────────────────────────
 
@@ -1807,12 +2012,14 @@ export default function ActionsPage() {
 
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [taskModalOpen, setTaskModalOpen] = useState(false);
-  const [editTask, setEditTask] = useState<Task | null>(null);
-  const [detailTask, setDetailTask] = useState<Task | null>(null);
-  const [deleteTask, setDeleteTask] = useState<Task | null>(null);
-  const [projectModalOpen, setProjectModalOpen] = useState(false);
-  const [editProject, setEditProject] = useState<Project | null>(null);
-  const [deleteProject, setDeleteProject] = useState<Project | null>(null);
+  const [targetPopupOpen, setTargetPopupOpen] = useState(false);
+  const [detailPopupOpen, setDetailPopupOpen] = useState(false);
+  
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedRealm, setSelectedRealm] = useState<string>('All');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const [inBulkMode, setInBulkMode] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
@@ -1843,8 +2050,15 @@ export default function ActionsPage() {
   // Open create modal if ?create=true in URL
   useEffect(() => {
     if (searchParams?.get('create') === 'true') {
-      setEditTask(null);
+      setSelectedTask(null);
       setTaskModalOpen(true);
+      router.replace('/tasks');
+      return;
+    }
+
+    if (searchParams?.get('createTarget') === 'true') {
+      setSelectedProject(null);
+      setTargetPopupOpen(true);
       router.replace('/tasks');
       return;
     }
@@ -1853,7 +2067,7 @@ export default function ActionsPage() {
     if (editId && tasks.length > 0) {
       const taskToEdit = tasks.find((t) => t.id === editId);
       if (taskToEdit) {
-        setEditTask(taskToEdit);
+        setSelectedTask(taskToEdit);
         setTaskModalOpen(true);
         router.replace('/tasks');
       }
@@ -1868,35 +2082,66 @@ export default function ActionsPage() {
   const today = todayMidnight();
   const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 7);
 
-  const todayTasks = useMemo(() => tasks.filter((t) => {
-    if (t.isCompleted) return false;
-    if (!t.dueDate) return false;
-    const due = parseDueDate(t.dueDate);
-    return due ? due.getTime() <= today.getTime() : false;
-  }).sort((a, b) => {
-    const aOver = isTaskOverdue(a) ? 0 : 1;
-    const bOver = isTaskOverdue(b) ? 0 : 1;
-    if (aOver !== bOver) return aOver - bOver;
-    return parseInt(a.priority[1]) - parseInt(b.priority[1]);
-  }), [tasks, today]); // eslint-disable-line react-hooks/exhaustive-deps
+  const todayTasks = useMemo(() => {
+    const active = tasks.filter((t) => {
+      if (!t.dueDate) return false;
+      const due = parseDueDate(t.dueDate);
+      return due ? due.getTime() <= today.getTime() : false;
+    });
+    const uncompleted = active.filter(t => !t.isCompleted).sort((a, b) => {
+      const aOver = isTaskOverdue(a) ? 0 : 1;
+      const bOver = isTaskOverdue(b) ? 0 : 1;
+      if (aOver !== bOver) return aOver - bOver;
+      return parseInt(a.priority[1]) - parseInt(b.priority[1]);
+    });
+    const completed = active.filter(t => t.isCompleted).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+    return [...uncompleted, ...completed];
+  }, [tasks, today]);
 
-  const inboxTasks = useMemo(() => tasks.filter(
-    (t) => !t.isCompleted && !t.dueDate
-  ).sort((a, b) => parseInt(a.priority[1]) - parseInt(b.priority[1])), [tasks]);
+  const inboxTasks = useMemo(() => {
+    const active = tasks.filter((t) => !t.dueDate);
+    const uncompleted = active.filter(t => !t.isCompleted).sort((a, b) => parseInt(a.priority[1]) - parseInt(b.priority[1]));
+    const completed = active.filter(t => t.isCompleted).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+    return [...uncompleted, ...completed];
+  }, [tasks]);
 
-  const upcomingTasks = useMemo(() => tasks.filter((t) => {
-    if (t.isCompleted || !t.dueDate) return false;
-    const due = parseDueDate(t.dueDate);
-    return due ? due.getTime() > today.getTime() : false;
-  }).sort((a, b) => {
-    const da = parseDueDate(a.dueDate!)?.getTime() ?? 0;
-    const db = parseDueDate(b.dueDate!)?.getTime() ?? 0;
-    return da - db;
-  }), [tasks, today]); // eslint-disable-line react-hooks/exhaustive-deps
+  const upcomingTasks = useMemo(() => {
+    const active = tasks.filter((t) => {
+      if (!t.dueDate) return false;
+      const due = parseDueDate(t.dueDate);
+      return due ? due.getTime() > today.getTime() : false;
+    });
+    const uncompleted = active.filter(t => !t.isCompleted).sort((a, b) => {
+      const da = parseDueDate(a.dueDate!)?.getTime() ?? 0;
+      const db = parseDueDate(b.dueDate!)?.getTime() ?? 0;
+      return da - db;
+    });
+    const completed = active.filter(t => t.isCompleted).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+    return [...uncompleted, ...completed];
+  }, [tasks, today]);
 
   const completedTasks = useMemo(() => tasks.filter(
     (t) => t.isCompleted && t.completedAt && new Date(t.completedAt) >= sevenDaysAgo
-  ).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')), [tasks, sevenDaysAgo]); // eslint-disable-line react-hooks/exhaustive-deps
+  ).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')), [tasks, sevenDaysAgo]);
+
+  const filteredTargets = useMemo(() => {
+    let p = projects;
+    if (selectedRealm !== 'All') {
+      p = p.filter(proj => proj.realm === selectedRealm);
+    }
+    
+    const uncompleted = p.filter(proj => !proj.isCompleted).sort((a, b) => {
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+    
+    const completed = p.filter(proj => proj.isCompleted).sort((a, b) => 
+      (b.completedAt ?? '').localeCompare(a.completedAt ?? '')
+    );
+    
+    return [...uncompleted, ...completed];
+  }, [projects, selectedRealm]);
 
   const currentTabTasks: Task[] = {
     today: todayTasks, inbox: inboxTasks, upcoming: upcomingTasks,
@@ -1957,16 +2202,16 @@ export default function ActionsPage() {
   }, []);
 
   const handleDeleteProject = useCallback(async () => {
-    if (!deleteProject) return;
-    const linked = tasks.filter((t) => (t.targetId ?? t.projectId) === deleteProject.id);
+    if (!selectedProject) return;
+    const linked = tasks.filter((t) => (t.targetId ?? t.projectId) === selectedProject.id);
     await Promise.all(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       linked.map((t) => updateDocById(COLLECTIONS.TASKS, t.id, { targetId: null, projectId: null } as any))
     );
-    await deleteDocById(COLLECTIONS.PROJECTS, deleteProject.id);
+    await deleteDocById(COLLECTIONS.PROJECTS, selectedProject.id);
     toast.success('Target deleted.');
-    setDeleteProject(null);
-  }, [deleteProject, tasks]);
+    setSelectedProject(null);
+  }, [selectedProject, tasks]);
 
   const handleToggleFavorite = useCallback(async (project: Project) => {
     await updateDocById(COLLECTIONS.PROJECTS, project.id, { isFavorite: !project.isFavorite });
@@ -1999,162 +2244,178 @@ export default function ActionsPage() {
   const overdueCount = todayTasks.filter((t) => isTaskOverdue(t)).length;
 
   return (
-    <div className="flex flex-col min-h-dvh">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-2 border-b border-[#E5E5EA]">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-[#1C1C1E]">Actions</h1>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleBellClick}
-              className="w-10 h-10 flex items-center justify-center text-[#6C6C70] rounded-full hover:bg-[#F5F5F5]"
-              aria-label="Notifications"
-            >
-              <Bell size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === 'targets') {
-                  setEditProject(null);
-                  setProjectModalOpen(true);
-                } else {
-                  setEditTask(null);
-                  setTaskModalOpen(true);
-                }
-              }}
-              className="h-10 px-3 rounded-full bg-[#FF6B35] text-white flex items-center gap-2 text-sm"
-            >
-              <Plus size={14} />
-              {activeTab === 'targets' ? 'Target' : 'Action'}
-            </button>
+    <div className="flex flex-col min-h-dvh bg-[#F2F2F7]">
+      {/* Redesigned Header: ☰ logo RISE – Actions [+ Add] 🔔 */}
+      <header className="sticky top-0 z-40 bg-white border-b border-[#E5E5EA] px-3 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button 
+            type="button" 
+            onClick={() => setSidebarOpen(true)}
+            className="w-9 h-9 flex items-center justify-center text-[#6C6C70] rounded-full hover:bg-[#F2F2F7]"
+          >
+            <Menu size={22} />
+          </button>
+          
+          <div className="flex items-center gap-1.5">
+            <Image
+              src="/icons/icon-maskable-912.png"
+              alt="RISE"
+              width={22}
+              height={22}
+              priority
+            />
+            <span className="text-[15px] font-bold text-[#FF9933] tracking-widest">RISE</span>
+            <span className="text-[#AEAEB2] mx-0.5">—</span>
+            <span className="text-[15px] font-semibold text-[#1C1C1E]">Actions</span>
           </div>
         </div>
-        <div className="flex gap-1 overflow-x-auto pb-1 -mx-4 px-4">
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              if (activeTab === 'targets') {
+                setSelectedProject(null);
+                setTargetPopupOpen(true);
+              } else {
+                setSelectedTask(null);
+                setTaskModalOpen(true);
+              }
+            }}
+            className="h-9 px-3 rounded-full bg-[#FF6B35] text-white flex items-center gap-1.5 text-[12px] font-[500] active:scale-95 transition-all"
+          >
+            <Plus size={14} />
+            {activeTab === 'targets' ? 'Target' : 'Action'}
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleBellClick}
+            className="w-9 h-9 flex items-center justify-center text-[#6C6C70] rounded-full hover:bg-[#F2F2F7]"
+          >
+            <Bell size={20} />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Tabs */}
+      <div className="bg-white border-b border-[#E5E5EA] overflow-x-auto no-scrollbar">
+        <div className="flex px-4 h-11">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => { setActiveTab(tab.id); setInBulkMode(false); setSelectedTasks(new Set()); }}
               className={cn(
-                'flex-shrink-0 h-8 px-4 rounded-chip text-xs font-medium transition-colors',
-                activeTab === tab.id
-                  ? 'bg-[#FF6B35] text-white'
-                  : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]'
+                'flex-shrink-0 px-4 h-full text-[13px] font-medium transition-all relative',
+                activeTab === tab.id ? 'text-[#FF6B35]' : 'text-[#6C6C70]'
               )}
             >
               {tab.label}
-              {tab.id === 'today' && todayTasks.length > 0 && (
-                <span className="ml-1.5 bg-white/20 text-inherit rounded-full px-1.5 text-[10px]">
-                  {todayTasks.length}
-                </span>
-              )}
-              {tab.id === 'inbox' && inboxTasks.length > 0 && (
-                <span className="ml-1.5 bg-white/20 text-inherit rounded-full px-1.5 text-[10px]">
-                  {inboxTasks.length}
-                </span>
+              {activeTab === tab.id && (
+                <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#FF6B35] rounded-t-full" />
               )}
             </button>
           ))}
         </div>
       </div>
 
+      <MobileSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       {/* Bulk toolbar */}
       {inBulkMode && selectedTasks.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-[#F5F5F5] border-b border-[#E5E5EA]">
-          <span className="text-xs text-[#1C1C1E] flex-1">{selectedTasks.size} selected</span>
-          <Button size="sm" variant="secondary" onClick={() => { setInBulkMode(false); setSelectedTasks(new Set()); }}>Cancel</Button>
-          <Button size="sm" onClick={handleBulkComplete}>Complete All</Button>
-          <Button size="sm" variant="danger" onClick={() => setBulkDeleteConfirm(true)}>Delete All</Button>
+        <div className="sticky top-14 z-30 flex items-center gap-3 px-4 py-2 bg-[#F5F5F5] border-b border-[#E5E5EA] animate-fade-in">
+          <span className="text-[12px] font-medium text-[#1C1C1E] flex-1">{selectedTasks.size} selected</span>
+          <button onClick={() => { setInBulkMode(false); setSelectedTasks(new Set()); }} className="text-[12px] text-[#6C6C70] font-medium">Cancel</button>
+          <button onClick={handleBulkComplete} className="text-[12px] text-[#FF6B35] font-semibold">Complete</button>
+          <button onClick={() => setBulkDeleteConfirm(true)} className="text-[12px] text-[#FF4F6D] font-semibold">Delete</button>
         </div>
       )}
 
       {/* Content */}
-      <div className="flex-1 px-4 py-4 pb-24">
-        {activeTab === 'targets' && (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2">
-              {['All', ...REALMS].map((tab) => (
+      <div className="flex-1 pb-24">
+        {activeTab === 'targets' ? (
+          <div className="flex flex-col">
+            {/* Realm Tabs */}
+            <div className="flex gap-2 overflow-x-auto p-4 no-scrollbar">
+              {['All', ...REALMS].map((realmName) => (
                 <button
-                  key={tab}
+                  key={realmName}
                   type="button"
-                  onClick={() => setTargetsSubTab(tab)}
+                  onClick={() => setSelectedRealm(realmName)}
                   className={cn(
-                    'flex-shrink-0 h-9 px-3 rounded-full text-sm font-medium transition-colors',
-                    targetsSubTab === tab
+                    'flex-shrink-0 h-8 px-4 rounded-full text-[12px] font-medium transition-colors',
+                    selectedRealm === realmName
                       ? 'bg-[#FF6B35] text-white'
-                      : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]'
+                      : 'bg-white text-[#6C6C70] border border-[#E5E5EA]'
                   )}
                 >
-                  {tab}
+                  {realmName}
                 </button>
               ))}
             </div>
-            {loading ? (
-              <div className="flex flex-col gap-3">
-                {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-[#FFFFFF] rounded-card border border-[#E5E5EA] animate-pulse" />)}
-              </div>
-            ) : filteredProjects.length === 0 ? (
-              <EmptyState
-                icon={Briefcase}
-                title={targetsSubTab === 'All' ? emptyMessages.targets.title : `No targets in ${targetsSubTab}`}
-                subtitle={targetsSubTab === 'All'
-                  ? emptyMessages.targets.subtitle
-                  : `Add targets to the ${targetsSubTab} realm to get started.`}
-              />
-            ) : (
-              <div className="flex flex-col gap-3">
-                {filteredProjects.map((p) => (
-                  <TargetCard key={p.id} project={p} tasks={tasks}
-                    onEdit={(proj) => { setEditProject(proj); setProjectModalOpen(true); }}
-                    onDelete={setDeleteProject}
-                    onToggleFavorite={handleToggleFavorite}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
-        {activeTab !== 'targets' && (
-          <>
+            <div className="px-4 flex flex-col gap-2">
+              {loading ? (
+                <div className="flex flex-col gap-3">
+                  {[1, 2, 3].map((i) => <div key={i} className="h-32 bg-white rounded-card border border-[#E5E5EA] animate-pulse" />)}
+                </div>
+              ) : filteredTargets.length === 0 ? (
+                <EmptyState
+                  icon={Crosshair}
+                  title="No Targets match your filter"
+                  subtitle="Try selecting a different realm or create a new target."
+                />
+              ) : (
+                filteredTargets.map((p) => (
+                  <TargetCard
+                    key={p.id}
+                    project={p}
+                    tasks={tasks}
+                    onEdit={(proj) => { setSelectedProject(proj); setTargetPopupOpen(true); }}
+                    onToggleComplete={async (proj) => {
+                      const completed = !proj.isCompleted;
+                      await updateDocById(COLLECTIONS.PROJECTS, proj.id, { 
+                        isCompleted: completed,
+                        completedAt: completed ? new Date().toISOString() : undefined
+                      });
+                      toast.success(completed ? 'Target achieved!' : 'Target reopened');
+                    }}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Task List Tabs content */
+          <div className="px-4 py-4 flex flex-col gap-2">
             {loading ? (
-              <div className="bg-[#FFFFFF] rounded-card border border-[#E5E5EA] overflow-hidden">
-                {[1, 2, 3, 4].map((i) => <SkeletonListItem key={i} />)}
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-16 bg-white rounded-md border border-[#F2F2F7] animate-pulse" />)}
               </div>
             ) : currentTabTasks.length === 0 ? (
               <EmptyState
                 icon={CheckSquare}
                 title={emptyMessages[activeTab].title}
                 subtitle={emptyMessages[activeTab].subtitle}
-                actionLabel={activeTab === 'today' || activeTab === 'inbox' ? 'New Action' : undefined}
-                onAction={activeTab === 'today' || activeTab === 'inbox' ? () => setTaskModalOpen(true) : undefined}
+                actionLabel={`+ New Action`}
+                onAction={() => { setSelectedTask(null); setTaskModalOpen(true); }}
               />
             ) : (
-              <div className="flex flex-col gap-0 pb-4">
-                {activeTab === 'today' && overdueCount > 0 && (
-                  <div className="px-4 py-1.5 bg-[#FEF2F2] border border-[#E5E5EA] rounded-md mb-2">
-                    <p className="text-xs font-semibold text-[#EF4444]">
-                      ⚠ Overdue — {overdueCount} action{overdueCount > 1 ? 's' : ''}
-                    </p>
-                  </div>
-                )}
-                {currentTabTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    projects={projects}
-                    onComplete={handleComplete}
-                    onEdit={(t) => setDetailTask(t)}
-                    selected={selectedTasks.has(task.id)}
-                    onSelect={toggleSelect}
-                    inBulkMode={inBulkMode}
-                  />
-                ))}
-              </div>
+              currentTabTasks.map((t) => (
+                <TaskCard
+                  key={t.id}
+                  task={t}
+                  projects={projects}
+                  onComplete={handleComplete}
+                  onEdit={(task) => { setSelectedTask(task); setDetailPopupOpen(true); }}
+                  selected={selectedTasks.has(t.id)}
+                  onSelect={toggleSelect}
+                  inBulkMode={inBulkMode}
+                />
+              ))
             )}
-          </>
+          </div>
         )}
       </div>
 
@@ -2163,48 +2424,34 @@ export default function ActionsPage() {
         open={taskModalOpen}
         onClose={() => {
           setTaskModalOpen(false);
-          setEditTask(null);
+          setSelectedTask(null);
         }}
-        task={editTask}
+        task={selectedTask}
         projects={projects}
         userId={user?.uid ?? ''}
       />
 
       <ActionDetailPopup
-        open={!!detailTask}
-        onClose={() => setDetailTask(null)}
-        task={detailTask}
+        open={detailPopupOpen && !!selectedTask}
+        onClose={() => {
+          setDetailPopupOpen(false);
+          setSelectedTask(null);
+        }}
+        task={selectedTask}
         projects={projects}
         userId={user?.uid ?? ''}
         onComplete={handleComplete}
       />
 
-      <ProjectModal
-        open={projectModalOpen}
-        onClose={() => setProjectModalOpen(false)}
-        project={editProject}
-        userId={user?.uid ?? ''}
-      />
-
-      <ConfirmModal
-        open={!!deleteTask}
-        onClose={() => setDeleteTask(null)}
-        onConfirm={async () => {
-          if (deleteTask) { await deleteDocById(COLLECTIONS.TASKS, deleteTask.id); toast.success('Action deleted.'); }
-          setDeleteTask(null);
+      <TargetPopup
+        open={targetPopupOpen}
+        onClose={() => {
+          setTargetPopupOpen(false);
+          setSelectedProject(null);
         }}
-        title="Delete Action"
-        message={`Delete "${deleteTask?.title}"? This cannot be undone.`}
-        confirmLabel="Delete"
-      />
-
-      <ConfirmModal
-        open={!!deleteProject}
-        onClose={() => setDeleteProject(null)}
-        onConfirm={handleDeleteProject}
-        title="Delete Target"
-        message={`Delete "${deleteProject?.title}"? Actions linked to this Target will be kept but unlinked.`}
-        confirmLabel="Delete"
+        project={selectedProject}
+        tasks={tasks}
+        userId={user?.uid ?? ''}
       />
 
       <ConfirmModal

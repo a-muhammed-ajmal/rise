@@ -9,6 +9,7 @@ import {
   TrendingDown,
   Activity,
   FileText,
+  Crosshair,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ const QUICK_ITEMS: {
   color: string;
 }[] = [
   { label: 'Action', icon: CheckSquare, color: '#FF6B35' },
+  { label: 'Target', icon: Crosshair, color: '#FF6B35' },
   { label: 'Lead', icon: UserPlus, color: '#007AFF' },
   { label: 'Deal', icon: Briefcase, color: '#1ABC9C' },
   { label: 'Connection', icon: UserPlus, color: '#FF4F6D' },
@@ -55,7 +57,7 @@ export function QuickCreateSheet({
         </p>
         <div className="grid grid-cols-2 gap-3">
           {QUICK_ITEMS.map(({ label, icon: Icon, color }) => {
-            const enabled = label === 'Action';
+            const enabled = label === 'Action' || label === 'Target';
             return (
               <button
                 key={label}

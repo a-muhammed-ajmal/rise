@@ -128,7 +128,7 @@ function TodayFocus({
               onComplete={onComplete}
               onEdit={onEdit}
               selected={false}
-              onSelect={() => {}}
+              onSelect={() => { }}
               inBulkMode={false}
             />
           ))}
@@ -442,7 +442,7 @@ function GetThingsDone({
               onComplete={onComplete}
               onEdit={onEdit}
               selected={false}
-              onSelect={() => {}}
+              onSelect={() => { }}
               inBulkMode={false}
             />
           ))}
@@ -544,7 +544,7 @@ export default function DashboardPage() {
 
       {/* ── Greeting card ──────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl px-4 py-5 border border-[#E5E5EA] shadow-sm">
-        <h1 className="text-xl font-bold text-[#1C1C1E] leading-tight">{greeting}</h1>
+        <h1 className="text-lg font-semibold text-[#1C1C1E] leading-tight">{greeting}</h1>
         <p className="text-[13px] text-[#6C6C70] mt-1">{dateTime}</p>
       </div>
 

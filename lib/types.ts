@@ -116,6 +116,8 @@ export interface Project {
   goalId?: string;
   order: number;
   isFavorite: boolean;
+  isCompleted: boolean;
+  completedAt?: string;
   dueDate?: string;
   createdAt: string;
 }

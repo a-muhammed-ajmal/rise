@@ -196,6 +196,19 @@ select {
   letter-spacing: 0.08em;
 }
 
+/* ─── GLOBAL PLACEHOLDER STYLE ────────────────────────────────────────────── */
+::placeholder {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-placeholder);
+}
+
+/* ─── GLOBAL BUTTON TEXT STYLE ────────────────────────────────────────────── */
+.btn-text {
+  font-size: 12px;
+  font-weight: 500;
+}
+
 /* ─── PROGRESS BAR ────────────────────────────────────────────────────────── */
 .progress-track {
   width: 100%;

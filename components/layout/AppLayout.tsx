@@ -23,6 +23,8 @@ export function AppLayout({ children }: AppLayoutProps) {
     setFabOpen(false);
     if (label === 'Action') {
       router.push('/tasks?create=true');
+    } else if (label === 'Target') {
+      router.push('/tasks?createTarget=true');
     }
   };
 
