@@ -99,6 +99,12 @@ RISE enforces a strict hierarchy of terms. These names MUST be used in all UI la
 - Every Rhythm is linked to a category
 - Internal TypeScript interfaces (`Task`, `Project`, `Habit`) and Firestore collection names (`tasks`, `projects`, `habits`) remain unchanged for backward compatibility
 
+### 3.1 Global Data Formats (non-negotiable)
+
+- **Date:** Must always be shown in DD/MM/YYYY format everywhere in the application.
+- **Time:** Must always be shown in 12-hour AM/PM format everywhere in the application (Example: 8:00 PM, not 20:00).
+- **Modification Rule:** This must be followed strictly. No AI must ever change this without the user's explicit instruction.
+
 ---
 
 ## 4. Project Structure

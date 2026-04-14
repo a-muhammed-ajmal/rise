@@ -13,26 +13,31 @@ export function todayISO(): string {
 }
 
 export function formatDate(iso: string): string {
-  const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('en-AE', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
+  if (!iso) return '';
+  const d = new Date(iso.includes('T') ? iso : iso + 'T00:00:00');
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('en-AE', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
+  if (!iso) return '';
+  const d = new Date(iso);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
 }
 
 export function formatMonthYear(date: Date = new Date()): string {
-  return date.toLocaleDateString('en-AE', { month: 'long', year: 'numeric' });
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month}/${year}`;
 }
 
 export function getMonthYear(date: Date = new Date()): string {
@@ -50,15 +55,15 @@ export function getTimeGreeting(name?: string): string {
 }
 
 export function formatDayDateTime(): string {
-  return new Date().toLocaleString('en-AE', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
+  const d = new Date();
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
 }
 
 export function isToday(dateStr: string): boolean {

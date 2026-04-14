@@ -211,7 +211,13 @@ These rules replace the former `CLAUDE.md` instructions. Follow them on **every*
 | Vision | `Goal` — collection `goals` |
 | Connection | `Connection` — collection `connections` |
 
-### 8.4 Key files
+### 8.4 Global Data Formats (non-negotiable)
+
+- **Date:** Must always be shown in DD/MM/YYYY format everywhere in the application.
+- **Time:** Must always be shown in 12-hour AM/PM format everywhere in the application (Example: 8:00 PM, not 20:00).
+- **Modification Rule:** This must be followed strictly. No AI must ever change this without the user's explicit instruction.
+
+### 8.5 Key files
 
 - `lib/types.ts` — TypeScript interfaces  
 - `lib/constants.ts` — constants, colors, frozen collection names  
