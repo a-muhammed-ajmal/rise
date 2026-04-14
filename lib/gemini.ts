@@ -8,7 +8,7 @@ function getGenAI() {
   return new GoogleGenerativeAI(key);
 }
 
-export function getGeminiModel(modelName = 'gemini-2.5-flash', systemInstruction?: string) {
+export function getGeminiModel(modelName = 'gemini-2.0-flash', systemInstruction?: string) {
   const config: { model: string; systemInstruction?: string } = { model: modelName };
   if (systemInstruction) {
     config.systemInstruction = systemInstruction;
@@ -51,7 +51,7 @@ export async function generateChatResponse(
   userMessage: string,
   systemContext?: string
 ): Promise<string> {
-  const model = getGeminiModel('gemini-2.5-flash', systemContext);
+  const model = getGeminiModel('gemini-2.0-flash', systemContext);
   const safeHistory = sanitizeHistory(history);
   const chat = model.startChat({ history: safeHistory });
 
