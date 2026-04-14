@@ -217,20 +217,18 @@ export function TaskCard({
       </div>
 
       {/* LINE 2: Due date/time (left) + Area of Life | Target (right) */}
-      {(dueDateInfo || task.realm || targetDisplay) && (
-        <div className="flex items-center justify-between ml-[18px]">
-          {dueDateInfo ? (
-            <span className="text-[11px] leading-none font-normal" style={{ color: dueDateInfo.color }}>
-              {dueDateInfo.label}
-            </span>
-          ) : (
-            <span />
-          )}
-          <span className="text-[11px] leading-none font-normal text-[#AEAEB2]">
-            {targetDisplay ? `${targetDisplay} | ` : ''}{task.realm || 'Default'}
+      <div className="flex items-center justify-between ml-[22px]">
+        {dueDateInfo ? (
+          <span className="text-[11px] leading-none font-normal" style={{ color: dueDateInfo.color }}>
+            {dueDateInfo.label}
           </span>
-        </div>
-      )}
+        ) : (
+          <span />
+        )}
+        <span className="text-[11px] leading-none font-normal text-[#AEAEB2]">
+          {targetDisplay ? `${targetDisplay} | ` : ''}{task.realm || 'Default'}
+        </span>
+      </div>
     </div>
   );
 }

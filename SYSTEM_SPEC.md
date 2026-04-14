@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-14 (redesigned Actions page header and Targets management system; implemented context-aware Add button for Targets/Actions; created high-fidelity TargetPopup and redesigned TargetCard with time/task metrics; unified realm-based filtering and sorted completed items to the bottom; verified zero-error build)
+**Last updated:** 2026-04-14 (standardized Action Card across all surfaces — consistent check circle, priority border, two-line layout with realm/target right-aligned; redesigned Action Pop-up with inline file attachment, equal-sized 4-item row, and keyboard-safe title; redesigned Target Pop-up with Add/Edit title, realm dropdown only, Edit/Delete/context buttons; renamed 'Completed' tab to 'Complete'; borderless header Add button; verified zero-error build)
 
 ---
 
@@ -85,7 +85,7 @@ Statuses: **Complete** (usable end-to-end), **Partial** (works but missing plan 
 | Auth / session | §6 | **Complete** | `AuthProvider`; `initializeAuth` + `browserLocalPersistence` (client); `(main)/layout.tsx` guard; `FullPageLoader` = centered pulsing RISE until auth resolves |
 | Login | §9.12 | **Complete** | Google sign-in; login UI only when no user (no flash if session exists); authed users → `/` — **no** `onboardingComplete` gate; sign-out only from explicit actions in layout |
 | Dashboard | §9.1 | **Partial** | TASK 3 done: greeting, Today’s Focus, Be Consistent, Get Things Done. Missing: stats grid, goal progress, Winner’s Mindset (moved to Wellness — pending) |
-| Actions | §9.2 | **Complete** | Six tabs (Today/Inbox/Upcoming/Completed/Targets), TaskModal + TargetPopup, context-aware Add button in redesigned header, bulk select, recurring auto-create next instance; overdue red label; 7-day completed cutoff; Targets grouped by realm with redesign TargetCard (metrics + ArrowCheck) — full §9.2 parity verified |
+| Actions | §9.2 | **Complete** | Five tabs (Today/Inbox/Upcoming/Complete/Targets); TaskCard standardized in `components/tasks/TaskCard.tsx` — check circle sized to text, priority-color border+checkbox, second line always shows realm (right) and optional target; TaskModal (Add Action) and ActionDetailPopup (Edit Action) share identical layout: check circle + title, Add Detail with inline file-attachment icon, Add Step, 3-item realm/target/focus row, 4-item equal-sized icon+label row (Priority/Due Date/Repeat/Reminders), Duplicate/Delete/context buttons; TargetPopup (Add/Edit Target) with title input + realm dropdown only, Edit/Delete/context buttons; context-aware header Add button (borderless, text-only); bulk select; recurring auto-create; overdue red; Targets grouped by realm with TargetCard |
 | Visions | §9.3 | **Complete** | NICE info box, timeline filters, vision cards with progress slider + debounced Firestore writes + progress history, collapsible details, milestones modal (Milestones + Steps tabs, milestone completion recalculates goal progress), create/edit modal with NICE fields + timeline pills, completed Visions section |
 | Finance | §9.4 | **Complete** | Rich income/expense/debt/budget per spec; month selector, KPI cards, four collapsible sections with full CRUD, category summaries, progress bars, status badges, validation, date-fns handling, formatCurrency usage |
 | Wellness | §9.5 | **Complete** | Rhythms KPIs, cards, popup, Pomodoro hook — closest to plan |
@@ -157,7 +157,7 @@ rise/
   # RISE — System Specification.txt
 ```
 
-`components/tasks/TaskCard.tsx` exists (extracted in TASK 3). `app/(main)/tasks/page.tsx` also contains a local `TaskCard` duplicate — the page uses the local copy; the shared one is used by the dashboard.
+`components/tasks/TaskCard.tsx` is the single shared Action Card used everywhere — dashboard (Today's Focus, Get Things Done) and Actions page task list tabs. `app/(main)/tasks/page.tsx` has no local duplicate.
 
 ---
 
