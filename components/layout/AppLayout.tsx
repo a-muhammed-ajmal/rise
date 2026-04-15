@@ -48,10 +48,9 @@ export function AppLayout({ children }: AppLayoutProps) {
       <GlobalFabButton onClick={() => setFabOpen((o) => !o)} open={fabOpen} />
 
       <main
-        className="
-          pt-14 pb-16 min-h-dvh
-          sm:pt-0 sm:pb-0 sm:pl-[200px]
-        "
+        className={
+          `${showMobileHeader ? 'pt-14' : 'pt-0'} pb-16 min-h-dvh sm:pt-0 sm:pb-0 sm:pl-[200px]`
+        }
       >
         {children}
       </main>

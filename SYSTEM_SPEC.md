@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-15 (standardized Action Card across all surfaces — consistent check circle, priority border, two-line layout with realm/target right-aligned; redesigned Action Pop-up with inline file attachment, equal-sized 4-item row, and keyboard-safe title; redesigned Target Pop-up with Add/Edit title, realm dropdown only, Edit/Delete/context buttons; renamed 'Completed' tab to 'Complete'; borderless header Add button; verified zero-error build; mobile bottom nav quick-create popup now shows compact 4-column icon layout on small screens)
+**Last updated:** 2026-04-15 (standardized Action Card across all surfaces — consistent check circle, priority border, two-line layout with realm/target right-aligned; redesigned Action Pop-up with inline file attachment, equal-sized 4-item row, and keyboard-safe title; redesigned Target Pop-up with Add/Edit title, realm dropdown only, Edit/Delete/context buttons; renamed 'Completed' tab to 'Complete'; borderless header Add button; fixed mobile Actions page top spacing and compacted task pop-up layout; verified zero-error build; mobile bottom nav quick-create popup now shows compact 4-column icon layout on small screens)
 
 ---
 

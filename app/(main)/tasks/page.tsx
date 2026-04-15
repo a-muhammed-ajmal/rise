@@ -1000,7 +1000,7 @@ function TaskModal({
         onClose={onClose}
         title={task ? 'Edit Action' : 'Add Action'}
         footer={
-          <div className="flex gap-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Button variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
             <Button variant="danger" fullWidth onClick={handleDelete}>Delete</Button>
             {task ? (
@@ -1061,7 +1061,7 @@ function TaskModal({
           <StepsEditor steps={form.steps} onChange={(s) => set('steps', s)} />
 
           {/* Area of Life / Target / Focus Day - compact row */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2">
               <span className="text-base">{REALM_CONFIG[form.realm]?.emoji}</span>
               <select
@@ -1098,12 +1098,12 @@ function TaskModal({
               )}
             >
               <Sun size={16} className={form.isMyDay ? 'text-[#FF6B35]' : 'text-[#6C6C70]'} />
-              Focus Day
+              <span className="hidden sm:inline">Focus Day</span>
             </button>
           </div>
 
           {/* Priority / Due Date / Repeat / Reminders - equal-sized row */}
-          <div className="grid grid-cols-4 gap-2 pt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
             <div className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5">
               <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: TASK_PRIORITY_COLORS[form.priority] ?? '#6B7280' }} />
               <select
@@ -1456,7 +1456,7 @@ function ActionDetailPopup({
           </div>
 
           {/* Realm / Target / Focus Day row */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2">
               <span className="text-base">{REALM_CONFIG[task.realm]?.emoji}</span>
               <select
@@ -1496,12 +1496,12 @@ function ActionDetailPopup({
               className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2"
             >
               <Sun size={16} className={task.isMyDay ? 'text-[#FF6B35]' : 'text-[#6C6C70]'} />
-              <span className="text-sm text-[#1C1C1E]">Focus Day</span>
+              <span className="hidden sm:inline text-sm text-[#1C1C1E]">Focus Day</span>
             </button>
           </div>
 
           {/* Priority / Due Date / Repeat / Reminders row */}
-          <div className="grid grid-cols-4 gap-2 pt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
             <button type="button" onClick={() => setSubSheet('priority')}
               className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5 text-center">
               <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: priorityColor }} />
@@ -1525,7 +1525,7 @@ function ActionDetailPopup({
           </div>
 
           {/* Bottom buttons */}
-          <div className="flex gap-3 pt-3 border-t border-[#E5E5EA]">
+          <div className="grid gap-3 pt-3 border-t border-[#E5E5EA] sm:grid-cols-3">
             <Button variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
             <Button variant="danger" fullWidth onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
             {isDirty ? (
