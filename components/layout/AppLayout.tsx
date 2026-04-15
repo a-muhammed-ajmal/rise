@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileSidebar } from './MobileSidebar';
@@ -18,6 +18,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const showMobileHeader = pathname ? !pathname.startsWith('/tasks') : true;
 
   const handleQuickAction = (label: string) => {
     setFabOpen(false);
@@ -32,7 +34,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-dvh bg-[#F2F2F7]">
       <DesktopSidebar />
 
-      <MobileHeader onMenuClick={() => setMobileNavOpen(true)} />
+      {showMobileHeader && <MobileHeader onMenuClick={() => setMobileNavOpen(true)} />}
 
       <MobileSidebar open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
