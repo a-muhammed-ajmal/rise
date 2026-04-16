@@ -2,79 +2,120 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { toast } from '@/lib/toast';
-import { getIdToken } from '@/lib/verify-auth';
 
 interface UseVoiceRecorderOptions {
   onTranscript: (text: string) => void;
 }
 
+// ── Minimal Web Speech API types (not yet universal in TS DOM lib) ─────────────
+interface SpeechRecognitionResult {
+  readonly 0: { readonly transcript: string };
+}
+interface SpeechRecognitionResultList {
+  readonly 0: SpeechRecognitionResult;
+}
+interface SpeechRecognitionEvent extends Event {
+  readonly results: SpeechRecognitionResultList;
+}
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+}
+interface ISpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  continuous: boolean;
+  onstart: (() => void) | null;
+  onspeechstart: (() => void) | null;
+  onspeechend: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+interface ISpeechRecognitionCtor {
+  new (): ISpeechRecognition;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: ISpeechRecognitionCtor;
+    webkitSpeechRecognition?: ISpeechRecognitionCtor;
+  }
+}
+
 export function useVoiceRecorder({ onTranscript }: UseVoiceRecorderOptions) {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<ISpeechRecognition | null>(null);
 
   const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg',
-      });
+    if (typeof window === 'undefined') return;
 
-      chunksRef.current = [];
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
+    const SpeechRecognitionCtor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
 
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType });
-        await transcribeBlob(blob);
-      };
-
-      mediaRecorder.start();
-      mediaRecorderRef.current = mediaRecorder;
-      setIsRecording(true);
-    } catch {
-      toast.error('Microphone access denied. Please allow microphone permissions.');
+    if (!SpeechRecognitionCtor) {
+      toast.error('Voice input is not supported in this browser. Please try Chrome or Edge.');
+      return;
     }
-  }, []);
+
+    // Stop any in-progress recognition first
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+
+    recognition.onstart = () => setIsRecording(true);
+
+    recognition.onspeechstart = () => setIsTranscribing(false);
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0]?.[0]?.transcript ?? '';
+      if (transcript.trim()) onTranscript(transcript.trim());
+    };
+
+    recognition.onspeechend = () => setIsTranscribing(true);
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      setIsTranscribing(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      setIsRecording(false);
+      setIsTranscribing(false);
+      recognitionRef.current = null;
+
+      if (event.error === 'not-allowed') {
+        toast.error('Microphone access denied. Please allow microphone permissions and try again.');
+      } else if (event.error === 'no-speech') {
+        // Silently ignore — user held mic but didn't speak
+      } else if (event.error !== 'aborted') {
+        toast.error('Voice input failed. Please try again or type your message.');
+      }
+    };
+
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+    } catch {
+      toast.error('Could not start voice input. Please try again.');
+    }
+  }, [onTranscript]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
+    if (recognitionRef.current) recognitionRef.current.stop();
   }, []);
-
-  const transcribeBlob = async (blob: Blob) => {
-    setIsTranscribing(true);
-    try {
-      const token = await getIdToken();
-      if (!token) {
-        toast.error('Not authenticated.');
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('audio', blob, 'recording.webm');
-
-      const res = await fetch('/api/transcribe', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error('Transcription failed');
-
-      const data = await res.json();
-      if (data.text) onTranscript(data.text);
-    } catch {
-      toast.error('Voice transcription failed. Please try typing instead.');
-    } finally {
-      setIsTranscribing(false);
-    }
-  };
 
   return { isRecording, isTranscribing, startRecording, stopRecording };
 }

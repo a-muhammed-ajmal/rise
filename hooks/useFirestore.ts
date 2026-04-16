@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { type QueryConstraint } from 'firebase/firestore';
 import {
   subscribeToCollection,
@@ -25,6 +25,16 @@ export function useCollection<T extends { id: string }>(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Stable key derived from constraint references so the effect re-runs when
+  // the actual constraint array changes, not just its reference identity.
+  // QueryConstraints are stable objects created outside the render loop in all
+  // callers today; this key guards against future callers that create them inline.
+  const constraintsKey = useMemo(
+    () => constraints.map((c) => String(c)).join('|'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [constraints.length]
+  );
+
   useEffect(() => {
     if (!userId || !enabled) {
       setLoading(false);
@@ -45,8 +55,9 @@ export function useCollection<T extends { id: string }>(
     );
 
     return () => unsubscribe();
+    // constraintsKey captures constraint identity; collectionName and userId are primitives
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, collectionName, enabled]);
+  }, [userId, collectionName, enabled, constraintsKey]);
 
   const add = useCallback(
     async (item: Omit<T, 'id' | 'createdAt'>): Promise<string | null> => {

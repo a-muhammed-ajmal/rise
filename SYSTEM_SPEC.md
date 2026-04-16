@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-15 (standardized Action Card across all surfaces — consistent check circle, priority border, two-line layout with realm/target right-aligned; redesigned Action Pop-up with inline file attachment, equal-sized 4-item row, and keyboard-safe title; redesigned Target Pop-up with Add/Edit title, realm dropdown only, Edit/Delete/context buttons; renamed 'Completed' tab to 'Complete'; borderless header Add button; fixed mobile Actions page top spacing and compacted task pop-up layout; verified zero-error build; mobile bottom nav quick-create popup now shows compact 4-column icon layout on small screens)
+**Last updated:** 2026-04-16 (comprehensive bug-fix pass: corrected realm/priority colors, DD/MM/YYYY date format, added Target Progress & Winner's Mindset, TTS in AI Chat, Web Speech API voice input, POST ai-tip with daily rate limiter, separate tip rate limiter, removed onboarding dead code, added .env.local.example, fixed useCollection constraints stability)
 
 ---
 
@@ -35,7 +35,7 @@ If the codebase diverges from the `.txt` plan, the mismatch is documented **here
 
 ## 2. As-built technology stack
 
-Pinned from `package.json` and config (not from the plan’s §2 table, which describes a *target* stack).
+Pinned from `package.json` and config (not from the plan's §2 table, which describes a *target* stack).
 
 | Layer | As implemented |
 |-------|----------------|
@@ -46,33 +46,33 @@ Pinned from `package.json` and config (not from the plan’s §2 table, which de
 | Database | Firebase **^10.14** (Firestore) |
 | Auth | Firebase Auth (Google popup) |
 | Storage | Firebase Storage (initialized in `lib/firebase.ts`) |
-| AI | `@google/generative-ai` **^0.24.1** — see `lib/gemini.ts` (default model name `gemini-2.5-flash`) |
+| AI | `@google/generative-ai` **^0.24.1** — see `lib/gemini.ts` (model `gemini-2.0-flash`) |
 | Icons | `lucide-react` **0.446.0** |
 | PWA | `next-pwa` **^2.0.2** — `next.config.js`, output under `public/` |
 | Class merge | `clsx`, `tailwind-merge` |
 
-**Not present in `package.json` today** (but may appear in the plan): React 19, Next 15, Tailwind 4, Serwist, Framer Motion, Recharts, React Hook Form, Zod, Zustand, date-fns, `@google/genai` package name.
+**Not present in `package.json` today** (but may appear in the plan): React 19, Next 15, Tailwind 4, Serwist, Framer Motion, Recharts, React Hook Form, Zod, Zustand, date-fns (is present), `@google/genai` package name.
 
 ---
 
 ## 3. Plan vs code: intentional deltas
 
-These are notable differences between `# RISE — System Specification.txt` and this repository.
-
 | Topic | Plan (`.txt`) | Code (as-built) |
 |-------|----------------|-------------------|
 | §2 Technology table | Next 15, React 19, Tailwind 4, Serwist, etc. | Next 14, React 18, Tailwind 3, `next-pwa` |
-| §4 Project structure | `components/tasks/TaskCard.tsx`, `app/sw.ts` Serwist | `TaskCard` extracted to `components/tasks/TaskCard.tsx` (TASK 3); `app/(main)/tasks/page.tsx` still has a local duplicate — future refactor only; **no** `app/sw.ts` |
-| §5.4 Global FAB | Most quick actions “disabled/coming soon” | **Action** opens new Task flow via `/tasks?create=true`; **Target** opens new Target popup via `/tasks?createTarget=true` (TargetPopup on Actions page); **other** FAB slots show “Coming soon” and are disabled |
-| §9.1 Dashboard | Quick stats, Today’s Focus, Be Consistent list, Get Things Done, Target Progress | **TASK 3 complete**: dynamic greeting (date-fns, surname), Today’s Focus (top 3 isMyDay tasks), Be Consistent (pending habits + Done/Failed buttons + streak recalc + show-more), Get Things Done (top 5 today/isMyDay tasks); **no** stats grid, **no** goal progress; Winner’s Mindset removed from dashboard — **pending** move to Wellness page |
-| §9.3 Visions | NICE box, milestones, rich cards | Full implementation: NICE info box (collapsible), timeline filter pills, rich vision cards (progress bar, slider, details, history), Milestones + Steps modal, completed Visions section — all per spec |
-| §9.4 Finance | Rich income/expense/debt/budget per spec | **Transactions / Budgets / Debts** tabs with CRUD; categories from `lib/constants.ts` — **not** identical lists to plan §17.7 in all labels |
-| §9.11 AI Chat | Rich context blob, markdown rendering, TTS, voice pipeline | Firestore history, `/api/chat` with **optional** `context` (client **does not** send full sanitized app context today); `systemInstruction` passed via `getGenerativeModel()` config; chat history sanitized before sending to Gemini API; **no** TTS buttons; markdown renderer added in chat UI; voice uses `/api/transcribe` which is a **stub** |
-| §11 API | POST `/api/ai-tip` with body, daily rate limit | **`GET`** `/api/ai-tip` — no separate daily tip rate limiter in code |
-| §11 `/api/transcribe` | Gemini multimodal + cleanup | **Stub**: returns placeholder; `useVoiceRecorder` expects `data.text` — **transcription does not populate** from API |
-| §16 PWA | Serwist `app/sw.ts`, custom runtime cache order | **`next-pwa`** — `pwa.dest: 'public'` so `sw.js` / precache ship under `public/`; `navigateFallback` omitted (Workbox v4 `registerNavigationRoute` intercepts all navigations — wrong for SSR); root metadata includes `mobile-web-app-capable` (avoids deprecated `apple-mobile-web-app-capable` from `appleWebApp.capable: false`) |
-| §18 Env | `.env.example` | **No** committed `.env.example` / `.env.local.example` in repo (add in next steps) |
-| Vision categories (plan §17.10) | Six categories including Relationship, Wellness, Vision naming | **`lib/constants.ts`** `VISION_CATEGORIES`: includes `Relationships`, `Health`, `Learning` — align with code when implementing UI |
+| §9.1 Dashboard | Quick stats, Today's Focus, Be Consistent, Winner's Mindset, Get Things Done, Target Progress | **Complete**: dynamic greeting, Today's Focus, Be Consistent, Get Things Done, Target Progress (top 3 goals). **Quick Stats grid removed** by user decision. Winner's Mindset moved to Wellness page. |
+| §9.5 Wellness | Rhythms KPIs, cards, popup, Pomodoro | **Winner's Mindset** collapsible panel now lives at top of Wellness page (37 affirmations, shuffled on load, collapsed by default) |
+| §9.11 AI Chat | Rich context blob, markdown rendering, TTS, voice pipeline | Firestore history, `/api/chat` with context injected **once per session** (not every message) to minimize token usage; chat history sanitized; markdown rendered; **TTS implemented** via browser `speechSynthesis`; voice uses **Web Speech API** client-side (no server cost) |
+| §11 API | POST `/api/ai-tip` with body, daily rate limit | **POST** `/api/ai-tip` — 10 req/24hr/user via `checkTipRateLimit` in `lib/rate-limiter.ts` |
+| §11 `/api/transcribe` | Gemini multimodal + cleanup | **Stub** — returns empty; voice input now uses Web Speech API directly in `useVoiceRecorder.ts` (browser-native, Chrome/Edge) |
+| §16 PWA | Serwist `app/sw.ts` | **`next-pwa`** — `pwa.dest: 'public'`; `navigateFallback` intentionally omitted |
+| §18 Env | `.env.example` | **`.env.local.example`** committed at repo root |
+| Onboarding | Multi-step wizard | **Removed** — single-user app, no onboarding needed; `app/onboarding/` directory and `hooks/useOnboarding.ts` deleted |
+| Vision categories (plan §17.10) | Six categories | **`lib/constants.ts`** `VISION_CATEGORIES`: `Personal, Professional, Financial, Relationships, Health, Learning` |
+| Realm colors | Per §14.1 spec | **Corrected**: Personal=#800080, Financial=#00A86B, Vision=#FFD700 (were wrong before) |
+| Priority colors | Per §17.2 spec | **Corrected**: P1=#EF4444, P2=#F59E0B(amber), P3=#3B82F6(blue), P4=#6B7280 — all inline maps unified |
+| Date format | DD/MM/YYYY everywhere | **Fixed**: `formatCardDate` in `TaskCard.tsx` now returns DD/MM/YYYY |
+| Priority P4 label | "Default" | **Fixed** in tasks/page.tsx and dashboard page.tsx |
 
 ---
 
@@ -82,20 +82,20 @@ Statuses: **Complete** (usable end-to-end), **Partial** (works but missing plan 
 
 | Area | Plan § | Status | Notes |
 |------|--------|--------|--------|
-| Auth / session | §6 | **Complete** | `AuthProvider`; `initializeAuth` + `browserLocalPersistence` (client); `(main)/layout.tsx` guard; `FullPageLoader` = centered pulsing RISE until auth resolves |
-| Login | §9.12 | **Complete** | Google sign-in; login UI only when no user (no flash if session exists); authed users → `/` — **no** `onboardingComplete` gate; sign-out only from explicit actions in layout |
-| Dashboard | §9.1 | **Partial** | TASK 3 done: greeting, Today’s Focus, Be Consistent, Get Things Done. Missing: stats grid, goal progress, Winner’s Mindset (moved to Wellness — pending) |
-| Actions | §9.2 | **Complete** | Five tabs (Today/Inbox/Upcoming/Complete/Targets); TaskCard standardized in `components/tasks/TaskCard.tsx` — check circle sized to text, priority-color border+checkbox, second line always shows realm (right) and optional target; TaskModal (Add Action) and ActionDetailPopup (Edit Action) share identical layout: check circle + title, Add Detail with inline file-attachment icon, Add Step, 3-item realm/target/focus row, 4-item equal-sized icon+label row (Priority/Due Date/Repeat/Reminders), Duplicate/Delete/context buttons; TargetPopup (Add/Edit Target) with title input + realm dropdown only, Edit/Delete/context buttons; context-aware header Add button (borderless, text-only); bulk select; recurring auto-create; overdue red; Targets grouped by realm with TargetCard |
-| Visions | §9.3 | **Complete** | NICE info box, timeline filters, vision cards with progress slider + debounced Firestore writes + progress history, collapsible details, milestones modal (Milestones + Steps tabs, milestone completion recalculates goal progress), create/edit modal with NICE fields + timeline pills, completed Visions section |
-| Finance | §9.4 | **Complete** | Rich income/expense/debt/budget per spec; month selector, KPI cards, four collapsible sections with full CRUD, category summaries, progress bars, status badges, validation, date-fns handling, formatCurrency usage |
-| Wellness | §9.5 | **Complete** | Rhythms KPIs, cards, popup, Pomodoro hook — closest to plan |
-| Professional CRM | §9.6 | **Partial** | Leads/Deals tabs, modals; Deal modal fields subset vs full plan |
-| Relationships | §9.7 | **Partial** | Connections CRUD, filters, upcoming birthdays; modal fields subset vs plan (e.g. date types/reminders) |
-| Reviews | §9.8 | **Partial** | Weekly/monthly/quarterly/yearly tabs, GPS fields; not full plan matrix |
-| Journal | §9.9 | **Partial** | Energy, mood, text, voice hook (same transcribe limitation) |
-| Documents | §9.10 | **Partial** | Filter, search, CRUD; categories per `DOCUMENT_CATEGORIES` |
-| AI Chat | §9.11 | **Partial** | Persistence, Gemini reply with `systemInstruction` via model config, history sanitization; missing rich context, TTS, working server transcription |
-| Onboarding | (not in old §9.12 only) | **Stub** | `app/onboarding/page.tsx` immediately redirects to `/`; `useOnboarding` exists but **not** wired from login |
+| Auth / session | §6 | **Complete** | `AuthProvider`; `initializeAuth` + `browserLocalPersistence`; `(main)/layout.tsx` guard |
+| Login | §9.12 | **Complete** | Google sign-in; authed users → `/` |
+| Dashboard | §9.1 | **Complete** | Greeting, Today's Focus, Be Consistent, Get Things Done, Target Progress. Quick Stats grid intentionally removed. |
+| Actions | §9.2 | **Complete** | Five tabs; standardized TaskCard; TaskModal; TargetPopup; bulk select; recurring auto-create |
+| Visions | §9.3 | **Complete** | NICE info box, timeline filters, vision cards, milestones modal |
+| Finance | §9.4 | **Complete** | Transactions / Budgets / Debts tabs with CRUD |
+| Wellness | §9.5 | **Complete** | Winner's Mindset panel + Rhythms KPIs + cards + popup + Pomodoro |
+| Professional CRM | §9.6 | **Partial** | Leads/Deals tabs; Deal modal fields subset vs full plan |
+| Relationships | §9.7 | **Partial** | Connections CRUD; modal fields subset vs plan |
+| Reviews | §9.8 | **Partial** | Weekly/monthly/quarterly/yearly tabs; not full plan matrix |
+| Journal | §9.9 | **Partial** | Energy, mood, text; voice input via Web Speech API |
+| Documents | §9.10 | **Partial** | Filter, search, CRUD |
+| AI Chat | §9.11 | **Partial** | Persistence, Gemini reply, context injected once per session, TTS buttons, Web Speech API voice; no rich sanitized context pipeline per full spec |
+| Onboarding | — | **Removed** | Single-user app — stub and hook deleted |
 | PWA | §16 | **Partial** | `next-pwa` + install prompt; not Serwist strategy from plan |
 
 ---
@@ -109,81 +109,74 @@ rise/
     (main)/
       layout.tsx                 # Auth guard + AppLayout
       page.tsx                   # Dashboard
-      tasks/page.tsx             # Actions (TaskCard defined inline)
-      goals/page.tsx
+      tasks/page.tsx             # Actions
+      goals/page.tsx             # Visions
       finance/page.tsx
-      wellness/page.tsx
+      wellness/page.tsx          # Rhythms + Winner's Mindset panel
       professional/page.tsx
       relationships/page.tsx
       reviews/page.tsx
       journal/page.tsx
       documents/page.tsx
-      chat/page.tsx
+      chat/page.tsx              # AI Chat with TTS + Web Speech API
     api/
       chat/route.ts
-      transcribe/route.ts
-      ai-tip/route.ts
-    onboarding/page.tsx          # Stub redirect
+      transcribe/route.ts        # Stub — returns empty (voice uses Web Speech API)
+      ai-tip/route.ts            # POST, 10/day rate limit
     layout.tsx
     globals.css
   components/
-    layout/                      # AppLayout, DesktopSidebar, MobileHeader/BottomNav, MoreSheet, GlobalFab + QuickCreateSheet
+    layout/                      # AppLayout, DesktopSidebar, MobileHeader/BottomNav, GlobalFab
     providers/                   # Auth, PWA, SW registrar
     tasks/
-      TaskCard.tsx               # Shared TaskCard (extracted TASK 3); tasks/page.tsx still has a local duplicate
+      TaskCard.tsx               # Shared TaskCard
     ui/                          # Button, Input, Modal, Badge, etc.
   hooks/
     useAuth.ts
-    useFirestore.ts              # useCollection + mutations
+    useFirestore.ts              # useCollection + mutations (constraints stability fixed)
     usePomodoroTimer.ts
     useToast.ts
-    useVoiceRecorder.ts
-    useOnboarding.ts
+    useVoiceRecorder.ts          # Web Speech API (browser-native, no server)
   lib/
     types.ts
-    constants.ts
+    constants.ts                 # Colors corrected: realm, priority
     firebase.ts
     firestore.ts
     utils.ts
     sanitizer.ts
     verify-auth.ts
-    rate-limiter.ts
+    rate-limiter.ts              # chatRateLimiter (30/min) + tipRateLimiter (10/day)
     toast.ts
     gemini.ts
-    validations.ts
+    validations.ts               # Field-level helpers only (no Zod schemas)
+  .env.local.example             # Environment variable template
   firestore.rules
   storage.rules
-  SYSTEM_SPEC.md                 # This file
+  SYSTEM_SPEC.md
   # RISE — System Specification.txt
 ```
-
-`components/tasks/TaskCard.tsx` is the single shared Action Card used everywhere — dashboard (Today's Focus, Get Things Done) and Actions page task list tabs. `app/(main)/tasks/page.tsx` has no local duplicate.
 
 ---
 
 ## 6. Firestore & data
 
-- **Collection names** are **frozen** — see `COLLECTIONS` in `lib/constants.ts` and the plan §8. Never rename collections in Firestore or code without a migration plan.
-- **Full field-level schemas** remain in `# RISE — System Specification.txt` §7 and `lib/types.ts`. This file does not duplicate them to avoid drift.
-- **Firestore init:** `memoryLocalCache()` in `lib/firebase.ts` — aligns with plan narrative on avoiding IndexedDB cache divergence.
-- **Auth persistence:** Client `initializeAuth` with `browserLocalPersistence` in `lib/firebase.ts` (session survives closing the browser; cleared only on explicit sign-out). Scoped to the origin; another device still requires signing in there.
-- **User metadata:** `users` collection / `UserMeta` for flags like `onboardingComplete` — see `lib/firestore.ts`.
+- **Collection names** are **frozen** — see `COLLECTIONS` in `lib/constants.ts` and the plan §8.
+- **Firestore init:** `memoryLocalCache()` in `lib/firebase.ts`.
+- **Auth persistence:** `browserLocalPersistence` — session survives closing the browser.
 
 ---
 
 ## 7. API routes (as-built)
 
-| Route | Auth | Behavior |
-|-------|------|----------|
-| `POST /api/chat` | Bearer Firebase ID token | `verifyAuthToken`, rate limit (`lib/rate-limiter.ts`), `generateChatResponse` in `lib/gemini.ts` |
-| `POST /api/transcribe` | Bearer | **Stub** — does not return real `text` for `useVoiceRecorder` |
-| `GET /api/ai-tip` | Bearer | Generates tip via `generateText`; fallback string on error |
+| Route | Method | Auth | Behavior |
+|-------|--------|------|----------|
+| `/api/chat` | POST | Bearer Firebase ID token | `verifyAuthToken`, rate limit 30/min, `generateChatResponse` |
+| `/api/transcribe` | POST | Bearer | **Stub** — returns `{ text: '' }`; voice now uses Web Speech API client-side |
+| `/api/ai-tip` | POST | Bearer | Rate limit 10/day (`checkTipRateLimit`), `generateText`, fallback string |
 
 ---
 
 ## 8. AI agent rules (mandatory)
-
-These rules replace the former `CLAUDE.md` instructions. Follow them on **every** edit unless the human explicitly overrides them for a one-off task.
 
 ### 8.1 Mandatory first step
 
@@ -192,13 +185,13 @@ These rules replace the former `CLAUDE.md` instructions. Follow them on **every*
 
 ### 8.2 Execution discipline
 
-1. Do **only** what the task explicitly asks. Do not refactor, rename, or “clean up” unrelated code.  
+1. Do **only** what the task explicitly asks. Do not refactor, rename, or "clean up" unrelated code.  
 2. If something is not requested, do not change it.  
-3. **Do not add** new files, folders, tooling, or editor config (including under `.cursor/`, new markdown docs, scripts, or dependencies) **unless the user explicitly asked for that addition.** “Optional” in an old plan is not permission—only the user’s message is.  
-4. **Do not guess.** If scope, behavior, or repo state is unclear, **read** `# RISE — System Specification.txt` and this file, and/or **ask the user**. Do not invent workflows, filenames, or git identity.  
-5. After completing a **code** task: update **this** `SYSTEM_SPEC.md` if behavior or structure changed, run **`npm run build`** (zero errors), then **commit** and **push** only when the task says so **and** git author config exists—**do not** fabricate `user.name` / `user.email`; if commit is blocked, tell the user to configure identity or commit themselves.  
-6. No assumptions, no extras, no “while I’m here” changes.  
-7. **Always commit and push directly to `main`.** Never create a feature branch. All commits go to `main` unless the user explicitly names a different branch for that specific task.
+3. **Do not add** new files, folders, tooling, or editor config unless the user explicitly asked.  
+4. **Do not guess.** If scope is unclear, read the spec files and/or ask the user.  
+5. After completing a **code** task: update **this** `SYSTEM_SPEC.md`, run **`./node_modules/.bin/next build`** (zero errors), then **commit** and **push** only when the task says so.  
+6. No assumptions, no extras, no "while I'm here" changes.  
+7. **Always commit and push directly to `main`.** Never create a feature branch.
 
 ### 8.3 UI terminology (non-negotiable)
 
@@ -220,29 +213,26 @@ These rules replace the former `CLAUDE.md` instructions. Follow them on **every*
 ### 8.5 Key files
 
 - `lib/types.ts` — TypeScript interfaces  
-- `lib/constants.ts` — constants, colors, frozen collection names  
+- `lib/constants.ts` — constants, colors (authoritative — always import from here, never redefine inline)
 - `lib/firestore.ts` — CRUD and subscriptions  
 - `hooks/useFirestore.ts` — `useCollection` and related hooks  
 - `lib/gemini.ts` — Gemini calls  
-- `components/layout/AppLayout.tsx` — shell: desktop 200px sidebar (subtitle “Realms · Targets · Actions”), mobile 40px header + 48px bottom tabs (Home · Actions · Visions · Finance · More) + `pb-14` content, global FAB bottom-right  
+- `components/layout/AppLayout.tsx` — shell layout
 
-### 8.5 Environment variables
+### 8.6 Environment variables
 
-For local development, configure Firebase and `GEMINI_API_KEY` in `.env.local` (see plan §18 for variable names). A committed template file is **missing** — add `.env.local.example` when implementing env docs.
+For local development, copy `.env.local.example` to `.env.local` and fill in values (see plan §18 for variable names).
 
 ---
 
 ## 9. Next steps
 
-1. **Winner’s Mindset** panel (with 21 plan-specified affirmations) needs to be added to **Wellness page** (app/(main)/wellness/page.tsx) at the top of the Habits (Rhythms) module — removed from dashboard in TASK 3; not yet added to wellness.  
-2. **Dashboard stats grid** (quick stats) and goal progress section still missing from plan §9.1.  
-3. **Onboarding:** implement the wizard described in the plan **or** remove stub/`useOnboarding` dead paths and document.  
-4. **Add `.env.local.example`** mirroring plan §18.  
-5. **`/api/transcribe`:** implement real transcription or switch journal/chat to **Web Speech API** client-side and align docs.  
-6. **`/api/ai-tip`:** align method, rate limits, and dashboard fetch with plan §11 if product requires it.  
-7. **AI Chat:** optional injection of sanitized Firestore context into `POST /api/chat` body to match plan §9.11.  
-8. **Dependencies:** align `eslint-config-next` major with Next 14 to reduce tooling drift.  
-9. **`TaskCard` extracted and standardized** to `components/tasks/TaskCard.tsx`. `app/(main)/tasks/page.tsx` local duplicate has been removed to ensure consistent Action Card look and behavior everywhere.
+1. **AI Chat rich context pipeline** — currently context is a lean summary injected once per session; plan §9.11 describes a fully sanitized per-collection context blob including leads/deals/connections/reviews.
+2. **Dashboard Quick Stats grid** — removed by user decision; can be re-added if needed (Done today, Active targets, Avg streak, Surplus/Deficit).
+3. **Zod validation** — `lib/validations.ts` has field-level helpers only; full Zod schemas + `validateDocument` wired into Firestore writes are not yet implemented.
+4. **`/api/transcribe`** — still a stub; Web Speech API is used client-side instead; server transcription not needed unless offline/background processing required.
+5. **Professional CRM, Relationships, Reviews, Journal, Documents** — all Partial; modal fields are subsets of the full plan spec.
+6. **PWA strategy** — `next-pwa` / Workbox v4; plan describes Serwist with custom runtime cache order.
 
 ---
 
@@ -250,13 +240,12 @@ For local development, configure Firebase and `GEMINI_API_KEY` in `.env.local` (
 
 | Issue | Detail |
 |-------|--------|
-| **ESLint / Next mismatch** | `eslint-config-next` **^16** with `next` **14** — may cause odd lint behavior; align versions when convenient. |
-| **Voice transcription** | `/api/transcribe` stub + empty `data.text` → `useVoiceRecorder` does not receive transcripts from the server. |
-| **AI tip API** | Implemented as `GET`; plan describes `POST` and stricter daily limits. |
-| **Chat context** | Rich, sanitized context pipeline from plan is **not** wired from client to `/api/chat`. |
-| **Missing env template** | No `.env.example` in repo; onboarding for new devs is harder. |
-| **Onboarding page** | Redirect-only; conflicts with any expectation of a multi-step flow until implemented or removed. |
-| **`next.config.js` + `next-pwa`** | Next may log "Unrecognized key(s): `pwa`" — expected; `next-pwa` reads `pwa` at webpack time. Service worker output lives in `public/` (`pwa.dest`). `navigateFallback` is intentionally **not set** — this is an SSR app and Workbox v4's `registerNavigationRoute` would intercept all navigations and serve `/offline.html` instead of real pages. Navigation requests fall through to the catch-all `StaleWhileRevalidate` route. |
+| **ESLint / Next mismatch** | `eslint-config-next` **^14** with `next` **14** — aligned. |
+| **Rate limiter in production** | In-memory `Map` store resets on every serverless cold start (Vercel). For real rate limiting in production, use Upstash Redis or Vercel KV. |
+| **AI tip fetch** | Dashboard does not currently call `/api/ai-tip`. Wire up if daily tip display is required on the home screen. |
+| **Chat context** | Lean context is injected once per session (resets on page reload or chat clear). Full sanitized per-collection pipeline from plan §9.11 not yet wired. |
+| **`next.config.js` + `next-pwa`** | Next may log "Unrecognized key(s): `pwa`" — expected; `next-pwa` reads `pwa` at webpack time. |
+| **Web Speech API** | Only available in Chrome, Edge, and some mobile browsers. Safari support is partial. |
 
 ---
 

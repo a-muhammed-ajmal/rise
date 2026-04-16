@@ -5,11 +5,11 @@ import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Task, Project } from '@/lib/types';
 
-// ─── PRIORITY COLORS (per spec) ───────────────────────────────────────────────
+// ─── PRIORITY COLORS (per spec §17.2) ────────────────────────────────────────
 const CARD_PRIORITY_COLORS: Record<string, string> = {
   P1: '#EF4444',
-  P2: '#3B82F6',
-  P3: '#F59E0B',
+  P2: '#F59E0B',
+  P3: '#3B82F6',
   P4: '#6B7280',
 };
 
@@ -56,10 +56,10 @@ function parseDueDateTime(date: string, time?: string): Date | null {
 function formatCardDate(date: string): string {
   const parsed = parseDueDate(date);
   if (!parsed) return date;
-  const m = String(parsed.getMonth() + 1).padStart(2, '0');
   const d = String(parsed.getDate()).padStart(2, '0');
+  const m = String(parsed.getMonth() + 1).padStart(2, '0');
   const y = parsed.getFullYear();
-  return `${m}/${d}/${y}`;
+  return `${d}/${m}/${y}`;
 }
 
 function formatTimeAMPM(time24?: string): string {

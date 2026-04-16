@@ -64,12 +64,12 @@ function ArrowCheck({
 }
 
 
-// ─── PRIORITY CONFIG (per spec) ──────────────────────────────────────────────
+// ─── PRIORITY CONFIG (per spec §17.2) ────────────────────────────────────────
 
 const TASK_PRIORITY_COLORS: Record<string, string> = {
   P1: '#EF4444',
-  P2: '#3B82F6',
-  P3: '#F59E0B',
+  P2: '#F59E0B',
+  P3: '#3B82F6',
   P4: '#6B7280',
 };
 
@@ -77,7 +77,7 @@ const TASK_PRIORITY_LABELS: Record<string, string> = {
   P1: 'Do Now',
   P2: 'Important',
   P3: 'Get Done',
-  P4: 'Delegate',
+  P4: 'Default',
 };
 
 const REMINDER_OPTIONS = [

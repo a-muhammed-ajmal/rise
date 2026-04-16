@@ -43,20 +43,20 @@ export const REALMS = [
 
 export const REALM_CONFIG: Record<string, { emoji: string; color: string; description: string }> = {
   Professional: { emoji: '💼', color: '#1E4AFF', description: 'Focus, clarity, execution' },
-  Personal:     { emoji: '🎯', color: '#FF6B35', description: 'Identity, creativity, self-expression' },
-  Financial:    { emoji: '💰', color: '#FFD700', description: 'Growth, stability, wealth' },
+  Personal:     { emoji: '🎯', color: '#800080', description: 'Identity, creativity, self-expression' },
+  Financial:    { emoji: '💰', color: '#00A86B', description: 'Growth, stability, wealth' },
   Relationship: { emoji: '❤️', color: '#FF4F6D', description: 'Connection, empathy, warmth' },
   Wellness:     { emoji: '🧘', color: '#1ABC9C', description: 'Balance, health, vitality' },
-  Vision:       { emoji: '✨', color: '#800080', description: 'Purpose, long-term direction, ambition' },
+  Vision:       { emoji: '✨', color: '#FFD700', description: 'Purpose, long-term direction, ambition' },
 } as const;
 
 // ─── PRIORITY ────────────────────────────────────────────────────────────────
 export const PRIORITIES = ['P1', 'P2', 'P3', 'P4'] as const;
 export const PRIORITY_COLORS: Record<string, string> = {
-  P1: '#FF4F6D',
-  P2: '#FF9933',
-  P3: '#1E4AFF',
-  P4: '#8A8A8A',
+  P1: '#EF4444',
+  P2: '#F59E0B',
+  P3: '#3B82F6',
+  P4: '#6B7280',
 };
 export const PRIORITY_LABELS: Record<string, string> = {
   P1: 'Do Now',
@@ -288,20 +288,6 @@ export const DOCUMENT_CATEGORIES = [
   'Personal',
   'Work',
   'Other',
-] as const;
-
-// ─── ONBOARDING REALM OPTIONS ────────────────────────────────────────────────
-export const DEFAULT_REALM_OPTIONS = [
-  'Health',
-  'Career',
-  'Finance',
-  'Family',
-  'Learning',
-  'Relationships',
-  'Business',
-  'Personal Growth',
-  'Faith',
-  'Travel',
 ] as const;
 
 // ─── WINNER'S MINDSET AFFIRMATIONS ───────────────────────────────────────────

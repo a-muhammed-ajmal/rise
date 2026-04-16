@@ -4,5 +4,5 @@ node_modules
 public/sw.js
 public/precache.*.js
 .env.local
-.env.local.example
+# .env.local.example is intentionally committed — it contains only placeholder values
 .env.local.example.example

@@ -5,11 +5,12 @@ import {
   Plus, Clock, Flame, Trophy, CheckCircle, XCircle,
   Activity, Timer, Pencil, Copy, Trash2,
   Play, Pause, RotateCcw, SkipForward, Settings,
+  ChevronDown, ChevronUp, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
 import { updateDocById, createDoc, deleteDocById } from '@/lib/firestore';
-import { COLLECTIONS, RHYTHM_CATEGORIES, RHYTHM_COLORS } from '@/lib/constants';
+import { COLLECTIONS, RHYTHM_CATEGORIES, RHYTHM_COLORS, AFFIRMATIONS } from '@/lib/constants';
 import { todayISO, cn } from '@/lib/utils';
 import type { Habit, HabitStatus, HabitFrequency } from '@/lib/types';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
@@ -55,6 +56,51 @@ function calculateStreak(statusLog: Record<string, HabitStatus>): number {
     checkDate = d.toISOString().split('T')[0];
   }
   return streak;
+}
+
+// ─── WINNER'S MINDSET COMPONENT ──────────────────────────────────────────────
+
+function WinnersMindset() {
+  const [expanded, setExpanded] = useState(false);
+  // Shuffle once on mount
+  const shuffled = useState<string[]>(() =>
+    [...AFFIRMATIONS].sort(() => Math.random() - 0.5)
+  )[0];
+
+  return (
+    <div className="mx-4 mt-4 bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center justify-between px-4 py-3.5"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-[#FFD700]/12 flex items-center justify-center flex-shrink-0">
+            <Sparkles size={15} className="text-[#FFD700]" />
+          </div>
+          <span className="text-[15px] font-semibold text-[#1C1C1E]">Winner&apos;s Mindset</span>
+        </div>
+        {expanded ? (
+          <ChevronUp size={16} className="text-[#AEAEB2]" />
+        ) : (
+          <ChevronDown size={16} className="text-[#AEAEB2]" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-[#E5E5EA] px-4 py-3 flex flex-col gap-2.5">
+          {shuffled.map((affirmation, i) => (
+            <div key={i} className="flex items-start gap-2.5">
+              <span className="mt-0.5 w-4 h-4 flex-shrink-0 rounded-full bg-[#FFD700]/15 flex items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FFD700]" />
+              </span>
+              <p className="text-sm text-[#1C1C1E] leading-relaxed">{affirmation}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Category colour map (cycling through RHYTHM_COLORS) */
@@ -855,6 +901,9 @@ export default function WellnessPage() {
           </div>
         )}
       </div>
+
+      {/* Winner's Mindset */}
+      <WinnersMindset />
 
       {/* Rhythm list */}
       <div className="flex-1 px-4 py-4 pb-24 flex flex-col gap-3">

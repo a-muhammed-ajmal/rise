@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import {
   ChevronDown, ChevronUp, ArrowRight,
-  CheckCircle2, Circle, Sun, Check, Activity, CheckSquare,
+  CheckCircle2, Circle, Sun, Check, Activity, CheckSquare, Eye,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
 import { updateDocById, deleteDocById, createDoc } from '@/lib/firestore';
 import { COLLECTIONS } from '@/lib/constants';
 import { cn, formatTime, todayISO } from '@/lib/utils';
-import type { Task, Habit, Project, HabitStatus } from '@/lib/types';
+import type { Task, Habit, Project, Goal, HabitStatus } from '@/lib/types';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -272,21 +272,79 @@ function BeConsistent({ habits }: { habits: Habit[] }) {
   );
 }
 
-// ─── SECTION: GET THINGS DONE ─────────────────────────────────────────────────
+// ─── PRIORITY CONFIG (per spec §17.2) ────────────────────────────────────────
 
 const TASK_PRIORITY_LABELS: Record<string, string> = {
   P1: 'Do Now',
   P2: 'Important',
   P3: 'Get Done',
-  P4: 'Delegate',
+  P4: 'Default',
 };
 
 const TASK_PRIORITY_COLORS: Record<string, string> = {
   P1: '#EF4444',
-  P2: '#3B82F6',
-  P3: '#F59E0B',
+  P2: '#F59E0B',
+  P3: '#3B82F6',
   P4: '#6B7280',
 };
+
+// ─── VISION CATEGORY COLORS ───────────────────────────────────────────────────
+const VISION_CATEGORY_COLORS: Record<string, string> = {
+  Personal: '#800080',
+  Professional: '#1E4AFF',
+  Financial: '#00A86B',
+  Relationships: '#FF4F6D',
+  Health: '#1ABC9C',
+  Learning: '#FFD700',
+};
+
+// ─── SECTION: TARGET PROGRESS ─────────────────────────────────────────────────
+
+function TargetProgress({ goals }: { goals: Goal[] }) {
+  const activeGoals = goals
+    .filter((g) => !g.isCompleted)
+    .sort((a, b) => b.progress - a.progress)
+    .slice(0, 3);
+
+  if (activeGoals.length === 0) return null;
+
+  return (
+    <SectionCard icon={Eye} title="Target Progress" linkHref="/goals" linkLabel="See all">
+      <div>
+        {activeGoals.map((goal, idx) => {
+          const color = VISION_CATEGORY_COLORS[goal.category] ?? '#FF9933';
+          return (
+            <div
+              key={goal.id}
+              className={`px-4 py-3 ${idx < activeGoals.length - 1 ? 'border-b border-[#E5E5EA]' : ''}`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-sm font-medium text-[#1C1C1E] truncate flex-1 pr-2">{goal.title}</p>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                    style={{ backgroundColor: color + '18', color }}
+                  >
+                    {goal.category}
+                  </span>
+                  <span className="text-xs font-semibold text-[#1C1C1E]">{goal.progress}%</span>
+                </div>
+              </div>
+              <div className="h-1.5 bg-[#E5E5EA] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${goal.progress}%`, backgroundColor: color }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
+}
+
+// ─── SECTION: GET THINGS DONE ─────────────────────────────────────────────────
 
 function TaskDetailModal({
   open,
@@ -484,6 +542,11 @@ export default function DashboardPage() {
     collectionName: COLLECTIONS.PROJECTS,
     enabled: !!user,
   });
+  const { data: goals } = useCollection<Goal>({
+    userId: user?.uid ?? '',
+    collectionName: COLLECTIONS.GOALS,
+    enabled: !!user,
+  });
 
   // Live clock — update every 60 seconds
   useEffect(() => {
@@ -571,6 +634,10 @@ export default function DashboardPage() {
         onDuplicate={handleDuplicate}
         onSeeAll={() => router.push('/tasks')}
       />
+
+      {/* ── Target Progress ───────────────────────────────────────────────── */}
+      <TargetProgress goals={goals} />
+
       <TaskDetailModal
         open={!!detailTask}
         onClose={handleCloseDetail}
