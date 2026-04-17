@@ -212,25 +212,25 @@ export default function FinancePage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="glass-card p-3 text-center">
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          <div className="glass-card p-2 text-center overflow-hidden">
             <p className="section-label">Income</p>
-            <p className="text-lg font-bold text-[#1ABC9C]">{formatCurrency(totalIncome)}</p>
-            <TrendingUp size={16} className="mx-auto mt-1 text-[#1ABC9C]" />
+            <p className="text-sm font-bold text-[#1ABC9C] truncate">{formatCurrency(totalIncome)}</p>
+            <TrendingUp size={14} className="mx-auto mt-1 text-[#1ABC9C]" />
           </div>
-          <div className="glass-card p-3 text-center">
+          <div className="glass-card p-2 text-center overflow-hidden">
             <p className="section-label">Expenses</p>
-            <p className="text-lg font-bold text-[#FF4F6D]">{formatCurrency(totalExpenses)}</p>
-            <TrendingDown size={16} className="mx-auto mt-1 text-[#FF4F6D]" />
+            <p className="text-sm font-bold text-[#FF4F6D] truncate">{formatCurrency(totalExpenses)}</p>
+            <TrendingDown size={14} className="mx-auto mt-1 text-[#FF4F6D]" />
           </div>
-          <div className="glass-card p-3 text-center">
+          <div className="glass-card p-2 text-center overflow-hidden">
             <p className={`section-label ${netCashFlow >= 0 ? 'text-[#1ABC9C]' : 'text-[#FF4F6D]'}`}>
               {netCashFlow >= 0 ? 'Surplus' : 'Deficit'}
             </p>
-            <p className={`text-lg font-bold ${netCashFlow >= 0 ? 'text-[#1ABC9C]' : 'text-[#FF4F6D]'}`}>
+            <p className={`text-sm font-bold truncate ${netCashFlow >= 0 ? 'text-[#1ABC9C]' : 'text-[#FF4F6D]'}`}>
               {formatCurrency(Math.abs(netCashFlow))}
             </p>
-            {netCashFlow >= 0 ? <TrendingUp size={16} className="mx-auto mt-1 text-[#1ABC9C]" /> : <TrendingDown size={16} className="mx-auto mt-1 text-[#FF4F6D]" />}
+            {netCashFlow >= 0 ? <TrendingUp size={14} className="mx-auto mt-1 text-[#1ABC9C]" /> : <TrendingDown size={14} className="mx-auto mt-1 text-[#FF4F6D]" />}
           </div>
         </div>
       </div>
@@ -378,9 +378,9 @@ export default function FinancePage() {
                           <h3 className="font-semibold text-[#1C1C1E]">{debt.name}</h3>
                           <Badge label="Active" color="amber" />
                         </div>
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="text-lg font-bold text-[#FF4F6D]">{formatCurrency(debt.remainingBalance)}</p>
-                          <p className="text-sm text-[#6C6C70]">of {formatCurrency(debt.totalAmount)}</p>
+                        <div className="flex justify-between items-center mb-2 gap-2">
+                          <p className="text-sm font-bold text-[#FF4F6D] truncate">{formatCurrency(debt.remainingBalance)}</p>
+                          <p className="text-xs text-[#6C6C70] flex-shrink-0">of {formatCurrency(debt.totalAmount)}</p>
                         </div>
                         <div className="progress-track mb-2">
                           <div className="progress-fill" style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: 'green' }}></div>
@@ -392,7 +392,7 @@ export default function FinancePage() {
                           {debt.targetPayoffDate && <p>Target: {debt.targetPayoffDate}</p>}
                           {debt.notes && <p>{debt.notes}</p>}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button variant="primary" size="sm" onClick={() => setLogPaymentModal({ open: true, debt })}>Log Payment</Button>
                           <Button variant="ghost" size="sm" onClick={() => setDebtModal({ open: true, edit: debt })}>Edit</Button>
                           <Button variant="primary" size="sm" onClick={() => {
@@ -472,7 +472,7 @@ export default function FinancePage() {
                           <h3 className="font-semibold text-[#1C1C1E]">{budget.category}</h3>
                           <span className="text-sm text-[#6C6C70]">{formatCurrency(budget.monthlyLimit)}</span>
                         </div>
-                        <p className={`text-lg font-bold mb-2 ${isOver ? 'text-[#FF4F6D]' : 'text-[#1ABC9C]'}`}>
+                        <p className={`text-sm font-bold truncate mb-2 ${isOver ? 'text-[#FF4F6D]' : 'text-[#1ABC9C]'}`}>
                           {formatCurrency(spent)} spent
                         </p>
                         <div className="progress-track mb-2">

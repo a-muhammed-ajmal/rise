@@ -249,4 +249,17 @@ For local development, copy `.env.local.example` to `.env.local` and fill in val
 
 ---
 
+## 11. Patch history
+
+| Date | Files | Summary |
+|------|-------|---------|
+| 2026-04-17 | `app/(main)/tasks/page.tsx` | **Fix Action save bug**: removed `customDateTime: undefined` from `ReminderPickerSheet.onSave` call — Firebase SDK 10 throws on nested `undefined` values; `stripUndefined` in `lib/firestore.ts` only strips top-level keys so the nested field bypassed it. |
+| 2026-04-17 | `app/(main)/tasks/page.tsx` | **ActionDetailPopup header unified**: switched from custom header div to Modal's built-in `title` prop; bottom buttons changed from `sm:grid-cols-3` (stacked on mobile) to `grid-cols-3 gap-2` with `size="sm"`. |
+| 2026-04-17 | `app/(main)/tasks/page.tsx` | **TaskModal footer**: new-action mode shows single full-width "Add Action" button; edit mode shows 3-column `grid-cols-3 gap-2` with `size="sm"` buttons. Description `rows` reduced 3→2. |
+| 2026-04-17 | `app/(main)/finance/page.tsx` | **KPI card overflow**: `text-lg` → `text-sm truncate`, `gap-3`/`p-3` → `gap-2`/`p-2`, icons 16→14, added `overflow-hidden` on each card. |
+| 2026-04-17 | `app/(main)/finance/page.tsx` | **Debt card overflow**: remaining-balance `text-lg` → `text-sm truncate`; total-amount `text-sm` → `text-xs flex-shrink-0`; added `gap-2` on the row; debt action buttons `flex gap-2` → `flex flex-wrap gap-2`. |
+| 2026-04-17 | `app/(main)/finance/page.tsx` | **Budget planner overflow**: spent-amount `text-lg font-bold` → `text-sm font-bold truncate`. |
+
+---
+
 *End of `SYSTEM_SPEC.md`.*

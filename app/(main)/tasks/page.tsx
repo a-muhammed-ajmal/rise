@@ -689,7 +689,7 @@ function ReminderPickerSheet({
               onClick={() => {
                 setTempOption(opt);
                 if (opt !== 'Custom') {
-                  onSave({ enabled: opt !== 'None', option: opt, customDateTime: undefined });
+                  onSave({ enabled: opt !== 'None', option: opt });
                   onClose();
                 }
               }}
@@ -1000,19 +1000,19 @@ function TaskModal({
         onClose={onClose}
         title={task ? 'Edit Action' : 'Add Action'}
         footer={
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Button variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
-            <Button variant="danger" fullWidth onClick={handleDelete}>Delete</Button>
-            {task ? (
-              isDirty ? (
-                <Button fullWidth loading={saving} onClick={handleSave}>Update</Button>
+          task ? (
+            <div className="grid grid-cols-3 gap-2">
+              <Button size="sm" variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
+              <Button size="sm" variant="danger" fullWidth onClick={handleDelete}>Delete</Button>
+              {isDirty ? (
+                <Button size="sm" fullWidth loading={saving} onClick={handleSave}>Update</Button>
               ) : (
-                <Button fullWidth variant="secondary" onClick={onClose}>Cancel</Button>
-              )
-            ) : (
-              <Button fullWidth loading={saving} onClick={handleSave}>Add</Button>
-            )}
-          </div>
+                <Button size="sm" fullWidth variant="secondary" onClick={onClose}>Cancel</Button>
+              )}
+            </div>
+          ) : (
+            <Button fullWidth loading={saving} onClick={handleSave}>Add Action</Button>
+          )
         }
       >
         <div className="flex flex-col gap-4">
@@ -1047,10 +1047,10 @@ function TaskModal({
             </div>
             <textarea
               placeholder="Add notes or description"
-              rows={3}
+              rows={2}
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
-              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-3 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white resize-none"
+              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white resize-none"
             />
             {selectedFileName && (
               <p className="text-xs text-[#6C6C70]">📎 {selectedFileName}</p>
@@ -1358,19 +1358,8 @@ function ActionDetailPopup({
       <Modal
         open={open}
         onClose={onClose}
+        title="Edit Action"
       >
-        {/* Top line */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#E5E5EA] mb-4">
-          <span className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Edit Action</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="-mt-1 w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
         {/* Title row */}
         <div className="flex items-center gap-3 pb-4 border-b border-[#E5E5EA] mb-4">
           <button
@@ -1421,7 +1410,7 @@ function ActionDetailPopup({
                   setIsDirty(false);
                 }
               }}
-              rows={3}
+              rows={2}
               placeholder="Write notes or description"
               autoFocus={false}
               className="w-full resize-none bg-transparent text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none"
@@ -1554,10 +1543,10 @@ function ActionDetailPopup({
           </div>
 
           {/* Bottom buttons */}
-          <div className="grid gap-3 pt-3 border-t border-[#E5E5EA] sm:grid-cols-3">
-            <Button variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
-            <Button variant="danger" fullWidth onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
-            <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[#E5E5EA]">
+            <Button size="sm" variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
+            <Button size="sm" variant="danger" fullWidth onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
+            <Button size="sm" variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
           </div>
 
           {/* File input for details */}
