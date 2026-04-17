@@ -5,17 +5,15 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import {
   ChevronDown, ChevronUp, ArrowRight,
-  CheckCircle2, Circle, Sun, Check, Activity, CheckSquare, Eye,
+  Circle, Sun, Check, Activity, CheckSquare, Eye,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
-import { updateDocById, deleteDocById, createDoc } from '@/lib/firestore';
+import { updateDocById } from '@/lib/firestore';
 import { COLLECTIONS } from '@/lib/constants';
 import { cn, formatTime, todayISO } from '@/lib/utils';
 import type { Task, Habit, Project, Goal, HabitStatus } from '@/lib/types';
 import { TaskCard } from '@/components/tasks/TaskCard';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
 import { toast } from '@/lib/toast';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -96,15 +94,11 @@ function TodayFocus({
   projects,
   onComplete,
   onEdit,
-  onDelete,
-  onDuplicate,
 }: {
   tasks: Task[];
   projects: Project[];
   onComplete: (t: Task) => void;
   onEdit: (t: Task) => void;
-  onDelete: (t: Task) => void;
-  onDuplicate: (t: Task) => void;
 }) {
   const focusTasks = tasks
     .filter((t) => t.isMyDay && !t.isCompleted)
@@ -272,22 +266,6 @@ function BeConsistent({ habits }: { habits: Habit[] }) {
   );
 }
 
-// ─── PRIORITY CONFIG (per spec §17.2) ────────────────────────────────────────
-
-const TASK_PRIORITY_LABELS: Record<string, string> = {
-  P1: 'Do Now',
-  P2: 'Important',
-  P3: 'Get Done',
-  P4: 'Default',
-};
-
-const TASK_PRIORITY_COLORS: Record<string, string> = {
-  P1: '#EF4444',
-  P2: '#F59E0B',
-  P3: '#3B82F6',
-  P4: '#6B7280',
-};
-
 // ─── VISION CATEGORY COLORS ───────────────────────────────────────────────────
 const VISION_CATEGORY_COLORS: Record<string, string> = {
   Personal: '#800080',
@@ -344,133 +322,17 @@ function TargetProgress({ goals }: { goals: Goal[] }) {
   );
 }
 
-// ─── SECTION: GET THINGS DONE ─────────────────────────────────────────────────
-
-function TaskDetailModal({
-  open,
-  onClose,
-  task,
-  projects,
-  onComplete,
-  onEditAction,
-}: {
-  open: boolean;
-  onClose: () => void;
-  task: Task | null;
-  projects: Project[];
-  onComplete: (task: Task) => void;
-  onEditAction: (task: Task) => void;
-}) {
-  if (!task) return null;
-  const target = projects.find((p) => p.id === (task.targetId ?? task.projectId));
-  const reminderLabel = !task.reminder?.enabled
-    ? 'No reminder'
-    : task.reminder.option === 'Custom' && task.reminder.customDateTime
-      ? `Custom (${task.reminder.customDateTime})`
-      : task.reminder.option;
-
-  return (
-    <Modal open={open} onClose={onClose} title="Action details">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-3 h-3 rounded-full flex-shrink-0"
-              style={{ backgroundColor: TASK_PRIORITY_COLORS[task.priority] }}
-            />
-            <div>
-              <p className="text-lg font-semibold text-[#1C1C1E]">{task.title}</p>
-              <p className="text-xs text-[#6C6C70]">
-                {task.realm} · {target?.title ?? 'No target'}
-              </p>
-            </div>
-          </div>
-          {task.isCompleted && (
-            <span className="text-xs font-semibold text-[#1ABC9C]">Completed</span>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Details</p>
-            <p className="mt-2 text-sm text-[#1C1C1E]">
-              {task.description || 'No details added.'}
-            </p>
-          </div>
-
-          {task.steps?.length ? (
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Steps</p>
-              <div className="mt-2 space-y-2">
-                {task.steps.map((step) => (
-                  <div key={step.id} className="flex items-center gap-2">
-                    <div className={cn(
-                      'w-4 h-4 rounded-full border flex items-center justify-center',
-                      step.done ? 'bg-[#3B82F6] border-[#3B82F6]' : 'border-[#AEAEB2]'
-                    )}>
-                      {step.done && <Check size={10} className="text-white" />}
-                    </div>
-                    <span className={cn('text-sm', step.done && 'line-through text-[#AEAEB2]')}>
-                      {step.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="grid grid-cols-2 gap-2 text-sm text-[#1C1C1E]">
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Priority</p>
-              <p>{TASK_PRIORITY_LABELS[task.priority]}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Due</p>
-              <p>{task.dueDate ? `${task.dueDate}${task.dueTime ? ` ${task.dueTime}` : ''}` : 'None'}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Repeat</p>
-              <p>{task.recurring || 'Does not repeat'}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#6C6C70]">Reminder</p>
-              <p>{reminderLabel}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm text-[#6C6C70]">
-            <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
-            <span>My Day: {task.isMyDay ? 'Yes' : 'No'}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2 pt-3">
-        <Button fullWidth onClick={() => onEditAction(task)}>Edit action</Button>
-        {!task.isCompleted && (
-          <Button variant="secondary" fullWidth onClick={() => onComplete(task)}>Complete</Button>
-        )}
-        <Button variant="secondary" fullWidth onClick={onClose}>Close</Button>
-      </div>
-    </Modal>
-  );
-}
-
 function GetThingsDone({
   tasks,
   projects,
   onComplete,
   onEdit,
-  onDelete,
-  onDuplicate,
   onSeeAll,
 }: {
   tasks: Task[];
   projects: Project[];
   onComplete: (t: Task) => void;
   onEdit: (t: Task) => void;
-  onDelete: (t: Task) => void;
-  onDuplicate: (t: Task) => void;
   onSeeAll: () => void;
 }) {
   const todayKey = todayISO();
@@ -570,37 +432,9 @@ export default function DashboardPage() {
     toast.success('Action completed!');
   }, []);
 
-  const [detailTask, setDetailTask] = useState<Task | null>(null);
-
   const handleEdit = useCallback((task: Task) => {
-    setDetailTask(task);
-  }, []);
-
-  const handleCloseDetail = useCallback(() => {
-    setDetailTask(null);
-  }, []);
-
-  const handleEditAction = useCallback((task: Task) => {
-    setDetailTask(null);
-    router.push(`/tasks?edit=${task.id}`);
+    router.push(`/tasks?detail=${task.id}`);
   }, [router]);
-
-  const handleDelete = useCallback(async (task: Task) => {
-    await deleteDocById(COLLECTIONS.TASKS, task.id);
-    toast.success('Action deleted.');
-  }, []);
-
-  const handleDuplicate = useCallback(async (task: Task) => {
-    const { id, ...rest } = task;
-    await createDoc(COLLECTIONS.TASKS, {
-      ...rest,
-      title: task.title + ' (copy)',
-      order: Date.now(),
-      isCompleted: false,
-      completedAt: undefined,
-    });
-    toast.success('Action duplicated.');
-  }, []);
 
   return (
     <div className="page-content flex flex-col gap-4 pb-6">
@@ -617,8 +451,6 @@ export default function DashboardPage() {
         projects={projects}
         onComplete={handleComplete}
         onEdit={handleEdit}
-        onDelete={handleDelete}
-        onDuplicate={handleDuplicate}
       />
 
       {/* ── Be Consistent ─────────────────────────────────────────────────── */}
@@ -630,25 +462,12 @@ export default function DashboardPage() {
         projects={projects}
         onComplete={handleComplete}
         onEdit={handleEdit}
-        onDelete={handleDelete}
-        onDuplicate={handleDuplicate}
         onSeeAll={() => router.push('/tasks')}
       />
 
       {/* ── Target Progress ───────────────────────────────────────────────── */}
       <TargetProgress goals={goals} />
 
-      <TaskDetailModal
-        open={!!detailTask}
-        onClose={handleCloseDetail}
-        task={detailTask}
-        projects={projects}
-        onComplete={(task) => {
-          handleComplete(task);
-          handleCloseDetail();
-        }}
-        onEditAction={handleEditAction}
-      />
 
     </div>
   );

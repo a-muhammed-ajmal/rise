@@ -2024,6 +2024,16 @@ export default function ActionsPage() {
         router.replace('/tasks');
       }
     }
+
+    const detailId = searchParams?.get('detail');
+    if (detailId && tasks.length > 0) {
+      const taskToDetail = tasks.find((t) => t.id === detailId);
+      if (taskToDetail) {
+        setSelectedTask(taskToDetail);
+        setDetailPopupOpen(true);
+        router.replace('/tasks');
+      }
+    }
   }, [searchParams, router, tasks]);
 
   useEffect(() => {
