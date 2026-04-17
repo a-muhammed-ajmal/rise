@@ -18,16 +18,16 @@ import { sanitize } from '@/lib/sanitizer';
 
 export const TASK_PRIORITY_COLORS: Record<string, string> = {
   P1: '#EF4444',
-  P2: '#F59E0B',
+  P2: '#F97316',
   P3: '#3B82F6',
   P4: '#6B7280',
 };
 
 export const TASK_PRIORITY_LABELS: Record<string, string> = {
-  P1: 'Do Now',
-  P2: 'Important',
-  P3: 'Get Done',
-  P4: 'Default',
+  P1: 'P1',
+  P2: 'P2',
+  P3: 'P3',
+  P4: 'P4',
 };
 
 const REMINDER_OPTIONS = [
@@ -907,7 +907,7 @@ export function ActionDetailPopup({
                 className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none appearance-none"
               >
                 {REALMS.map((r) => (
-                  <option key={r} value={r}>{REALM_CONFIG[r].emoji} {r}</option>
+                  <option key={r} value={r}>{r}</option>
                 ))}
               </select>
             </div>
@@ -962,10 +962,9 @@ export function ActionDetailPopup({
           </div>
 
           {/* Bottom buttons */}
-          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[#E5E5EA]">
+          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-[#E5E5EA]">
             <Button size="sm" variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
             <Button size="sm" variant="danger" fullWidth onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
-            <Button size="sm" variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
           </div>
 
           <input ref={fileInputRef} type="file" className="hidden" />

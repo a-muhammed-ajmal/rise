@@ -31,8 +31,9 @@ export const COLLECTIONS = {
   USERS: 'users',
 } as const;
 
-// ─── REALMS (6 fixed realms) ─────────────────────────────────────────────────
+// ─── REALMS (7 realms, Inbox is default) ─────────────────────────────────────
 export const REALMS = [
+  'Inbox',
   'Professional',
   'Personal',
   'Financial',
@@ -42,6 +43,7 @@ export const REALMS = [
 ] as const;
 
 export const REALM_CONFIG: Record<string, { emoji: string; color: string; description: string }> = {
+  Inbox:        { emoji: '📥', color: '#6B7280', description: 'Unsorted, capture everything' },
   Professional: { emoji: '💼', color: '#1E4AFF', description: 'Focus, clarity, execution' },
   Personal:     { emoji: '🎯', color: '#800080', description: 'Identity, creativity, self-expression' },
   Financial:    { emoji: '💰', color: '#00A86B', description: 'Growth, stability, wealth' },
@@ -54,15 +56,15 @@ export const REALM_CONFIG: Record<string, { emoji: string; color: string; descri
 export const PRIORITIES = ['P1', 'P2', 'P3', 'P4'] as const;
 export const PRIORITY_COLORS: Record<string, string> = {
   P1: '#EF4444',
-  P2: '#F59E0B',
+  P2: '#F97316',
   P3: '#3B82F6',
   P4: '#6B7280',
 };
 export const PRIORITY_LABELS: Record<string, string> = {
-  P1: 'Do Now',
-  P2: 'Important',
-  P3: 'Get Done',
-  P4: 'Default',
+  P1: 'P1',
+  P2: 'P2',
+  P3: 'P3',
+  P4: 'P4',
 };
 
 // ─── VISION CATEGORIES ───────────────────────────────────────────────────────

@@ -193,7 +193,7 @@ function StepsEditor({
           onChange={(e) => setNewStepText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStep(); } }}
           placeholder="Add a step"
-          className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white"
+          className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none"
         />
         <button
           type="button"
@@ -224,14 +224,37 @@ interface TaskForm {
   isMyDay: boolean;
 }
 
+function formatChipDate(dueDate: string, dueTime?: string): string {
+  const parsed = parseDueDate(dueDate);
+  if (!parsed) return dueDate;
+  const day = parsed.getDate();
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mon = monthNames[parsed.getMonth()];
+  let out = `${day} ${mon}`;
+  if (dueTime) {
+    const match = dueTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (match) {
+      out += ` ${match[1]}:${match[2]}${match[3] ? ' ' + match[3].toUpperCase() : ''}`;
+    }
+  }
+  return out;
+}
+
+function todayDDMMYYYY(): string {
+  const n = new Date();
+  const d = String(n.getDate()).padStart(2, '0');
+  const m = String(n.getMonth() + 1).padStart(2, '0');
+  return `${d}/${m}/${n.getFullYear()}`;
+}
+
 const DEFAULT_FORM: TaskForm = {
   title: '',
   description: '',
   steps: [],
-  realm: 'Personal',
+  realm: 'Inbox',
   targetId: '',
   priority: 'P4',
-  dueDate: '',
+  dueDate: todayDDMMYYYY(),
   dueTime: '',
   recurring: 'None',
   customDays: [],
@@ -399,11 +422,7 @@ function TaskModal({
             <div className="grid grid-cols-3 gap-2">
               <Button size="sm" variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
               <Button size="sm" variant="danger" fullWidth onClick={handleDelete}>Delete</Button>
-              {isDirty ? (
-                <Button size="sm" fullWidth loading={saving} onClick={handleSave}>Update</Button>
-              ) : (
-                <Button size="sm" fullWidth variant="secondary" onClick={onClose}>Cancel</Button>
-              )}
+              <Button size="sm" fullWidth loading={saving} onClick={handleSave} disabled={!isDirty}>Save</Button>
             </div>
           ) : (
             <Button fullWidth loading={saving} onClick={handleSave}>Add Action</Button>
@@ -411,10 +430,10 @@ function TaskModal({
         }
       >
         <div className="flex flex-col gap-4">
-          {/* Title with check circle */}
+          {/* Title with priority circle */}
           <div className="flex items-center gap-2 border-b border-[#E5E5EA] pb-2">
             <div
-              className="flex-shrink-0 w-[16px] h-[16px] rounded-full border-2 flex items-center justify-center"
+              className="flex-shrink-0 w-[16px] h-[16px] rounded-full border-2"
               style={{ borderColor: TASK_PRIORITY_COLORS[form.priority] ?? '#6B7280' }}
             />
             <input
@@ -424,20 +443,20 @@ function TaskModal({
               value={form.title}
               onChange={(e) => set('title', e.target.value)}
               autoFocus={!task}
-              className="flex-1 text-base text-[#1C1C1E] placeholder-[#AEAEB2] outline-none bg-transparent focus:border-[#FF6B35]"
+              className="flex-1 text-base text-[#1C1C1E] placeholder-[#AEAEB2] outline-none bg-transparent"
             />
           </div>
 
-          {/* Add Detail section with file attachment icon */}
+          {/* Description */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-[#1C1C1E]">Add details</label>
+              <label className="text-xs font-medium text-[#6C6C70] uppercase tracking-wider">Details</label>
               <button
                 type="button"
                 onClick={() => { fileInputRef.current?.click(); }}
-                className="w-9 h-9 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]"
+                className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#6C6C70] rounded-full"
               >
-                <Paperclip size={14} />
+                <Paperclip size={13} />
               </button>
             </div>
             <textarea
@@ -445,7 +464,7 @@ function TaskModal({
               rows={2}
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
-              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white resize-none"
+              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none resize-none"
             />
             {selectedFileName && (
               <p className="text-xs text-[#6C6C70]">📎 {selectedFileName}</p>
@@ -455,99 +474,105 @@ function TaskModal({
           {/* Steps */}
           <StepsEditor steps={form.steps} onChange={(s) => set('steps', s)} />
 
-          {/* Area of Life / Target / Focus Day - compact row */}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <div className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2">
-              <span className="text-base">{REALM_CONFIG[form.realm]?.emoji}</span>
+          {/* Realm / Target / Focus Day */}
+          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+            <div className="flex items-center gap-1.5 rounded-chip border border-[#E5E5EA] bg-[#F5F5F5] px-2.5 py-1.5 flex-shrink-0">
+              <span className="text-sm">{REALM_CONFIG[form.realm]?.emoji}</span>
               <select
                 value={form.realm}
                 onChange={(e) => { set('realm', e.target.value); set('targetId', ''); }}
-                className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none appearance-none"
+                className="bg-transparent text-xs font-medium text-[#1C1C1E] outline-none appearance-none max-w-[80px]"
               >
                 {REALMS.map((r) => (
-                  <option key={r} value={r}>{REALM_CONFIG[r].emoji} {r}</option>
+                  <option key={r} value={r}>{r}</option>
                 ))}
               </select>
             </div>
-            <div className="flex items-center gap-2 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] px-3 py-2">
-              <span className="text-[#6C6C70]">⊙</span>
+            <div className="flex items-center gap-1.5 rounded-chip border border-[#E5E5EA] bg-[#F5F5F5] px-2.5 py-1.5 flex-shrink-0">
+              <span className="text-xs text-[#6C6C70]">⊙</span>
               <select
                 value={form.targetId}
                 onChange={(e) => set('targetId', e.target.value)}
-                className="flex-1 bg-transparent text-sm text-[#1C1C1E] outline-none appearance-none"
+                className="bg-transparent text-xs font-medium text-[#1C1C1E] outline-none appearance-none max-w-[90px]"
               >
-                <option value="">No target</option>
-                {realmProjects.length === 0 ? (
-                  <option value="" disabled>No targets in this Realm yet</option>
-                ) : (
-                  realmProjects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)
-                )}
+                <option value="">Target</option>
+                {realmProjects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
               </select>
             </div>
             <button
               type="button"
               onClick={() => set('isMyDay', !form.isMyDay)}
               className={cn(
-                'flex items-center gap-2 rounded-input border px-3 py-2 text-sm font-medium transition-colors',
-                form.isMyDay ? 'border-[#FF6B35] bg-[#FF6B35]/10 text-[#FF6B35]' : 'border-[#E5E5EA] bg-[#F5F5F5] text-[#1C1C1E]'
+                'flex items-center gap-1.5 rounded-chip border px-2.5 py-1.5 text-xs font-medium transition-colors flex-shrink-0',
+                form.isMyDay ? 'border-[#FF6B35] bg-[#FF6B35]/10 text-[#FF6B35]' : 'border-[#E5E5EA] bg-[#F5F5F5] text-[#6C6C70]'
               )}
             >
-              <Sun size={16} className={form.isMyDay ? 'text-[#FF6B35]' : 'text-[#6C6C70]'} />
-              <span className="hidden sm:inline">Focus Day</span>
+              <Sun size={12} />
+              {form.isMyDay ? 'Focus' : 'Focus'}
             </button>
           </div>
 
-          {/* Priority / Due Date / Repeat / Reminders - equal-sized row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
-            <div className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5">
-              <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: TASK_PRIORITY_COLORS[form.priority] ?? '#6B7280' }} />
+          {/* Priority / Due Date / Repeat / Reminders — horizontal scroll chips */}
+          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+            {/* Priority chip */}
+            <div className="flex items-center gap-1.5 rounded-chip border border-[#E5E5EA] bg-[#F5F5F5] px-2.5 py-1.5 flex-shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: TASK_PRIORITY_COLORS[form.priority] ?? '#6B7280' }} />
               <select
                 value={form.priority}
                 onChange={(e) => set('priority', e.target.value as Priority)}
-                className="bg-transparent text-[11px] font-medium text-[#1C1C1E] outline-none text-center w-full"
+                className="bg-transparent text-xs font-semibold outline-none appearance-none"
+                style={{ color: TASK_PRIORITY_COLORS[form.priority] ?? '#6B7280' }}
               >
                 {(['P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => (
-                  <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>
+                  <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             </div>
+            {/* Due Date chip */}
             <button
               type="button"
               onClick={() => setDtPickerOpen(true)}
-              className="relative flex flex-col items-center justify-center gap-1 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2 text-center overflow-hidden"
+              className={cn(
+                'flex items-center gap-1.5 rounded-chip border px-2.5 py-1.5 text-xs font-medium flex-shrink-0 transition-colors',
+                form.dueDate ? 'border-[#3B82F6]/40 bg-[#3B82F6]/8 text-[#3B82F6]' : 'border-[#E5E5EA] bg-[#F5F5F5] text-[#6C6C70]'
+              )}
             >
-              <Calendar size={13} className="text-[#6C6C70]" />
-              <span className={cn('text-[10px] font-medium leading-tight w-full truncate', form.dueDate ? 'text-[#3B82F6]' : 'text-[#1C1C1E]')}>
-                {form.dueDate ? form.dueDate : 'Due Date'}
-              </span>
+              <Calendar size={11} />
+              <span>{form.dueDate ? formatChipDate(form.dueDate, form.dueTime) : 'Date'}</span>
               {form.dueDate && (
-                <button
-                  type="button"
+                <span
+                  role="button"
                   onClick={(e) => { e.stopPropagation(); set('dueDate', ''); set('dueTime', ''); }}
-                  className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]"
-                >
-                  <X size={9} />
-                </button>
+                  className="ml-0.5 text-[#3B82F6]/60 hover:text-[#EF4444] leading-none"
+                >×</span>
               )}
             </button>
+            {/* Repeat chip */}
             <button
               type="button"
               onClick={() => setRecurringPickerOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2 text-center"
+              className={cn(
+                'flex items-center gap-1.5 rounded-chip border px-2.5 py-1.5 text-xs font-medium flex-shrink-0 transition-colors',
+                form.recurring !== 'None' ? 'border-[#3B82F6]/40 bg-[#3B82F6]/8 text-[#3B82F6]' : 'border-[#E5E5EA] bg-[#F5F5F5] text-[#6C6C70]'
+              )}
             >
-              <Repeat size={13} className="text-[#6C6C70]" />
-              <span className={cn('text-[10px] font-medium leading-tight', form.recurring !== 'None' ? 'text-[#3B82F6]' : 'text-[#1C1C1E]')}>
-                {form.recurring === 'None' ? 'Repeat' : form.recurring}
-              </span>
+              <Repeat size={11} />
+              <span>{form.recurring !== 'None' ? form.recurring : 'Repeat'}</span>
             </button>
+            {/* Reminder chip */}
             <button
               type="button"
               onClick={() => setReminderPickerOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2 text-center"
+              className={cn(
+                'flex items-center gap-1.5 rounded-chip border px-2.5 py-1.5 text-xs font-medium flex-shrink-0 transition-colors',
+                form.reminder.enabled ? 'border-[#3B82F6]/40 bg-[#3B82F6]/8 text-[#3B82F6]' : 'border-[#E5E5EA] bg-[#F5F5F5] text-[#6C6C70]'
+              )}
             >
-              <Bell size={13} className={form.reminder.enabled ? 'text-[#3B82F6]' : 'text-[#6C6C70]'} />
-              <span className={cn('text-[10px] font-medium leading-tight', form.reminder.enabled ? 'text-[#3B82F6]' : 'text-[#1C1C1E]')}>
-                {form.reminder.enabled ? (form.reminder.option === 'Custom' ? 'Custom' : 'On') : 'Remind'}
+              <Bell size={11} />
+              <span>
+                {form.reminder.enabled
+                  ? (form.reminder.option === 'Custom' ? 'Custom' : form.reminder.option)
+                  : 'Remind'}
               </span>
             </button>
           </div>
@@ -968,41 +993,40 @@ export default function ActionsPage() {
   const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 7);
 
   const todayTasks = useMemo(() => {
-    const active = tasks.filter((t) => {
-      if (!t.dueDate) return false;
+    // Dated tasks due today or overdue (exclude completed)
+    const dated = tasks.filter((t) => {
+      if (t.isCompleted || !t.dueDate) return false;
       const due = parseDueDate(t.dueDate);
       return due ? due.getTime() <= today.getTime() : false;
-    });
-    const uncompleted = active.filter(t => !t.isCompleted).sort((a, b) => {
+    }).sort((a, b) => {
       const aOver = isTaskOverdue(a) ? 0 : 1;
       const bOver = isTaskOverdue(b) ? 0 : 1;
       if (aOver !== bOver) return aOver - bOver;
       return parseInt(a.priority[1]) - parseInt(b.priority[1]);
     });
-    const completed = active.filter(t => t.isCompleted).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
-    return [...uncompleted, ...completed];
+    // No-date actions sorted to bottom by createdAt
+    const undated = tasks.filter((t) => !t.isCompleted && !t.dueDate)
+      .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+    return [...dated, ...undated];
   }, [tasks, today]);
 
   const inboxTasks = useMemo(() => {
-    const active = tasks.filter((t) => !t.dueDate);
-    const uncompleted = active.filter(t => !t.isCompleted).sort((a, b) => parseInt(a.priority[1]) - parseInt(b.priority[1]));
-    const completed = active.filter(t => t.isCompleted).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
-    return [...uncompleted, ...completed];
+    // Inbox = realm is 'Inbox' (or legacy: no realm set), not completed
+    return tasks
+      .filter((t) => !t.isCompleted && (t.realm === 'Inbox' || !t.realm))
+      .sort((a, b) => parseInt(a.priority[1]) - parseInt(b.priority[1]));
   }, [tasks]);
 
   const upcomingTasks = useMemo(() => {
-    const active = tasks.filter((t) => {
-      if (!t.dueDate) return false;
+    return tasks.filter((t) => {
+      if (t.isCompleted || !t.dueDate) return false;
       const due = parseDueDate(t.dueDate);
       return due ? due.getTime() > today.getTime() : false;
-    });
-    const uncompleted = active.filter(t => !t.isCompleted).sort((a, b) => {
+    }).sort((a, b) => {
       const da = parseDueDate(a.dueDate!)?.getTime() ?? 0;
       const db = parseDueDate(b.dueDate!)?.getTime() ?? 0;
       return da - db;
     });
-    const completed = active.filter(t => t.isCompleted).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
-    return [...uncompleted, ...completed];
   }, [tasks, today]);
 
   const completedTasks = useMemo(() => tasks.filter(
