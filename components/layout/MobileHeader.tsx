@@ -42,7 +42,7 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
         <button
           type="button"
           onClick={onMenuClick}
-          className="w-9 h-9 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F2F2F7] -ml-1"
+          className="w-10 h-10 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F2F2F7] -ml-1"
           aria-label="Open menu"
         >
           <Menu size={22} />

@@ -65,9 +65,9 @@ function JournalModal({ open, onClose, entry, userId }: { open: boolean; onClose
             <button
               onMouseDown={startRecording} onMouseUp={stopRecording}
               onTouchStart={startRecording} onTouchEnd={stopRecording}
-              className={cn('w-8 h-8 rounded-full flex items-center justify-center', isRecording ? 'bg-[#FF4F6D] text-white' : 'bg-[#F5F5F5] text-[#6C6C70]')}
+              className={cn('w-10 h-10 rounded-full flex items-center justify-center', isRecording ? 'bg-[#FF4F6D] text-white' : 'bg-[#F5F5F5] text-[#6C6C70]')}
             >
-              {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
+              {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
           </div>
           <Textarea value={form.text} onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))} rows={8} placeholder="Write your thoughts..." />

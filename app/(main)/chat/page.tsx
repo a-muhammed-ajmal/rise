@@ -285,10 +285,10 @@ export default function ChatPage() {
         <h1 className="text-base font-bold text-[#1C1C1E]">AI Chat</h1>
         <button
           onClick={() => setClearOpen(true)}
-          className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#FF4F6D]"
+          className="w-10 h-10 flex items-center justify-center text-[#6C6C70] hover:text-[#FF4F6D] rounded-full hover:bg-[#F5F5F5] transition-colors"
           title="Clear chat"
         >
-          <Trash2 size={16} />
+          <Trash2 size={18} />
         </button>
       </div>
 
@@ -345,13 +345,13 @@ export default function ChatPage() {
                 <button
                   type="button"
                   onClick={() => toggleTTS(msg.id, msg.content)}
-                  className="w-5 h-5 flex items-center justify-center text-[#AEAEB2] hover:text-[#FF9933] transition-colors"
+                  className="w-7 h-7 flex items-center justify-center text-[#AEAEB2] hover:text-[#FF9933] transition-colors rounded-full"
                   aria-label={speakingId === msg.id ? 'Stop speaking' : 'Listen'}
                   title={speakingId === msg.id ? 'Stop' : 'Listen'}
                 >
                   {speakingId === msg.id
-                    ? <VolumeX size={12} />
-                    : <Volume2 size={12} />}
+                    ? <VolumeX size={14} />
+                    : <Volume2 size={14} />}
                 </button>
               )}
             </div>

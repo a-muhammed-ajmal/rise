@@ -215,22 +215,22 @@ export default function FinancePage() {
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="glass-card p-3 text-center">
             <p className="section-label">Income</p>
-            <p className="text-lg font-bold text-green-400">{formatCurrency(totalIncome)}</p>
-            <TrendingUp size={16} className="mx-auto mt-1 text-green-400" />
+            <p className="text-lg font-bold text-[#1ABC9C]">{formatCurrency(totalIncome)}</p>
+            <TrendingUp size={16} className="mx-auto mt-1 text-[#1ABC9C]" />
           </div>
           <div className="glass-card p-3 text-center">
             <p className="section-label">Expenses</p>
-            <p className="text-lg font-bold text-red-400">{formatCurrency(totalExpenses)}</p>
-            <TrendingDown size={16} className="mx-auto mt-1 text-red-400" />
+            <p className="text-lg font-bold text-[#FF4F6D]">{formatCurrency(totalExpenses)}</p>
+            <TrendingDown size={16} className="mx-auto mt-1 text-[#FF4F6D]" />
           </div>
           <div className="glass-card p-3 text-center">
-            <p className={`section-label ${netCashFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`section-label ${netCashFlow >= 0 ? 'text-[#1ABC9C]' : 'text-[#FF4F6D]'}`}>
               {netCashFlow >= 0 ? 'Surplus' : 'Deficit'}
             </p>
-            <p className={`text-lg font-bold ${netCashFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`text-lg font-bold ${netCashFlow >= 0 ? 'text-[#1ABC9C]' : 'text-[#FF4F6D]'}`}>
               {formatCurrency(Math.abs(netCashFlow))}
             </p>
-            {netCashFlow >= 0 ? <TrendingUp size={16} className="mx-auto mt-1 text-green-400" /> : <TrendingDown size={16} className="mx-auto mt-1 text-red-400" />}
+            {netCashFlow >= 0 ? <TrendingUp size={16} className="mx-auto mt-1 text-[#1ABC9C]" /> : <TrendingDown size={16} className="mx-auto mt-1 text-[#FF4F6D]" />}
           </div>
         </div>
       </div>
@@ -258,17 +258,21 @@ export default function FinancePage() {
               ) : (
                 <div className="space-y-2">
                   {incomeTransactions.sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
-                    <div key={tx.id} className="glass-card p-3 flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold text-[#1C1C1E]">{tx.source}</p>
-                        <Badge label={tx.category} />
+                    <div key={tx.id} className="glass-card p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[#1C1C1E] truncate">{tx.source}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <Badge label={tx.category} />
+                            <Badge label={tx.status || 'Received'} color={tx.status === 'Received' ? 'green' : tx.status === 'Pending' ? 'amber' : 'blue'} />
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-[#1ABC9C]">{formatCurrency(tx.amount)}</p>
+                          <p className="text-xs text-[#6C6C70]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-[#6C6C70]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
-                        <p className="font-semibold text-green-400">{formatCurrency(tx.amount)}</p>
-                        <Badge label={tx.status || 'Received'} color={tx.status === 'Received' ? 'green' : tx.status === 'Pending' ? 'amber' : 'blue'} />
-                      </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 mt-2 pt-2 border-t border-[#F0F0F0]">
                         <Button variant="ghost" size="sm" onClick={() => setIncomeModal({ open: true, edit: tx })}>Edit</Button>
                         <Button variant="ghost" size="sm" onClick={() => setDeleteModal({ open: true, type: 'transaction', id: tx.id, name: tx.source || tx.category })}>Delete</Button>
                       </div>
@@ -319,18 +323,22 @@ export default function FinancePage() {
               ) : (
                 <div className="space-y-2">
                   {expenseTransactions.sort((a, b) => b.date.localeCompare(a.date)).map(tx => (
-                    <div key={tx.id} className="glass-card p-3 flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold text-[#1C1C1E]">{tx.description}</p>
-                        <Badge label={tx.category} />
+                    <div key={tx.id} className="glass-card p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[#1C1C1E] truncate">{tx.description}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <Badge label={tx.category} />
+                            <Badge label={tx.expenseType || 'Optional'} color={tx.expenseType === 'Mandatory' ? 'blue' : 'gray'} />
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-[#FF4F6D]">{formatCurrency(tx.amount)}</p>
+                          <p className="text-xs text-[#6C6C70]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
+                          {tx.paymentMethod && <p className="text-xs text-[#AEAEB2]">{tx.paymentMethod}</p>}
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-[#6C6C70]">{format(parse(tx.date, 'yyyy-MM-dd', new Date()), 'MMM d')}</p>
-                        <Badge label={tx.expenseType || 'Optional'} color={tx.expenseType === 'Mandatory' ? 'blue' : 'gray'} />
-                        <p className="font-semibold text-red-400">{formatCurrency(tx.amount)}</p>
-                        <p className="text-xs text-[#6C6C70]">{tx.paymentMethod}</p>
-                      </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 mt-2 pt-2 border-t border-[#F0F0F0]">
                         <Button variant="ghost" size="sm" onClick={() => setExpenseModal({ open: true, edit: tx })}>Edit</Button>
                         <Button variant="ghost" size="sm" onClick={() => setDeleteModal({ open: true, type: 'transaction', id: tx.id, name: tx.description || tx.category })}>Delete</Button>
                       </div>
@@ -371,7 +379,7 @@ export default function FinancePage() {
                           <Badge label="Active" color="amber" />
                         </div>
                         <div className="flex justify-between items-center mb-2">
-                          <p className="text-lg font-bold text-red-400">{formatCurrency(debt.remainingBalance)}</p>
+                          <p className="text-lg font-bold text-[#FF4F6D]">{formatCurrency(debt.remainingBalance)}</p>
                           <p className="text-sm text-[#6C6C70]">of {formatCurrency(debt.totalAmount)}</p>
                         </div>
                         <div className="progress-track mb-2">
@@ -464,16 +472,16 @@ export default function FinancePage() {
                           <h3 className="font-semibold text-[#1C1C1E]">{budget.category}</h3>
                           <span className="text-sm text-[#6C6C70]">{formatCurrency(budget.monthlyLimit)}</span>
                         </div>
-                        <p className={`text-lg font-bold mb-2 ${isOver ? 'text-red-400' : 'text-green-400'}`}>
+                        <p className={`text-lg font-bold mb-2 ${isOver ? 'text-[#FF4F6D]' : 'text-[#1ABC9C]'}`}>
                           {formatCurrency(spent)} spent
                         </p>
                         <div className="progress-track mb-2">
                           <div className="progress-fill" style={{ width: `${Math.min(percentage, 100)}%`, backgroundColor: color }}></div>
                         </div>
                         {isOver ? (
-                          <p className="text-sm text-red-400">Over by {formatCurrency(spent - budget.monthlyLimit)}</p>
+                          <p className="text-sm text-[#FF4F6D]">Over by {formatCurrency(spent - budget.monthlyLimit)}</p>
                         ) : (
-                          <p className="text-sm text-green-400">{formatCurrency(budget.monthlyLimit - spent)} remaining</p>
+                          <p className="text-sm text-[#1ABC9C]">{formatCurrency(budget.monthlyLimit - spent)} remaining</p>
                         )}
                         <div className="flex justify-end mt-2 gap-2">
                           <Button variant="ghost" size="sm" onClick={() => setBudgetModal({ open: true, edit: budget })}>Edit</Button>

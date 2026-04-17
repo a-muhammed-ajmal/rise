@@ -231,14 +231,14 @@ function BeConsistent({ habits }: { habits: Habit[] }) {
                 <button
                   type="button"
                   onClick={() => markDone(habit)}
-                  className="h-8 px-3 rounded-lg bg-[#1ABC9C]/10 text-[#1ABC9C] text-xs font-semibold active:bg-[#1ABC9C]/20 border border-[#1ABC9C]/20"
+                  className="h-10 px-3.5 rounded-lg bg-[#1ABC9C]/10 text-[#1ABC9C] text-xs font-semibold active:bg-[#1ABC9C]/20 border border-[#1ABC9C]/20 transition-colors"
                 >
                   Done
                 </button>
                 <button
                   type="button"
                   onClick={() => markFailed(habit)}
-                  className="h-8 px-3 rounded-lg bg-[#FF4F6D]/10 text-[#FF4F6D] text-xs font-semibold active:bg-[#FF4F6D]/20 border border-[#FF4F6D]/20"
+                  className="h-10 px-3.5 rounded-lg bg-[#FF4F6D]/10 text-[#FF4F6D] text-xs font-semibold active:bg-[#FF4F6D]/20 border border-[#FF4F6D]/20 transition-colors"
                 >
                   Fail
                 </button>
@@ -606,9 +606,9 @@ export default function DashboardPage() {
     <div className="page-content flex flex-col gap-4 pb-6">
 
       {/* ── Greeting card ──────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl px-4 py-5 border border-[#E5E5EA] shadow-sm">
-        <h1 className="text-lg font-semibold text-[#1C1C1E] leading-tight">{greeting}</h1>
-        <p className="text-[13px] text-[#6C6C70] mt-1">{dateTime}</p>
+      <div className="bg-white rounded-2xl px-4 py-4 border border-[#E5E5EA] shadow-sm">
+        <h1 className="text-[17px] font-semibold text-[#1C1C1E] leading-tight">{greeting}</h1>
+        <p className="text-[13px] text-[#6C6C70] mt-0.5">{dateTime}</p>
       </div>
 
       {/* ── Today's Focus ─────────────────────────────────────────────────── */}

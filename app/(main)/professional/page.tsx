@@ -125,7 +125,7 @@ export default function ProfessionalPage() {
         <h1 className="text-xl font-bold text-[#1C1C1E] mb-3">Professional</h1>
         <div className="flex gap-1">
           {(['leads','deals'] as Tab[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={cn('flex-1 h-8 text-xs font-medium capitalize rounded-chip transition-colors', tab === t ? 'bg-[#1E4AFF] text-white' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{t}</button>
+            <button key={t} onClick={() => setTab(t)} className={cn('flex-1 h-10 text-xs font-medium capitalize rounded-chip transition-colors', tab === t ? 'bg-[#1E4AFF] text-white' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{t}</button>
           ))}
         </div>
       </div>

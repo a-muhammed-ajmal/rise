@@ -608,7 +608,7 @@ function RhythmCard({
             onClick={resetStatus}
             aria-label="Reset status"
             className={cn(
-              'h-8 px-3 rounded-chip text-xs font-semibold border transition-colors',
+              'h-10 px-3 rounded-chip text-xs font-semibold border transition-colors',
               status === 'done'
                 ? 'bg-[#1ABC9C]/15 text-[#1ABC9C] border-[#1ABC9C]/30 hover:bg-[#1ABC9C]/25'
                 : 'bg-[#FF4F6D]/15 text-[#FF4F6D] border-[#FF4F6D]/30 hover:bg-[#FF4F6D]/25'
@@ -673,15 +673,15 @@ function PomodoroPanel({ userId, onClose }: { userId: string; onClose: () => voi
               type="button"
               onClick={() => setSettingsOpen(true)}
               aria-label="Timer settings"
-              className="w-6 h-6 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E]"
+              className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]"
             >
-              <Settings size={14} />
+              <Settings size={15} />
             </button>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close timer"
-              className="w-6 h-6 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] text-xs"
+              className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5] text-sm"
             >
               ✕
             </button>
@@ -859,7 +859,7 @@ export default function WellnessPage() {
               type="button"
               onClick={() => setPomodoroOpen(!pomodoroOpen)}
               aria-label="Pomodoro timer"
-              className="w-9 h-9 bg-[#FFFFFF] border border-[#E5E5EA] rounded-full flex items-center justify-center text-[#FF6B35]"
+              className="w-10 h-10 bg-[#FFFFFF] border border-[#E5E5EA] rounded-full flex items-center justify-center text-[#FF6B35]"
             >
               <Timer size={16} />
             </button>

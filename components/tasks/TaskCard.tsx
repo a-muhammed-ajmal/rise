@@ -184,33 +184,39 @@ export function TaskCard({
       onClick={handleCardClick}
     >
       {/* LINE 1: Completion circle + title */}
-      <div className="flex items-start gap-2">
+      <div className="flex items-center gap-0">
         {inBulkMode ? (
-          <div
-            className={cn(
-              'flex-shrink-0 mt-1 w-[14px] h-[14px] rounded-full border-2 flex items-center justify-center',
-              selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
-            )}
-          >
-            {selected && <Check size={10} strokeWidth={3} className="text-white" />}
+          <div className="flex-shrink-0 -mt-0.5 -ml-1 w-[36px] h-[36px] flex items-center justify-center">
+            <div
+              className={cn(
+                'w-[16px] h-[16px] rounded-full border-2 flex items-center justify-center',
+                selected ? 'bg-[#FF6B35] border-[#FF6B35]' : 'border-[#AEAEB2]'
+              )}
+            >
+              {selected && <Check size={10} strokeWidth={3} className="text-white" />}
+            </div>
           </div>
         ) : (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onComplete(task); }}
-            className={cn(
-              'flex-shrink-0 mt-1 w-[14px] h-[14px] rounded-full border-2 flex items-center justify-center transition-colors',
-              task.isCompleted && 'bg-opacity-20'
-            )}
-            style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
+            className="flex-shrink-0 -mt-0.5 -ml-1 w-[36px] h-[36px] flex items-center justify-center transition-colors"
             aria-label={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            {task.isCompleted && <Check size={10} strokeWidth={3} style={{ color: priorityColor }} />}
+            <div
+              className={cn(
+                'w-[16px] h-[16px] rounded-full border-2 flex items-center justify-center transition-colors',
+                task.isCompleted && 'bg-opacity-20'
+              )}
+              style={{ borderColor: priorityColor, backgroundColor: task.isCompleted ? priorityColor + '20' : 'transparent' }}
+            >
+              {task.isCompleted && <Check size={10} strokeWidth={3} style={{ color: priorityColor }} />}
+            </div>
           </button>
         )}
 
         <p className={cn(
-          'flex-1 text-sm text-[#1C1C1E] leading-snug',
+          'flex-1 text-sm text-[#1C1C1E] leading-snug pr-1',
           task.isCompleted && 'line-through text-[#AEAEB2]'
         )}>
           {task.title}
@@ -218,7 +224,7 @@ export function TaskCard({
       </div>
 
       {/* LINE 2: Due date/time (left) + Realm (right) */}
-      <div className="flex items-center justify-between ml-[22px]">
+      <div className="flex items-center justify-between ml-[26px]">
         {dueDateInfo ? (
           <span className="text-[11px] leading-none font-normal" style={{ color: dueDateInfo.color }}>
             {dueDateInfo.label}
@@ -233,7 +239,7 @@ export function TaskCard({
 
       {/* LINE 3: Target name (only if targetId set and project found) */}
       {targetTitle && (
-        <div className="ml-[22px]">
+        <div className="ml-[26px]">
           <span className="text-[11px] leading-none font-normal text-[#AEAEB2]">{targetDisplay}</span>
         </div>
       )}

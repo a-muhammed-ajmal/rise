@@ -110,7 +110,7 @@ export function DesktopSidebar() {
             <button
               type="button"
               onClick={signOut}
-              className="text-[#AEAEB2] hover:text-[#FF4F6D] p-1"
+              className="w-8 h-8 flex items-center justify-center text-[#AEAEB2] hover:text-[#FF4F6D] rounded-full hover:bg-[#F2F2F7]"
               title="Sign out"
               aria-label="Sign out"
             >

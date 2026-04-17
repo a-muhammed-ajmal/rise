@@ -774,19 +774,19 @@ function StepsEditor({
             type="button"
             onClick={() => toggleDone(step.id)}
             className={cn(
-              'flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+              'flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors',
               step.done ? 'bg-[#3B82F6] border-[#3B82F6]' : 'border-[#AEAEB2]'
             )}
           >
-            {step.done && <Check size={11} className="text-white" />}
+            {step.done && <Check size={12} className="text-white" />}
           </button>
           <span className={cn('flex-1 text-sm', step.done && 'line-through text-[#AEAEB2]')}>{step.text}</span>
           <button
             type="button"
             onClick={() => deleteStep(step.id)}
-            className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]"
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]"
           >
-            <X size={14} />
+            <X size={16} />
           </button>
         </div>
       ))}
@@ -798,14 +798,14 @@ function StepsEditor({
           onChange={(e) => setNewStepText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStep(); } }}
           placeholder="Add a step"
-          className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white"
+          className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white"
         />
         <button
           type="button"
           onClick={addStep}
-          className="w-8 h-8 rounded-full bg-[#FF6B35] flex items-center justify-center text-white hover:bg-[#E55A25] flex-shrink-0"
+          className="w-10 h-10 rounded-full bg-[#FF6B35] flex items-center justify-center text-white hover:bg-[#E55A25] flex-shrink-0"
         >
-          <Plus size={16} />
+          <Plus size={18} />
         </button>
       </div>
     </div>
@@ -1040,7 +1040,7 @@ function TaskModal({
               <button
                 type="button"
                 onClick={() => { fileInputRef.current?.click(); }}
-                className="w-7 h-7 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]"
+                className="w-9 h-9 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F5F5F5]"
               >
                 <Paperclip size={14} />
               </button>
@@ -1050,7 +1050,7 @@ function TaskModal({
               rows={3}
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
-              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white resize-none"
+              className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-3 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35] focus:bg-white resize-none"
             />
             {selectedFileName && (
               <p className="text-xs text-[#6C6C70]">📎 {selectedFileName}</p>
@@ -2211,10 +2211,10 @@ export default function ActionsPage() {
       {/* Redesigned Header: ☰ logo RISE – Actions [+ Add] 🔔 */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#E5E5EA] px-3 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => setSidebarOpen(true)}
-            className="w-9 h-9 flex items-center justify-center text-[#6C6C70] rounded-full hover:bg-[#F2F2F7]"
+            className="w-10 h-10 flex items-center justify-center text-[#6C6C70] rounded-full hover:bg-[#F2F2F7]"
           >
             <Menu size={22} />
           </button>
@@ -2245,7 +2245,7 @@ export default function ActionsPage() {
                 setTaskModalOpen(true);
               }
             }}
-            className="h-9 px-2 flex items-center gap-1 text-[12px] font-[500] text-[#FF6B35] active:scale-95 transition-all"
+            className="h-10 px-2 flex items-center gap-1 text-[13px] font-medium text-[#FF6B35] active:scale-95 transition-all"
           >
             <Plus size={14} />
             {activeTab === 'targets' ? 'Target' : 'Action'}
@@ -2254,7 +2254,7 @@ export default function ActionsPage() {
           <button
             type="button"
             onClick={handleBellClick}
-            className="w-9 h-9 flex items-center justify-center text-[#6C6C70] rounded-full hover:bg-[#F2F2F7]"
+            className="w-10 h-10 flex items-center justify-center text-[#6C6C70] rounded-full hover:bg-[#F2F2F7]"
           >
             <Bell size={20} />
           </button>
@@ -2307,7 +2307,7 @@ export default function ActionsPage() {
                   type="button"
                   onClick={() => setSelectedRealm(realmName)}
                   className={cn(
-                    'flex-shrink-0 h-8 px-4 rounded-full text-[12px] font-medium transition-colors',
+                    'flex-shrink-0 h-9 px-4 rounded-full text-[12px] font-medium transition-colors',
                     selectedRealm === realmName
                       ? 'bg-[#FF6B35] text-white'
                       : 'bg-white text-[#6C6C70] border border-[#E5E5EA]'

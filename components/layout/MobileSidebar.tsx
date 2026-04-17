@@ -88,10 +88,10 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F2F2F7]"
+            className="w-10 h-10 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] rounded-full hover:bg-[#F2F2F7]"
             aria-label="Close menu"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
@@ -144,11 +144,11 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
               <button
                 type="button"
                 onClick={signOut}
-                className="text-[#AEAEB2] hover:text-[#FF4F6D] p-1.5 rounded"
+                className="w-9 h-9 flex items-center justify-center text-[#AEAEB2] hover:text-[#FF4F6D] rounded-full hover:bg-[#F2F2F7]"
                 title="Sign out"
                 aria-label="Sign out"
               >
-                <LogOut size={15} />
+                <LogOut size={16} />
               </button>
             </div>
           </div>

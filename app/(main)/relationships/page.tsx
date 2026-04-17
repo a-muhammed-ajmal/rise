@@ -93,7 +93,7 @@ export default function RelationshipsPage() {
         <h1 className="text-xl font-bold text-[#1C1C1E] mb-3">Relationships</h1>
         <div className="flex gap-2 overflow-x-auto -mx-4 px-4">
           {filterTabs.map((f) => (
-            <button key={f.id} onClick={() => setFilter(f.id)} className={cn('flex-shrink-0 h-8 px-4 rounded-chip text-xs font-medium transition-colors', filter === f.id ? 'bg-[#FF4F6D] text-white' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{f.label}</button>
+            <button key={f.id} onClick={() => setFilter(f.id)} className={cn('flex-shrink-0 h-9 px-4 rounded-chip text-xs font-medium transition-colors', filter === f.id ? 'bg-[#FF4F6D] text-white' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{f.label}</button>
           ))}
         </div>
       </div>

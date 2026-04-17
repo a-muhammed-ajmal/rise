@@ -80,12 +80,12 @@ export default function DocumentsPage() {
         {/* Search */}
         <div className="relative mb-3">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AEAEB2]" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search documents..." className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input pl-9 pr-3 py-2 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35]" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search documents..." className="w-full bg-[#F5F5F5] border border-[#E5E5EA] rounded-input pl-9 pr-3 py-3 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FF6B35]" />
         </div>
         {/* Category chips */}
         <div className="flex gap-2 overflow-x-auto -mx-4 px-4">
           {['All', ...DOCUMENT_CATEGORIES].map((cat) => (
-            <button key={cat} onClick={() => setFilter(cat)} className={cn('flex-shrink-0 h-7 px-3 rounded-chip text-xs font-medium transition-colors', filter === cat ? 'bg-[#8E95A9]/20 text-[#8E95A9] border border-[#8E95A9]' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{cat}</button>
+            <button key={cat} onClick={() => setFilter(cat)} className={cn('flex-shrink-0 h-9 px-3 rounded-chip text-xs font-medium transition-colors', filter === cat ? 'bg-[#8E95A9]/20 text-[#8E95A9] border border-[#8E95A9]' : 'bg-[#FFFFFF] text-[#6C6C70] border border-[#E5E5EA]')}>{cat}</button>
           ))}
         </div>
       </div>
@@ -103,8 +103,8 @@ export default function DocumentsPage() {
                 </div>
               </div>
               {doc.url && (
-                <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="w-8 h-8 flex items-center justify-center text-[#1E4AFF] flex-shrink-0">
-                  <ExternalLink size={16} />
+                <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="w-10 h-10 flex items-center justify-center text-[#1E4AFF] flex-shrink-0">
+                  <ExternalLink size={18} />
                 </a>
               )}
             </div>

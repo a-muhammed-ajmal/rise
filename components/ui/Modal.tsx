@@ -92,10 +92,10 @@ export function Modal({
             <h2 className="text-base font-semibold text-[#1C1C1E]">{title}</h2>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F2F2F7] text-[#6C6C70]"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#F2F2F7] text-[#6C6C70] -mr-1"
               aria-label="Close"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
         )}

@@ -209,7 +209,7 @@ function VisionModal({
                 type="button"
                 onClick={() => set('timeline', t)}
                 className={cn(
-                  'flex-1 h-9 rounded-button text-sm font-medium transition-colors',
+                  'flex-1 h-11 rounded-button text-sm font-medium transition-colors',
                   form.timeline === t
                     ? 'bg-[#FF6B35] text-white'
                     : 'border border-[#E5E5EA] text-[#6C6C70] hover:bg-[#F5F5F5]'
@@ -593,9 +593,9 @@ function MilestonesModal({
                     type="button"
                     aria-label="Delete step"
                     onClick={() => deleteDocById(COLLECTIONS.GOAL_ACTIONS, step.id)}
-                    className="text-[#AEAEB2] hover:text-[#FF4F6D] transition-colors flex-shrink-0"
+                    className="w-8 h-8 flex items-center justify-center text-[#AEAEB2] hover:text-[#FF4F6D] transition-colors flex-shrink-0 rounded-full"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={15} />
                   </button>
                 </div>
               ))}
@@ -766,10 +766,10 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
         <button
           type="button"
           onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] transition-colors"
+          className="w-10 h-10 flex items-center justify-center text-[#6C6C70] hover:text-[#1C1C1E] transition-colors rounded-full hover:bg-[#F2F2F7]"
           aria-label="Close Vision AI Coach"
         >
-          <X size={18} />
+          <X size={20} />
         </button>
       </div>
 
@@ -860,7 +860,7 @@ function VisionAIPanel({ goals, onClose }: { goals: Goal[]; onClose: () => void 
             placeholder="Reply to your coach..."
             disabled={sending}
             rows={1}
-            className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-2.5 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FFD700] resize-none transition-colors disabled:opacity-50"
+            className="flex-1 bg-[#F5F5F5] border border-[#E5E5EA] rounded-input px-3 py-3 text-sm text-[#1C1C1E] placeholder-[#AEAEB2] outline-none focus:border-[#FFD700] resize-none transition-colors disabled:opacity-50"
           />
           <button
             type="button"
