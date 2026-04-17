@@ -14,6 +14,7 @@ import { COLLECTIONS } from '@/lib/constants';
 import { cn, formatTime, todayISO } from '@/lib/utils';
 import type { Task, Habit, Project, Goal, HabitStatus } from '@/lib/types';
 import { TaskCard } from '@/components/tasks/TaskCard';
+import { ActionDetailPopup } from '@/components/tasks/ActionDetailPopup';
 import { toast } from '@/lib/toast';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -432,9 +433,13 @@ export default function DashboardPage() {
     toast.success('Action completed!');
   }, []);
 
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
   const handleEdit = useCallback((task: Task) => {
-    router.push(`/tasks?detail=${task.id}`);
-  }, [router]);
+    setDetailTask(task);
+    setDetailOpen(true);
+  }, []);
 
   return (
     <div className="page-content flex flex-col gap-4 pb-6">
@@ -468,6 +473,17 @@ export default function DashboardPage() {
       {/* ── Target Progress ───────────────────────────────────────────────── */}
       <TargetProgress goals={goals} />
 
+      <ActionDetailPopup
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        task={detailTask}
+        projects={projects}
+        userId={user?.uid ?? ''}
+        onComplete={(task) => {
+          handleComplete(task);
+          setDetailOpen(false);
+        }}
+      />
 
     </div>
   );
