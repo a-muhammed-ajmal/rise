@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-16 (comprehensive bug-fix pass: corrected realm/priority colors, DD/MM/YYYY date format, added Target Progress & Winner's Mindset, TTS in AI Chat, Web Speech API voice input, POST ai-tip with daily rate limiter, separate tip rate limiter, removed onboarding dead code, added .env.local.example, fixed useCollection constraints stability)
+**Last updated:** 2026-04-17 (TaskCard: left-border-only 4px priority color, LINE 2 shows realm only, LINE 3 shows target name if set; TaskModal: autoFocus on new action title, Due Date button shows selected DD/MM/YYYY + X-to-clear, Repeat button shows current recurrence, Reminder button shows active state; ActionDetailPopup: title and description auto-save on blur, static Cancel replaces conditional Update button)
 
 ---
 

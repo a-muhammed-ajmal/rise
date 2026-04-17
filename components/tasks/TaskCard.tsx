@@ -65,7 +65,7 @@ function formatCardDate(date: string): string {
 function formatTimeAMPM(time24?: string): string {
   if (!time24) return '';
   const normalized = time24.trim();
-  if (normalized.match(/(am|pm)$/i)) return normalized; // Already formatted
+  if (normalized.match(/(am|pm)$/i)) return normalized;
   const [h, m] = normalized.split(':').map(Number);
   if (isNaN(h) || isNaN(m)) return time24;
   const suffix = h >= 12 ? 'PM' : 'AM';
@@ -118,7 +118,7 @@ function getDueDateInfo(dueDate: string | undefined, dueTime: string | undefined
   if (dueTime) {
     label += ` ${formatTimeAMPM(dueTime)}`;
   }
-  
+
   const color = now.getTime() < due.getTime() ? '#1ABC9C' : '#EF4444';
   return { label, color };
 }
@@ -171,11 +171,12 @@ export function TaskCard({
   return (
     <div
       className={cn(
-        'relative flex flex-col gap-0.5 border py-2 pl-3 pr-3 rounded-md mb-2 last:mb-0',
+        'relative flex flex-col gap-0.5 py-2 pl-3 pr-3 rounded-xl mb-2 last:mb-0',
+        'bg-white shadow-sm border border-[#E5E5EA] border-l-4',
         'active:bg-[#F5F5F5] transition-colors select-none cursor-pointer',
         selected && 'bg-[#FF6B35]/6'
       )}
-      style={{ borderColor: priorityColor }}
+      style={{ borderLeftColor: priorityColor }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -216,7 +217,7 @@ export function TaskCard({
         </p>
       </div>
 
-      {/* LINE 2: Due date/time (left) + Area of Life | Target (right) */}
+      {/* LINE 2: Due date/time (left) + Realm (right) */}
       <div className="flex items-center justify-between ml-[22px]">
         {dueDateInfo ? (
           <span className="text-[11px] leading-none font-normal" style={{ color: dueDateInfo.color }}>
@@ -226,9 +227,16 @@ export function TaskCard({
           <span />
         )}
         <span className="text-[11px] leading-none font-normal text-[#AEAEB2]">
-          {targetDisplay ? `${targetDisplay} | ` : ''}{task.realm || 'Default'}
+          {task.realm || 'Default'}
         </span>
       </div>
+
+      {/* LINE 3: Target name (only if targetId set and project found) */}
+      {targetTitle && (
+        <div className="ml-[22px]">
+          <span className="text-[11px] leading-none font-normal text-[#AEAEB2]">{targetDisplay}</span>
+        </div>
+      )}
     </div>
   );
 }

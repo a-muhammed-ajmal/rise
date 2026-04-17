@@ -1028,7 +1028,7 @@ function TaskModal({
               maxLength={200}
               value={form.title}
               onChange={(e) => set('title', e.target.value)}
-              autoFocus={false}
+              autoFocus={!task}
               className="flex-1 text-base text-[#1C1C1E] placeholder-[#AEAEB2] outline-none bg-transparent focus:border-[#FF6B35]"
             />
           </div>
@@ -1119,26 +1119,41 @@ function TaskModal({
             <button
               type="button"
               onClick={() => setDtPickerOpen(true)}
-              className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5 text-center"
+              className="relative flex flex-col items-center justify-center gap-1 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2 text-center overflow-hidden"
             >
-              <Calendar size={14} className="text-[#6C6C70]" />
-              <span className="text-[11px] font-medium text-[#1C1C1E]">Due Date</span>
+              <Calendar size={13} className="text-[#6C6C70]" />
+              <span className={cn('text-[10px] font-medium leading-tight w-full truncate', form.dueDate ? 'text-[#3B82F6]' : 'text-[#1C1C1E]')}>
+                {form.dueDate ? form.dueDate : 'Due Date'}
+              </span>
+              {form.dueDate && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); set('dueDate', ''); set('dueTime', ''); }}
+                  className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center text-[#AEAEB2] hover:text-[#EF4444]"
+                >
+                  <X size={9} />
+                </button>
+              )}
             </button>
             <button
               type="button"
               onClick={() => setRecurringPickerOpen(true)}
-              className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5 text-center"
+              className="flex flex-col items-center justify-center gap-1 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2 text-center"
             >
-              <Repeat size={14} className="text-[#6C6C70]" />
-              <span className="text-[11px] font-medium text-[#1C1C1E]">Repeat</span>
+              <Repeat size={13} className="text-[#6C6C70]" />
+              <span className={cn('text-[10px] font-medium leading-tight', form.recurring !== 'None' ? 'text-[#3B82F6]' : 'text-[#1C1C1E]')}>
+                {form.recurring === 'None' ? 'Repeat' : form.recurring}
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setReminderPickerOpen(true)}
-              className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5 text-center"
+              className="flex flex-col items-center justify-center gap-1 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2 text-center"
             >
-              <Bell size={14} className="text-[#6C6C70]" />
-              <span className="text-[11px] font-medium text-[#1C1C1E]">Reminders</span>
+              <Bell size={13} className={form.reminder.enabled ? 'text-[#3B82F6]' : 'text-[#6C6C70]'} />
+              <span className={cn('text-[10px] font-medium leading-tight', form.reminder.enabled ? 'text-[#3B82F6]' : 'text-[#1C1C1E]')}>
+                {form.reminder.enabled ? (form.reminder.option === 'Custom' ? 'Custom' : 'On') : 'Remind'}
+              </span>
             </button>
           </div>
 
@@ -1370,6 +1385,14 @@ function ActionDetailPopup({
             type="text"
             value={titleVal}
             onChange={(e) => { setTitleVal(e.target.value); setIsDirty(true); }}
+            onBlur={async () => {
+              if (titleVal.trim() && titleVal.trim() !== task.title) {
+                await save({ title: sanitize(titleVal.trim(), 200) });
+                setIsDirty(false);
+              } else if (!titleVal.trim()) {
+                setTitleVal(task.title);
+              }
+            }}
             placeholder="Action title"
             autoFocus={false}
             className="flex-1 text-lg font-semibold text-[#1C1C1E] bg-transparent outline-none"
@@ -1392,6 +1415,12 @@ function ActionDetailPopup({
             <textarea
               value={descVal}
               onChange={(e) => { setDescVal(e.target.value); setIsDirty(true); }}
+              onBlur={async () => {
+                if (descVal.trim() !== (task.description ?? '')) {
+                  await save({ description: descVal.trim() || undefined });
+                  setIsDirty(false);
+                }
+              }}
               rows={3}
               placeholder="Write notes or description"
               autoFocus={false}
@@ -1528,11 +1557,7 @@ function ActionDetailPopup({
           <div className="grid gap-3 pt-3 border-t border-[#E5E5EA] sm:grid-cols-3">
             <Button variant="secondary" fullWidth onClick={handleDuplicate}>Duplicate</Button>
             <Button variant="danger" fullWidth onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
-            {isDirty ? (
-              <Button fullWidth onClick={handleSaveChanges}>Update</Button>
-            ) : (
-              <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
-            )}
+            <Button variant="secondary" fullWidth onClick={onClose}>Cancel</Button>
           </div>
 
           {/* File input for details */}
