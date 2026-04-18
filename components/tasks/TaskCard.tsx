@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
-import { Check } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { Check, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Task, Project } from '@/lib/types';
 
@@ -11,6 +11,24 @@ const CARD_PRIORITY_COLORS: Record<string, string> = {
   P2: '#F59E0B',
   P3: '#3B82F6',
   P4: '#6B7280',
+};
+
+// Priority label names per spec §9.2 TaskModal
+const PRIORITY_LABELS: Record<string, string> = {
+  P1: 'P1',
+  P2: 'P2',
+  P3: 'P3',
+  P4: 'P4',
+};
+
+// Recurring letter badges per spec §9.2
+const RECURRING_LETTER: Record<string, string> = {
+  Daily: 'D',
+  Weekdays: 'W',
+  Weekly: 'W',
+  Monthly: 'M',
+  Yearly: 'Y',
+  Custom: 'C',
 };
 
 // ─── DATE HELPERS ─────────────────────────────────────────────────────────────
@@ -115,12 +133,80 @@ function getDueDateInfo(dueDate: string | undefined, dueTime: string | undefined
     label = formatCardDate(dueDate);
   }
 
+  // separator · between date and time per spec §9.2
   if (dueTime) {
-    label += ` ${formatTimeAMPM(dueTime)}`;
+    label += ` · ${formatTimeAMPM(dueTime)}`;
   }
 
   const color = now.getTime() < due.getTime() ? '#1ABC9C' : '#EF4444';
   return { label, color };
+}
+
+// ─── THREE-DOT MENU ───────────────────────────────────────────────────────────
+
+function ThreeDotMenu({
+  onEdit,
+  onDuplicate,
+  onDelete,
+}: {
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className="w-7 h-7 flex items-center justify-center rounded-full text-[#AEAEB2] hover:text-[#6C6C70] hover:bg-[#F2F2F7] transition-colors"
+        aria-label="More options"
+      >
+        <MoreVertical size={15} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-8 z-50 w-40 bg-white rounded-xl border border-[#E5E5EA] shadow-lg py-1 overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onEdit(); }}
+            className="w-full text-left px-4 py-2.5 text-[13px] text-[#1C1C1E] hover:bg-[#F5F5F5] transition-colors"
+          >
+            Edit Action
+          </button>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onDuplicate(); }}
+            className="w-full text-left px-4 py-2.5 text-[13px] text-[#1C1C1E] hover:bg-[#F5F5F5] transition-colors"
+          >
+            Duplicate Action
+          </button>
+          <div className="h-px bg-[#E5E5EA] mx-2" />
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onDelete(); }}
+            className="w-full text-left px-4 py-2.5 text-[13px] text-[#EF4444] hover:bg-[#FFF0F0] transition-colors"
+          >
+            Delete Action
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
@@ -130,6 +216,9 @@ export function TaskCard({
   projects,
   onComplete,
   onEdit,
+  onMenuEdit,
+  onDuplicate,
+  onDelete,
   selected,
   onSelect,
   inBulkMode,
@@ -138,6 +227,9 @@ export function TaskCard({
   projects: Project[];
   onComplete: (t: Task) => void;
   onEdit: (t: Task) => void;
+  onMenuEdit?: (t: Task) => void;
+  onDuplicate?: (t: Task) => void;
+  onDelete?: (t: Task) => void;
   selected: boolean;
   onSelect: (t: Task) => void;
   inBulkMode: boolean;
@@ -151,6 +243,9 @@ export function TaskCard({
   const targetDisplay = targetTitle.length > 15 ? targetTitle.slice(0, 15) + '...' : targetTitle;
 
   const dueDateInfo = getDueDateInfo(task.dueDate, task.dueTime);
+  const recurringLetter = task.recurring && task.recurring !== 'None'
+    ? RECURRING_LETTER[task.recurring] ?? null
+    : null;
 
   const handlePointerDown = () => {
     touchMoved.current = false;
@@ -171,7 +266,7 @@ export function TaskCard({
   return (
     <div
       className={cn(
-        'relative flex flex-col gap-0.5 py-2 pl-3 pr-3 rounded-xl mb-2 last:mb-0',
+        'relative flex flex-col gap-0.5 py-2 pl-3 pr-2 rounded-xl mb-2 last:mb-0',
         'bg-white shadow-sm border border-[#E5E5EA] border-l-4',
         'active:bg-[#F5F5F5] transition-colors select-none cursor-pointer',
         selected && 'bg-[#FF6B35]/6'
@@ -183,7 +278,7 @@ export function TaskCard({
       onPointerCancel={handlePointerUp}
       onClick={handleCardClick}
     >
-      {/* LINE 1: Completion circle + title */}
+      {/* LINE 1: Completion circle + title + three-dot menu */}
       <div className="flex items-center gap-0">
         {inBulkMode ? (
           <div className="flex-shrink-0 -mt-0.5 -ml-1 w-[36px] h-[36px] flex items-center justify-center">
@@ -221,17 +316,46 @@ export function TaskCard({
         )}>
           {task.title}
         </p>
+
+        {/* Three-dot menu — only shown when not in bulk mode and handlers provided */}
+        {!inBulkMode && (onMenuEdit || onDuplicate || onDelete) && (
+          <ThreeDotMenu
+            onEdit={() => onMenuEdit ? onMenuEdit(task) : onEdit(task)}
+            onDuplicate={() => onDuplicate?.(task)}
+            onDelete={() => onDelete?.(task)}
+          />
+        )}
       </div>
 
-      {/* LINE 2: Due date/time (left) + Realm (right) */}
-      <div className="flex items-center justify-between ml-[26px]">
-        {dueDateInfo ? (
+      {/* LINE 2: Badges (priority label + recurring) + due date (left) + Realm (right) */}
+      <div className="flex items-center gap-1.5 ml-[26px]">
+        {/* Priority badge */}
+        <span
+          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+          style={{
+            backgroundColor: priorityColor + '18',
+            color: priorityColor,
+          }}
+        >
+          {PRIORITY_LABELS[task.priority] ?? task.priority}
+        </span>
+
+        {/* Recurring letter badge */}
+        {recurringLetter && (
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#3B82F6]/10 text-[#3B82F6]">
+            {recurringLetter}
+          </span>
+        )}
+
+        {/* Due date + time */}
+        {dueDateInfo && (
           <span className="text-[11px] leading-none font-normal" style={{ color: dueDateInfo.color }}>
             {dueDateInfo.label}
           </span>
-        ) : (
-          <span />
         )}
+
+        {/* Spacer + Realm on right */}
+        <span className="flex-1" />
         <span className="text-[11px] leading-none font-normal text-[#AEAEB2]">
           {task.realm || 'Default'}
         </span>

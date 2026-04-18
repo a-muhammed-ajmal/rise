@@ -514,20 +514,27 @@ function TaskModal({
 
           {/* Priority / Due Date / Repeat / Reminders — horizontal scroll chips */}
           <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
-            {/* Priority chip */}
-            <div className="flex items-center gap-1.5 rounded-chip border border-[#E5E5EA] bg-[#F5F5F5] px-2.5 py-1.5 flex-shrink-0">
-              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: TASK_PRIORITY_COLORS[form.priority] ?? '#6B7280' }} />
-              <select
-                value={form.priority}
-                onChange={(e) => set('priority', e.target.value as Priority)}
-                className="bg-transparent text-xs font-semibold outline-none appearance-none"
-                style={{ color: TASK_PRIORITY_COLORS[form.priority] ?? '#6B7280' }}
+            {/* Priority — 4 named buttons per spec §9.2 */}
+            {([
+              { p: 'P1' as Priority, label: 'Do Now', color: '#EF4444' },
+              { p: 'P2' as Priority, label: 'Important', color: '#F59E0B' },
+              { p: 'P3' as Priority, label: 'Get Done', color: '#3B82F6' },
+              { p: 'P4' as Priority, label: 'Default', color: '#6B7280' },
+            ]).map(({ p, label, color }) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => set('priority', p)}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-chip border px-2.5 py-1.5 text-xs font-semibold flex-shrink-0 transition-colors',
+                  form.priority === p ? 'border-transparent text-white' : 'border-[#E5E5EA] bg-[#F5F5F5]'
+                )}
+                style={form.priority === p ? { backgroundColor: color } : { color }}
               >
-                {(['P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: form.priority === p ? 'rgba(255,255,255,0.7)' : color }} />
+                {label}
+              </button>
+            ))}
             {/* Due Date chip */}
             <button
               type="button"
@@ -932,6 +939,7 @@ export default function ActionsPage() {
   const [inBulkMode, setInBulkMode] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [cardDeleteConfirmTask, setCardDeleteConfirmTask] = useState<Task | null>(null);
   const [targetsSubTab, setTargetsSubTab] = useState<string>('All');
   const { permission, pendingCount, requestPermission } = useNotifications(user?.uid ?? '');
 
@@ -1109,6 +1117,33 @@ export default function ActionsPage() {
       return next;
     });
   }, []);
+
+  // Three-dot menu handlers
+  const handleCardMenuEdit = useCallback((task: Task) => {
+    setSelectedTask(task);
+    setTaskModalOpen(true);
+  }, []);
+
+  const handleCardDuplicate = useCallback(async (task: Task) => {
+    const { id: _id, completedAt: _ca, ...rest } = task;
+    void _id; void _ca;
+    await createDoc(COLLECTIONS.TASKS, {
+      ...rest,
+      title: `${task.title} (Copy)`,
+      isCompleted: false,
+      completedAt: undefined,
+      order: Date.now(),
+      createdAt: new Date().toISOString(),
+    });
+    toast.success('Action duplicated');
+  }, []);
+
+  const handleCardDeleteConfirmed = useCallback(async () => {
+    if (!cardDeleteConfirmTask) return;
+    await deleteDocById(COLLECTIONS.TASKS, cardDeleteConfirmTask.id);
+    toast.success('Action deleted');
+    setCardDeleteConfirmTask(null);
+  }, [cardDeleteConfirmTask]);
 
   const handleDeleteProject = useCallback(async () => {
     if (!selectedProject) return;
@@ -1318,6 +1353,9 @@ export default function ActionsPage() {
                   projects={projects}
                   onComplete={handleComplete}
                   onEdit={(task) => { setSelectedTask(task); setDetailPopupOpen(true); }}
+                  onMenuEdit={handleCardMenuEdit}
+                  onDuplicate={handleCardDuplicate}
+                  onDelete={(task) => setCardDeleteConfirmTask(task)}
                   selected={selectedTasks.has(t.id)}
                   onSelect={toggleSelect}
                   inBulkMode={inBulkMode}
@@ -1370,6 +1408,15 @@ export default function ActionsPage() {
         title="Delete Actions"
         message={`Delete ${selectedTasks.size} selected action(s)? This cannot be undone.`}
         confirmLabel="Delete All"
+      />
+
+      <ConfirmModal
+        open={!!cardDeleteConfirmTask}
+        onClose={() => setCardDeleteConfirmTask(null)}
+        onConfirm={handleCardDeleteConfirmed}
+        title="Delete Action"
+        message={`"${cardDeleteConfirmTask?.title ?? ''}" will be permanently deleted.`}
+        confirmLabel="Delete"
       />
     </div>
   );

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollection } from '@/hooks/useFirestore';
-import { updateDocById } from '@/lib/firestore';
+import { updateDocById, createDoc } from '@/lib/firestore';
 import { COLLECTIONS } from '@/lib/constants';
 import { cn, formatTime, todayISO } from '@/lib/utils';
 import type { Task, Habit, Project, Goal, HabitStatus } from '@/lib/types';
@@ -32,6 +32,51 @@ function getGreeting(hour: number, surname: string): string {
   if (hour >= 12 && hour <= 16) return `Good afternoon${n}`;
   if (hour >= 1 && hour <= 4) return `Up late${n}`;
   return `Good evening${n}`;
+}
+
+// ─── RECURRING HELPERS (matches tasks/page.tsx) ──────────────────────────────
+
+function parseDueDateDash(s: string): Date | null {
+  if (!s) return null;
+  if (s.includes('/')) {
+    const [d, m, y] = s.split('/').map(Number);
+    if (!isNaN(d) && !isNaN(m) && !isNaN(y)) return new Date(y, m - 1, d);
+  }
+  if (s.includes('-') && s.length === 10) return new Date(s + 'T00:00:00');
+  return null;
+}
+
+function toDDMMYYYY(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${d}/${m}/${date.getFullYear()}`;
+}
+
+function getNextDueDateFromStr(current: string, recurring: string, customDays?: number[]): string {
+  const parsed = parseDueDateDash(current);
+  if (!parsed) return current;
+  const d = new Date(parsed);
+  if (recurring === 'Daily') {
+    d.setDate(d.getDate() + 1);
+  } else if (recurring === 'Weekdays') {
+    d.setDate(d.getDate() + 1);
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  } else if (recurring === 'Weekly') {
+    d.setDate(d.getDate() + 7);
+  } else if (recurring === 'Monthly') {
+    d.setMonth(d.getMonth() + 1);
+  } else if (recurring === 'Yearly') {
+    d.setFullYear(d.getFullYear() + 1);
+  } else if (recurring === 'Custom' && customDays && customDays.length > 0) {
+    d.setDate(d.getDate() + 1);
+    for (let i = 0; i < 7; i++) {
+      const jsDay = d.getDay();
+      const specDay = jsDay === 0 ? 6 : jsDay - 1;
+      if (customDays.includes(specDay)) break;
+      d.setDate(d.getDate() + 1);
+    }
+  }
+  return toDDMMYYYY(d);
 }
 
 function recalcStreak(statusLog: Record<string, HabitStatus>): number {
@@ -426,11 +471,29 @@ export default function DashboardPage() {
   // ── Shared task action handlers ────────────────────────────────────────────
 
   const handleComplete = useCallback(async (task: Task) => {
+    const now = new Date().toISOString();
+    const willComplete = !task.isCompleted;
     await updateDocById(COLLECTIONS.TASKS, task.id, {
-      isCompleted: true,
-      completedAt: new Date().toISOString(),
+      isCompleted: willComplete,
+      completedAt: willComplete ? now : undefined,
     });
-    toast.success('Action completed!');
+    if (willComplete) {
+      toast.success('Action completed!');
+      // Auto-create next instance for recurring actions (per spec §9.2)
+      if (task.recurring && task.recurring !== 'None' && task.dueDate) {
+        const nextDue = getNextDueDateFromStr(task.dueDate, task.recurring, task.customDays);
+        const { id: _id, completedAt: _ca, ...rest } = task;
+        void _id; void _ca;
+        await createDoc(COLLECTIONS.TASKS, {
+          ...rest,
+          dueDate: nextDue,
+          isCompleted: false,
+          completedAt: undefined,
+          order: Date.now(),
+          createdAt: now,
+        });
+      }
+    }
   }, []);
 
   const [detailTask, setDetailTask] = useState<Task | null>(null);
