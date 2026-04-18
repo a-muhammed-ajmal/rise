@@ -3,7 +3,7 @@
 > **This file is the living companion to the frozen product plan.**  
 > Full product behavior, data models, target stack, and UI intent live in **`# RISE — System Specification.txt`** at the repo root. Read that file first for *what RISE is meant to be*. Read *this* file for *what the repository implements today*, how to work on it safely, and mandatory rules for AI-assisted edits.
 
-**Last updated:** 2026-04-17 (TaskCard: left-border-only 4px priority color, LINE 2 shows realm only, LINE 3 shows target name if set; TaskModal: autoFocus on new action title, Due Date button shows selected DD/MM/YYYY + X-to-clear, Repeat button shows current recurrence, Reminder button shows active state; ActionDetailPopup: title and description auto-save on blur, static Cancel replaces conditional Update button)
+**Last updated:** 2026-04-18 (ActionDetailPopup: Priority chip shows current P1/P2/P3/P4 label in priority color; Due Date chip shows selected DD/MM/YYYY label + X-to-clear button, active blue tint when set; Repeat chip shows current recurrence value, active blue tint; Reminder chip shows active label with blue tint; getDueDateDisplay now converts 24h dueTime to 12h AM/PM; TargetCard dueDate formatted explicitly as DD/MM/YYYY to prevent locale/hydration issues)
 
 ---
 
@@ -253,6 +253,7 @@ For local development, copy `.env.local.example` to `.env.local` and fill in val
 
 | Date | Files | Summary |
 |------|-------|---------|
+| 2026-04-18 | `components/tasks/ActionDetailPopup.tsx`, `app/(main)/tasks/page.tsx` | **ActionDetailPopup chips now reflect current values**: Priority chip shows P1/P2/P3/P4 label in priority color; Due Date chip shows selected date (DD/MM/YYYY) + active blue tint + ×-to-clear; Repeat chip shows active recurrence; Reminder chip shows active label with blue tint. `getDueDateDisplay` fixed to output 12h AM/PM for `dueTime`. `TargetCard` due date uses explicit DD/MM/YYYY format (no `toLocaleDateString`). |
 | 2026-04-17 | `app/(main)/tasks/page.tsx` | **Fix Action save bug**: removed `customDateTime: undefined` from `ReminderPickerSheet.onSave` call — Firebase SDK 10 throws on nested `undefined` values; `stripUndefined` in `lib/firestore.ts` only strips top-level keys so the nested field bypassed it. |
 | 2026-04-17 | `app/(main)/tasks/page.tsx` | **ActionDetailPopup header unified**: switched from custom header div to Modal's built-in `title` prop; bottom buttons changed from `sm:grid-cols-3` (stacked on mobile) to `grid-cols-3 gap-2` with `size="sm"`. |
 | 2026-04-17 | `app/(main)/tasks/page.tsx` | **TaskModal footer**: new-action mode shows single full-width "Add Action" button; edit mode shows 3-column `grid-cols-3 gap-2` with `size="sm"` buttons. Description `rows` reduced 3→2. |

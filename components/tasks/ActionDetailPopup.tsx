@@ -109,7 +109,21 @@ export function getDueDateDisplay(
     label = dueDate.includes('/') ? dueDate : dueDate.split('-').reverse().join('/');
     color = '#1ABC9C';
   }
-  if (dueTime) label += ` ${dueTime}`;
+  if (dueTime) {
+    const normalized = dueTime.trim();
+    if (normalized.match(/(am|pm)\s*$/i)) {
+      label += ` ${normalized}`;
+    } else {
+      const [h, m] = normalized.split(':').map(Number);
+      if (!isNaN(h) && !isNaN(m)) {
+        const suffix = h >= 12 ? 'PM' : 'AM';
+        const hour = h % 12 || 12;
+        label += ` ${hour}:${String(m).padStart(2, '0')} ${suffix}`;
+      } else {
+        label += ` ${normalized}`;
+      }
+    }
+  }
   return { label, color };
 }
 
@@ -938,28 +952,65 @@ export function ActionDetailPopup({
           </div>
 
           {/* Priority / Due Date / Repeat / Reminders */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
-            <button type="button" onClick={() => setSubSheet('priority')}
-              className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5 text-center">
-              <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: priorityColor }} />
-              <span className="text-[11px] font-medium text-[#1C1C1E]">Priority</span>
-            </button>
-            <button type="button" onClick={() => setSubSheet('datetime')}
-              className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5 text-center">
-              <Calendar size={14} className="text-[#6C6C70]" />
-              <span className="text-[11px] font-medium text-[#1C1C1E]">Due Date</span>
-            </button>
-            <button type="button" onClick={() => setSubSheet('recurring')}
-              className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5 text-center">
-              <Repeat size={14} className="text-[#6C6C70]" />
-              <span className="text-[11px] font-medium text-[#1C1C1E]">Repeat</span>
-            </button>
-            <button type="button" onClick={() => setSubSheet('reminder')}
-              className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5 text-center">
-              <Bell size={14} className="text-[#6C6C70]" />
-              <span className="text-[11px] font-medium text-[#1C1C1E]">Reminders</span>
-            </button>
-          </div>
+          {(() => {
+            const dueDateInfo = getDueDateDisplay(task.dueDate, task.dueTime);
+            const recurringActive = task.recurring && task.recurring !== 'None';
+            const reminderActive = task.reminder?.enabled;
+            const recurringLabel = recurringActive
+              ? (task.recurring === 'Custom'
+                ? `Custom`
+                : task.recurring!)
+              : 'Repeat';
+            const reminderLabel = reminderActive
+              ? (task.reminder!.option === 'Custom' ? 'Custom' : task.reminder!.option)
+              : 'Remind';
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+                {/* Priority chip */}
+                <button type="button" onClick={() => setSubSheet('priority')}
+                  className="flex flex-col items-center justify-center gap-1.5 rounded-input border border-[#E5E5EA] bg-[#F5F5F5] p-2.5 text-center">
+                  <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: priorityColor }} />
+                  <span className="text-[11px] font-semibold" style={{ color: priorityColor }}>{task.priority}</span>
+                </button>
+                {/* Due Date chip */}
+                <button type="button" onClick={() => setSubSheet('datetime')}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 rounded-input border p-2.5 text-center relative',
+                    dueDateInfo ? 'border-[#3B82F6]/40 bg-[#3B82F6]/8' : 'border-[#E5E5EA] bg-[#F5F5F5]'
+                  )}>
+                  <Calendar size={14} className={dueDateInfo ? 'text-[#3B82F6]' : 'text-[#6C6C70]'} />
+                  <span className="text-[11px] font-medium" style={{ color: dueDateInfo ? dueDateInfo.color : '#1C1C1E' }}>
+                    {dueDateInfo ? dueDateInfo.label : 'Due Date'}
+                  </span>
+                  {dueDateInfo && (
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); save({ dueDate: undefined, dueTime: undefined }); }}
+                      className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-[#3B82F6]/60 hover:text-[#EF4444] leading-none text-[14px]"
+                    >×</span>
+                  )}
+                </button>
+                {/* Repeat chip */}
+                <button type="button" onClick={() => setSubSheet('recurring')}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 rounded-input border p-2.5 text-center',
+                    recurringActive ? 'border-[#3B82F6]/40 bg-[#3B82F6]/8' : 'border-[#E5E5EA] bg-[#F5F5F5]'
+                  )}>
+                  <Repeat size={14} className={recurringActive ? 'text-[#3B82F6]' : 'text-[#6C6C70]'} />
+                  <span className={cn('text-[11px] font-medium', recurringActive ? 'text-[#3B82F6]' : 'text-[#1C1C1E]')}>{recurringLabel}</span>
+                </button>
+                {/* Reminder chip */}
+                <button type="button" onClick={() => setSubSheet('reminder')}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 rounded-input border p-2.5 text-center',
+                    reminderActive ? 'border-[#3B82F6]/40 bg-[#3B82F6]/8' : 'border-[#E5E5EA] bg-[#F5F5F5]'
+                  )}>
+                  <Bell size={14} className={reminderActive ? 'text-[#3B82F6]' : 'text-[#6C6C70]'} />
+                  <span className={cn('text-[11px] font-medium', reminderActive ? 'text-[#3B82F6]' : 'text-[#1C1C1E]')}>{reminderLabel}</span>
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Bottom buttons */}
           <div className="grid grid-cols-2 gap-2 pt-3 border-t border-[#E5E5EA]">

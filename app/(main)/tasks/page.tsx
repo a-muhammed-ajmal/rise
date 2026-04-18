@@ -870,7 +870,7 @@ function TargetCard({ project, tasks, onEdit, onToggleComplete }: TargetCardProp
       <div className="flex items-center justify-between text-[11px] text-[#6C6C70]">
         <div className="flex items-center gap-1.5">
           <Calendar size={12} />
-          <span>{project.dueDate ? new Date(project.dueDate).toLocaleDateString('en-GB') : 'No date'}</span>
+          <span>{project.dueDate ? (() => { const d = new Date(project.dueDate + 'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })() : 'No date'}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: realmColor }} />
