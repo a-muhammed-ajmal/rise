@@ -1,40 +1,40 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Sparkles, LogOut, Settings } from 'lucide-react'
+} from "@/components/ui/dropdown-menu";
+import { Sparkles, LogOut, Settings } from "lucide-react";
 
 interface TopbarProps {
-  email?: string
+  email?: string;
 }
 
 export function Topbar({ email }: TopbarProps) {
-  const router = useRouter()
+  const router = useRouter();
 
   async function signOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
   }
 
-  const initials = email ? email[0].toUpperCase() : '?'
+  const initials = email ? email[0].toUpperCase() : "?";
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
+    <header className="h-16 border-b border-border bg-card/80 glass-surface flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
       {/* Mobile logo */}
-      <Link href="/" className="flex items-center gap-2 md:hidden">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-          <Sparkles className="w-4 h-4 text-primary-foreground" />
+      <Link href="/" className="flex items-center gap-2 md:hidden group">
+        <div className="w-8 h-8 rounded-lg bg-mod-ai flex items-center justify-center shadow-sm transition-transform duration-200 group-hover:scale-105">
+          <Sparkles className="w-4 h-4 text-white" />
         </div>
         <span className="font-bold text-lg tracking-tight">RISE</span>
       </Link>
@@ -52,9 +52,14 @@ export function Topbar({ email }: TopbarProps) {
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <div className="px-2 py-1.5 text-xs text-muted-foreground truncate">{email}</div>
+          <div className="px-2 py-1.5 text-xs text-muted-foreground truncate">
+            {email}
+          </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
+          <DropdownMenuItem
+            onClick={() => router.push("/settings")}
+            className="cursor-pointer"
+          >
             <Settings className="w-4 h-4 mr-2" />
             Settings
           </DropdownMenuItem>
@@ -69,5 +74,5 @@ export function Topbar({ email }: TopbarProps) {
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
-  )
+  );
 }

@@ -1,38 +1,53 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import { navItems } from './nav-items'
-import { MoreHorizontal } from 'lucide-react'
-import { useState } from 'react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { navItems } from "./nav-items";
+import { MoreHorizontal } from "lucide-react";
+import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
-const mobileItems = navItems.filter((i) => i.mobile)
-const moreItems = navItems.filter((i) => !i.mobile)
+const mobileItems = navItems.filter((i) => i.mobile);
+const moreItems = navItems.filter((i) => !i.mobile);
 
 export function BottomNav() {
-  const pathname = usePathname()
-  const [moreOpen, setMoreOpen] = useState(false)
+  const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 bg-card border-t border-border flex items-center safe-area-inset-bottom">
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 bg-card/85 glass-surface border-t border-border flex items-center"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         {mobileItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href !== ('/' as string) && pathname.startsWith(href))
+          const active =
+            pathname === href ||
+            (href !== ("/" as string) && pathname.startsWith(href));
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs transition-colors min-h-[44px]',
-                active ? 'text-primary' : 'text-muted-foreground'
+                "flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs transition-colors min-h-[44px]",
+                active ? "text-mod-ai font-medium" : "text-muted-foreground",
               )}
             >
-              <Icon className={cn('w-5 h-5', active && 'text-primary')} />
+              <Icon
+                className={cn(
+                  "w-5 h-5 transition-transform duration-200",
+                  active && "text-mod-ai scale-110",
+                )}
+              />
               <span className="truncate">{label}</span>
             </Link>
-          )
+          );
         })}
 
         {/* More button */}
@@ -53,27 +68,29 @@ export function BottomNav() {
           </SheetHeader>
           <div className="grid grid-cols-3 gap-2 pb-4">
             {moreItems.map(({ href, label, icon: Icon }) => {
-              const active = pathname === (href as string) || pathname.startsWith(href as string)
+              const active =
+                pathname === (href as string) ||
+                pathname.startsWith(href as string);
               return (
                 <Link
                   key={href}
                   href={href}
                   onClick={() => setMoreOpen(false)}
                   className={cn(
-                    'flex flex-col items-center justify-center gap-2 rounded-xl p-4 text-sm font-medium transition-colors min-h-[80px]',
+                    "flex flex-col items-center justify-center gap-2 rounded-xl p-4 text-sm font-medium transition-colors min-h-[80px]",
                     active
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-accent text-accent-foreground hover:bg-accent/80'
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-accent text-accent-foreground hover:bg-accent/80",
                   )}
                 >
                   <Icon className="w-6 h-6" />
                   <span className="text-center leading-tight">{label}</span>
                 </Link>
-              )
+              );
             })}
           </div>
         </SheetContent>
       </Sheet>
     </>
-  )
+  );
 }
