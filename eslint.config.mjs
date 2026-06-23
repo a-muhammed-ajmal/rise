@@ -13,6 +13,18 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Async data fetchers called inside useEffect are a valid React pattern
+      // (setState is called asynchronously after await, not synchronously).
+      "react-hooks/set-state-in-effect": "off",
+      // Allow _-prefixed variables to be unused (destructured-to-strip pattern)
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { varsIgnorePattern: "^_", argsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
