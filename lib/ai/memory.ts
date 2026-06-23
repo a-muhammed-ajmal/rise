@@ -47,7 +47,7 @@ export async function storeMemory(
     user_id: userId,
     content,
     metadata: metadata as unknown as Json,
-    ...(embedding ? { embedding } : {}),
+    embedding: embedding ?? null,
   });
 }
 
