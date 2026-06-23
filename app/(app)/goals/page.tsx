@@ -202,7 +202,7 @@ export default function GoalsPage() {
         <Plus className="w-6 h-6" />
       </button>
 
-      <GoalDialog open={goalOpen} onOpenChange={setGoalOpen} goal={editGoal} onSaved={fetchData} onUpdateProgress={updateProgress} />
+      <GoalDialog open={goalOpen} onOpenChange={setGoalOpen} goal={editGoal} onSaved={fetchData} />
       <JournalDialog open={journalOpen} onOpenChange={setJournalOpen} existing={todayEntry} onSaved={fetchData} />
     </div>
   )
