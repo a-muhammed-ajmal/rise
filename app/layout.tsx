@@ -1,10 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Lato, Inter } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RegisterSW } from "@/components/pwa/register-sw";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const lato = Lato({
+  subsets: ["latin"],
+  weight: ["400", "700", "900"],
+  variable: "--font-lato",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "RISE — Personal OS",
@@ -22,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#6366f1",
+  themeColor: "#138A57",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -37,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geist.variable} h-full`}
+      className={`${lato.variable} ${inter.variable} h-full`}
       suppressHydrationWarning
     >
       <body
