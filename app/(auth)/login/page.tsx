@@ -50,18 +50,11 @@ function LoginForm() {
       className="w-full max-w-sm glass-surface animate-rise-in border-primary/20"
       style={{
         boxShadow:
-          "0 0 60px rgba(19,138,87,0.20), 0 22px 50px rgba(0,0,0,0.50)",
+          "0 0 60px rgba(109,40,217,0.18), 0 22px 50px rgba(46,16,101,0.12)",
       }}
     >
       <CardHeader className="text-center space-y-3 pb-2">
-        <div
-          className="text-5xl font-black tracking-tighter text-primary"
-          style={{
-            fontFamily: "var(--font-lato)",
-            textShadow: "0 0 48px rgba(19,138,87,0.65)",
-            letterSpacing: "-0.04em",
-          }}
-        >
+        <div className="font-heading font-bold text-5xl text-primary rise-title-glow">
           RISE
         </div>
         <CardTitle className="text-base font-medium text-foreground/80">

@@ -22,7 +22,7 @@ export function Sidebar() {
           <div className="w-8 h-8 rounded-lg bg-mod-ai flex items-center justify-center shrink-0 shadow-sm transition-transform duration-200 group-hover:scale-105">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <span className="hidden lg:block font-bold text-lg tracking-tight">
+          <span className="hidden lg:block font-heading font-bold text-lg tracking-tight">
             RISE
           </span>
         </Link>
@@ -35,19 +35,21 @@ export function Sidebar() {
             pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
             <Tooltip key={href}>
-              <TooltipTrigger className="w-full">
-                <Link
-                  href={href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 w-full",
-                    active
-                      ? "bg-primary/10 text-mod-ai shadow-[inset_2px_0_0_var(--primary)]"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                  )}
-                >
-                  <Icon className="w-5 h-5 shrink-0" />
-                  <span className="hidden lg:block">{label}</span>
-                </Link>
+              <TooltipTrigger
+                render={
+                  <Link
+                    href={href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 w-full",
+                      active
+                        ? "bg-primary/10 text-primary shadow-[inset_2px_0_0_var(--primary)]"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    )}
+                  />
+                }
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                <span className="hidden lg:block">{label}</span>
               </TooltipTrigger>
               <TooltipContent side="right" className="lg:hidden">
                 {label}

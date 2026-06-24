@@ -129,7 +129,7 @@ export default function FinancePage() {
       style={{ "--glow-color": "var(--mod-finance)" } as React.CSSProperties}
     >
       <div className="flex items-center justify-between animate-rise-in stagger-1">
-        <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-step-2 font-heading font-bold tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-finance-soft flex items-center justify-center">
             <DollarSign className="w-4 h-4 text-mod-finance" />
           </div>

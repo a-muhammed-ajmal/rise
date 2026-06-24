@@ -101,7 +101,7 @@ export default function GoalsPage() {
       style={{ "--glow-color": "var(--mod-goals)" } as React.CSSProperties}
     >
       <div className="flex items-center justify-between animate-rise-in stagger-1">
-        <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-step-2 font-heading font-bold tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-goals-soft flex items-center justify-center">
             <Target className="w-4 h-4 text-mod-goals" />
           </div>

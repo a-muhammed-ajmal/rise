@@ -89,7 +89,7 @@ export default async function HomePage() {
                 <CheckSquare className="w-5 h-5 text-mod-tasks" />
               </div>
               <div>
-                <p className="text-2xl font-black font-heading">{todayTasks?.length ?? 0}</p>
+                <p className="text-2xl font-bold font-mono">{todayTasks?.length ?? 0}</p>
                 <p className="text-xs text-muted-foreground">Tasks today</p>
               </div>
             </CardContent>
@@ -103,7 +103,7 @@ export default async function HomePage() {
                 <Heart className="w-5 h-5 text-mod-wellness" />
               </div>
               <div>
-                <p className="text-2xl font-black font-heading">
+                <p className="text-2xl font-bold font-mono">
                   {completedCount}/{dueHabits.length}
                 </p>
                 <p className="text-xs text-muted-foreground">Habits done</p>
@@ -119,7 +119,7 @@ export default async function HomePage() {
                 <Target className="w-5 h-5 text-mod-goals" />
               </div>
               <div>
-                <p className="text-2xl font-black font-heading">{activeGoals?.length ?? 0}</p>
+                <p className="text-2xl font-bold font-mono">{activeGoals?.length ?? 0}</p>
                 <p className="text-xs text-muted-foreground">Active goals</p>
               </div>
             </CardContent>
@@ -133,7 +133,7 @@ export default async function HomePage() {
                 <DollarSign className="w-5 h-5 text-mod-finance" />
               </div>
               <div>
-                <p className="text-2xl font-black font-heading">
+                <p className="text-2xl font-bold font-mono">
                   {recentTransactions?.length ?? 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Txns today</p>
@@ -288,7 +288,7 @@ export default async function HomePage() {
         </Card>
 
         {/* AI Assistant CTA */}
-        <Card className="animate-rise-in stagger-6 border-mod-ai/20 bg-gradient-to-br from-mod-ai-soft to-transparent">
+        <Card className="animate-rise-in stagger-6 border-mod-ai/30 bg-gradient-to-br from-mod-ai-soft to-transparent shadow-[0_0_24px_rgba(109,40,217,0.08)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-ai-soft flex items-center justify-center">

@@ -1,20 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Lato, Inter } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RegisterSW } from "@/components/pwa/register-sw";
 
-const lato = Lato({
+const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
-  weight: ["700", "900"],
-  variable: "--font-lato",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-plex-sans",
   display: "swap",
 });
 
-const inter = Inter({
+const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-inter",
+  weight: ["400", "500"],
+  variable: "--font-plex-mono",
   display: "swap",
 });
 
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "RISE",
   },
   icons: {
@@ -34,7 +34,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#138A57",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAF8FD" },
+    { media: "(prefers-color-scheme: dark)", color: "#0D0A1A" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -48,7 +51,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${lato.variable} ${inter.variable} dark`}
+      className={`${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
       suppressHydrationWarning
     >
       <body
