@@ -8,6 +8,7 @@ import {
   Users,
   Sparkles,
   Settings,
+  BarChart2,
 } from 'lucide-react'
 
 export const navItems = [
@@ -16,6 +17,7 @@ export const navItems = [
   { href: '/finance',     label: 'Finance',     icon: DollarSign,      mobile: true  },
   { href: '/wellness',    label: 'Wellness',    icon: Heart,           mobile: true  },
   { href: '/goals',       label: 'Goals',       icon: Target,          mobile: false },
+  { href: '/analytics',   label: 'Analytics',   icon: BarChart2,       mobile: false },
   { href: '/knowledge',   label: 'Knowledge',   icon: BookOpen,        mobile: false },
   { href: '/crm',         label: 'CRM',         icon: Users,           mobile: false },
   { href: '/assistant',   label: 'AI Assistant',icon: Sparkles,        mobile: false },
