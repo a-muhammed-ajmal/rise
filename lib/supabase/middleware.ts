@@ -32,10 +32,21 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  const allowedEmail = process.env.ALLOWED_USER_EMAIL
+
   // Redirect unauthenticated users to login
   if (!user && !pathname.startsWith('/login') && !pathname.startsWith('/auth')) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/login'
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Block wrong accounts that somehow have a session
+  if (user && allowedEmail && user.email !== allowedEmail) {
+    await supabase.auth.signOut()
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.search = '?error=unauthorized'
     return NextResponse.redirect(loginUrl)
   }
 

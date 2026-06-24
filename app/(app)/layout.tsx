@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/layout/sidebar'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { Topbar } from '@/components/layout/topbar'
+import { InstallPrompt } from '@/components/pwa/install-prompt'
+import { SWUpdateToast } from '@/components/pwa/sw-update-toast'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -26,5 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <BottomNav />
       </div>
     </div>
+    <InstallPrompt />
+    <SWUpdateToast />
   )
 }

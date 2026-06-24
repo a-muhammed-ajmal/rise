@@ -34,6 +34,12 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      const { data: { user } } = await supabase.auth.getUser()
+      const allowedEmail = process.env.ALLOWED_USER_EMAIL
+      if (allowedEmail && user?.email !== allowedEmail) {
+        await supabase.auth.signOut()
+        return NextResponse.redirect(`${origin}/login?error=unauthorized`)
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }

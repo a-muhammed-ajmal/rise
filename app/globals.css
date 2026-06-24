@@ -309,6 +309,10 @@
   -webkit-backdrop-filter: blur(12px) saturate(1.5);
 }
 
+.login-card {
+  box-shadow: 0 0 60px rgba(109, 40, 217, 0.18), 0 22px 50px rgba(46, 16, 101, 0.12);
+}
+
 /* ─── Module page glow — subtle radial gradient behind each section ─────── */
 
 .page-glow {

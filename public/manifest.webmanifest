@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "RISE — Personal OS",
   "short_name": "RISE",
   "description": "Your AI-powered personal operating system",
@@ -7,6 +8,7 @@
   "background_color": "#0f172a",
   "theme_color": "#6366f1",
   "orientation": "portrait-primary",
+  "categories": ["productivity", "lifestyle"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
