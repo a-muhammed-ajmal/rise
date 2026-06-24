@@ -6,7 +6,7 @@ import { RegisterSW } from "@/components/pwa/register-sw";
 
 const lato = Lato({
   subsets: ["latin"],
-  weight: ["400", "700", "900"],
+  weight: ["700", "900"],
   variable: "--font-lato",
   display: "swap",
 });
@@ -37,8 +37,7 @@ export const viewport: Viewport = {
   themeColor: "#138A57",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -49,11 +48,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${lato.variable} ${inter.variable} h-full`}
+      className={`${lato.variable} ${inter.variable} dark`}
       suppressHydrationWarning
     >
       <body
-        className="h-full bg-background text-foreground antialiased"
+        className="bg-background text-foreground antialiased"
         suppressHydrationWarning
       >
         <RegisterSW />

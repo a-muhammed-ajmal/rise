@@ -46,23 +46,43 @@ function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm glass-surface animate-rise-in">
-      <CardHeader className="text-center space-y-2">
-        <div className="text-4xl font-bold tracking-tight text-mod-ai">
+    <Card
+      className="w-full max-w-sm glass-surface animate-rise-in border-primary/20"
+      style={{
+        boxShadow:
+          "0 0 60px rgba(19,138,87,0.20), 0 22px 50px rgba(0,0,0,0.50)",
+      }}
+    >
+      <CardHeader className="text-center space-y-3 pb-2">
+        <div
+          className="text-5xl font-black tracking-tighter text-primary"
+          style={{
+            fontFamily: "var(--font-lato)",
+            textShadow: "0 0 48px rgba(19,138,87,0.65)",
+            letterSpacing: "-0.04em",
+          }}
+        >
           RISE
         </div>
-        <CardTitle className="text-lg">Sign in to your OS</CardTitle>
-        <CardDescription>Your personal AI operating system.</CardDescription>
+        <CardTitle className="text-base font-medium text-foreground/80">
+          Sign in to your OS
+        </CardTitle>
+        <CardDescription className="text-sm">
+          Your personal AI operating system.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-4">
         {error && (
-          <p className="text-sm text-destructive text-center">{error}</p>
+          <p role="alert" className="text-sm text-destructive text-center">
+            {error}
+          </p>
         )}
         <Button
           onClick={handleGoogleSignIn}
           disabled={loading}
+          aria-busy={loading}
           variant="outline"
-          className="w-full gap-2"
+          className="w-full gap-2 min-h-[44px]"
         >
           {loading ? (
             "Redirecting to Google…"
@@ -73,6 +93,7 @@ function LoginForm() {
                 height="16"
                 viewBox="0 0 24 24"
                 aria-hidden="true"
+                focusable="false"
               >
                 <path
                   fill="#4285F4"
@@ -106,12 +127,12 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-background p-4 page-glow"
-      style={{ "--glow-color": "var(--mod-ai)" } as React.CSSProperties}
+      className="min-h-[100dvh] flex items-center justify-center p-4"
+      style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
       <Suspense
         fallback={
-          <div className="w-full max-w-sm h-48 rounded-xl bg-card animate-pulse" />
+          <div className="w-full max-w-sm h-64 rounded-xl bg-card animate-pulse" />
         }
       >
         <LoginForm />

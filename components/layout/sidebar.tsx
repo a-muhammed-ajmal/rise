@@ -15,7 +15,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex flex-col w-16 lg:w-56 h-screen border-r border-border bg-card/80 glass-surface sticky top-0 shrink-0">
+    <aside className="hidden md:flex flex-col w-16 lg:w-56 h-dvh border-r border-border bg-card/80 glass-surface sticky top-0 shrink-0">
       {/* Logo */}
       <div className="h-16 flex items-center justify-center lg:justify-start lg:px-4 border-b border-border">
         <Link href="/" className="flex items-center gap-2 group">

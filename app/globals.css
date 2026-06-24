@@ -64,6 +64,15 @@
 }
 
 :root {
+  /* ── Fluid type scale (min @360px → max @1240px) ─────────────────────── */
+  --step--1: clamp(0.83rem, 0.78rem + 0.25vw, 0.94rem);
+  --step-0:  clamp(1.00rem, 0.93rem + 0.36vw, 1.13rem);
+  --step-1:  clamp(1.20rem, 1.07rem + 0.65vw, 1.50rem);
+  --step-2:  clamp(1.44rem, 1.21rem + 1.14vw, 2.00rem);
+  --step-3:  clamp(1.73rem, 1.36rem + 1.85vw, 2.67rem);
+  --step-4:  clamp(2.07rem, 1.49rem + 2.90vw, 3.55rem);
+  --step-5:  clamp(2.49rem, 1.59rem + 4.49vw, 4.74rem);
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -129,37 +138,39 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.52 0.14 152);
+  /* Dark Premium surfaces — green-tinted near-blacks from zenabm.com palette */
+  --background: oklch(0.12 0.02 155);    /* #0B1612 — deepest bg               */
+  --foreground: oklch(0.96 0.01 152);    /* #F1F5F2 — off-white, green cast     */
+  --card: oklch(0.16 0.03 155);          /* #111C16 — card / panel surface      */
+  --card-foreground: oklch(0.96 0.01 152);
+  --popover: oklch(0.21 0.04 155);       /* #182A1E — elevated dropdown         */
+  --popover-foreground: oklch(0.96 0.01 152);
+  --primary: oklch(0.52 0.14 152);       /* #138A57 — brand green CTA           */
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.21 0.04 155);     /* #182A1E — raised surface            */
+  --secondary-foreground: oklch(0.96 0.01 152);
+  --muted: oklch(0.21 0.04 155);         /* #182A1E                             */
+  --muted-foreground: oklch(0.68 0.01 240); /* #9CA3AF — muted text             */
+  --accent: oklch(0.21 0.04 155);        /* #182A1E — green-tinted accent bg    */
+  --accent-foreground: oklch(0.96 0.01 152);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
+  --border: oklch(0.52 0.14 152 / 20%);  /* green-500 @ 20% border             */
+  --input: oklch(0.52 0.14 152 / 12%);   /* green-500 @ 12% input bg           */
+  --ring: oklch(0.90 0.15 154);           /* #6FFBB0 — bright mint focus ring   */
+  /* Chart palette — green scale for data visualizations */
+  --chart-1: oklch(0.52 0.14 152);       /* #138A57 green-500                   */
+  --chart-2: oklch(0.63 0.11 151);       /* #45a173 green-400                   */
+  --chart-3: oklch(0.44 0.11 158);       /* #007956 green-600                   */
+  --chart-4: oklch(0.90 0.15 154);       /* #6FFBB0 green-300 vivid             */
+  --chart-5: oklch(0.27 0.09 162);       /* #004737 green-800                   */
+  --sidebar: oklch(0.16 0.03 155);        /* #111C16 — sidebar surface           */
+  --sidebar-foreground: oklch(0.96 0.01 152);
   --sidebar-primary: oklch(0.52 0.14 152);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-accent: oklch(0.21 0.04 155);
+  --sidebar-accent-foreground: oklch(0.96 0.01 152);
+  --sidebar-border: oklch(0.52 0.14 152 / 20%);
+  --sidebar-ring: oklch(0.90 0.15 154);
 
   /* Module colors — dark mode (brighter for dark backgrounds) */
   --mod-tasks: #60a5fa;
@@ -305,7 +316,18 @@
     letter-spacing: -0.02em;
   }
   :focus-visible {
-    outline: 2px solid oklch(0.52 0.14 152);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
+}
+
+/* ─── Dark Premium aurora glow ────────────────────────────────────────── */
+/* Layered radial gradients sit ON TOP of background-color (CSS spec).    */
+/* background-attachment:fixed keeps it viewport-relative while scrolling */
+
+.dark body {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 15% -10%, rgba(0, 40, 48, 0.70) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 110%, rgba(0, 54, 41, 0.50) 0%, transparent 55%);
+  background-attachment: fixed;
 }
