@@ -315,11 +315,22 @@
     font-family: var(--font-lato), ui-sans-serif, sans-serif;
     letter-spacing: -0.02em;
   }
+  h1 { font-weight: 900; }
+  h2 { font-weight: 700; }
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 }
+
+/* ─── Fluid type scale utilities ─────────────────────────────────────────── */
+
+@utility text-step--1 { font-size: var(--step--1); }
+@utility text-step-0  { font-size: var(--step-0);  }
+@utility text-step-1  { font-size: var(--step-1);  }
+@utility text-step-2  { font-size: var(--step-2);  }
+@utility text-step-3  { font-size: var(--step-3);  line-height: 1.1; letter-spacing: -0.03em; }
+@utility text-step-4  { font-size: var(--step-4);  line-height: 1.05; letter-spacing: -0.04em; }
 
 /* ─── Dark Premium aurora glow ────────────────────────────────────────── */
 /* Layered radial gradients sit ON TOP of background-color (CSS spec).    */
@@ -327,6 +338,7 @@
 
 .dark body {
   background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
     radial-gradient(ellipse 80% 60% at 15% -10%, rgba(0, 40, 48, 0.70) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 85% 110%, rgba(0, 54, 41, 0.50) 0%, transparent 55%);
   background-attachment: fixed;

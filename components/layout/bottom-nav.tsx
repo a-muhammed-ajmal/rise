@@ -35,17 +35,23 @@ export function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                "flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs transition-colors min-h-[44px]",
-                active ? "text-mod-ai font-medium" : "text-muted-foreground",
+                "relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs transition-colors min-h-[44px]",
+                active ? "text-mod-ai" : "text-muted-foreground",
               )}
             >
+              {active && (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-mod-ai"
+                />
+              )}
               <Icon
                 className={cn(
                   "w-5 h-5 transition-transform duration-200",
-                  active && "text-mod-ai scale-110",
+                  active && "scale-110",
                 )}
               />
-              <span className="truncate">{label}</span>
+              <span className={cn("truncate", active && "font-medium")}>{label}</span>
             </Link>
           );
         })}

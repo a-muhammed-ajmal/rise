@@ -76,8 +76,8 @@ export default async function HomePage() {
     <div className="p-4 md:p-6 space-y-6 max-w-4xl">
       {/* Header */}
       <div className="animate-rise-in stagger-1">
-        <p className="text-sm text-muted-foreground">{dayName}</p>
-        <h1 className="text-2xl font-bold mt-0.5 tracking-tight">{greeting}</h1>
+        <p className="text-xs text-muted-foreground tracking-wide uppercase">{dayName}</p>
+        <h1 className="text-step-3 mt-1">{greeting}</h1>
       </div>
 
       {/* Quick stats */}
@@ -89,7 +89,7 @@ export default async function HomePage() {
                 <CheckSquare className="w-5 h-5 text-mod-tasks" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{todayTasks?.length ?? 0}</p>
+                <p className="text-2xl font-black font-heading">{todayTasks?.length ?? 0}</p>
                 <p className="text-xs text-muted-foreground">Tasks today</p>
               </div>
             </CardContent>
@@ -103,7 +103,7 @@ export default async function HomePage() {
                 <Heart className="w-5 h-5 text-mod-wellness" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-black font-heading">
                   {completedCount}/{dueHabits.length}
                 </p>
                 <p className="text-xs text-muted-foreground">Habits done</p>
@@ -119,7 +119,7 @@ export default async function HomePage() {
                 <Target className="w-5 h-5 text-mod-goals" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{activeGoals?.length ?? 0}</p>
+                <p className="text-2xl font-black font-heading">{activeGoals?.length ?? 0}</p>
                 <p className="text-xs text-muted-foreground">Active goals</p>
               </div>
             </CardContent>
@@ -133,7 +133,7 @@ export default async function HomePage() {
                 <DollarSign className="w-5 h-5 text-mod-finance" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-black font-heading">
                   {recentTransactions?.length ?? 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Txns today</p>
