@@ -1,0 +1,92 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import type { Task } from '@/lib/types/database'
+import { todayISO } from '@/lib/format'
+
+type TaskFilter = 'inbox' | 'today' | 'all' | 'project'
+
+export function useTasks(filter: TaskFilter = 'inbox', projectId?: string) {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchTasks = useCallback(async () => {
+    const supabase = createClient()
+    let query = supabase
+      .from('tasks')
+      .select('*')
+      .neq('status', 'done')
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false })
+
+    if (filter === 'inbox') {
+      query = query.eq('status', 'inbox')
+    } else if (filter === 'today') {
+      const today = todayISO()
+      query = query.or(`due_date.eq.${today},due_date.lt.${today}`)
+    } else if (filter === 'project' && projectId) {
+      query = query.eq('project_id', projectId)
+    }
+
+    const { data } = await query
+    setTasks(data ?? [])
+    setLoading(false)
+  }, [filter, projectId])
+
+  useEffect(() => {
+    fetchTasks()
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel('tasks')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchTasks)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchTasks])
+
+  async function createTask(data: Partial<Task>) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    await supabase.from('tasks').insert({
+      user_id: user.id,
+      title: data.title ?? '',
+      description: data.description ?? null,
+      status: data.status ?? 'inbox',
+      priority: data.priority ?? 'medium',
+      due_date: data.due_date ?? null,
+      project_id: data.project_id ?? null,
+      is_recurring: data.is_recurring ?? false,
+      recurrence_rule: data.recurrence_rule ?? null,
+    })
+    await fetchTasks()
+  }
+
+  async function updateTask(id: string, updates: Partial<Task>) {
+    const supabase = createClient()
+    // Strip DB-managed fields that Supabase rejects in Update payloads
+    const { id: _id, created_at: _c, updated_at: _u, ...safeUpdates } = updates
+    await supabase.from('tasks').update(safeUpdates).eq('id', id)
+    await fetchTasks()
+  }
+
+  async function completeTask(id: string) {
+    const supabase = createClient()
+    await supabase
+      .from('tasks')
+      .update({ status: 'done', completed_at: new Date().toISOString() })
+      .eq('id', id)
+    setTasks((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  async function deleteTask(id: string) {
+    const supabase = createClient()
+    await supabase.from('tasks').delete().eq('id', id)
+    setTasks((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  return { tasks, loading, createTask, updateTask, completeTask, deleteTask, refresh: fetchTasks }
+}

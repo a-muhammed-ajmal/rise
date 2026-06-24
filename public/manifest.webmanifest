@@ -1,0 +1,48 @@
+{
+  "name": "RISE — Personal OS",
+  "short_name": "RISE",
+  "description": "Your AI-powered personal operating system",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Task",
+      "url": "/productivity?action=new-task",
+      "description": "Quickly add a new task"
+    },
+    {
+      "name": "Log Expense",
+      "url": "/finance?action=new-expense",
+      "description": "Record an expense"
+    }
+  ]
+}
