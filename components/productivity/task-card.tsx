@@ -5,13 +5,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreVertical, Check, Pencil, Trash2, Calendar } from 'lucide-react'
+import { MoreVertical, Check, Pencil, Trash2, Calendar, Copy } from 'lucide-react'
 import type { Task } from '@/lib/types/database'
 import { formatRelativeDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { TaskForm } from './task-form'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { toast } from 'sonner'
 
 const PRIORITY_COLORS: Record<Task['priority'], string> = {
   low:    'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
@@ -32,10 +35,12 @@ interface TaskCardProps {
   onComplete: (id: string) => void
   onUpdate: (id: string, data: Partial<Task>) => Promise<void>
   onDelete: (id: string) => void
+  onDuplicate?: (id: string) => void
 }
 
-export function TaskCard({ task, onComplete, onUpdate, onDelete }: TaskCardProps) {
+export function TaskCard({ task, onComplete, onUpdate, onDelete, onDuplicate }: TaskCardProps) {
   const [editOpen, setEditOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const isOverdue =
     task.due_date && task.due_date < new Date().toISOString().split('T')[0] && task.status !== 'done'
 
@@ -44,6 +49,7 @@ export function TaskCard({ task, onComplete, onUpdate, onDelete }: TaskCardProps
       <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/30 transition-colors group">
         {/* Complete button */}
         <button
+          type="button"
           onClick={() => onComplete(task.id)}
           className={cn(
             'mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
@@ -86,9 +92,20 @@ export function TaskCard({ task, onComplete, onUpdate, onDelete }: TaskCardProps
             <DropdownMenuItem onClick={() => onComplete(task.id)}>
               <Check className="w-4 h-4 mr-2" /> Mark done
             </DropdownMenuItem>
+            {onDuplicate && (
+              <DropdownMenuItem
+                onClick={() => {
+                  onDuplicate(task.id)
+                  toast.success('Task duplicated')
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" /> Duplicate
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => onDelete(task.id)}
-              variant="destructive"
+              onClick={() => setConfirmDelete(true)}
+              className="text-destructive focus:text-destructive"
             >
               <Trash2 className="w-4 h-4 mr-2" /> Delete
             </DropdownMenuItem>
@@ -103,7 +120,19 @@ export function TaskCard({ task, onComplete, onUpdate, onDelete }: TaskCardProps
         title="Edit Task"
         onSubmit={async (data) => {
           await onUpdate(task.id, data)
+          toast.success('Task updated')
           setEditOpen(false)
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete task?"
+        description={`"${task.title}" will be permanently deleted.`}
+        onConfirm={() => {
+          onDelete(task.id)
+          toast.success('Task deleted')
         }}
       />
     </>

@@ -3,6 +3,8 @@ import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RegisterSW } from "@/components/pwa/register-sw";
+import { ThemeProvider } from "@/lib/hooks/use-theme";
+import { Toaster } from "sonner";
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -61,8 +63,11 @@ export default function RootLayout({
         className="bg-background text-foreground antialiased"
         suppressHydrationWarning
       >
-        <RegisterSW />
-        <TooltipProvider>{children}</TooltipProvider>
+        <ThemeProvider>
+          <RegisterSW />
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster richColors position="top-right" />
+        </ThemeProvider>
       </body>
     </html>
   );

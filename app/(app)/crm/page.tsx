@@ -18,31 +18,54 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Building2, Loader2, Users } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Plus,
+  Search,
+  Building2,
+  Loader2,
+  Users,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Phone,
+  Mail,
+  ChevronDown,
+} from "lucide-react";
+import { toast } from "sonner";
 
 const STAGE_COLORS: Record<Contact["stage"], string> = {
   new: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   qualified: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  proposal:
-    "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  negotiation:
-    "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+  proposal: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+  negotiation: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
   won: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
   lost: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
 };
+
+const STAGES: Contact["stage"][] = ["new", "qualified", "proposal", "negotiation", "won", "lost"];
 
 export default function CRMPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [newOpen, setNewOpen] = useState(false);
+  const [contactFormOpen, setContactFormOpen] = useState(false);
+  const [editContact, setEditContact] = useState<Contact | null>(null);
   const [selected, setSelected] = useState<Contact | null>(null);
+  const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
 
   const fetchContacts = useCallback(async () => {
     const supabase = createClient();
@@ -54,6 +77,16 @@ export default function CRMPage() {
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
+
+  async function handleDeleteContact() {
+    if (!deleteContactId) return;
+    const supabase = createClient();
+    await supabase.from("contacts").delete().eq("id", deleteContactId);
+    setDeleteContactId(null);
+    if (selected?.id === deleteContactId) setSelected(null);
+    toast.success("Contact deleted");
+    fetchContacts();
+  }
 
   const filtered = contacts.filter(
     (c) =>
@@ -84,7 +117,7 @@ export default function CRMPage() {
         </h1>
         <Button
           size="sm"
-          onClick={() => setNewOpen(true)}
+          onClick={() => { setEditContact(null); setContactFormOpen(true); }}
           className="gap-1.5 bg-mod-crm hover:bg-mod-crm/90 text-white"
         >
           <Plus className="w-4 h-4" /> Add Contact
@@ -126,26 +159,49 @@ export default function CRMPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{contact.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     {contact.company && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Building2 className="w-3 h-3" />
                         {contact.company}
                       </span>
                     )}
+                    {contact.email && (
+                      <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
+                        <Mail className="w-3 h-3" />
+                        {contact.email}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1">
-                  <Badge
-                    variant="secondary"
-                    className={`text-xs ${STAGE_COLORS[contact.stage]}`}
-                  >
+                  <Badge variant="secondary" className={`text-xs ${STAGE_COLORS[contact.stage]}`}>
                     {contact.stage}
                   </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {contact.type}
-                  </Badge>
+                  <Badge variant="outline" className="text-xs">{contact.type}</Badge>
                 </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); setEditContact(contact); setContactFormOpen(true); }}
+                    >
+                      <Pencil className="w-4 h-4 mr-2" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); setDeleteContactId(contact.id); }}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardContent>
             </Card>
           ))}
@@ -153,7 +209,8 @@ export default function CRMPage() {
       )}
 
       <button
-        onClick={() => setNewOpen(true)}
+        type="button"
+        onClick={() => { setEditContact(null); setContactFormOpen(true); }}
         className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-crm text-white flex items-center justify-center z-40"
         aria-label="Add contact"
       >
@@ -161,30 +218,45 @@ export default function CRMPage() {
       </button>
 
       <ContactForm
-        open={newOpen}
-        onOpenChange={setNewOpen}
-        onSaved={fetchContacts}
+        open={contactFormOpen}
+        onOpenChange={(v) => { setContactFormOpen(v); if (!v) setEditContact(null); }}
+        initial={editContact}
+        onSaved={() => { fetchContacts(); toast.success(editContact ? "Contact updated" : "Contact added"); }}
       />
+
       {selected && (
         <ContactDetail
           contact={selected}
           onClose={() => setSelected(null)}
-          onSaved={fetchContacts}
+          onSaved={(updatedContact) => {
+            if (updatedContact) setSelected(updatedContact);
+            fetchContacts();
+          }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteContactId}
+        onOpenChange={(v) => { if (!v) setDeleteContactId(null); }}
+        title="Delete contact?"
+        description="This contact and all their interactions will be permanently deleted."
+        onConfirm={handleDeleteContact}
+      />
     </div>
   );
 }
 
-// ─── Contact Form ─────────────────────────────────────────────────────────────
+// ─── Contact Form (create + edit) ─────────────────────────────────────────────
 
 function ContactForm({
   open,
   onOpenChange,
+  initial,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  initial: Contact | null;
   onSaved: () => void;
 }) {
   const [name, setName] = useState("");
@@ -193,123 +265,135 @@ function ContactForm({
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
   const [type, setType] = useState<Contact["type"]>("network");
+  const [stage, setStage] = useState<Contact["stage"]>("new");
+  const [dealValue, setDealValue] = useState("");
+  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (initial) {
+      setName(initial.name);
+      setEmail(initial.email ?? "");
+      setPhone(initial.phone ?? "");
+      setCompany(initial.company ?? "");
+      setRole(initial.role ?? "");
+      setType(initial.type);
+      setStage(initial.stage);
+      setDealValue(initial.deal_value ? String(initial.deal_value) : "");
+      setNotes(initial.notes ?? "");
+    } else {
+      setName(""); setEmail(""); setPhone(""); setCompany("");
+      setRole(""); setType("network"); setStage("new"); setDealValue(""); setNotes("");
+    }
+  }, [initial, open]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setSaving(true);
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("contacts").insert({
-      user_id: user.id,
-      name: name.trim(),
-      email: email || null,
-      phone: phone || null,
-      company: company || null,
-      role: role || null,
-      type,
-      stage: "new",
-      tags: [],
-    });
+
+    if (initial) {
+      await supabase.from("contacts").update({
+        name: name.trim(),
+        email: email || null,
+        phone: phone || null,
+        company: company || null,
+        role: role || null,
+        type,
+        stage,
+        deal_value: dealValue ? parseFloat(dealValue) : null,
+        notes: notes || null,
+      }).eq("id", initial.id);
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("contacts").insert({
+        user_id: user.id,
+        name: name.trim(),
+        email: email || null,
+        phone: phone || null,
+        company: company || null,
+        role: role || null,
+        type,
+        stage,
+        deal_value: dealValue ? parseFloat(dealValue) : null,
+        notes: notes || null,
+        tags: [],
+      });
+    }
+
     setSaving(false);
-    setName("");
-    setEmail("");
-    setPhone("");
-    setCompany("");
-    setRole("");
     onOpenChange(false);
     onSaved();
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Contact</DialogTitle>
+          <DialogTitle>{initial ? "Edit Contact" : "New Contact"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Name</Label>
-            <Input
-              placeholder="Full name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-              required
-            />
+            <Input placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} autoFocus required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input
-                type="email"
-                placeholder="email@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <Input type="email" placeholder="email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
-              <Input
-                placeholder="+971 50 000 0000"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
+              <Input placeholder="+971 50 000 0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Company</Label>
-              <Input
-                placeholder="Company name"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-              />
+              <Input placeholder="Company name" value={company} onChange={(e) => setCompany(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <Input
-                placeholder="Job title"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              />
+              <Input placeholder="Job title" value={role} onChange={(e) => setRole(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select value={type} onValueChange={(v) => setType(v as Contact["type"])}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["lead", "prospect", "client", "network", "personal"].map((t) => (
+                    <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Stage</Label>
+              <Select value={stage} onValueChange={(v) => setStage(v as Contact["stage"])}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STAGES.map((s) => (
+                    <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Type</Label>
-            <Select
-              value={type}
-              onValueChange={(v) => setType(v as Contact["type"])}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {["lead", "prospect", "client", "network", "personal"].map(
-                  (t) => (
-                    <SelectItem key={t} value={t}>
-                      {t.charAt(0).toUpperCase() + t.slice(1)}
-                    </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
+            <Label>Deal value (AED, optional)</Label>
+            <Input type="number" step="0.01" min="0" placeholder="0.00" value={dealValue} onChange={(e) => setDealValue(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea placeholder="Any notes about this contact…" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Add Contact"}
-            </Button>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Saving…" : initial ? "Update" : "Add Contact"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -326,33 +410,34 @@ function ContactDetail({
 }: {
   contact: Contact;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (updated?: Contact) => void;
 }) {
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [logOpen, setLogOpen] = useState(false);
   const [note, setNote] = useState("");
   const [intType, setIntType] = useState<Interaction["type"]>("call");
   const [followUp, setFollowUp] = useState("");
+  const [deleteIntId, setDeleteIntId] = useState<string | null>(null);
+  const [stageSaving, setStageSaving] = useState(false);
+
+  async function loadInteractions() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("interactions")
+      .select("*")
+      .eq("contact_id", contact.id)
+      .order("date", { ascending: false });
+    setInteractions(data ?? []);
+  }
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("interactions")
-        .select("*")
-        .eq("contact_id", contact.id)
-        .order("date", { ascending: false });
-      setInteractions(data ?? []);
-    }
-    load();
+    loadInteractions();
   }, [contact.id]);
 
   async function logInteraction(e: React.FormEvent) {
     e.preventDefault();
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     await supabase.from("interactions").insert({
       user_id: user.id,
@@ -369,40 +454,65 @@ function ContactDetail({
     setNote("");
     setFollowUp("");
     setLogOpen(false);
-    const { data } = await supabase
-      .from("interactions")
-      .select("*")
-      .eq("contact_id", contact.id)
-      .order("date", { ascending: false });
-    setInteractions(data ?? []);
+    loadInteractions();
+    toast.success("Interaction logged");
     onSaved();
+  }
+
+  async function handleDeleteInteraction() {
+    if (!deleteIntId) return;
+    const supabase = createClient();
+    await supabase.from("interactions").delete().eq("id", deleteIntId);
+    setDeleteIntId(null);
+    toast.success("Interaction deleted");
+    loadInteractions();
+  }
+
+  async function updateStage(newStage: Contact["stage"]) {
+    setStageSaving(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("contacts")
+      .update({ stage: newStage })
+      .eq("id", contact.id)
+      .select()
+      .single();
+    setStageSaving(false);
+    if (data) {
+      toast.success(`Stage updated to ${newStage}`);
+      onSaved(data);
+    }
   }
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-mod-crm-soft flex items-center justify-center">
-              <span className="text-mod-crm font-semibold text-sm">
-                {contact.name[0]}
-              </span>
+              <span className="text-mod-crm font-semibold text-sm">{contact.name[0]}</span>
             </div>
             {contact.name}
           </DialogTitle>
         </DialogHeader>
+
         <div className="space-y-4">
+          {/* Contact info */}
           <div className="grid grid-cols-2 gap-2 text-sm">
             {contact.email && (
               <div>
                 <p className="text-xs text-muted-foreground">Email</p>
-                <p>{contact.email}</p>
+                <a href={`mailto:${contact.email}`} className="text-primary hover:underline flex items-center gap-1">
+                  <Mail className="w-3 h-3" />{contact.email}
+                </a>
               </div>
             )}
             {contact.phone && (
               <div>
                 <p className="text-xs text-muted-foreground">Phone</p>
-                <p>{contact.phone}</p>
+                <a href={`tel:${contact.phone}`} className="text-primary hover:underline flex items-center gap-1">
+                  <Phone className="w-3 h-3" />{contact.phone}
+                </a>
               </div>
             )}
             {contact.company && (
@@ -417,33 +527,58 @@ function ContactDetail({
                 <p>{contact.role}</p>
               </div>
             )}
+            {contact.deal_value && (
+              <div>
+                <p className="text-xs text-muted-foreground">Deal value</p>
+                <p className="font-medium text-mod-finance">AED {contact.deal_value.toLocaleString()}</p>
+              </div>
+            )}
+            {contact.last_contacted_at && (
+              <div>
+                <p className="text-xs text-muted-foreground">Last contacted</p>
+                <p>{formatDate(contact.last_contacted_at)}</p>
+              </div>
+            )}
           </div>
 
-          <Button
-            size="sm"
-            onClick={() => setLogOpen(true)}
-            className="w-full gap-1.5"
-          >
-            <Plus className="w-4 h-4" /> Log Interaction
+          {/* Stage selector */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pipeline Stage</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {STAGES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  disabled={stageSaving}
+                  onClick={() => updateStage(s)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${contact.stage === s ? STAGE_COLORS[s] + " ring-2 ring-offset-1 ring-current" : "bg-accent text-accent-foreground hover:bg-accent/80"}`}
+                >
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {contact.notes && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
+              <p className="text-sm">{contact.notes}</p>
+            </div>
+          )}
+
+          {/* Log interaction button */}
+          <Button size="sm" onClick={() => setLogOpen(!logOpen)} className="w-full gap-1.5" variant={logOpen ? "outline" : "default"}>
+            <Plus className="w-4 h-4" /> {logOpen ? "Cancel" : "Log Interaction"}
           </Button>
 
+          {/* Log form */}
           {logOpen && (
-            <form
-              onSubmit={logInteraction}
-              className="space-y-3 p-3 rounded-lg bg-accent/50"
-            >
-              <Select
-                value={intType}
-                onValueChange={(v) => setIntType(v as Interaction["type"])}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+            <form onSubmit={logInteraction} className="space-y-3 p-3 rounded-lg bg-accent/50">
+              <Select value={intType} onValueChange={(v) => setIntType(v as Interaction["type"])}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {["call", "email", "meeting", "message", "other"].map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t.charAt(0).toUpperCase() + t.slice(1)}
-                    </SelectItem>
+                    <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -452,56 +587,40 @@ function ContactDetail({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
+                required
               />
-              <Input
-                type="date"
-                placeholder="Follow-up date"
-                value={followUp}
-                onChange={(e) => setFollowUp(e.target.value)}
-              />
-              <div className="flex gap-2">
-                <Button size="sm" type="submit">
-                  Save
-                </Button>
-                <Button
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setLogOpen(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
+              <Input type="date" placeholder="Follow-up date" value={followUp} onChange={(e) => setFollowUp(e.target.value)} />
+              <Button size="sm" type="submit">Save</Button>
             </form>
           )}
 
+          {/* Interaction history */}
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Interaction History
             </p>
             {interactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No interactions logged.
-              </p>
+              <p className="text-sm text-muted-foreground">No interactions logged.</p>
             ) : (
               interactions.map((i) => (
-                <div
-                  key={i.id}
-                  className="p-3 rounded-lg border border-border space-y-1"
-                >
+                <div key={i.id} className="p-3 rounded-lg border border-border space-y-1 group relative">
                   <div className="flex justify-between items-center">
-                    <Badge variant="outline" className="text-xs">
-                      {i.type}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDate(i.date)}
-                    </span>
+                    <Badge variant="outline" className="text-xs">{i.type}</Badge>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">{formatDate(i.date)}</span>
+                      <button
+                        type="button"
+                        aria-label="Delete interaction"
+                        onClick={() => setDeleteIntId(i.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-sm">{i.notes}</p>
                   {i.follow_up_date && (
-                    <p className="text-xs text-mod-crm">
-                      Follow up: {formatDate(i.follow_up_date)}
-                    </p>
+                    <p className="text-xs text-mod-crm">Follow up: {formatDate(i.follow_up_date)}</p>
                   )}
                 </div>
               ))
@@ -509,6 +628,14 @@ function ContactDetail({
           </div>
         </div>
       </DialogContent>
+
+      <ConfirmDialog
+        open={!!deleteIntId}
+        onOpenChange={(v) => { if (!v) setDeleteIntId(null); }}
+        title="Delete interaction?"
+        description="This interaction log will be permanently removed."
+        onConfirm={handleDeleteInteraction}
+      />
     </Dialog>
   );
 }

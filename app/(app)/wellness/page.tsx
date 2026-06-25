@@ -15,8 +15,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Plus,
   Flame,
@@ -25,15 +33,25 @@ import {
   Circle,
   Loader2,
   Heart,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Archive,
 } from "lucide-react";
 import { subDays, format } from "date-fns";
+import { toast } from "sonner";
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const ICONS = ["⭐", "💪", "📚", "🧘", "🏃", "💧", "🥗", "😴", "✍️", "🎯", "🎨", "🎵"];
 
 export default function WellnessPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<HabitLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newHabitOpen, setNewHabitOpen] = useState(false);
+  const [habitDialogOpen, setHabitDialogOpen] = useState(false);
+  const [editHabit, setEditHabit] = useState<Habit | null>(null);
   const [focusOpen, setFocusOpen] = useState(false);
+  const [deleteHabitId, setDeleteHabitId] = useState<string | null>(null);
   const today = todayISO();
   const todayDow = new Date().getDay();
 
@@ -41,11 +59,7 @@ export default function WellnessPage() {
     const supabase = createClient();
     const last30 = format(subDays(new Date(), 30), "yyyy-MM-dd");
     const [{ data: hs }, { data: ls }] = await Promise.all([
-      supabase
-        .from("habits")
-        .select("*")
-        .eq("active", true)
-        .order("created_at"),
+      supabase.from("habits").select("*").eq("active", true).order("created_at"),
       supabase.from("habit_logs").select("*").gte("logged_date", last30),
     ]);
     setHabits(hs ?? []);
@@ -60,15 +74,9 @@ export default function WellnessPage() {
   async function toggleHabit(habitId: string, done: boolean) {
     const supabase = createClient();
     if (done) {
-      await supabase
-        .from("habit_logs")
-        .delete()
-        .eq("habit_id", habitId)
-        .eq("logged_date", today);
+      await supabase.from("habit_logs").delete().eq("habit_id", habitId).eq("logged_date", today);
     } else {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       await supabase.from("habit_logs").upsert({
         user_id: user.id,
@@ -80,11 +88,25 @@ export default function WellnessPage() {
     await fetchData();
   }
 
+  async function handleArchiveHabit(id: string) {
+    const supabase = createClient();
+    await supabase.from("habits").update({ active: false }).eq("id", id);
+    toast.success("Habit archived");
+    fetchData();
+  }
+
+  async function handleDeleteHabit() {
+    if (!deleteHabitId) return;
+    const supabase = createClient();
+    await supabase.from("habits").delete().eq("id", deleteHabitId);
+    setDeleteHabitId(null);
+    toast.success("Habit deleted");
+    fetchData();
+  }
+
   function getStreak(habitId: string): number {
     const doneDays = new Set(
-      logs
-        .filter((l) => l.habit_id === habitId && l.completed)
-        .map((l) => l.logged_date),
+      logs.filter((l) => l.habit_id === habitId && l.completed).map((l) => l.logged_date),
     );
     let streak = 0;
     let d = new Date();
@@ -102,9 +124,7 @@ export default function WellnessPage() {
 
   const todayHabits = habits.filter((h) => h.target_days.includes(todayDow));
   const todayLogs = new Set(
-    logs
-      .filter((l) => l.logged_date === today && l.completed)
-      .map((l) => l.habit_id),
+    logs.filter((l) => l.logged_date === today && l.completed).map((l) => l.habit_id),
   );
   const completedToday = todayHabits.filter((h) => todayLogs.has(h.id)).length;
 
@@ -129,17 +149,12 @@ export default function WellnessPage() {
           Wellness
         </h1>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setFocusOpen(true)}
-            className="gap-1.5"
-          >
+          <Button size="sm" variant="outline" onClick={() => setFocusOpen(true)} className="gap-1.5">
             <Timer className="w-4 h-4" /> Focus
           </Button>
           <Button
             size="sm"
-            onClick={() => setNewHabitOpen(true)}
+            onClick={() => { setEditHabit(null); setHabitDialogOpen(true); }}
             className="gap-1.5 bg-mod-wellness hover:bg-mod-wellness/90 text-white"
           >
             <Plus className="w-4 h-4" /> Habit
@@ -147,38 +162,28 @@ export default function WellnessPage() {
         </div>
       </div>
 
-      {/* Today summary */}
       {todayHabits.length > 0 && (
         <Card className="animate-rise-in stagger-2 border-mod-wellness/20">
           <CardContent className="p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="font-medium">Today&apos;s habits</span>
-              <span className="text-muted-foreground">
-                {completedToday}/{todayHabits.length}
-              </span>
+              <span className="text-muted-foreground">{completedToday}/{todayHabits.length}</span>
             </div>
             <Progress
-              value={
-                todayHabits.length > 0
-                  ? (completedToday / todayHabits.length) * 100
-                  : 0
-              }
+              value={todayHabits.length > 0 ? (completedToday / todayHabits.length) * 100 : 0}
               className="h-2"
             />
           </CardContent>
         </Card>
       )}
 
-      {/* Habit list */}
       <div className="space-y-2 animate-rise-in stagger-3">
         {habits.length === 0 ? (
           <div className="text-center py-12 space-y-2">
             <div className="w-16 h-16 rounded-2xl bg-mod-wellness-soft flex items-center justify-center mx-auto mb-3">
               <Heart className="w-8 h-8 text-mod-wellness" />
             </div>
-            <p className="text-muted-foreground text-sm">
-              No habits yet. Add one to get started.
-            </p>
+            <p className="text-muted-foreground text-sm">No habits yet. Add one to get started.</p>
           </div>
         ) : (
           habits.map((habit) => {
@@ -187,13 +192,11 @@ export default function WellnessPage() {
             const streak = getStreak(habit.id);
 
             return (
-              <Card
-                key={habit.id}
-                className={`card-interactive ${doneTodayFlag ? "opacity-75" : ""}`}
-              >
+              <Card key={habit.id} className={`card-interactive ${doneTodayFlag ? "opacity-75" : ""}`}>
                 <CardContent className="p-4 flex items-center gap-3">
                   {isDueToday ? (
                     <button
+                      type="button"
                       onClick={() => toggleHabit(habit.id, doneTodayFlag)}
                       className="shrink-0 transition-transform active:scale-95"
                       aria-label={doneTodayFlag ? "Undo" : "Complete"}
@@ -213,26 +216,44 @@ export default function WellnessPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{habit.icon}</span>
-                      <span
-                        className={`text-sm font-medium ${doneTodayFlag ? "line-through text-muted-foreground" : ""}`}
-                      >
+                      <span className={`text-sm font-medium ${doneTodayFlag ? "line-through text-muted-foreground" : ""}`}>
                         {habit.name}
                       </span>
                     </div>
-                    {!isDueToday && (
-                      <p className="text-xs text-muted-foreground">
-                        Not due today
-                      </p>
-                    )}
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {habit.target_days.length === 7
+                        ? "Every day"
+                        : habit.target_days.map((d) => DAYS[d]).join(", ")}
+                    </p>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     {streak > 0 && (
                       <Badge variant="secondary" className="gap-1 text-xs">
                         <Flame className="w-3 h-3 text-orange-500" />
                         {streak}
                       </Badge>
                     )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent">
+                        <MoreVertical className="w-4 h-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => { setEditHabit(habit); setHabitDialogOpen(true); }}>
+                          <Pencil className="w-4 h-4 mr-2" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleArchiveHabit(habit.id)}>
+                          <Archive className="w-4 h-4 mr-2" /> Archive
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => setDeleteHabitId(habit.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </CardContent>
               </Card>
@@ -241,56 +262,63 @@ export default function WellnessPage() {
         )}
       </div>
 
-      {/* FAB */}
       <button
-        onClick={() => setNewHabitOpen(true)}
+        type="button"
+        onClick={() => { setEditHabit(null); setHabitDialogOpen(true); }}
         className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-wellness text-white flex items-center justify-center z-40"
         aria-label="Add habit"
       >
         <Plus className="w-6 h-6" />
       </button>
 
-      <NewHabitDialog
-        open={newHabitOpen}
-        onOpenChange={setNewHabitOpen}
-        onSaved={fetchData}
+      <HabitDialog
+        open={habitDialogOpen}
+        onOpenChange={(v) => { setHabitDialogOpen(v); if (!v) setEditHabit(null); }}
+        habit={editHabit}
+        onSaved={() => { fetchData(); toast.success(editHabit ? "Habit updated" : "Habit added"); }}
       />
       <FocusTimerDialog open={focusOpen} onOpenChange={setFocusOpen} />
+
+      <ConfirmDialog
+        open={!!deleteHabitId}
+        onOpenChange={(v) => { if (!v) setDeleteHabitId(null); }}
+        title="Delete habit?"
+        description="This habit and all its logs will be permanently deleted."
+        onConfirm={handleDeleteHabit}
+      />
     </div>
   );
 }
 
-// ─── New Habit Dialog ─────────────────────────────────────────────────────────
+// ─── Habit Dialog (create + edit) ────────────────────────────────────────────
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const ICONS = [
-  "⭐",
-  "💪",
-  "📚",
-  "🧘",
-  "🏃",
-  "💧",
-  "🥗",
-  "😴",
-  "✍️",
-  "🎯",
-  "🎨",
-  "🎵",
-];
-
-function NewHabitDialog({
+function HabitDialog({
   open,
   onOpenChange,
+  habit,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  habit: Habit | null;
   onSaved: () => void;
 }) {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("⭐");
   const [targetDays, setTargetDays] = useState([0, 1, 2, 3, 4, 5, 6]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (habit) {
+      setName(habit.name);
+      setIcon(habit.icon);
+      setTargetDays(habit.target_days);
+    } else {
+      setName("");
+      setIcon("⭐");
+      setTargetDays([0, 1, 2, 3, 4, 5, 6]);
+    }
+  }, [habit, open]);
 
   function toggleDay(d: number) {
     setTargetDays((prev) =>
@@ -303,24 +331,30 @@ function NewHabitDialog({
     if (!name.trim() || targetDays.length === 0) return;
     setSaving(true);
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("habits").insert({
-      user_id: user.id,
-      name: name.trim(),
-      description: null,
-      icon,
-      color: "#6366f1",
-      frequency: targetDays.length === 7 ? "daily" : "custom",
-      target_days: targetDays,
-      active: true,
-    });
+
+    if (habit) {
+      await supabase.from("habits").update({
+        name: name.trim(),
+        icon,
+        frequency: targetDays.length === 7 ? "daily" : "custom",
+        target_days: targetDays,
+      }).eq("id", habit.id);
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("habits").insert({
+        user_id: user.id,
+        name: name.trim(),
+        description: null,
+        icon,
+        color: "#6366f1",
+        frequency: targetDays.length === 7 ? "daily" : "custom",
+        target_days: targetDays,
+        active: true,
+      });
+    }
+
     setSaving(false);
-    setName("");
-    setIcon("⭐");
-    setTargetDays([0, 1, 2, 3, 4, 5, 6]);
     onOpenChange(false);
     onSaved();
   }
@@ -329,7 +363,7 @@ function NewHabitDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New Habit</DialogTitle>
+          <DialogTitle>{habit ? "Edit Habit" : "New Habit"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -373,16 +407,8 @@ function NewHabitDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Add Habit"}
-            </Button>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Saving…" : habit ? "Update" : "Add Habit"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -402,26 +428,47 @@ function FocusTimerDialog({
   const [minutes, setMinutes] = useState(25);
   const [running, setRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
+  const [startedAt, setStartedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!running) return;
     if (secondsLeft <= 0) {
       setRunning(false);
+      saveSession();
       return;
     }
     const id = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearInterval(id);
   }, [running, secondsLeft]);
 
+  async function saveSession() {
+    if (!startedAt) return;
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("focus_sessions").insert({
+      user_id: user.id,
+      duration_minutes: minutes,
+      started_at: startedAt.toISOString(),
+      ended_at: new Date().toISOString(),
+      notes: null,
+    });
+    toast.success(`${minutes}min focus session saved!`);
+  }
+
   function start() {
     setSecondsLeft(minutes * 60);
+    setStartedAt(new Date());
     setRunning(true);
   }
-  function pause() {
-    setRunning(false);
-  }
+  function pause() { setRunning(false); }
   function reset() {
+    if (running && startedAt) {
+      const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 60000);
+      if (elapsed >= 1) saveSession();
+    }
     setRunning(false);
+    setStartedAt(null);
     setSecondsLeft(minutes * 60);
   }
 
@@ -434,7 +481,12 @@ function FocusTimerDialog({
       open={open}
       onOpenChange={(v) => {
         if (!v) {
+          if (running && startedAt) {
+            const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 60000);
+            if (elapsed >= 1) saveSession();
+          }
           setRunning(false);
+          setStartedAt(null);
           setSecondsLeft(minutes * 60);
         }
         onOpenChange(v);
@@ -447,35 +499,18 @@ function FocusTimerDialog({
         <div className="space-y-6 py-4">
           <div className="relative w-40 h-40 mx-auto">
             <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
               <circle
-                cx="50"
-                cy="50"
-                r="45"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="8"
-                className="text-muted/30"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="45"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="8"
+                cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8"
                 className="text-mod-wellness"
                 strokeDasharray={`${2 * Math.PI * 45}`}
                 strokeDashoffset={`${2 * Math.PI * 45 * (1 - pct / 100)}`}
                 strokeLinecap="round"
-                style={{
-                  transition: "stroke-dashoffset 1s linear",
-                }}
+                style={{ transition: "stroke-dashoffset 1s linear" }}
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-3xl font-mono font-bold">
-                {mm}:{ss}
-              </span>
+              <span className="text-3xl font-mono font-bold">{mm}:{ss}</span>
             </div>
           </div>
           {!running && (
@@ -483,10 +518,8 @@ function FocusTimerDialog({
               {[15, 25, 45, 60].map((m) => (
                 <button
                   key={m}
-                  onClick={() => {
-                    setMinutes(m);
-                    setSecondsLeft(m * 60);
-                  }}
+                  type="button"
+                  onClick={() => { setMinutes(m); setSecondsLeft(m * 60); }}
                   className={`px-3 py-1 rounded text-sm font-medium transition-colors ${minutes === m ? "bg-mod-wellness text-white" : "bg-accent"}`}
                 >
                   {m}m
@@ -496,17 +529,11 @@ function FocusTimerDialog({
           )}
           <div className="flex justify-center gap-3">
             {!running ? (
-              <Button onClick={start} className="w-24">
-                Start
-              </Button>
+              <Button onClick={start} className="w-24">Start</Button>
             ) : (
               <>
-                <Button onClick={pause} variant="outline" className="w-24">
-                  Pause
-                </Button>
-                <Button onClick={reset} variant="ghost" className="w-24">
-                  Reset
-                </Button>
+                <Button onClick={pause} variant="outline" className="w-24">Pause</Button>
+                <Button onClick={reset} variant="ghost" className="w-24">Reset</Button>
               </>
             )}
           </div>

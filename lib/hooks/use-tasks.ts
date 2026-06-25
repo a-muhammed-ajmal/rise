@@ -88,5 +88,25 @@ export function useTasks(filter: TaskFilter = 'inbox', projectId?: string) {
     setTasks((prev) => prev.filter((t) => t.id !== id))
   }
 
-  return { tasks, loading, createTask, updateTask, completeTask, deleteTask, refresh: fetchTasks }
+  async function duplicateTask(id: string) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const task = tasks.find((t) => t.id === id)
+    if (!task) return
+    await supabase.from('tasks').insert({
+      user_id: user.id,
+      title: `${task.title} (copy)`,
+      description: task.description,
+      status: task.status === 'done' ? 'inbox' : task.status,
+      priority: task.priority,
+      due_date: task.due_date,
+      project_id: task.project_id,
+      is_recurring: false,
+      recurrence_rule: null,
+    })
+    await fetchTasks()
+  }
+
+  return { tasks, loading, createTask, updateTask, completeTask, deleteTask, duplicateTask, refresh: fetchTasks }
 }
