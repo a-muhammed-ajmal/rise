@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RISE — Personal AI OS
 
-## Getting Started
+A single-user personal operating system that replaces Todoist, a finance app, a habit tracker, a journal, a CRM, a knowledge base, and an AI assistant — in one cohesive app.
 
-First, run the development server:
+**Live:** [rise.muhammedajmal.com](https://rise.muhammedajmal.com) · [rise-aid-plug.vercel.app](https://rise-aid-plug.vercel.app)
+
+---
+
+## Modules
+
+| Module | What it does |
+| --- | --- |
+| Dashboard | Daily overview — tasks, habits, goals, and transactions at a glance |
+| Productivity | Task management with priorities, due dates, and status tracking |
+| Finance | Income/expense tracking in AED with categorisation |
+| Wellness | Habit tracking with streak logging and daily progress |
+| Goals | Long-term goal tracking with progress percentage |
+| CRM | Personal contact and relationship management |
+| Knowledge | Note-taking and knowledge base with rich text (Tiptap) |
+| AI Assistant | Claude-powered assistant with SSE streaming and memory via pgvector |
+| Analytics | Charts across all modules (Recharts) |
+
+---
+
+## Stack
+
+- **Framework:** Next.js 16.2.9 (App Router) + TypeScript strict
+- **UI:** Tailwind CSS v4 + shadcn/ui + Lucide icons
+- **Database:** Supabase (Postgres + pgvector + Row Level Security)
+- **AI:** Anthropic Claude claude-sonnet-4-6 via `@anthropic-ai/sdk` (SSE streaming), Voyage AI embeddings (optional)
+- **Auth:** Supabase Auth (single-user, Google OAuth)
+- **Testing:** Vitest + Testing Library
+- **Hosting:** Vercel (Fluid Compute)
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 20+
+- A Supabase project
+- An Anthropic API key
+
+### Setup
+
+```bash
+git clone https://github.com/a-muhammed-ajmal/rise
+cd rise
+npm install
+```
+
+Copy the environment template and fill in your keys:
+
+```bash
+cp .env.example .env.local
+```
+
+Required environment variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+ANTHROPIC_API_KEY=
+# Optional — keyword fallback works without this
+VOYAGE_API_KEY=
+```
+
+Run migrations in your Supabase dashboard (SQL editor), then:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev          # Start dev server
+npm run build        # Production build
+npm run lint         # ESLint
+npm run test         # Vitest (single run)
+npm run test:watch   # Vitest watch mode
+npm run test:coverage
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture Notes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Middleware** lives in `proxy.ts` (Next.js 16 renames `middleware.ts`).
+- **RLS pattern:** every table enforces `user_id = auth.uid()` — single-user by design.
+- **AI memory:** `match_memories` SQL function uses 1024-dimensional Voyage AI embeddings (migration 004); falls back to keyword search without `VOYAGE_API_KEY`.
+- **Currency:** AED throughout; locale is UAE (DD/MM/YYYY, 12-hour time).
+- **PWA:** installable with service worker and install prompt.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Deployed on Vercel. Push to `main` triggers a production deploy.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For environment variables, use `vercel env` or the Vercel dashboard. Migration 004 must be applied in the Supabase dashboard before the AI memory feature works at full fidelity.
