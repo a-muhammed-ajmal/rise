@@ -1,25 +1,15 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(npm run dev)",
-      "Bash(npm run build)",
-      "Bash(npm test)",
-      "Bash(npm run test:*)",
-      "Bash(npm run lint)",
-      "Bash(npm run test:coverage)",
-      "Bash(git status)",
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(git add*)",
-      "Bash(git push*)",
-      "Bash(git stash*)",
-      "Bash(git branch*)"
-    ],
-    "deny": [
-      "Bash(git reset --hard*)"
-    ]
+    "allow": ["Read", "Edit", "Bash(npm:*)", "Bash(git:*)"],
+    "deny": ["Bash(git reset --hard*)"]
   },
   "hooks": {
-    "PreToolUse": []
-  }
+    "PreToolUse": [
+      { "matcher": "Bash", "command": "scripts/block-destructive.sh" }
+    ],
+    "PostToolUse": [
+      { "matcher": "Write(*.ts,*.tsx,*.js,*.jsx)", "command": "npx prettier --write ${file} && npx eslint --fix ${file}" }
+    ]
+  },
+  "model": "claude-sonnet-4-6"
 }
