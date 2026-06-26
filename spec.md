@@ -48,7 +48,7 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 ### AI tool set
 
 **AUTO_TOOLS** (execute immediately):
-`create_task` · `list_tasks` · `complete_task` · `log_expense` · `log_income` · `log_habit` · `create_goal` · `add_note` · `add_contact` · `get_daily_briefing` · `search_data`
+`create_task` · `list_tasks` · `complete_task` · `log_expense` · `log_income` · `log_habit` · `create_goal` · `add_note` · `add_contact` · `get_daily_briefing` · `search_data` · `get_analytics`
 
 **APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes):
 `delete_task` · `bulk_complete_tasks` · `delete_note`
@@ -123,21 +123,57 @@ User messages embedded via Voyage AI (1024-dim) and stored in `ai_memory`. On ea
 
 ---
 
-## Phase 1 — Push Notification Infrastructure (Habit Nudges + CRM Follow-ups)
+## Phase 1 — Push Notification Infrastructure ✅ COMPLETE
 
-**Status:** In progress
+**Status:** Complete (2026-06-26)
 
-### Phase 1 Objective
+### Phase 1 Deliverables (shipped)
 
-Subscription infrastructure for web push: push_subscriptions table (already applied manually), subscribe/unsubscribe routes, SW push handler. Covers both reminder types.
+- `lib/types/database.ts` — PushSubscriptionRow type
+- `POST /api/push/subscribe`, `POST /api/push/unsubscribe`
+- `public/sw.js` — push + notificationclick handlers (rise-v3, network-first navigation, offline fallback)
+- `app/offline/page.tsx` — static offline fallback page
+- `public/manifest.webmanifest` — updated with scope, lang, icon sizes
 
-### Phase 1 Deliverables
+---
 
-- lib/types/database.ts — PushSubscriptionRow
-- POST /api/push/subscribe, POST /api/push/unsubscribe
-- public/sw.js — push + notificationclick handlers
+## Phase 2 — Push Delivery: Supabase Edge Function ✅ COMPLETE
 
-### Phase 1 Out of Scope
+**Status:** Complete (2026-06-26)
 
-- Sending pushes (Phase 2 — Edge Function cron)
-- Settings UI / permission flow (Phase 3)
+### Phase 2 Deliverables (shipped)
+
+- `supabase/functions/send-push/index.ts` — Deno Edge Function with custom VAPID JWT (SubtleCrypto, no npm dependency), checks habit nudges vs logs and CRM follow_up_date
+- `GET /api/push/vapid-public-key` — exposes public VAPID key to client
+- Required env vars: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- Cron schedule: `0 * * * *` (hourly) configured in Supabase Edge Function settings
+
+---
+
+## Phase 3 — Push Notification Settings UI ✅ COMPLETE
+
+**Status:** Complete (2026-06-26)
+
+### Phase 3 Deliverables (shipped)
+
+- `lib/hooks/use-push-subscription.ts` — subscribe/unsubscribe, permission state management
+- `app/(app)/settings/page.tsx` — Notifications card with enable/disable toggle, blocked state, active reminders list
+
+---
+
+## Stage 4 — AI-Assisted Development Framework Tooling ✅ COMPLETE
+
+**Status:** Complete (2026-06-26)
+
+### Stage 4 Deliverables (shipped)
+
+- `.claude/skills/rise-module-pattern.md` — page structure, formatting, shadcn, animations, RLS writes
+- `.claude/skills/rise-tool-pattern.md` — AUTO vs APPROVAL tier, handler shape, auth guard
+- `.claude/skills/rise-test-pattern.md` — Vitest + Testing Library, Supabase mock template, hoisting rules
+- `.claude/skills/rise-sql-pattern.md` — append-only migrations, RLS template, type sync rules
+- `.claude/commands/verify.md` — runs test:coverage + lint + build, reports pass/fail
+- `.claude/commands/review.md` — security, TypeScript, performance, RISE conventions review
+- `.claude/commands/add-tool.md` — scaffolds new AI tool end-to-end (TDD)
+- `.claude/commands/new-module.md` — scaffolds new module page with sidebar wiring
+- `lib/ai/tools.ts` + `lib/ai/execute-tool.ts` — `get_analytics` AUTO_TOOL (week/month summary across 5 tables)
+- Test coverage: 151 tests passing, 97.21% line coverage on `lib/**`
