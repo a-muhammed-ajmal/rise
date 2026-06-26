@@ -1,53 +1,53 @@
-# /review
+---
+name: review
+description: Security, performance, type-safety and RISE-convention review of the current git diff
+---
 
-Review the current git diff for code quality and issues.
+# /review — RISE Code Review
 
-## Checklist
+Review `git diff HEAD` (or staged changes) across these dimensions. Output a structured findings table.
 
-Analyze the staged changes and provide findings for:
+## Dimensions
 
-1. **Security Vulnerabilities** — Any potential security issues:
-   - Hardcoded secrets, API keys, credentials
-   - SQL injection risks or unsafe query patterns
-   - XSS vulnerabilities in DOM manipulation
-   - CSRF token handling
-   - Authentication/authorization bypasses
-   - Input validation gaps
+### 1. Security
+- Are `ANTHROPIC_API_KEY` or `SUPABASE_SERVICE_ROLE_KEY` referenced in client components?
+- Are `APPROVAL_TOOLS` being auto-executed without user confirmation?
+- Is user input validated at API route boundaries (`/api/**`)?
+- Are Supabase writes guarded by `supabase.auth.getUser()` + `user_id = user.id`?
+- Any `any` type used as an escape hatch that could mask injection?
 
-2. **Performance Issues** — Optimization opportunities:
-   - Unnecessary loops or nested operations
-   - Missing memoization or caching
-   - Database query inefficiencies
-   - Large bundle size increases
-   - N+1 query problems
-   - Missing indexes or poor algorithm choices
+### 2. TypeScript correctness
+- Any `any` types introduced?
+- Are database types from `lib/types/database.ts` used correctly?
+- All new functions fully typed (no implicit `any` params)?
 
-3. **Missing Error Handling** — Exception coverage gaps:
-   - Unhandled promise rejections
-   - Missing try/catch blocks
-   - No null/undefined checks
-   - Graceful degradation for edge cases
-   - Missing timeout handling
+### 3. Performance
+- N+1 queries (sequential Supabase calls inside loops)?
+- Missing `useCallback` on functions used in `useEffect` deps arrays?
+- Large synchronous imports that should be dynamic?
 
-4. **Test Coverage Gaps** — Testing deficiencies:
-   - New functions or methods without tests
-   - Edge cases not covered
-   - Missing integration or E2E tests
-   - Untested error paths
-   - Low coverage percentage for critical paths
+### 4. RISE conventions
+- Currency formatted with `formatAED()` from `@/lib/format`?
+- Dates formatted with `formatDate()` from `@/lib/format`?
+- Destructive actions going through `<ConfirmDialog>` from `@/components/ui/confirm-dialog`?
+- Feedback via `toast.success()` / `toast.error()` (not `alert()`)?
+- New module pages have `"use client"` at line 1?
 
-## Output Format
+### 5. Test coverage
+- New `lib/**` code covered by tests?
+- Will `npm run test:coverage` still report ≥85% line coverage on `lib/**`?
 
-Format findings as a **prioritized list** with severity ratings:
+## Output format
 
-- **CRITICAL** — Must fix before merge (security, data loss risk)
-- **HIGH** — Should fix before merge (significant performance/UX impact)
-- **MEDIUM** — Fix soon (code quality, maintainability)
-- **LOW** — Nice to have (minor improvements, style)
+| # | Severity | Dimension | Finding | File:Line | Fix |
+|---|----------|-----------|---------|-----------|-----|
+| 1 | 🔴 High | Security | Service role key referenced in client component | foo.tsx:12 | Move to server route |
+| 2 | 🟡 Medium | Performance | N+1 query inside contact loop | crm/page.tsx:230 | Batch outside loop |
+| 3 | 🟢 Low | Convention | `amount.toFixed(2)` instead of `formatAED()` | finance/page.tsx:88 | Use formatAED(amount) |
 
-For each finding, provide:
-- The specific line(s) or function affected
-- Why it's a concern
-- Suggested fix (if applicable)
+Severity scale:
+- 🔴 **High** — must fix before merge (security, data loss, broken RLS)
+- 🟡 **Medium** — should fix (performance, correctness, coverage gaps)
+- 🟢 **Low** — nice to have (convention, style)
 
-End with a summary: "Safe to merge" or "Recommend changes before merge".
+End with: **Overall: PASS** (no 🔴 findings) or **FAIL** (has 🔴 findings — do not merge).
