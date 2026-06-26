@@ -38,7 +38,6 @@ import {
   Plus,
   BookOpen,
   Loader2,
-  ChevronRight,
   Target,
   MoreVertical,
   Pencil,
@@ -496,6 +495,7 @@ function MilestonesDialog({
 
   useEffect(() => {
     loadMilestones();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [goal.id]);
 
   async function addMilestone(e: React.FormEvent) {

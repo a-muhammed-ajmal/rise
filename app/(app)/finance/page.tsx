@@ -46,7 +46,6 @@ import {
   Pencil,
   Trash2,
   CheckCircle2,
-  Target,
 } from "lucide-react";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { toast } from "sonner";

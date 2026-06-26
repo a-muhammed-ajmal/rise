@@ -43,7 +43,6 @@ import {
   Trash2,
   Phone,
   Mail,
-  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -432,6 +431,7 @@ function ContactDetail({
 
   useEffect(() => {
     loadInteractions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contact.id]);
 
   async function logInteraction(e: React.FormEvent) {

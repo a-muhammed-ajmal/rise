@@ -436,6 +436,7 @@ function FocusTimerDialog({
     }
     const id = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, secondsLeft]);
 
   async function saveSession() {
