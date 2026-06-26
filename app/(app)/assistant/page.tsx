@@ -14,7 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+type MessageParam = { role: "user" | "assistant" | "model"; content: string };
 
 type Message = {
   id: string;

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI, type Content, type Part } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
 import { ALL_TOOLS, APPROVAL_TOOL_NAMES } from "@/lib/ai/tools";
 import { executeTool } from "@/lib/ai/execute-tool";
@@ -9,9 +9,14 @@ import {
   formatMemoriesForPrompt,
 } from "@/lib/ai/memory";
 import { format } from "date-fns";
-import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+// Simple message type used by frontend (compatible with what we send over the wire)
+export type MessageParam = {
+  role: "user" | "assistant" | "model";
+  content: string;
+};
 
 const SYSTEM_PROMPT = `You are RISE, an AI personal assistant integrated into the user's personal operating system.
 You have access to their tasks, goals, finances (AED), habits, contacts, and notes.
@@ -78,6 +83,14 @@ async function buildContext(
   return parts.join("\n");
 }
 
+/** Convert our simple MessageParam format to Gemini Content format */
+function toGeminiHistory(messages: MessageParam[]): Content[] {
+  return messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }] as Part[],
+  }));
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -98,17 +111,7 @@ export async function POST(request: Request) {
 
   // Extract latest user message for memory retrieval
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
-  const latestText =
-    typeof lastUserMsg?.content === "string"
-      ? lastUserMsg.content
-      : Array.isArray(lastUserMsg?.content)
-        ? lastUserMsg.content
-            .filter(
-              (b): b is { type: "text"; text: string } => b.type === "text",
-            )
-            .map((b) => b.text)
-            .join(" ")
-        : "";
+  const latestText = lastUserMsg?.content ?? "";
 
   // Store the user message as a memory (fire-and-forget)
   if (latestText) {
@@ -120,10 +123,7 @@ export async function POST(request: Request) {
 
   // Compact old messages if conversation is long
   const plainMessages = messages
-    .filter(
-      (m): m is MessageParam & { content: string } =>
-        typeof m.content === "string",
-    )
+    .filter((m) => typeof m.content === "string")
     .map((m) => ({ role: m.role, content: m.content }));
   compactMessages(user.id, plainMessages).catch(() => {});
 
@@ -134,100 +134,110 @@ export async function POST(request: Request) {
     context,
   );
 
-  const stream = await anthropic.messages.stream({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1024,
-    system: systemPrompt,
-    tools: ALL_TOOLS,
-    messages,
-  });
+  // Separate conversation history from the last user message
+  const history = messages.slice(0, -1);
+  const userInput = latestText;
+
+  const encoder = new TextEncoder();
 
   function sseChunk(payload: Record<string, unknown>) {
     return encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
   }
 
-  const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
       try {
-        for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(
-              sseChunk({ type: "text", text: event.delta.text }),
-            );
+        const model = genai.chats.create({
+          model: "gemini-2.5-flash",
+          config: {
+            systemInstruction: systemPrompt,
+            tools: [{ functionDeclarations: ALL_TOOLS }],
+          },
+          history: toGeminiHistory(history),
+        });
+
+        // First turn: stream the response
+        const stream = model.sendMessageStream({ message: userInput });
+
+        let fullText = "";
+        const functionCalls: Array<{
+          id: string;
+          name: string;
+          args: Record<string, unknown>;
+        }> = [];
+
+        for await (const chunk of await stream) {
+          const candidate = chunk.candidates?.[0];
+          if (!candidate) continue;
+
+          for (const part of candidate.content?.parts ?? []) {
+            if (part.text) {
+              fullText += part.text;
+              controller.enqueue(sseChunk({ type: "text", text: part.text }));
+            }
+            if (part.functionCall) {
+              functionCalls.push({
+                id: part.functionCall.id ?? crypto.randomUUID(),
+                name: part.functionCall.name ?? "",
+                args: (part.functionCall.args ?? {}) as Record<string, unknown>,
+              });
+            }
           }
         }
 
-        const message = await stream.finalMessage();
+        // Process function calls
+        if (functionCalls.length > 0) {
+          const toolResultParts: Part[] = [];
+          let hasApproval = false;
 
-        // Process tool calls and collect results for the follow-up turn
-        type ToolResultContent = {
-          type: "tool_result";
-          tool_use_id: string;
-          content: string;
-        };
-        const toolResultContents: ToolResultContent[] = [];
-        let hasApproval = false;
-
-        for (const block of message.content) {
-          if (block.type !== "tool_use") continue;
-
-          const toolInput = block.input as Record<string, unknown>;
-
-          if (APPROVAL_TOOL_NAMES.has(block.name)) {
-            hasApproval = true;
-            controller.enqueue(
-              sseChunk({
-                type: "approval_required",
-                tool: { id: block.id, name: block.name, input: toolInput },
-              }),
-            );
-            toolResultContents.push({
-              type: "tool_result",
-              tool_use_id: block.id,
-              content: "Awaiting user approval",
-            });
-            continue;
-          }
-
-          const result = await executeTool(block.name, toolInput);
-          controller.enqueue(
-            sseChunk({ type: "tool_result", tool: block.name, result }),
-          );
-          toolResultContents.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: JSON.stringify(result),
-          });
-        }
-
-        // Follow-up turn: send tool results back to Claude for a natural-language reply
-        if (toolResultContents.length > 0 && !hasApproval) {
-          const followupMessages: MessageParam[] = [
-            ...messages,
-            { role: "assistant", content: message.content },
-            { role: "user", content: toolResultContents },
-          ];
-
-          const followupStream = await anthropic.messages.stream({
-            model: "claude-sonnet-4-6",
-            max_tokens: 512,
-            system: systemPrompt,
-            tools: ALL_TOOLS,
-            messages: followupMessages,
-          });
-
-          for await (const event of followupStream) {
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
+          for (const fc of functionCalls) {
+            if (APPROVAL_TOOL_NAMES.has(fc.name)) {
+              hasApproval = true;
               controller.enqueue(
-                sseChunk({ type: "text", text: event.delta.text }),
+                sseChunk({
+                  type: "approval_required",
+                  tool: { id: fc.id, name: fc.name, input: fc.args },
+                }),
               );
+              toolResultParts.push({
+                functionResponse: {
+                  id: fc.id,
+                  name: fc.name,
+                  response: { result: "Awaiting user approval" },
+                },
+              });
+              continue;
+            }
+
+            const result = await executeTool(fc.name, fc.args);
+            controller.enqueue(
+              sseChunk({ type: "tool_result", tool: fc.name, result }),
+            );
+            toolResultParts.push({
+              functionResponse: {
+                id: fc.id,
+                name: fc.name,
+                response: { result: JSON.stringify(result) },
+              },
+            });
+          }
+
+          // Follow-up turn: send tool results back for a natural-language reply
+          if (!hasApproval) {
+            const followupStream = model.sendMessageStream({
+              message: toolResultParts,
+            });
+
+            for await (const chunk of await followupStream) {
+              const candidate = chunk.candidates?.[0];
+              if (!candidate) continue;
+              for (const part of candidate.content?.parts ?? []) {
+                if (part.text) {
+                  controller.enqueue(
+                    sseChunk({ type: "text", text: part.text }),
+                  );
+                }
+              }
             }
           }
         }

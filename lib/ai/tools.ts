@@ -1,29 +1,29 @@
-import type { Tool } from '@anthropic-ai/sdk/resources/messages'
+import { Type, type FunctionDeclaration } from '@google/genai'
 
 // Low-risk tools — auto-execute without approval
-export const AUTO_TOOLS: Tool[] = [
+export const AUTO_TOOLS: FunctionDeclaration[] = [
   {
     name: 'create_task',
     description: 'Create a new task for the user',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        title: { type: 'string', description: 'Task title' },
-        priority: { type: 'string', enum: ['low','medium','high','urgent'], description: 'Task priority' },
-        due_date: { type: 'string', description: 'Due date in YYYY-MM-DD format' },
-        status: { type: 'string', enum: ['inbox','todo','in_progress'], description: 'Task status' },
-        description: { type: 'string', description: 'Optional task description' },
+        title: { type: Type.STRING, description: 'Task title' },
+        priority: { type: Type.STRING, enum: ['low', 'medium', 'high', 'urgent'], description: 'Task priority' },
+        due_date: { type: Type.STRING, description: 'Due date in YYYY-MM-DD format' },
+        status: { type: Type.STRING, enum: ['inbox', 'todo', 'in_progress'], description: 'Task status' },
+        description: { type: Type.STRING, description: 'Optional task description' },
       },
       required: ['title'],
     },
   },
   {
     name: 'list_tasks',
-    description: 'Get the user\'s current tasks',
-    input_schema: {
-      type: 'object' as const,
+    description: "Get the user's current tasks",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        filter: { type: 'string', enum: ['inbox','today','all'], description: 'Filter tasks by view' },
+        filter: { type: Type.STRING, enum: ['inbox', 'today', 'all'], description: 'Filter tasks by view' },
       },
       required: [],
     },
@@ -31,10 +31,10 @@ export const AUTO_TOOLS: Tool[] = [
   {
     name: 'complete_task',
     description: 'Mark a task as completed',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        task_id: { type: 'string', description: 'The task ID to complete' },
+        task_id: { type: Type.STRING, description: 'The task ID to complete' },
       },
       required: ['task_id'],
     },
@@ -42,13 +42,13 @@ export const AUTO_TOOLS: Tool[] = [
   {
     name: 'log_expense',
     description: 'Record an expense transaction in AED',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        amount: { type: 'number', description: 'Amount in AED' },
-        category: { type: 'string', description: 'Expense category e.g. Food & Drinks, Transport, Shopping' },
-        description: { type: 'string', description: 'What the expense was for' },
-        date: { type: 'string', description: 'Date in YYYY-MM-DD format, defaults to today' },
+        amount: { type: Type.NUMBER, description: 'Amount in AED' },
+        category: { type: Type.STRING, description: 'Expense category e.g. Food & Drinks, Transport, Shopping' },
+        description: { type: Type.STRING, description: 'What the expense was for' },
+        date: { type: Type.STRING, description: 'Date in YYYY-MM-DD format, defaults to today' },
       },
       required: ['amount', 'category'],
     },
@@ -56,13 +56,13 @@ export const AUTO_TOOLS: Tool[] = [
   {
     name: 'log_income',
     description: 'Record an income transaction in AED',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        amount: { type: 'number', description: 'Amount in AED' },
-        category: { type: 'string', description: 'Income category e.g. Salary, Freelance, Business' },
-        description: { type: 'string', description: 'Income source description' },
-        date: { type: 'string', description: 'Date in YYYY-MM-DD format' },
+        amount: { type: Type.NUMBER, description: 'Amount in AED' },
+        category: { type: Type.STRING, description: 'Income category e.g. Salary, Freelance, Business' },
+        description: { type: Type.STRING, description: 'Income source description' },
+        date: { type: Type.STRING, description: 'Date in YYYY-MM-DD format' },
       },
       required: ['amount', 'category'],
     },
@@ -70,10 +70,10 @@ export const AUTO_TOOLS: Tool[] = [
   {
     name: 'log_habit',
     description: 'Mark a habit as completed for today',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        habit_name: { type: 'string', description: 'Name of the habit to log (partial match OK)' },
+        habit_name: { type: Type.STRING, description: 'Name of the habit to log (partial match OK)' },
       },
       required: ['habit_name'],
     },
@@ -81,13 +81,13 @@ export const AUTO_TOOLS: Tool[] = [
   {
     name: 'create_goal',
     description: 'Create a new personal goal',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        title: { type: 'string', description: 'Goal title' },
-        description: { type: 'string', description: 'Goal description and motivation' },
-        category: { type: 'string', enum: ['personal','professional','health','financial','other'] },
-        target_date: { type: 'string', description: 'Target date in YYYY-MM-DD format' },
+        title: { type: Type.STRING, description: 'Goal title' },
+        description: { type: Type.STRING, description: 'Goal description and motivation' },
+        category: { type: Type.STRING, enum: ['personal', 'professional', 'health', 'financial', 'other'] },
+        target_date: { type: Type.STRING, description: 'Target date in YYYY-MM-DD format' },
       },
       required: ['title'],
     },
@@ -95,12 +95,12 @@ export const AUTO_TOOLS: Tool[] = [
   {
     name: 'add_note',
     description: 'Save a note to the knowledge base',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        title: { type: 'string', description: 'Note title' },
-        content: { type: 'string', description: 'Note content' },
-        tags: { type: 'array', items: { type: 'string' }, description: 'Tags for the note' },
+        title: { type: Type.STRING, description: 'Note title' },
+        content: { type: Type.STRING, description: 'Note content' },
+        tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Tags for the note' },
       },
       required: ['title', 'content'],
     },
@@ -108,30 +108,30 @@ export const AUTO_TOOLS: Tool[] = [
   {
     name: 'add_contact',
     description: 'Save a new contact',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        name: { type: 'string', description: 'Contact full name' },
-        email: { type: 'string', description: 'Email address' },
-        phone: { type: 'string', description: 'Phone number' },
-        company: { type: 'string', description: 'Company name' },
-        type: { type: 'string', enum: ['lead','prospect','client','network','personal'] },
+        name: { type: Type.STRING, description: 'Contact full name' },
+        email: { type: Type.STRING, description: 'Email address' },
+        phone: { type: Type.STRING, description: 'Phone number' },
+        company: { type: Type.STRING, description: 'Company name' },
+        type: { type: Type.STRING, enum: ['lead', 'prospect', 'client', 'network', 'personal'] },
       },
       required: ['name'],
     },
   },
   {
     name: 'get_daily_briefing',
-    description: 'Get a summary of today\'s tasks, habits, goals, and finance status',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    description: "Get a summary of today's tasks, habits, goals, and finance status",
+    parameters: { type: Type.OBJECT, properties: {}, required: [] },
   },
   {
     name: 'get_analytics',
-    description: 'Get a summary of the user\'s productivity, finance, habit, and goal progress for a given period (week or month)',
-    input_schema: {
-      type: 'object' as const,
+    description: "Get a summary of the user's productivity, finance, habit, and goal progress for a given period (week or month)",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        period: { type: 'string', enum: ['week', 'month'], description: 'Time period to summarise — "week" (last 7 days) or "month" (current calendar month). Defaults to "month".' },
+        period: { type: Type.STRING, enum: ['week', 'month'], description: 'Time period to summarise — "week" (last 7 days) or "month" (current calendar month). Defaults to "month".' },
       },
       required: [],
     },
@@ -139,11 +139,11 @@ export const AUTO_TOOLS: Tool[] = [
   {
     name: 'search_data',
     description: 'Search through tasks, notes, contacts, and goals by keyword',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        query: { type: 'string', description: 'Search query' },
-        types: { type: 'array', items: { type: 'string', enum: ['tasks','notes','contacts','goals'] }, description: 'Which data types to search' },
+        query: { type: Type.STRING, description: 'Search query' },
+        types: { type: Type.ARRAY, items: { type: Type.STRING, enum: ['tasks', 'notes', 'contacts', 'goals'] }, description: 'Which data types to search' },
       },
       required: ['query'],
     },
@@ -151,15 +151,15 @@ export const AUTO_TOOLS: Tool[] = [
 ]
 
 // Approval-required tools — AI proposes, user must confirm
-export const APPROVAL_TOOLS: Tool[] = [
+export const APPROVAL_TOOLS: FunctionDeclaration[] = [
   {
     name: 'delete_task',
     description: 'Delete a task permanently (REQUIRES USER APPROVAL)',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        task_id: { type: 'string', description: 'Task ID to delete' },
-        task_title: { type: 'string', description: 'Task title for confirmation display' },
+        task_id: { type: Type.STRING, description: 'Task ID to delete' },
+        task_title: { type: Type.STRING, description: 'Task title for confirmation display' },
       },
       required: ['task_id', 'task_title'],
     },
@@ -167,11 +167,11 @@ export const APPROVAL_TOOLS: Tool[] = [
   {
     name: 'bulk_complete_tasks',
     description: 'Mark multiple tasks as complete at once (REQUIRES USER APPROVAL)',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        task_ids: { type: 'array', items: { type: 'string' }, description: 'Array of task IDs' },
-        summary: { type: 'string', description: 'Human-readable summary of what will be completed' },
+        task_ids: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Array of task IDs' },
+        summary: { type: Type.STRING, description: 'Human-readable summary of what will be completed' },
       },
       required: ['task_ids', 'summary'],
     },
@@ -179,16 +179,16 @@ export const APPROVAL_TOOLS: Tool[] = [
   {
     name: 'delete_note',
     description: 'Delete a note permanently (REQUIRES USER APPROVAL)',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        note_id: { type: 'string', description: 'Note ID to delete' },
-        note_title: { type: 'string', description: 'Note title for confirmation display' },
+        note_id: { type: Type.STRING, description: 'Note ID to delete' },
+        note_title: { type: Type.STRING, description: 'Note title for confirmation display' },
       },
       required: ['note_id', 'note_title'],
     },
   },
 ]
 
-export const ALL_TOOLS: Tool[] = [...AUTO_TOOLS, ...APPROVAL_TOOLS]
+export const ALL_TOOLS: FunctionDeclaration[] = [...AUTO_TOOLS, ...APPROVAL_TOOLS]
 export const APPROVAL_TOOL_NAMES = new Set(APPROVAL_TOOLS.map((t) => t.name))

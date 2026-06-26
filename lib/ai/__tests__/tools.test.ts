@@ -28,11 +28,11 @@ describe("AUTO_TOOLS", () => {
 
   it.each(AUTO_TOOLS)("$name has valid schema", (tool) => {
     expect(tool.name).toBeTruthy();
-    expect(tool.description).toBeTruthy();
-    expect(tool.input_schema).toBeDefined();
-    expect(tool.input_schema.type).toBe("object");
-    expect(tool.input_schema.properties).toBeDefined();
-    expect(Array.isArray(tool.input_schema.required)).toBe(true);
+    expect(tool.description ?? "").toBeTruthy();
+    expect(tool.parameters).toBeDefined();
+    expect(tool.parameters?.type).toBe("OBJECT");
+    expect(tool.parameters?.properties).toBeDefined();
+    expect(Array.isArray(tool.parameters?.required)).toBe(true);
   });
 
   it("does not contain approval-required tools", () => {
@@ -56,12 +56,12 @@ describe("APPROVAL_TOOLS", () => {
   });
 
   it.each(APPROVAL_TOOLS)("$name description mentions approval", (tool) => {
-    expect(tool.description.toUpperCase()).toContain("APPROVAL");
+    expect((tool.description ?? "").toUpperCase()).toContain("APPROVAL");
   });
 
   it.each(APPROVAL_TOOLS)("$name has valid schema", (tool) => {
-    expect(tool.input_schema.type).toBe("object");
-    expect(tool.input_schema.properties).toBeDefined();
+    expect(tool.parameters?.type).toBe("OBJECT");
+    expect(tool.parameters?.properties).toBeDefined();
   });
 });
 
