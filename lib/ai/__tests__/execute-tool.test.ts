@@ -523,4 +523,74 @@ describe("executeTool", () => {
       expect(result.message).toContain("Draft note");
     });
   });
+
+  describe("get_analytics", () => {
+    it("returns monthly summary with income, expenses, task and habit counts", async () => {
+      const txQuery = createMockQuery([
+        { type: "income", amount: 5000, category: "salary" },
+        { type: "expense", amount: 200, category: "food" },
+        { type: "expense", amount: 100, category: "transport" },
+      ]);
+      const taskQuery = createMockQuery([
+        { id: "t-1", status: "done" },
+        { id: "t-2", status: "done" },
+        { id: "t-3", status: "in_progress" },
+      ]);
+      const habitQuery = createMockQuery([
+        { id: "h-1", name: "Run" },
+        { id: "h-2", name: "Read" },
+      ]);
+      const habitLogQuery = createMockQuery([
+        { habit_id: "h-1", completed: true },
+        { habit_id: "h-2", completed: true },
+        { habit_id: "h-1", completed: false },
+      ]);
+      const goalQuery = createMockQuery([
+        { id: "g-1", status: "active", progress: 60 },
+        { id: "g-2", status: "completed", progress: 100 },
+      ]);
+
+      setupMockSupabase({
+        queries: {
+          transactions: txQuery,
+          tasks: taskQuery,
+          habits: habitQuery,
+          habit_logs: habitLogQuery,
+          goals: goalQuery,
+        },
+      });
+
+      const result = await executeTool("get_analytics", {
+        period: "month",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("analytics");
+      expect(result.data).toBeDefined();
+      const data = result.data as Record<string, unknown>;
+      expect(data).toHaveProperty("finance");
+      expect(data).toHaveProperty("tasks");
+      expect(data).toHaveProperty("habits");
+      expect(data).toHaveProperty("goals");
+    });
+
+    it("returns failure when not authenticated", async () => {
+      setupMockSupabase({ user: null });
+      const result = await executeTool("get_analytics", { period: "month" });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("authenticated");
+    });
+
+    it("accepts week period", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("get_analytics", { period: "week" });
+      expect(result.success).toBe(true);
+    });
+
+    it("defaults to month when period not provided", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("get_analytics", {});
+      expect(result.success).toBe(true);
+    });
+  });
 });

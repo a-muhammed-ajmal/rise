@@ -126,6 +126,17 @@ export const AUTO_TOOLS: Tool[] = [
     input_schema: { type: 'object' as const, properties: {}, required: [] },
   },
   {
+    name: 'get_analytics',
+    description: 'Get a summary of the user\'s productivity, finance, habit, and goal progress for a given period (week or month)',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        period: { type: 'string', enum: ['week', 'month'], description: 'Time period to summarise — "week" (last 7 days) or "month" (current calendar month). Defaults to "month".' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'search_data',
     description: 'Search through tasks, notes, contacts, and goals by keyword',
     input_schema: {

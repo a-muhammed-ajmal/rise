@@ -188,6 +188,48 @@ export async function executeTool(toolName: string, input: Record<string, unknow
       return { success: true, message: `Found ${total} results for "${query}"`, data: results }
     }
 
+    case 'get_analytics': {
+      const period = (input.period as string | undefined) ?? 'month'
+      const startDate = period === 'week'
+        ? format(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+        : today.slice(0, 7) + '-01'
+
+      const [txRes, taskRes, habitRes, habitLogRes, goalRes] = await Promise.all([
+        supabase.from('transactions').select('type,amount,category').eq('user_id', user.id).gte('date', startDate),
+        supabase.from('tasks').select('id,status').eq('user_id', user.id).gte('created_at', startDate),
+        supabase.from('habits').select('id,name').eq('user_id', user.id),
+        supabase.from('habit_logs').select('habit_id,completed').eq('user_id', user.id).gte('date', startDate),
+        supabase.from('goals').select('id,status,progress').eq('user_id', user.id),
+      ])
+
+      const transactions = txRes.data ?? []
+      const income = transactions.filter((t) => t.type === 'income').reduce((s: number, t) => s + (t.amount as number), 0)
+      const expenses = transactions.filter((t) => t.type === 'expense').reduce((s: number, t) => s + (t.amount as number), 0)
+
+      const tasks = taskRes.data ?? []
+      const tasksCompleted = tasks.filter((t) => t.status === 'done').length
+
+      const habits = habitRes.data ?? []
+      const habitLogs = habitLogRes.data ?? []
+      const habitsCompleted = habitLogs.filter((l) => l.completed).length
+
+      const goals = goalRes.data ?? []
+      const activeGoals = goals.filter((g) => g.status === 'active').length
+      const completedGoals = goals.filter((g) => g.status === 'completed').length
+      const avgProgress = goals.length > 0
+        ? Math.round(goals.reduce((s: number, g) => s + ((g.progress as number) ?? 0), 0) / goals.length)
+        : 0
+
+      const data = {
+        period,
+        finance: { income, expenses, net: income - expenses },
+        tasks: { total: tasks.length, completed: tasksCompleted },
+        habits: { tracked: habits.length, logsCompleted: habitsCompleted },
+        goals: { active: activeGoals, completed: completedGoals, avgProgress },
+      }
+      return { success: true, message: `Here's your ${period}ly analytics summary`, data }
+    }
+
     // Approval-required tools executed after user confirms
     case 'delete_task': {
       const { error } = await supabase.from('tasks').delete().eq('id', input.task_id as string)
