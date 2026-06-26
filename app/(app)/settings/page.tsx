@@ -15,7 +15,10 @@ import {
   Moon,
   Download,
   LogOut,
+  Bell,
+  BellOff,
 } from "lucide-react";
+import { usePushSubscription } from "@/lib/hooks/use-push-subscription";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -24,6 +27,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } = usePushSubscription();
 
   useEffect(() => {
     createClient()
@@ -187,6 +191,58 @@ export default function SettingsPage() {
             <Download className="w-4 h-4" />
             {exporting ? "Exporting…" : "Export all data"}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Notifications */}
+      <Card className="animate-rise-in stagger-4">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Bell className="w-4 h-4" /> Notifications
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {permission === "unsupported" ? (
+            <p className="text-sm text-muted-foreground">
+              Push notifications are not supported in this browser.
+            </p>
+          ) : (
+            <>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium">Push notifications</p>
+                  <p className="text-xs text-muted-foreground">
+                    {permission === "denied"
+                      ? "Blocked — allow in browser settings"
+                      : subscribed
+                        ? "Active — receiving habit nudges & follow-up reminders"
+                        : "Off — enable to get reminders"}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={subscribed ? "outline" : "default"}
+                  size="sm"
+                  className="gap-2 min-w-28"
+                  disabled={pushLoading || permission === "denied"}
+                  onClick={subscribed ? unsubscribe : subscribe}
+                >
+                  {subscribed ? (
+                    <><BellOff className="w-4 h-4" /> Disable</>
+                  ) : (
+                    <><Bell className="w-4 h-4" /> Enable</>
+                  )}
+                </Button>
+              </div>
+              {subscribed && (
+                <div className="rounded-md border p-3 space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active reminders</p>
+                  <p className="text-sm">✅ Habit nudges</p>
+                  <p className="text-sm">✅ CRM follow-ups</p>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
