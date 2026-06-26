@@ -4,10 +4,12 @@
   "short_name": "RISE",
   "description": "Your AI-powered personal operating system",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#0D0A1A",
   "theme_color": "#6366f1",
   "orientation": "portrait-primary",
+  "lang": "en",
   "categories": ["productivity", "lifestyle"],
   "icons": [
     {

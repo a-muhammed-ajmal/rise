@@ -1,19 +1,18 @@
-const CACHE_NAME = "rise-v2";
-const APP_SHELL = [
-  "/",
-  "/productivity",
-  "/finance",
-  "/wellness",
-  "/goals",
-  "/crm",
-  "/knowledge",
-  "/assistant",
+const CACHE_NAME = "rise-v3";
+const OFFLINE_URL = "/offline";
+const STATIC_SHELL = [
+  OFFLINE_URL,
   "/manifest.webmanifest",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)),
+    caches.open(CACHE_NAME).then((cache) =>
+      // Cache each item individually so one failure doesn't abort install
+      Promise.allSettled(STATIC_SHELL.map((url) => cache.add(url))),
+    ),
   );
   self.skipWaiting();
 });
@@ -43,7 +42,8 @@ self.addEventListener("push", (event) => {
   const title = data.title ?? "RISE";
   const options = {
     body: data.body ?? "",
-    icon: data.icon ?? "/icons/icon-192x192.png",
+    icon: data.icon ?? "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
     data: { url: data.url ?? "/" },
   };
   event.waitUntil(self.registration.showNotification(title, options));
@@ -62,10 +62,10 @@ self.addEventListener("fetch", (event) => {
   // Skip non-GET and cross-origin
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
 
-  // API calls: network-first, no cache fallback (stale data is worse than offline)
+  // API calls: network-only (stale data is worse than offline)
   if (url.pathname.startsWith("/api/")) return;
 
-  // Next.js static chunks: cache-first (immutable, content-hashed filenames)
+  // Next.js static chunks: cache-first (content-hashed, immutable)
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -82,7 +82,27 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // App pages and assets: stale-while-revalidate
+  // Navigation requests: network-first, fall back to /offline
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          return caches.match(OFFLINE_URL);
+        }),
+    );
+    return;
+  }
+
+  // Other assets: stale-while-revalidate
   event.respondWith(
     caches.match(request).then((cached) => {
       const networkFetch = fetch(request)
