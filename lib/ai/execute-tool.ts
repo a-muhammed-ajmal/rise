@@ -20,6 +20,10 @@ export async function executeTool(toolName: string, input: Record<string, unknow
         status: ((input.status ?? 'inbox') as 'inbox' | 'todo' | 'in_progress' | 'done'),
         description: (input.description as string) ?? null,
         is_recurring: false,
+        is_starred: false,
+        tags: [],
+        subtasks: [] as unknown as never,
+        attachments: [] as unknown as never,
       }).select().single()
       if (error) return { success: false, message: error.message }
       return { success: true, message: `Created task: "${input.title}"`, data }

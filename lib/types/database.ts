@@ -18,6 +18,18 @@ type ProjectRow = {
   created_at: string;
   updated_at: string;
 };
+export type Subtask = {
+  id: string;
+  title: string;
+  done: boolean;
+};
+
+export type TaskAttachment = {
+  name: string;
+  url: string;
+  type: string; // MIME type
+};
+
 type TaskRow = {
   id: string;
   user_id: string;
@@ -26,9 +38,16 @@ type TaskRow = {
   status: "inbox" | "todo" | "in_progress" | "done";
   priority: "low" | "medium" | "high" | "urgent";
   due_date: string | null;
+  due_time: string | null;        // HH:MM time string
   completed_at: string | null;
   is_recurring: boolean;
   recurrence_rule: string | null;
+  reminder_at: string | null;     // ISO timestamptz
+  is_starred: boolean;
+  tags: string[];
+  subtasks: Subtask[];
+  estimated_minutes: number | null;
+  attachments: TaskAttachment[];
   project_id: string | null;
   created_at: string;
   updated_at: string;
