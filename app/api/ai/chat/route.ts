@@ -142,6 +142,10 @@ export async function POST(request: Request) {
     messages,
   });
 
+  function sseChunk(payload: Record<string, unknown>) {
+    return encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
+  }
+
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
@@ -152,63 +156,87 @@ export async function POST(request: Request) {
             event.delta.type === "text_delta"
           ) {
             controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: "text", text: event.delta.text })}\n\n`,
-              ),
+              sseChunk({ type: "text", text: event.delta.text }),
             );
-          }
-
-          if (
-            event.type === "content_block_start" &&
-            event.content_block.type === "tool_use"
-          ) {
-            // Signal tool start
           }
         }
 
         const message = await stream.finalMessage();
 
-        // Process tool calls
+        // Process tool calls and collect results for the follow-up turn
+        type ToolResultContent = {
+          type: "tool_result";
+          tool_use_id: string;
+          content: string;
+        };
+        const toolResultContents: ToolResultContent[] = [];
+        let hasApproval = false;
+
         for (const block of message.content) {
           if (block.type !== "tool_use") continue;
 
           const toolInput = block.input as Record<string, unknown>;
 
-          // Approval-required: send to client for user confirmation
           if (APPROVAL_TOOL_NAMES.has(block.name)) {
+            hasApproval = true;
             controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: "approval_required",
-                  tool: { id: block.id, name: block.name, input: toolInput },
-                })}\n\n`,
-              ),
+              sseChunk({
+                type: "approval_required",
+                tool: { id: block.id, name: block.name, input: toolInput },
+              }),
             );
+            toolResultContents.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: "Awaiting user approval",
+            });
             continue;
           }
 
-          // Auto-execute low-risk tools
           const result = await executeTool(block.name, toolInput);
           controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "tool_result",
-                tool: block.name,
-                result,
-              })}\n\n`,
-            ),
+            sseChunk({ type: "tool_result", tool: block.name, result }),
           );
+          toolResultContents.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: JSON.stringify(result),
+          });
+        }
+
+        // Follow-up turn: send tool results back to Claude for a natural-language reply
+        if (toolResultContents.length > 0 && !hasApproval) {
+          const followupMessages: MessageParam[] = [
+            ...messages,
+            { role: "assistant", content: message.content },
+            { role: "user", content: toolResultContents },
+          ];
+
+          const followupStream = await anthropic.messages.stream({
+            model: "claude-sonnet-4-6",
+            max_tokens: 512,
+            system: systemPrompt,
+            tools: ALL_TOOLS,
+            messages: followupMessages,
+          });
+
+          for await (const event of followupStream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              controller.enqueue(
+                sseChunk({ type: "text", text: event.delta.text }),
+              );
+            }
+          }
         }
 
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err) {
         const message = err instanceof Error ? err.message : "AI error";
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: "error", message })}\n\n`,
-          ),
-        );
+        controller.enqueue(sseChunk({ type: "error", message }));
         controller.close();
       }
     },

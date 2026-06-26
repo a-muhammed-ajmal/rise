@@ -12,6 +12,10 @@ const ThemeContext = createContext<{
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
 
+  function applyTheme(t: Theme) {
+    document.documentElement.classList.toggle("dark", t === "dark");
+  }
+
   useEffect(() => {
     const stored = localStorage.getItem("rise-theme") as Theme | null;
     const sys = window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -21,10 +25,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(initial);
     applyTheme(initial);
   }, []);
-
-  function applyTheme(t: Theme) {
-    document.documentElement.classList.toggle("dark", t === "dark");
-  }
 
   function toggle() {
     setTheme((prev) => {

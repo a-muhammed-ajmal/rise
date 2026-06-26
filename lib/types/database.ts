@@ -214,6 +214,15 @@ type AiMemoryRow = {
   embedding: number[] | null;
   created_at: string;
 };
+type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  reminder_types: ("habit_nudge" | "crm_followup")[];
+  created_at: string;
+};
 
 // ─── Helper to build Insert / Update from Row ─────────────────────────────────
 
@@ -313,6 +322,11 @@ export interface Database {
         Insertable<AiMemoryRow>,
         Partial<Insertable<AiMemoryRow>>
       >;
+      push_subscriptions: T<
+        PushSubscriptionRow,
+        Insertable<PushSubscriptionRow>,
+        Partial<Insertable<PushSubscriptionRow>>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -356,3 +370,4 @@ export type Document = DocumentRow;
 export type Link = LinkRow;
 export type AiConversation = AiConversationRow;
 export type AiMemory = AiMemoryRow;
+export type PushSubscription = PushSubscriptionRow;

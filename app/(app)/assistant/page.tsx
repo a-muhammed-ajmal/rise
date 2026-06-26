@@ -138,9 +138,28 @@ function AssistantContent() {
                   ...updated[idx],
                   toolResults: [...toolResults],
                 };
+              } else {
+                // Claude used a tool without generating text first — create the message now
+                updated.push({
+                  id: assistantId,
+                  role: "assistant",
+                  content: "",
+                  toolResults: [...toolResults],
+                });
               }
               return updated;
             });
+          }
+
+          if (event.type === "error") {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: assistantId,
+                role: "assistant",
+                content: `Something went wrong: ${event.message as string}`,
+              },
+            ]);
           }
 
           if (event.type === "approval_required") {
@@ -227,6 +246,7 @@ function AssistantContent() {
               {QUICK_PROMPTS.map((p) => (
                 <button
                   key={p}
+                  type="button"
                   onClick={() => void sendMessage(p)}
                   className="card-interactive text-left text-sm px-3 py-2.5 rounded-lg border border-mod-ai/10 bg-mod-ai-soft/50 hover:bg-mod-ai-soft transition-colors"
                 >

@@ -137,10 +137,7 @@ export default function WellnessPage() {
   }
 
   return (
-    <div
-      className="p-4 md:p-6 max-w-2xl space-y-4 page-glow"
-      style={{ "--glow-color": "var(--mod-wellness)" } as React.CSSProperties}
-    >
+    <div className="p-4 md:p-6 max-w-2xl space-y-4 page-glow [--glow-color:var(--mod-wellness)]">
       <div className="flex items-center justify-between animate-rise-in stagger-1">
         <h1 className="text-step-2 font-heading font-bold tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-wellness-soft flex items-center justify-center">

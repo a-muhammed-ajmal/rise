@@ -118,10 +118,7 @@ export default function GoalsPage() {
   }
 
   return (
-    <div
-      className="p-4 md:p-6 max-w-2xl space-y-4 page-glow"
-      style={{ "--glow-color": "var(--mod-goals)" } as React.CSSProperties}
-    >
+    <div className="p-4 md:p-6 max-w-2xl space-y-4 page-glow [--glow-color:var(--mod-goals)]">
       <div className="flex items-center justify-between animate-rise-in stagger-1">
         <h1 className="text-step-2 font-heading font-bold tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-goals-soft flex items-center justify-center">
@@ -425,18 +422,18 @@ function GoalDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Title</Label>
-            <Input placeholder="What do you want to achieve?" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus required />
+            <Label htmlFor="goal-title">Title</Label>
+            <Input id="goal-title" placeholder="What do you want to achieve?" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus required />
           </div>
           <div className="space-y-2">
-            <Label>Description</Label>
-            <Textarea placeholder="Why does this matter?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+            <Label htmlFor="goal-description">Description</Label>
+            <Textarea id="goal-description" placeholder="Why does this matter?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label htmlFor="goal-category">Category</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as Goal["category"])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="goal-category" title="Category"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {["personal", "professional", "health", "financial", "other"].map((c) => (
                     <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
@@ -445,14 +442,15 @@ function GoalDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Target Date</Label>
-              <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+              <Label htmlFor="goal-target-date">Target Date</Label>
+              <Input id="goal-target-date" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
             </div>
           </div>
           {goal && (
             <div className="space-y-2">
-              <Label>Progress: {progress}%</Label>
+              <Label htmlFor="progress">Progress: {progress}%</Label>
               <input
+                id="progress"
                 type="range" min={0} max={100} value={progress}
                 onChange={(e) => setProgress(Number(e.target.value))}
                 className="w-full accent-primary"
