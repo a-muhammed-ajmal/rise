@@ -13,10 +13,11 @@ function makeRequest(pathname: string): NextRequest {
   return new NextRequest(url);
 }
 
-function setupMockAuth(user: { id: string } | null) {
+function setupMockAuth(user: { id: string; email?: string } | null, opts?: { signOut?: () => Promise<void> }) {
   const mockSupabase = {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user } }),
+      signOut: opts?.signOut ?? vi.fn().mockResolvedValue({}),
     },
   };
   vi.mocked(createServerClient).mockReturnValue(mockSupabase as never);
@@ -61,6 +62,40 @@ describe("updateSession", () => {
     const response = await updateSession(makeRequest("/productivity"));
     expect(response.headers.get("location")).toBeNull();
     expect(response.status).toBe(200);
+  });
+
+  it("blocks user with wrong email and redirects to /login?error=unauthorized", async () => {
+    process.env.ALLOWED_USER_EMAIL = "allowed@example.com";
+    const signOut = vi.fn().mockResolvedValue({});
+    setupMockAuth({ id: "user-456", email: "hacker@example.com" }, { signOut });
+    const response = await updateSession(makeRequest("/productivity"));
+    expect(signOut).toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("/login");
+    expect(response.headers.get("location")).toContain("error=unauthorized");
+    delete process.env.ALLOWED_USER_EMAIL;
+  });
+
+  it("allows user with matching ALLOWED_USER_EMAIL", async () => {
+    process.env.ALLOWED_USER_EMAIL = "writeajmal@gmail.com";
+    setupMockAuth({ id: "user-123", email: "writeajmal@gmail.com" });
+    const response = await updateSession(makeRequest("/productivity"));
+    expect(response.headers.get("location")).toBeNull();
+    delete process.env.ALLOWED_USER_EMAIL;
+  });
+
+  it("invokes setAll cookie handler when cookies are set", async () => {
+    setupMockAuth({ id: "user-123" });
+    let capturedSetAll: ((cookies: { name: string; value: string; options?: object }[]) => void) | null = null;
+    vi.mocked(createServerClient).mockImplementationOnce((_url, _key, opts) => {
+      capturedSetAll = opts.cookies.setAll;
+      return {
+        auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+      } as never;
+    });
+    await updateSession(makeRequest("/productivity"));
+    expect(capturedSetAll).not.toBeNull();
+    // Calling setAll should not throw
+    expect(() => capturedSetAll!([{ name: "sb-token", value: "abc", options: {} }])).not.toThrow();
   });
 
   it("creates Supabase client with correct env vars", async () => {
