@@ -54,7 +54,7 @@ function LoginForm() {
   return (
     <div className="flex flex-col items-center gap-5 w-full max-w-sm animate-rise-in">
       <Image
-        src="/icons/icon-512.png"
+        src="/icon-512.png"
         alt="RISE logo"
         width={72}
         height={72}

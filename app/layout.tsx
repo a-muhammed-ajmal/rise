@@ -44,10 +44,10 @@ export const metadata: Metadata = {
     title: "RISE",
   },
   icons: {
-    icon: "/icons/icon-192.png",
+    icon: "/icon-192.png",
     apple: [
-      { url: "/icons/icon-192.png", sizes: "192x192" },
-      { url: "/icons/icon-512.png", sizes: "512x512" },
+      { url: "/icon-192.png", sizes: "192x192" },
+      { url: "/icon-512.png", sizes: "512x512" },
     ],
   },
 };

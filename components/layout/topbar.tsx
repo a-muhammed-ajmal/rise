@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sparkles, LogOut, Settings, Sun, Moon } from "lucide-react";
+import { LogOut, Settings, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/hooks/use-theme";
 
 interface TopbarProps {
@@ -35,9 +36,13 @@ export function Topbar({ email }: TopbarProps) {
     <header className="h-16 border-b border-border bg-card/80 glass-surface flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
       {/* Mobile logo */}
       <Link href="/" className="flex items-center gap-2 md:hidden group">
-        <div className="w-8 h-8 rounded-lg bg-mod-ai flex items-center justify-center shadow-sm transition-transform duration-200 group-hover:scale-105">
-          <Sparkles className="w-4 h-4 text-white" />
-        </div>
+        <Image
+          src="/icon-192.png"
+          alt="RISE"
+          width={32}
+          height={32}
+          className="rounded-lg shadow-sm transition-transform duration-200 group-hover:scale-105"
+        />
         <span className="font-heading font-semibold text-lg tracking-tight">RISE</span>
       </Link>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, Suspense } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -233,8 +234,14 @@ function AssistantContent() {
       <ScrollArea className="flex-1 p-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full space-y-4 py-12 animate-rise-in">
-            <div className="w-16 h-16 rounded-2xl bg-mod-ai-soft flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-mod-ai" />
+            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md">
+              <Image
+                src="/icon-512.png"
+                alt="RISE"
+                width={64}
+                height={64}
+                className="w-full h-full object-cover"
+              />
             </div>
             <div className="text-center space-y-1">
               <h2 className="font-semibold text-lg">RISE AI Assistant</h2>
