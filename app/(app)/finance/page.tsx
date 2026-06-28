@@ -192,7 +192,7 @@ export default function FinancePage() {
     >
       {/* Header */}
       <div className="flex items-center justify-between animate-rise-in stagger-1">
-        <h1 className="text-step-2 font-heading font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-finance-soft flex items-center justify-center">
             <DollarSign className="w-4 h-4 text-mod-finance" />
           </div>
@@ -222,19 +222,19 @@ export default function FinancePage() {
         <Card className="border-mod-finance/20">
           <CardContent className="p-3 text-center">
             <p className="text-xs text-muted-foreground">Income</p>
-            <p className="text-lg font-bold text-mod-finance">{formatAED(totalIncome)}</p>
+            <p className="font-mono font-medium text-mod-finance">{formatAED(totalIncome)}</p>
           </CardContent>
         </Card>
         <Card className="border-destructive/20">
           <CardContent className="p-3 text-center">
             <p className="text-xs text-muted-foreground">Expenses</p>
-            <p className="text-lg font-bold text-destructive">{formatAED(totalExpense)}</p>
+            <p className="font-mono font-medium text-destructive">{formatAED(totalExpense)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3 text-center">
             <p className="text-xs text-muted-foreground">Net</p>
-            <p className={`text-lg font-bold ${net >= 0 ? "text-mod-finance" : "text-destructive"}`}>
+            <p className={`font-mono font-medium ${net >= 0 ? "text-mod-finance" : "text-destructive"}`}>
               {formatAED(Math.abs(net))}
             </p>
           </CardContent>

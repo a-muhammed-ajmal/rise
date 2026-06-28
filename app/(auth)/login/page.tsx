@@ -64,7 +64,7 @@ function LoginForm() {
 
       <Card className="w-full glass-surface login-card border-primary/20">
         <CardHeader className="text-center space-y-1 pb-2">
-          <CardTitle className="text-2xl font-bold font-heading text-primary">
+          <CardTitle className="text-h1 font-heading text-primary">
             RISE
           </CardTitle>
           <CardDescription className="text-sm">

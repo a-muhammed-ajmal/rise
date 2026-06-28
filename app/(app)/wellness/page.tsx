@@ -139,7 +139,7 @@ export default function WellnessPage() {
   return (
     <div className="p-4 md:p-6 max-w-2xl space-y-4 page-glow [--glow-color:var(--mod-wellness)]">
       <div className="flex items-center justify-between animate-rise-in stagger-1">
-        <h1 className="text-step-2 font-heading font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-wellness-soft flex items-center justify-center">
             <Heart className="w-4 h-4 text-mod-wellness" />
           </div>
@@ -508,7 +508,7 @@ function FocusTimerDialog({
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-3xl font-mono font-bold">{mm}:{ss}</span>
+              <span className="text-metric font-mono font-medium">{mm}:{ss}</span>
             </div>
           </div>
           {!running && (

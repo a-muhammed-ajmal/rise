@@ -276,7 +276,7 @@ export function TaskForm({
                         type="button"
                         onClick={() => setPriority(p.value)}
                         className={cn(
-                          'flex-1 py-2 rounded-lg text-xs font-bold transition-all',
+                          'flex-1 py-2 rounded-lg text-xs font-semibold transition-all',
                           priority === p.value
                             ? p.color + ' scale-105 ring-2 ring-offset-2 ring-current'
                             : 'bg-muted text-muted-foreground hover:bg-muted/70'
@@ -468,7 +468,7 @@ export function TaskForm({
                         type="button"
                         onClick={() => setPriority(p.value)}
                         className={cn(
-                          'flex-1 py-1.5 rounded-md text-xs font-bold transition-all',
+                          'flex-1 py-1.5 rounded-md text-xs font-semibold transition-all',
                           priority === p.value
                             ? p.color + ' ring-2 ring-offset-1 ring-current'
                             : 'bg-muted text-muted-foreground'

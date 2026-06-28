@@ -38,7 +38,7 @@ export function Topbar({ email }: TopbarProps) {
         <div className="w-8 h-8 rounded-lg bg-mod-ai flex items-center justify-center shadow-sm transition-transform duration-200 group-hover:scale-105">
           <Sparkles className="w-4 h-4 text-white" />
         </div>
-        <span className="font-heading font-bold text-lg tracking-tight">RISE</span>
+        <span className="font-heading font-semibold text-lg tracking-tight">RISE</span>
       </Link>
 
       {/* Desktop: empty left */}

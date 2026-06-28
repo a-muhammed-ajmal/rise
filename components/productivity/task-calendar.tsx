@@ -130,7 +130,7 @@ export function TaskCalendar({
               <span className={cn(
                 'text-xs font-medium w-5 h-5 rounded-full flex items-center justify-center',
                 isDayToday && 'bg-primary text-primary-foreground',
-                isSelected && !isDayToday && 'text-primary font-bold',
+                isSelected && !isDayToday && 'text-primary font-semibold',
                 !isDayToday && !isSelected && 'text-foreground'
               )}>
                 {format(day, 'd')}

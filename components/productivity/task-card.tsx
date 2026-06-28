@@ -163,7 +163,7 @@ export function TaskCard({
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             {/* Priority P1–P4 */}
             <span className={cn(
-              'inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-bold',
+              'inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-semibold',
               PRIORITY_PILL[task.priority]
             )}>
               <span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOT[task.priority])} />
@@ -300,7 +300,7 @@ export function TaskCard({
                 )}
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <span className="text-xs font-bold mr-2">{PRIORITY_LABEL[task.priority]}</span>
+                    <span className="text-xs font-semibold mr-2">{PRIORITY_LABEL[task.priority]}</span>
                     Set Priority
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
@@ -310,7 +310,7 @@ export function TaskCard({
                         onClick={() => onUpdate(task.id, { priority: p })}
                         className={task.priority === p ? 'font-semibold' : ''}
                       >
-                        <span className={cn('text-xs font-bold mr-2', PRIORITY_PILL[p], 'px-1 rounded')}>
+                        <span className={cn('text-xs font-semibold mr-2', PRIORITY_PILL[p], 'px-1 rounded')}>
                           {PRIORITY_LABEL[p]}
                         </span>
                         {p.charAt(0).toUpperCase() + p.slice(1)}

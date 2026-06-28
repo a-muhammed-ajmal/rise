@@ -91,7 +91,7 @@ export default function SettingsPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl space-y-6">
-      <h1 className="text-step-2 font-heading font-bold tracking-tight flex items-center gap-2 animate-rise-in stagger-1">
+      <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2 animate-rise-in stagger-1">
         <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
           <Settings className="w-4 h-4 text-muted-foreground" />
         </div>

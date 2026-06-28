@@ -119,7 +119,7 @@ export default function GoalsPage() {
   return (
     <div className="p-4 md:p-6 max-w-2xl space-y-4 page-glow [--glow-color:var(--mod-goals)]">
       <div className="flex items-center justify-between animate-rise-in stagger-1">
-        <h1 className="text-step-2 font-heading font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-goals-soft flex items-center justify-center">
             <Target className="w-4 h-4 text-mod-goals" />
           </div>
