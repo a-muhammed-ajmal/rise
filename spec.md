@@ -13,7 +13,7 @@ Living specification for the RISE codebase. Describes what is currently implemen
 | Migrations | 6 (001–006) |
 | DB tables | 20 (19 core + push_subscriptions) |
 | AI tools | 12 AUTO + 3 APPROVAL = 15 total |
-| Last feature shipped | Phase 4 — AI dev tooling (2026-06-26) |
+| Last feature shipped | Phase 5 — RISE design system (2026-06-28) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -70,24 +70,28 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 ### Typography
 
-- Font families: IBM Plex Sans (body/headings) and IBM Plex Mono (numeric/data) via Next.js `localFont`.
-- Type scale: fluid clamp utilities `text-step--1` through `text-step-4` defined in `app/globals.css`.
-- Headings: `font-weight: 700`, `letter-spacing: -0.02em`, `text-wrap: balance`.
+- Font families: **Lexend** (headings/display — 500 default, 600 max, 700+ banned), **IBM Plex Sans** (body/UI), **JetBrains Mono** (data/metrics). Loaded via `next/font/google`; CSS vars `--font-lexend`, `--font-jetbrains-mono`.
+- Type scale: fluid utilities `text-step--1` through `text-step-4`, plus RISE spec utilities `text-display` (22–26px, greeting only), `text-h1` (16–18px), `text-h2` (15px), `text-body` (14px), `text-label` (12px), `text-micro` (11px), `text-metric` (20–26px mono). All in `app/globals.css`.
+- Headings h1–h6: `font-family: var(--font-lexend)`, `font-weight: 500` (`--weight-heading-default`). `font-semibold` (600) is the exception ceiling; `font-bold` (700) is banned everywhere.
+- Metric numbers: JetBrains Mono, `font-weight: 500`, `font-variant-numeric: tabular-nums`.
 
 ### Color system
 
-- Primary palette: violet (`#6D28D9` light / `#7C3AED` dark). All shadcn tokens are violet-derived.
-- Module accent tokens (each has a `-soft` background variant):
+- **AI accent**: `--accent-primary: #7C5CFC` (purple — AI-active state only, max 10% of UI surface).
+- **Surface elevation (dark mode, 4 levels)**: `--surface-base: #0E0E11` → `--surface-1: #17171C` → `--surface-2: #1F1F27` → `--surface-overlay: #2A2A35`. Never use a single flat dark shade.
+- **Text**: `--text-primary: #E8E8F0`, `--text-secondary: #8E8EA0`, `--text-muted: #52525E`. Never use `#000000` or `#FFFFFF` directly.
+- **Borders**: `--border-subtle: rgba(255,255,255,0.06)`, `--border-active: rgba(124,92,252,0.4)`.
+- Module accent tokens (each has a `-soft` translucent variant; dark values shown):
 
-| Module | Token | Light hex |
+| Module | Token | Dark hex |
 | --- | --- | --- |
-| Tasks | `mod-tasks` | `#3b82f6` |
-| Finance | `mod-finance` | `#10b981` |
-| Wellness | `mod-wellness` | `#f43f5e` |
-| Goals | `mod-goals` | `#8b5cf6` |
-| Knowledge | `mod-knowledge` | `#f59e0b` |
-| CRM | `mod-crm` | `#06b6d4` |
-| AI | `mod-ai` | `#6D28D9` |
+| Tasks | `mod-tasks` | `#60a5fa` |
+| Finance | `mod-finance` | `#34d399` |
+| Wellness | `mod-wellness` | `#fb7185` |
+| Goals | `mod-goals` | `#a78bfa` |
+| Knowledge | `mod-knowledge` | `#fbbf24` |
+| CRM | `mod-crm` | `#22d3ee` |
+| AI | `mod-ai` | `#a78bfa` |
 
 - Dark mode: `.dark` class on `<html>`, toggled via `lib/hooks/use-theme.tsx`. Preference persisted to `localStorage` key `rise-theme`; falls back to `prefers-color-scheme`.
 
@@ -97,11 +101,15 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 - Stagger delays: `.stagger-1` (0ms) through `.stagger-6` (300ms, 60ms increments).
 - Reduced motion: `@media (prefers-reduced-motion: reduce)` collapses all durations to `0.01ms`.
 - Motion tokens: `--dur-fast` (120ms), `--dur-normal` (220ms), `--dur-slow` (400ms), `--dur-reveal` (600ms).
+- Touch feedback: `.tappable` applies `scale(0.96)` on `:active`; every interactive element must have an `:active` state (hover alone is insufficient on touch).
+- Glassmorphism: `.glass-chrome` for structural chrome (nav, headers); `.glass-ai` for AI bubbles. Never on content cards.
 
 ### Layout / responsive
 
-- Breakpoint: `md` (768px). Below → `BottomNav` (mobile bottom tab bar with Sheet overflow). Above → `Sidebar` (sticky, 64px collapsed / 224px expanded).
+- Breakpoint: `md` (768px). Below → `BottomNav` 5-slot `[Home][Tasks][AI-FAB][Finance][More]` with glassmorphic chrome; center AI FAB routes to `/assistant` and protrudes above the nav bar. Above → `Sidebar` (sticky, 64px collapsed / 224px expanded, all 10 nav items).
+- "More" overflow sheet (shadcn `Sheet`, `side="bottom"`) exposes Wellness, Goals, Analytics, Knowledge, CRM, Settings in a 3×2 grid.
 - Cards: `--radius: 1rem` (16px). Interactive cards use `.card-interactive` hover-lift class.
+- Touch targets: minimum 44×44px on every tappable element.
 - Floating actions: `.fab` utility with shadow + spring hover.
 
 ### Accessibility
@@ -117,7 +125,7 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 | --- | --- |
 | Test coverage | ≥ 85% line on `lib/**` excluding `lib/types/` (current: 97.21%) |
 | Build | `next build` exits 0; 0 TypeScript errors |
-| Lint | ESLint exits 0; 0 warnings |
+| Lint | ESLint exits 0; 0 errors. (5 pre-existing warnings in `productivity/page.tsx`, `api/ai/chat/route.ts`, `task-calendar.tsx` — tracked for next cleanup pass, not introduced by design work) |
 | SSE first chunk | < 3 s under normal Gemini API latency |
 | Supabase queries | < 500 ms per module-load query (indexed columns only; no full-table scans) |
 | PWA offline | `/offline` serves from cache within 200 ms |
@@ -290,6 +298,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 | 2026-06-26 | Tool schemas use `Type.OBJECT` / `Type.STRING` from `@google/genai` | Gemini's `FunctionDeclaration` type requires this format; incompatible with Anthropic's `input_schema` format. |
 | 2026-06-26 | VAPID JWT signed via SubtleCrypto in Deno edge function (no npm web-push) | Deno runtime in Supabase Edge Functions has no npm compatibility for `web-push`. SubtleCrypto is a Deno built-in. |
 | 2026-06-26 | Migrations are append-only, applied manually via Supabase SQL editor | Prevents accidental schema drift in CI; single-person project means manual apply is low overhead. |
+| 2026-06-28 | RISE design spec applied app-wide: Lexend + JetBrains Mono, 4-level surface elevation, spec type utilities, 5-slot bottom nav | Design system overhaul for the dark-first cockpit aesthetic. `font-bold` (700) is now banned; weight ceiling is 600. Purple `#7C5CFC` is the sole AI-accent. |
 
 ---
 
@@ -314,3 +323,4 @@ Candidate areas (not prioritized):
 | 2 | Push delivery via Supabase Edge Function | 2026-06-26 | `supabase/functions/send-push/index.ts` (Deno, SubtleCrypto VAPID), `GET /api/push/vapid-public-key` |
 | 3 | Push notification settings UI | 2026-06-26 | `lib/hooks/use-push-subscription.ts`, `app/(app)/settings/page.tsx` |
 | 4 | AI-assisted development framework | 2026-06-26 | `.claude/skills/` (4 skills), `.claude/commands/` (4 commands), `get_analytics` AUTO_TOOL, 151 tests at 97.21% coverage |
+| 5 | RISE design system implementation | 2026-06-28 | `app/globals.css` (RISE spec tokens + type utilities + glassmorphism classes), `app/layout.tsx` (Lexend + JetBrains Mono via `next/font/google`), `components/layout/bottom-nav.tsx` (5-slot with center AI FAB), `components/layout/sidebar.tsx`, `components/layout/topbar.tsx`, all 8 module pages (font-bold → spec weights), `.claude/skills/frontend-design.md` |
