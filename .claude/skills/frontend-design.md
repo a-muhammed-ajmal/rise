@@ -2,7 +2,7 @@
 
 ## Identity & Soul
 
-RISE is a **dark-first personal AI OS** — a singular product that replaces 7+ apps without feeling like any of them. The aesthetic draws from Linear's precision, Superhuman's premium dark UI, and the Glume diabetes app design language visible in your mockups: deep graphite surfaces, neon accent spots, compact data cards, and a glassmorphic bottom nav. It must feel more like a cockpit than a dashboard. Calm, dense, intelligent.
+RISE is a **dark-first personal AI OS** — a singular product that replaces 7+ apps without feeling like any of them. The aesthetic draws from Linear's precision, Superhuman's premium dark UI, and the Glume diabetes app design language: deep graphite surfaces, neon accent spots, compact data cards, and a glassmorphic bottom nav. It must feel more like a cockpit than a dashboard. Calm, dense, intelligent.
 
 ---
 
@@ -49,40 +49,84 @@ RISE is a **dark-first personal AI OS** — a singular product that replaces 7+ 
 
 ## Typography
 
-**Font Stack — dual personality: editorial intelligence + precision data**
+**Font Stack — dual personality: editorial intelligence + precision data, capped weights throughout**
 
 ```css
-/* Headings: personality, editorial weight */
-font-family: 'Cabinet Grotesk', 'Plus Jakarta Sans', system-ui;
+/* Headings: personality, editorial weight — capped, never heavy */
+font-family: 'Lexend', system-ui, sans-serif;
+/* Default weight: 500 (Medium) — every heading, every screen, no exceptions
+   by default. 600 (SemiBold) is allowed only when a heading genuinely needs
+   to out-rank a sibling on the same screen (rare — maybe one hero number a
+   session). 700+ (Bold) is banned outright. Never use it, anywhere. */
 
-/* Body + UI: precision, legibility at small sizes */
-font-family: 'Inter', 'SF Pro Text', system-ui;
+/* Body + UI: precision, legibility at small sizes, Arabic-ready */
+font-family: 'IBM Plex Sans', 'IBM Plex Sans Arabic', system-ui;
 
 /* Data + metrics: monospaced for number alignment */
 font-family: 'JetBrains Mono', 'Fira Code', monospace;
 ```
 
 **Why these choices:**
-- **Cabinet Grotesk / Plus Jakarta Sans**: Available free on Google Fonts. Has personality without being loud — headlines feel "designed", not "defaulted to Inter". Heavier weights give premium feel.
-- **Inter**: Best legibility at 12–14px on mobile screens, which is where your data labels live.
-- **JetBrains Mono**: For all numeric values (blood sugar, bank balance, habit streak counts, calorie totals). Mono-spaced numbers don't shift width between "1" and "8" — critical for scannable dashboards.
+- **Lexend (Medium default, SemiBold exception, no Bold)**: Lexend was designed by reading researchers specifically to improve reading speed and proficiency — the right personality for a cockpit you read constantly rather than a landing page you glance at once. Capping the weight keeps headlines feeling "designed" without the loud, marketing-page shout that Bold introduces, which would fight the "purple is the only loud thing on screen" rule.
+- **IBM Plex Sans**: same precision-at-12–14px profile Inter had, but reads more engineered and tool-like (angled terminals, double-storey g) and less like a generic SaaS default. It also ships with native Arabic support (IBM Plex Sans Arabic) if RISE ever needs bilingual UI.
+- **JetBrains Mono**: unchanged. Numeric values (bank balance, habit streak counts, calorie totals) never shift width between characters — critical for scannable dashboards.
+- Load both Lexend and IBM Plex Sans as **variable fonts** (`font-variation-settings` / variable `wght` axis) rather than static weight files — smaller payload, smoother weight transitions, and you only need two declared weights (500, 600) per family. Always set `font-display: swap` so text renders in a system font during load instead of staying invisible.
 
-**Type Scale (mobile-optimized with `clamp()`):**
+**Type Scale — medium-small, mobile-first (revised down from the original pass, which ran large):**
 
 ```css
---text-display: clamp(1.75rem, 5vw, 2.5rem);  /* Dashboard greeting "Hi, Emily!" */
---text-h1: clamp(1.25rem, 4vw, 1.75rem);       /* Section headers */
---text-h2: 1.0625rem;                            /* Card titles */
---text-body: 0.9375rem;                          /* Primary content, 15px */
---text-label: 0.8125rem;                         /* Metadata labels, 13px */
---text-micro: 0.6875rem;                         /* Chart axes, timestamps, 11px */
---text-metric: clamp(1.5rem, 4vw, 2.25rem);     /* Big data numbers, mono */
+--text-display: clamp(1.375rem, 4.2vw, 1.625rem);  /* 22–26px — greeting ONLY, e.g. "Hi, Ajmal" */
+--text-h1: clamp(1rem, 3.2vw, 1.125rem);            /* 16–18px — section headers */
+--text-h2: 0.9375rem;                                /* 15px — card titles */
+--text-body: 0.875rem;                               /* 14px — primary content */
+--text-label: 0.75rem;                               /* 12px — metadata labels */
+--text-micro: 0.6875rem;                             /* 11px — chart axes, timestamps. Accessibility floor: never go below this. */
+--text-metric: clamp(1.25rem, 3.8vw, 1.625rem);      /* 20–26px — mono metric numbers */
+```
+
+**Heading weight tokens:**
+
+```css
+--weight-heading-default: 500;   /* Lexend Medium — use everywhere */
+--weight-heading-emphasis: 600;  /* Lexend SemiBold — exception only, see above */
+/* There is no 700 token. Don't add one. */
 ```
 
 **Line height + spacing:**
 - Body: `line-height: 1.5`
-- Headings: `line-height: 1.2`, `letter-spacing: -0.02em` (tight, modern)
+- Card labels / metadata: `line-height: 1.3` (tighter — these are short, dense strings, not reading copy)
+- Headings: `line-height: 1.2`, `letter-spacing: -0.02em`
 - Metric numbers: `letter-spacing: -0.03em`, `font-variant-numeric: tabular-nums`
+
+**Truncation & overflow rules — mandatory on every text node inside a fixed-width card:**
+
+```css
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Apply to any grid/flex container holding cards — prevents children from
+   forcing the row wider than the viewport, which is the #1 cause of
+   horizontal scroll/overflow on narrow phones. */
+.grid-safe {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+```
+
+- Card titles (`--text-h2`) and labels (`--text-label`) get `.text-truncate` by default — a single line, ellipsis if it doesn't fit. Never let a label wrap and push a card taller than its siblings in the same row.
+- Card body copy (e.g. an AI suggestion line) gets `.text-clamp-2` — two lines max, ellipsis after. If the full text matters, the tap target opens the bottom sheet with the full string.
+- Any grid of cards uses `minmax(0, 1fr)` columns, never bare `1fr` — bare `1fr` has `min-width: auto` and will let a long unbroken string (a long category name, an email address) push the column past the card width.
 
 ---
 
@@ -136,7 +180,7 @@ Consistent spacing systems using an 8pt grid are non-negotiable in 2026 mobile d
 Home | Today | + (AI Compose) | Insights | Profile
 ```
 
-- The `+` center button is the AI compose FAB (purple, glowing) — identical to the Glume app's center `+` pattern you already have.
+- The `+` center button is the AI compose FAB (purple, glowing) — identical to the Glume app's center `+` pattern.
 - Bottom navigation places 3–5 core destinations within natural thumb reach. Tab bars exceeding 5 items should introduce a 'More' overflow menu. RISE has exactly 5. Never exceed this.
 
 **Bottom Nav Component:**
@@ -148,12 +192,12 @@ Home | Today | + (AI Compose) | Insights | Profile
   backdrop-filter: blur(20px) saturate(180%);
   border-top: 1px solid var(--border-subtle);
   padding-bottom: env(safe-area-inset-bottom); /* iPhone home indicator */
-  height: 56px + safe-area-inset-bottom;
+  height: calc(56px + env(safe-area-inset-bottom));
 }
 
 .nav-item {
   min-width: 44px;
-  min-height: 44px; /* WCAG 2.2 touch target minimum */
+  min-height: 44px; /* WCAG 2.2 touch target minimum — never shrink this for a smaller type scale */
 }
 ```
 
@@ -163,14 +207,35 @@ Home | Today | + (AI Compose) | Insights | Profile
 
 **Cards — the primary container unit**
 
-Looking at your Glume mockups, cards are the building block of every screen. RISE extends this pattern:
-
 ```css
 .card {
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
   border-radius: 16px;            /* Soft, friendly — not sharp, not pill */
   padding: var(--space-4);        /* 16px */
+  overflow: hidden;                /* contains any child overflow, never lets content bleed past the card edge */
+}
+
+.card__label {
+  font-family: 'IBM Plex Sans', system-ui;
+  font-size: var(--text-label);   /* 12px */
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.card__title {
+  font-family: 'Lexend', system-ui;
+  font-weight: var(--weight-heading-default); /* 500 */
+  font-size: var(--text-h2);      /* 15px */
+  color: var(--text-primary);
+}
+
+.card__value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--text-metric);  /* clamp 20–26px */
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
 }
 
 .card--metric {
@@ -182,14 +247,15 @@ Looking at your Glume mockups, cards are the building block of every screen. RIS
 
 .card--active {
   border-color: var(--border-active);
-  box-shadow: 0 0 0 1px var(--border-active), 
+  box-shadow: 0 0 0 1px var(--border-active),
               0 4px 24px var(--accent-glow);
 }
 
-.card:hover, .card:focus-within {
+/* Touch feedback replaces hover on mobile — see Motion System */
+.card:active {
   background: var(--surface-2);
-  transform: translateY(-1px);
-  transition: all 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(0.98);
+  transition: transform var(--dur-instant) var(--ease-smooth);
 }
 ```
 
@@ -212,7 +278,7 @@ These appear as a 4px top border on cards, colored left-border on list items, an
 
 ## Data Visualization Style
 
-Looking at your Glume Insights screens, charts are first-class content, not decorations. Apply:
+Charts are first-class content, not decorations. Apply:
 
 ```css
 /* Chart lines */
@@ -235,6 +301,12 @@ Progress rings (like the Glume "36% eaten" circle):
   stroke-linecap: round;
   filter: drop-shadow(0 0 4px var(--color-success));  /* Glow on the arc */
 }
+
+.progress-ring text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--text-label);
+  fill: var(--text-primary);
+}
 ```
 
 ---
@@ -253,7 +325,7 @@ Spring-based animations (not linear) give apps a natural feel in 2026.
 **Duration tokens:**
 ```css
 --dur-instant: 80ms;    /* Tap feedback */
---dur-fast: 150ms;      /* Hover, icon state */
+--dur-fast: 150ms;      /* Icon state, nav indicator */
 --dur-normal: 250ms;    /* Card transitions, nav switch */
 --dur-slow: 400ms;      /* Sheet open, modal enter */
 --dur-enter: 350ms;     /* Screen transitions */
@@ -271,6 +343,47 @@ Spring-based animations (not linear) give apps a natural feel in 2026.
   to   { opacity: 1; transform: translateY(0); }
 }
 ```
+
+**Micro-interactions — touch feedback & loading states (new — mobile has no hover, so every tappable element needs an explicit active state):**
+
+```css
+/* Universal tap feedback — apply to every button, card, nav item, list row */
+.tappable {
+  transition: transform var(--dur-instant) var(--ease-smooth);
+}
+.tappable:active {
+  transform: scale(0.96);
+}
+
+/* Skeleton loading state — for cards waiting on data (Todoist sync,
+   bank balance refresh, etc.) instead of a blank or jumping layout */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-1) 25%, var(--surface-2) 50%, var(--surface-1) 75%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+@keyframes skeletonPulse {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Count-up on metric values when fresh data lands — short, snappy, never
+   exceeds 600ms so it never feels like the app is "thinking" too hard */
+/* JS: animate from 0 (or previous value) to target over 400–600ms using
+   --ease-smooth; round every intermediate frame through the same
+   formatting rule the final value uses (no flashing decimals). */
+
+/* Bottom nav active indicator — a small dot or pill sliding to the
+   active tab, not a jump-cut */
+.nav-indicator {
+  transition: transform var(--dur-fast) var(--ease-smooth);
+}
+```
+
+- Every `:hover` rule in this system must have a matching `:active` rule — on a touch device, hover either never fires or sticks after the tap. Don't rely on hover alone to confirm a tap landed.
+- Skeletons replace empty/blank states during network waits longer than ~200ms. Anything faster than that, skip the skeleton — it'll just flash.
+- Count-up animations are for metric cards only, not for every number on screen. A list of 12 task rows updating their counts on every render would be noisy, not delightful.
 
 **Mandatory: respect `prefers-reduced-motion`**
 ```css
@@ -312,12 +425,10 @@ Glassmorphism is valid for overlays on capable devices, but only for structural 
 
 ## Daily Meal Tracker Module (from your mockups)
 
-Looking at the Glume daily meals screen, here's the RISE interpretation:
-
-- Day strip scrolling calendar at top (same pattern) → keep it but style with `--accent-primary` pill on active day, muted circles on others.
+- Day strip scrolling calendar at top → keep the Glume pattern, style with `--accent-primary` pill on active day, muted circles on others.
 - Calorie/macro number = `--text-metric` size + `--module-tasks` color for "on track" state.
 - Meal sections (Breakfast, Snack) → collapsible cards using the bottom sheet pattern on expand.
-- "Add meal" CTA → fixed above bottom nav, full-width, `--accent-primary` fill, white text.
+- "Add meal" CTA → fixed above bottom nav, full-width, `--accent-primary` fill, white text, `.tappable` active state.
 
 ---
 
@@ -326,7 +437,7 @@ Looking at the Glume daily meals screen, here's the RISE interpretation:
 The center `+` button in the bottom nav opens RISE's "Command Layer" — the universal input that routes to any module:
 
 ```
-State: idle    → purple glowing circle
+State: idle    → purple glowing circle, .tappable active-scale on press
 State: pressed → spring-expands to full bottom sheet with pulsing gradient
 State: AI typing → shimmer animation across the input field
 State: done    → spring-collapses back with a ✓ micro-tick
@@ -353,9 +464,11 @@ The gradient for the AI thinking state:
 
 WCAG 2.2 Level AA is the current baseline, covering touch targets (24×24px minimum), color contrast (4.5:1), and screen reader compatibility. The EU Accessibility Act has been enforced since June 2025.
 
-- All touch targets: **minimum 44×44px** (Apple HIG standard, stricter than WCAG's 24px)
+- All touch targets: **minimum 44×44px** (Apple HIG standard, stricter than WCAG's 24px) — this does not shrink even as the type scale gets smaller.
+- Never set body or label text below `--text-micro` (11px) — that's the legibility floor at typical phone viewing distance.
 - Text contrast: `--text-primary` on `--surface-1` = **#E8E8F0 on #17171C = 9.8:1** ✓
 - `--text-secondary` on `--surface-1` = **#8E8EA0 on #17171C = 4.6:1** ✓ (just passes AA)
+- Every `:hover` state has a matching `:active`/touch equivalent — see Motion System.
 - All interactive states: visible focus ring using `--border-active` color
 - Never rely on color alone to convey state — pair color with icon or label
 
@@ -371,6 +484,10 @@ These are the "AI slop" signals that will make RISE look like every other genera
 - ❌ **Linear animations** — always use spring or ease curves
 - ❌ **Top-anchored primary navigation** — everything primary belongs bottom 60%
 - ❌ **Thin (weight 300) fonts on dark backgrounds** — halation kills legibility; use 400+ for body, 500+ for labels
+- ❌ **Lexend Bold (700+) anywhere** — ceiling is SemiBold (600), default is Medium (500). Bold breaks the calm-cockpit tone and pushes RISE toward generic SaaS marketing.
+- ❌ **`--text-display` outside the top-of-screen greeting** — don't apply it to card titles, section headers, or anywhere inside the content zone. That's exactly how a screen ends up feeling oversized. Section headers stay at `--text-h1` or smaller.
+- ❌ **Hover-only interaction states** — touch devices don't reliably fire `:hover`; every tappable element needs `.tappable` or an explicit `:active` rule.
+- ❌ **Unhandled text overflow** — any label or title in a fixed-width card needs `.text-truncate` or `.text-clamp-2`. A card that grows taller than its row siblings because a label wrapped is a bug, not a layout quirk.
 - ❌ **Module color bleeding** — green (tasks), blue (finance), etc. are accents, not backgrounds
 - ❌ **More than 5 bottom nav items** — use "More" if needed
 - ❌ **Static metric cards** — every data card should have a micro-trend sparkline or change indicator
@@ -383,12 +500,13 @@ These are the "AI slop" signals that will make RISE look like every other genera
 Before shipping any screen, run this:
 
 1. **Surfaces**: Can you identify 3+ distinct elevation levels by eye?
-2. **Typography**: Are numbers in mono? Are headings in Cabinet Grotesk? Is body in Inter?
+2. **Typography**: Are numbers in mono? Are headings in Lexend, capped at Medium (SemiBold only as a deliberate exception, never Bold)? Is body in IBM Plex Sans? Is `--text-display` used only for the top greeting, nowhere else?
 3. **Module identity**: Does the card's accent color tell you what module you're in without reading text?
 4. **Thumb reach**: Is every tap target in the bottom 60% of the screen or within a bottom sheet?
 5. **AI layer**: Is purple used for AI actions only and nothing else?
-6. **Motion**: Does every state change have a spring animation? Does it respect `prefers-reduced-motion`?
+6. **Motion**: Does every state change have a spring animation? Does every tappable element have an `:active` state, not just `:hover`? Does it respect `prefers-reduced-motion`?
 7. **Contrast**: Does `--text-secondary` pass 4.5:1 on its background?
-8. **Bottom nav**: Exactly 5 items. Glassmorphic. Purple glowing center FAB.
+8. **Overflow**: At 340px width, does any label, title, or value wrap, clip, or push a card taller than its row siblings? If yes, apply `.text-truncate` or `.text-clamp-2`.
+9. **Bottom nav**: Exactly 5 items. Glassmorphic. Purple glowing center FAB. Active tab has a sliding indicator, not a jump-cut.
 
 ---
