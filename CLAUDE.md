@@ -1,102 +1,99 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-@AGENTS.md
+This file provides strict architectural alignment, code quality parameters, and structural rules for automated engineering sessions within this repository.
 
 ## Overview
 
-RISE is a single-user personal AI operating system that consolidates task management, finance tracking, habit logging, goal setting, CRM, and a knowledge base into one app, with a Claude-powered assistant that can execute real actions inside the system.
+RISE is a single-user personal AI operating system that consolidates task management, finance tracking, habit logging, goal setting, CRM, and a knowledge base into one application. It utilizes an integrated Claude-powered assistant capable of executing verified, state-changing operations across the system.
 
 ## Objectives
 
-- Keep all modules (Productivity, Finance, Wellness, Goals, CRM, Knowledge, AI Assistant, Analytics) working without regressions
-- Extend or fix features using the existing patterns in each module page and its associated hooks
-- Maintain ≥85% Vitest coverage on `lib/**` when adding or changing logic
-- Surface AI tool calls that are destructive through the approval gate — never auto-execute `APPROVAL_TOOLS`
+- **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
+- **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
+- **Testing Standard:** Maintain $\ge$85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`).
+- **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
-## Context
+## Tech Stack & Core Constraints
 
-**Stack:** Next.js 16.2.9 (App Router) · TypeScript strict · Tailwind CSS v4 · shadcn/ui (`@base-ui/react`) · Supabase (Postgres + pgvector + RLS) · Anthropic Claude `claude-sonnet-4-6` (SSE streaming) · Vitest + Testing Library · Vercel
+- **Core Architecture:** Next.js 16.2.9 (App Router) · TypeScript Strict · Tailwind CSS v4 · shadcn/ui (`@base-ui/react`) · Supabase (Postgres + pgvector + RLS) · Claude `claude-sonnet-4-6` (SSE streaming) · Vitest + Testing Library · Vercel.
+- **Middleware Infrastructure:** Routing rules live exclusively within `proxy.ts` (Next.js 16 structure). This file manages Supabase token refreshes and enforces the `ALLOWED_USER_EMAIL` baseline restriction.
+- **Component Paradigm:** Prioritize React Server Components (RSC) for initial page layouts and base data extraction. Restrict `'use client'` tags to low-level leaf components requiring stateful client operations or interface triggers.
+- **Data Flow & Hooks:** Business transactions route through isolated hooks (e.g., `use-tasks.ts`), consuming the client-side Supabase browser instantiation. All tables map strictly to Row-Level Security profiles checking `user_id = auth.uid()`.
+- **System Presentation Standards:** Enforce values using `lib/format.ts`. Currency: AED (`Intl.NumberFormat('en-AE', { currency: 'AED' })`). Dates: DD/MM/YYYY formatters. Time: 12-hour presentation.
 
-**Key architectural facts:**
+## Code Conventions & Standards
 
-- Middleware lives in `proxy.ts`, not `middleware.ts` — Next.js 16 renamed it. It refreshes the Supabase session and enforces the `ALLOWED_USER_EMAIL` allowlist.
-- Auth is Google OAuth via Supabase. The `app/(app)/layout.tsx` server component checks `supabase.auth.getUser()` and redirects to `/login` if no session.
-- All Supabase tables enforce `user_id = auth.uid()` via RLS — single-user by design. The type definitions for all 19 tables live in `lib/types/database.ts`.
-- The AI assistant uses two tool lists: `AUTO_TOOLS` (low-risk, auto-executed) and `APPROVAL_TOOLS` (destructive, require user confirmation before `execute-tool.ts` runs them). Memory is stored as pgvector embeddings (`ai_memory` table, 1024-dim via Voyage AI) with a keyword fallback when `VOYAGE_API_KEY` is absent.
-- `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are server-only — never reference them in Client Components.
-- Currency: AED via `Intl.NumberFormat('en-AE', { currency: 'AED' })`. Dates: DD/MM/YYYY. Time: 12-hour. Always use `lib/format.ts` formatters.
-- Tests run in jsdom via Vitest; coverage is measured over `lib/**` only (excluding `lib/types/`).
+- **Module Exports:** Enforce named exports for all UI components, custom hooks, and layout utilities.
+- **TypeScript Integrity:** Strict mode is enforced. Do not introduce type assertions (`as CustomType`) or utilize the `any` type keyword under any condition.
+- **Error Remediation:** Use structured try/catch blocks within async handlers. Client interfaces should surface issues through standard functional toast alerts, while server logic throws contextual errors avoiding internal variable exposures.
 
-**Commands:**
+## Commands
 
 ```bash
-npm run dev              # Dev server (Turbopack)
-npm run build            # Production build
-npm run lint             # ESLint
-npm run test             # Vitest single run
-npm run test:watch       # Vitest watch mode
-npm run test:coverage    # Coverage report
+npm run dev           # Dev server (Turbopack execution)
+npm run build         # Production optimization compilation
+npm run lint          # ESLint code syntax verification
+npm run test          # Single Vitest test execution run
+npm run test:watch    # Active Vitest watching engine state
+npm run test:coverage # Full coverage calculation metrics inside lib/**
 
-npx vitest run lib/ai/__tests__/memory.test.ts   # Run a single test file
+npx vitest run lib/ai/__tests__/memory.test.ts   # Execute isolated test targets
+
 ```
 
-## Success Criteria
+## Security & Architectural Guardrails
 
-All 8 modules render without errors, the AI assistant streams responses and executes approved tool calls, 0 TypeScript errors, 0 lint warnings, ≥85% line coverage on `lib/**`, and the app is deployable to Vercel by pushing to `main`.
+* **Database Schemas:** Do not alter contents inside `supabase/migrations/`. Schema evolutions are append-only and executed via the Supabase Dashboard SQL Command Editor interface.
+* **Credential Protection:** Secrets (`ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY`) are server-only dependencies. Never expose or reference them inside Client Components.
+* **Agent Interferences:** Destructive AI tool actions (such as bulk deletions or schema clear downs) must generate an intermediate client approval state (`ConfirmDialog`) before triggering engine executors in `execute-tool.ts`.
 
-## Constraints and Boundaries
-
-- Never modify `supabase/migrations/` — migrations are applied manually in the Supabase dashboard SQL editor and are append-only
-- Never expose `ANTHROPIC_API_KEY` or `SUPABASE_SERVICE_ROLE_KEY` to client-side code
-- Never bypass the approval gate for `APPROVAL_TOOLS` in `lib/ai/tools.ts`
-- Never use `any` in TypeScript
-- Never commit `.env.local`
-- All AI destructive actions (bulk-delete, bulk-update) must surface a `ConfirmDialog` before execution
-
-## File Structure
+## Complete File Structure
 
 ```text
 app/
-  (auth)/           Login page and OAuth callback routes
-  (app)/            Authenticated shell — layout.tsx guards auth server-side
-    page.tsx        Dashboard
-    productivity/   Task management
-    finance/        Income/expense tracking (AED)
-    wellness/       Habit tracking + streaks
-    goals/          Goal + milestone tracking
-    crm/            Contact and relationship management
-    knowledge/      Rich-text notes (Tiptap)
-    assistant/      Claude AI chat with SSE streaming
-    analytics/      Recharts dashboards across modules
-    settings/       User preferences
-  api/ai/chat/      SSE streaming route for the AI assistant
-  auth/callback/    OAuth code-to-session exchange
+  (auth)/                   Login page routes and Google OAuth handler pipelines
+  (app)/                    Authenticated core workspace shell (layout.tsx handles auth protection)
+    page.tsx                Central OS Executive Dashboard
+    productivity/           Task orchestration and project boards
+    finance/                Income and expense monitoring ledgers (Strict AED)
+    wellness/               Habit tracker sheets and performance streaks
+    goals/                  Strategic goal tracking and milestone matrices
+    crm/                    Contact lifecycle managers and interaction logs
+    knowledge/              Rich-text documentation workspace (Tiptap implementation)
+    assistant/              Claude AI chat view utilizing SSE streaming interfaces
+    analytics/              Cross-modular reporting graphics powered by Recharts
+    settings/               User localization preferences and application controls
+  api/ai/chat/              Server-Sent Events (SSE) chat connection routes for the AI agent
+  auth/callback/            OAuth verification interchange and session validation routes
 
 components/
-  ui/               shadcn/ui primitives (@base-ui/react)
-  layout/           Sidebar (desktop), BottomNav (mobile), Topbar
-  analytics/        Per-module Recharts components
-  productivity/     Task form and card components
-  pwa/              Install prompt, SW update toast, SW registration
+  ui/                       Core design architecture primitive assets (@base-ui/react)
+  layout/                   Universal frame shells: Sidebar (Desktop), BottomNav (Mobile), Topbar
+  analytics/                Isolated Recharts rendering structures per module
+  productivity/             Task entry forms and visualization cards
+  pwa/                      Service Worker setup toasts, caching, and installation components
 
 lib/
   ai/
-    tools.ts        AUTO_TOOLS and APPROVAL_TOOLS definitions
-    execute-tool.ts Routes tool calls to Supabase operations
-    memory.ts       Voyage AI embedding, pgvector storage/retrieval, compaction
-  hooks/            use-tasks.ts, use-projects.ts, use-theme.tsx
+    tools.ts                System parameters for AUTO_TOOLS and APPROVAL_TOOLS arrays
+    execute-tool.ts         Core tool executors bridging Claude calls to database functions
+    memory.ts               Voyage AI (1024-dim pgvector) tracking logic with keyword fallback
+  hooks/                    Localized state tools (use-tasks.ts, use-projects.ts, use-theme.tsx)
   supabase/
-    client.ts       Browser Supabase client
-    server.ts       Server-side Supabase client
-    middleware.ts   Session refresh + email allowlist guard
+    client.ts               Client-side client initializations for browser interactions
+    server.ts               Server-side isolated client handlers
+    middleware.ts           Session lifecycle handlers and authentication filters
   types/
-    database.ts     All 19 Supabase table types (single source of truth)
-  format.ts         AED, DD/MM/YYYY, 12h formatters — always use these
-  utils.ts          Shared utilities
+    database.ts             Single Source of Truth mapping for the 19 Supabase database tables
+  format.ts                 System formatting scripts (Strict AED presentation, DD/MM/YYYY, 12h)
+  utils.ts                  General design tool utilities and class consolidations
 
-supabase/migrations/   001_schema → 004_vector_dimension (apply in order)
-proxy.ts               Next.js 16 middleware entry point
-public/sw.js           Service worker (stale-while-revalidate)
+supabase/migrations/        001_schema through 004_vector_dimension scripts (Run in order)
+proxy.ts                    Next.js 16 centralized gateway logic entry point
+public/sw.js                Service worker script managing stale-while-revalidate data paths
+
+```
+
+```
+
 ```
