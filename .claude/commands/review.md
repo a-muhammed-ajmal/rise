@@ -10,7 +10,8 @@ Review `git diff HEAD` (or staged changes) across these dimensions. Output a str
 ## Dimensions
 
 ### 1. Security
-- Are `ANTHROPIC_API_KEY` or `SUPABASE_SERVICE_ROLE_KEY` referenced in client components?
+
+- Are `GEMINI_API_KEY`, `VOYAGE_API_KEY`, `VAPID_PRIVATE_KEY`, or `SUPABASE_SERVICE_ROLE_KEY` referenced in client components?
 - Are `APPROVAL_TOOLS` being auto-executed without user confirmation?
 - Is user input validated at API route boundaries (`/api/**`)?
 - Are Supabase writes guarded by `supabase.auth.getUser()` + `user_id = user.id`?

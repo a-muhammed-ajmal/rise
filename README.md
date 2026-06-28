@@ -17,7 +17,7 @@ A single-user personal operating system that replaces Todoist, a finance app, a 
 | Goals | Long-term goal tracking with progress percentage |
 | CRM | Personal contact and relationship management |
 | Knowledge | Note-taking and knowledge base with rich text (Tiptap) |
-| AI Assistant | Claude-powered assistant with SSE streaming and memory via pgvector |
+| AI Assistant | Gemini-powered assistant (Google Gemini 2.5 Flash) with SSE streaming and memory via pgvector |
 | Analytics | Charts across all modules (Recharts) |
 
 ---
@@ -27,7 +27,7 @@ A single-user personal operating system that replaces Todoist, a finance app, a 
 - **Framework:** Next.js 16.2.9 (App Router) + TypeScript strict
 - **UI:** Tailwind CSS v4 + shadcn/ui + Lucide icons
 - **Database:** Supabase (Postgres + pgvector + Row Level Security)
-- **AI:** Anthropic Claude claude-sonnet-4-6 via `@anthropic-ai/sdk` (SSE streaming), Voyage AI embeddings (optional)
+- **AI:** Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling), Voyage AI embeddings (optional)
 - **Auth:** Supabase Auth (single-user, Google OAuth)
 - **Testing:** Vitest + Testing Library
 - **Hosting:** Vercel (Fluid Compute)
@@ -40,7 +40,7 @@ A single-user personal operating system that replaces Todoist, a finance app, a 
 
 - Node.js 20+
 - A Supabase project
-- An Anthropic API key
+- A Google AI (Gemini) API key
 
 ### Setup
 
@@ -62,9 +62,14 @@ Required environment variables:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
-# Optional — keyword fallback works without this
+GEMINI_API_KEY=
+# Optional — keyword fallback activates when absent
 VOYAGE_API_KEY=
+# Required for Web Push notifications
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
 ```
 
 Run migrations in your Supabase dashboard (SQL editor), then:

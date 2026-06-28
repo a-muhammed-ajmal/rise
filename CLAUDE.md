@@ -1,21 +1,23 @@
 # CLAUDE.md
 
+> SPEC.md owns **what is built** and architectural constraints. This file owns **how to build it** — conventions, patterns, and quality gates.
+
 This file provides strict architectural alignment, code quality parameters, and structural rules for automated engineering sessions within this repository.
 
 ## Overview
 
-RISE is a single-user personal AI operating system that consolidates task management, finance tracking, habit logging, goal setting, CRM, and a knowledge base into one application. It utilizes an integrated Claude-powered assistant capable of executing verified, state-changing operations across the system.
+RISE is a single-user personal AI operating system that consolidates task management, finance tracking, habit logging, goal setting, CRM, and a knowledge base into one application. It utilizes an integrated Gemini-powered assistant (Google Gemini 2.5 Flash) capable of executing verified, state-changing operations across the system.
 
 ## Objectives
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain $\ge$85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 151 tests at 97.21%.
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
 
-- **Core Architecture:** Next.js 16.2.9 (App Router) · TypeScript Strict · Tailwind CSS v4 · shadcn/ui (`@base-ui/react`) · Supabase (Postgres + pgvector + RLS) · Claude `claude-sonnet-4-6` (SSE streaming) · Vitest + Testing Library · Vercel.
+- **Core Architecture:** Next.js 16.2.9 (App Router) · TypeScript Strict · Tailwind CSS v4 · shadcn/ui (`@base-ui/react`) · Supabase (Postgres + pgvector + RLS) · Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) · Vitest + Testing Library · Vercel.
 - **Middleware Infrastructure:** Routing rules live exclusively within `proxy.ts` (Next.js 16 structure). This file manages Supabase token refreshes and enforces the `ALLOWED_USER_EMAIL` baseline restriction.
 - **Component Paradigm:** Prioritize React Server Components (RSC) for initial page layouts and base data extraction. Restrict `'use client'` tags to low-level leaf components requiring stateful client operations or interface triggers.
 - **Data Flow & Hooks:** Business transactions route through isolated hooks (e.g., `use-tasks.ts`), consuming the client-side Supabase browser instantiation. All tables map strictly to Row-Level Security profiles checking `user_id = auth.uid()`.
@@ -43,9 +45,9 @@ npx vitest run lib/ai/__tests__/memory.test.ts   # Execute isolated test targets
 
 ## Security & Architectural Guardrails
 
-* **Database Schemas:** Do not alter contents inside `supabase/migrations/`. Schema evolutions are append-only and executed via the Supabase Dashboard SQL Command Editor interface.
-* **Credential Protection:** Secrets (`ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY`) are server-only dependencies. Never expose or reference them inside Client Components.
-* **Agent Interferences:** Destructive AI tool actions (such as bulk deletions or schema clear downs) must generate an intermediate client approval state (`ConfirmDialog`) before triggering engine executors in `execute-tool.ts`.
+- **Database Schemas:** Do not alter contents inside `supabase/migrations/`. Schema evolutions are append-only and executed via the Supabase Dashboard SQL Command Editor interface.
+- **Credential Protection:** Secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `VAPID_PRIVATE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`) are server-only dependencies. Never expose or reference them inside Client Components.
+- **Agent Interferences:** Destructive AI tool actions (such as bulk deletions or schema clear downs) must generate an intermediate client approval state (`ConfirmDialog`) before triggering engine executors in `execute-tool.ts`.
 
 ## Complete File Structure
 
@@ -60,10 +62,11 @@ app/
     goals/                  Strategic goal tracking and milestone matrices
     crm/                    Contact lifecycle managers and interaction logs
     knowledge/              Rich-text documentation workspace (Tiptap implementation)
-    assistant/              Claude AI chat view utilizing SSE streaming interfaces
+    assistant/              Gemini AI chat view utilizing SSE streaming interfaces
     analytics/              Cross-modular reporting graphics powered by Recharts
     settings/               User localization preferences and application controls
   api/ai/chat/              Server-Sent Events (SSE) chat connection routes for the AI agent
+  api/push/                 Web Push subscription management (subscribe, unsubscribe, vapid-public-key)
   auth/callback/            OAuth verification interchange and session validation routes
 
 components/
@@ -76,7 +79,7 @@ components/
 lib/
   ai/
     tools.ts                System parameters for AUTO_TOOLS and APPROVAL_TOOLS arrays
-    execute-tool.ts         Core tool executors bridging Claude calls to database functions
+    execute-tool.ts         Core tool executors bridging Gemini function calls to database functions
     memory.ts               Voyage AI (1024-dim pgvector) tracking logic with keyword fallback
   hooks/                    Localized state tools (use-tasks.ts, use-projects.ts, use-theme.tsx)
   supabase/
@@ -84,16 +87,19 @@ lib/
     server.ts               Server-side isolated client handlers
     middleware.ts           Session lifecycle handlers and authentication filters
   types/
-    database.ts             Single Source of Truth mapping for the 19 Supabase database tables
+    database.ts             Single Source of Truth mapping for the 20 Supabase database tables
   format.ts                 System formatting scripts (Strict AED presentation, DD/MM/YYYY, 12h)
   utils.ts                  General design tool utilities and class consolidations
 
-supabase/migrations/        001_schema through 004_vector_dimension scripts (Run in order)
+supabase/migrations/        001_schema through 006_task_enhancements scripts (Run in order)
+supabase/functions/
+  send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
 proxy.ts                    Next.js 16 centralized gateway logic entry point
 public/sw.js                Service worker script managing stale-while-revalidate data paths
 
-```
-
-```
+.claude/
+  skills/                   rise-module-pattern, rise-tool-pattern, rise-test-pattern, rise-sql-pattern
+  commands/                 /verify, /review, /add-tool, /new-module
+  settings.json             MCP server and permission configuration
 
 ```
