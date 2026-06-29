@@ -34,6 +34,9 @@ function createMockQuery(
   chain.single = vi
     .fn()
     .mockResolvedValue({ data: returnData, error: returnError });
+  chain.maybeSingle = vi
+    .fn()
+    .mockResolvedValue({ data: returnData, error: returnError });
   chain.then = vi
     .fn()
     .mockImplementation((resolve) =>
@@ -142,7 +145,7 @@ describe("executeTool", () => {
 
       const result = await executeTool("create_task", { title: "Fail" });
       expect(result.success).toBe(false);
-      expect(result.message).toBe("insert failed");
+      expect(result.message).toBe("Something went wrong. Please try again.");
     });
   });
 
@@ -200,7 +203,7 @@ describe("executeTool", () => {
         .mockResolvedValue({ data: { title: "Done task" }, error: null });
       setupMockSupabase({ queries: { tasks: query } });
 
-      const result = await executeTool("complete_task", { task_id: "task-1" });
+      const result = await executeTool("complete_task", { task_id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" });
       expect(result.success).toBe(true);
       expect(result.message).toContain("Done task");
       expect(query.update).toHaveBeenCalledWith(
@@ -372,7 +375,9 @@ describe("executeTool", () => {
 
   describe("delete_task", () => {
     it("deletes a task", async () => {
-      const query = createMockQuery();
+      const taskId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
+      // returnData non-null so maybeSingle() passes the ownership preflight
+      const query = createMockQuery({ id: taskId });
       Object.defineProperty(query, "then", {
         value: (resolve: (v: unknown) => void) =>
           Promise.resolve({ data: null, error: null }).then(resolve),
@@ -382,7 +387,7 @@ describe("executeTool", () => {
       setupMockSupabase({ queries: { tasks: query } });
 
       const result = await executeTool("delete_task", {
-        task_id: "task-1",
+        task_id: taskId,
         task_title: "Old task",
       });
       expect(result.success).toBe(true);
@@ -403,8 +408,11 @@ describe("executeTool", () => {
       setupMockSupabase({ queries: { tasks: query } });
 
       const result = await executeTool("bulk_complete_tasks", {
-        task_ids: ["t-1", "t-2", "t-3"],
-        summary: "Finishing sprint tasks",
+        task_ids: [
+          "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+          "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12",
+          "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13",
+        ],
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain("3 tasks");
@@ -506,7 +514,9 @@ describe("executeTool", () => {
 
   describe("delete_note", () => {
     it("deletes a note", async () => {
-      const query = createMockQuery();
+      const noteId = "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
+      // returnData non-null so maybeSingle() passes the ownership preflight
+      const query = createMockQuery({ id: noteId });
       Object.defineProperty(query, "then", {
         value: (resolve: (v: unknown) => void) =>
           Promise.resolve({ data: null, error: null }).then(resolve),
@@ -516,7 +526,7 @@ describe("executeTool", () => {
       setupMockSupabase({ queries: { notes: query } });
 
       const result = await executeTool("delete_note", {
-        note_id: "n-1",
+        note_id: noteId,
         note_title: "Draft note",
       });
       expect(result.success).toBe(true);

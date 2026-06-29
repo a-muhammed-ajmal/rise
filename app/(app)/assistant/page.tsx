@@ -26,6 +26,7 @@ type Message = {
 
 type PendingApproval = {
   tool: { id: string; name: string; input: Record<string, unknown> };
+  token: string;
 };
 
 const TOOL_LABELS: Record<string, string> = {
@@ -158,13 +159,13 @@ function AssistantContent() {
               {
                 id: assistantId,
                 role: "assistant",
-                content: `Something went wrong: ${event.message as string}`,
+                content: "Sorry, something went wrong. Please try again.",
               },
             ]);
           }
 
           if (event.type === "approval_required") {
-            setPendingApproval({ tool: event.tool });
+            setPendingApproval({ tool: event.tool, token: event.token as string });
           }
         }
       }
@@ -193,10 +194,7 @@ function AssistantContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [],
-          approvedTool: {
-            name: pendingApproval.tool.name,
-            input: pendingApproval.tool.input,
-          },
+          approvalToken: pendingApproval.token,
         }),
       });
       const data = await res.json();
