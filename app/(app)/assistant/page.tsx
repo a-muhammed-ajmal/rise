@@ -32,7 +32,21 @@ type PendingApproval = {
 const TOOL_LABELS: Record<string, string> = {
   delete_task: "Delete task",
   bulk_complete_tasks: "Complete multiple tasks",
+  delete_project: "Delete project",
+  delete_goal: "Delete goal",
+  delete_milestone: "Delete milestone",
+  delete_habit: "Delete habit",
+  update_transaction: "Update transaction",
+  delete_transaction: "Delete transaction",
+  delete_budget: "Delete budget",
+  update_debt: "Update debt record",
+  delete_debt: "Delete debt record",
+  delete_contact: "Delete contact",
+  delete_interaction: "Delete interaction",
   delete_note: "Delete note",
+  delete_document: "Delete document",
+  delete_journal_entry: "Delete journal entry",
+  delete_review: "Delete review",
 };
 
 function AssistantContent() {

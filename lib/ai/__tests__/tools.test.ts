@@ -22,8 +22,8 @@ describe("AUTO_TOOLS", () => {
     expect(names).toContain("search_data");
   });
 
-  it("has 12 auto-execute tools", () => {
-    expect(AUTO_TOOLS).toHaveLength(12);
+  it("has 57 auto-execute tools", () => {
+    expect(AUTO_TOOLS).toHaveLength(57);
   });
 
   it.each(AUTO_TOOLS)("$name has valid schema", (tool) => {
@@ -51,8 +51,8 @@ describe("APPROVAL_TOOLS", () => {
     expect(names).toContain("delete_note");
   });
 
-  it("has 3 approval-required tools", () => {
-    expect(APPROVAL_TOOLS).toHaveLength(3);
+  it("has 17 approval-required tools", () => {
+    expect(APPROVAL_TOOLS).toHaveLength(17);
   });
 
   it.each(APPROVAL_TOOLS)("$name description mentions approval", (tool) => {
