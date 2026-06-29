@@ -81,23 +81,23 @@ export default async function HomePage() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-rise-in stagger-2">
+      <div className="grid [grid-template-columns:repeat(2,minmax(0,1fr))] md:grid-cols-4 gap-3 animate-rise-in stagger-2">
         <Link href="/productivity">
-          <Card className="card-interactive cursor-pointer border-mod-tasks/20 hover:border-mod-tasks/40">
+          <Card className="card-interactive cursor-pointer border-t-4 border-mod-tasks hover:border-mod-tasks/80">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-mod-tasks-soft flex items-center justify-center shrink-0">
                 <CheckSquare className="w-5 h-5 text-mod-tasks" />
               </div>
               <div>
                 <p className="text-metric font-mono font-medium">{todayTasks?.length ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Tasks today</p>
+                <p className="text-xs text-muted-foreground truncate">Tasks today</p>
               </div>
             </CardContent>
           </Card>
         </Link>
 
         <Link href="/wellness">
-          <Card className="card-interactive cursor-pointer border-mod-wellness/20 hover:border-mod-wellness/40">
+          <Card className="card-interactive cursor-pointer border-t-4 border-mod-wellness hover:border-mod-wellness/80">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-mod-wellness-soft flex items-center justify-center shrink-0">
                 <Heart className="w-5 h-5 text-mod-wellness" />
@@ -106,28 +106,28 @@ export default async function HomePage() {
                 <p className="text-metric font-mono font-medium">
                   {completedCount}/{dueHabits.length}
                 </p>
-                <p className="text-xs text-muted-foreground">Habits done</p>
+                <p className="text-xs text-muted-foreground truncate">Habits done</p>
               </div>
             </CardContent>
           </Card>
         </Link>
 
         <Link href="/goals">
-          <Card className="card-interactive cursor-pointer border-mod-goals/20 hover:border-mod-goals/40">
+          <Card className="card-interactive cursor-pointer border-t-4 border-mod-goals hover:border-mod-goals/80">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-mod-goals-soft flex items-center justify-center shrink-0">
                 <Target className="w-5 h-5 text-mod-goals" />
               </div>
               <div>
                 <p className="text-metric font-mono font-medium">{activeGoals?.length ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Active goals</p>
+                <p className="text-xs text-muted-foreground truncate">Active goals</p>
               </div>
             </CardContent>
           </Card>
         </Link>
 
         <Link href="/finance">
-          <Card className="card-interactive cursor-pointer border-mod-finance/20 hover:border-mod-finance/40">
+          <Card className="card-interactive cursor-pointer border-t-4 border-mod-finance hover:border-mod-finance/80">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-mod-finance-soft flex items-center justify-center shrink-0">
                 <DollarSign className="w-5 h-5 text-mod-finance" />
@@ -136,7 +136,7 @@ export default async function HomePage() {
                 <p className="text-metric font-mono font-medium">
                   {recentTransactions?.length ?? 0}
                 </p>
-                <p className="text-xs text-muted-foreground">Txns today</p>
+                <p className="text-xs text-muted-foreground truncate">Txns today</p>
               </div>
             </CardContent>
           </Card>

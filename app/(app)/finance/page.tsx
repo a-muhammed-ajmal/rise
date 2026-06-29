@@ -219,22 +219,22 @@ export default function FinancePage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3 animate-rise-in stagger-2">
-        <Card className="border-mod-finance/20">
+        <Card className="border-t-4 border-mod-finance">
           <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Income</p>
-            <p className="font-mono font-medium text-mod-finance">{formatAED(totalIncome)}</p>
+            <p className="text-xs text-muted-foreground truncate">Income</p>
+            <p className="font-mono font-medium text-mod-finance truncate">{formatAED(totalIncome)}</p>
           </CardContent>
         </Card>
-        <Card className="border-destructive/20">
+        <Card className="border-t-4 border-destructive">
           <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Expenses</p>
-            <p className="font-mono font-medium text-destructive">{formatAED(totalExpense)}</p>
+            <p className="text-xs text-muted-foreground truncate">Expenses</p>
+            <p className="font-mono font-medium text-destructive truncate">{formatAED(totalExpense)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={`border-t-4 ${net >= 0 ? "border-mod-finance" : "border-destructive"}`}>
           <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Net</p>
-            <p className={`font-mono font-medium ${net >= 0 ? "text-mod-finance" : "text-destructive"}`}>
+            <p className="text-xs text-muted-foreground truncate">Net</p>
+            <p className={`font-mono font-medium truncate ${net >= 0 ? "text-mod-finance" : "text-destructive"}`}>
               {formatAED(Math.abs(net))}
             </p>
           </CardContent>

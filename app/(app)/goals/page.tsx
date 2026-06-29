@@ -159,7 +159,7 @@ export default function GoalsPage() {
             </div>
           ) : (
             active.map((goal) => (
-              <Card key={goal.id} className="card-interactive">
+              <Card key={goal.id} className="card-interactive border-t-4 border-mod-goals">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div

@@ -255,7 +255,7 @@ function AssistantContent() {
                   key={p}
                   type="button"
                   onClick={() => void sendMessage(p)}
-                  className="card-interactive text-left text-sm px-3 py-2.5 rounded-lg border border-mod-ai/10 bg-mod-ai-soft/50 hover:bg-mod-ai-soft transition-colors"
+                  className="glass-ai card-interactive tappable text-left text-sm px-3 py-2.5 rounded-xl"
                 >
                   {p}
                 </button>
@@ -292,7 +292,7 @@ function AssistantContent() {
                         "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
                         msg.role === "user"
                           ? "bg-primary text-primary-foreground rounded-br-sm"
-                          : "bg-accent text-accent-foreground rounded-bl-sm",
+                          : "glass-ai text-foreground rounded-bl-sm",
                       )}
                     >
                       {msg.content}
@@ -376,7 +376,7 @@ function AssistantContent() {
       )}
 
       {/* Input */}
-      <div className="p-4 border-t border-border bg-background">
+      <div className={cn("p-4 border-t border-border transition-all", loading ? "ai-input-active" : "bg-background")}>
         <div className="flex gap-2 items-end">
           <Textarea
             ref={textareaRef}

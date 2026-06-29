@@ -160,7 +160,7 @@ export default function WellnessPage() {
       </div>
 
       {todayHabits.length > 0 && (
-        <Card className="animate-rise-in stagger-2 border-mod-wellness/20">
+        <Card className="animate-rise-in stagger-2 border-t-4 border-mod-wellness">
           <CardContent className="p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="font-medium">Today&apos;s habits</span>

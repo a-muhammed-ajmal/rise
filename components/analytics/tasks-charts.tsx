@@ -12,19 +12,19 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const TASKS_COLOR = "#3b82f6"  // --mod-tasks
+const TASKS_COLOR = "#34D399"  // --mod-tasks (Green)
 
 const STATUS_COLORS: Record<string, string> = {
-  inbox: "#A78BFA",
-  todo: "#3b82f6",
-  in_progress: "#f59e0b",
-  done: "#10b981",
+  inbox:       "#94A3B8",  // --mod-knowledge Silver — parked
+  todo:        "#60A5FA",  // --mod-finance Blue — pending
+  in_progress: "#FBBF24",  // --mod-wellness Amber — active
+  done:        "#34D399",  // --mod-tasks Green — complete
 }
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "#A78BFA",
-  medium: "#3b82f6",
-  high: "#f59e0b",
-  urgent: "#f43f5e",
+  low:    "#94A3B8",  // Silver — low urgency
+  medium: "#60A5FA",  // Blue — moderate
+  high:   "#FBBF24",  // Amber — high
+  urgent: "#F87171",  // --color-danger Red — critical
 }
 
 const tooltipStyle = {

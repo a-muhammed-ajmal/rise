@@ -11,13 +11,13 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const GOALS_COLOR = "#8b5cf6"   // --mod-goals
+const GOALS_COLOR = "#F472B6"   // --mod-goals (Pink)
 const STATUS_COLORS: Record<string, string> = {
-  active: "#8b5cf6",
-  completed: "#10b981",
-  abandoned: "#5E6C7A",
+  active:    "#F472B6",  // --mod-goals Pink — active
+  completed: "#34D399",  // --color-success Green — achieved
+  abandoned: "#94A3B8",  // Silver — neutral/archived
 }
-const CATEGORY_COLORS = ["#6D28D9", "#7C3AED", "#8B5CF6", "#A78BFA", "#5B21B6"]
+const CATEGORY_COLORS = ["#F472B6", "#60A5FA", "#34D399", "#FBBF24", "#A78BFA"]
 
 const tooltipStyle = {
   backgroundColor: "var(--card)",

@@ -116,21 +116,21 @@
   --sidebar-border: oklch(0.470 0.215 291 / 20%);
   --sidebar-ring: oklch(0.470 0.215 291 / 25%);
 
-  /* ── Module colors — light mode ─────────────────────────────────────────── */
-  --mod-tasks: #3b82f6;
-  --mod-tasks-soft: #eff6ff;
-  --mod-finance: #10b981;
-  --mod-finance-soft: #ecfdf5;
-  --mod-wellness: #f43f5e;
-  --mod-wellness-soft: #fff1f2;
-  --mod-goals: #8b5cf6;
-  --mod-goals-soft: #f5f3ff;
-  --mod-knowledge: #f59e0b;
-  --mod-knowledge-soft: #fffbeb;
-  --mod-crm: #06b6d4;
-  --mod-crm-soft: #ecfeff;
-  --mod-ai: #6D28D9;             /* brand violet */
-  --mod-ai-soft: rgba(109, 40, 217, 0.08);
+  /* ── Module colors — light mode (aligned to frontend-design spec) ───────── */
+  --mod-tasks: #34D399;                        /* Green — task management    */
+  --mod-tasks-soft: rgba(52, 211, 153, 0.10);
+  --mod-finance: #60A5FA;                      /* Blue — finance             */
+  --mod-finance-soft: rgba(96, 165, 250, 0.10);
+  --mod-wellness: #FBBF24;                     /* Amber — habits/wellness    */
+  --mod-wellness-soft: rgba(251, 191, 36, 0.10);
+  --mod-goals: #F472B6;                        /* Pink — goals               */
+  --mod-goals-soft: rgba(244, 114, 182, 0.10);
+  --mod-knowledge: #94A3B8;                    /* Silver — knowledge base    */
+  --mod-knowledge-soft: rgba(148, 163, 184, 0.10);
+  --mod-crm: #A78BFA;                          /* Lavender — contacts/CRM   */
+  --mod-crm-soft: rgba(167, 139, 250, 0.10);
+  --mod-ai: #7C5CFC;                           /* Purple — AI (= accent)    */
+  --mod-ai-soft: rgba(124, 92, 252, 0.08);
 
   /* ── Skill: semantic token layer ────────────────────────────────────────── */
   --color-primary:        #6D28D9;
@@ -275,21 +275,21 @@
   --sidebar-border: oklch(0.550 0.210 291 / 25%);
   --sidebar-ring: oklch(0.700 0.140 291);
 
-  /* ── Module colors — dark mode ───────────────────────────────────────────── */
-  --mod-tasks: #60a5fa;
-  --mod-tasks-soft: rgba(59, 130, 246, 0.12);
-  --mod-finance: #34d399;
-  --mod-finance-soft: rgba(16, 185, 129, 0.12);
-  --mod-wellness: #fb7185;
-  --mod-wellness-soft: rgba(244, 63, 94, 0.12);
-  --mod-goals: #a78bfa;
-  --mod-goals-soft: rgba(139, 92, 246, 0.12);
-  --mod-knowledge: #fbbf24;
-  --mod-knowledge-soft: rgba(245, 158, 11, 0.12);
-  --mod-crm: #22d3ee;
-  --mod-crm-soft: rgba(6, 182, 212, 0.12);
-  --mod-ai: #a78bfa;             /* bright violet on dark */
-  --mod-ai-soft: rgba(109, 40, 217, 0.15);
+  /* ── Module colors — dark mode (aligned to frontend-design spec) ────────── */
+  --mod-tasks: #34D399;                        /* Green — task management    */
+  --mod-tasks-soft: rgba(52, 211, 153, 0.12);
+  --mod-finance: #60A5FA;                      /* Blue — finance             */
+  --mod-finance-soft: rgba(96, 165, 250, 0.12);
+  --mod-wellness: #FBBF24;                     /* Amber — habits/wellness    */
+  --mod-wellness-soft: rgba(251, 191, 36, 0.12);
+  --mod-goals: #F472B6;                        /* Pink — goals               */
+  --mod-goals-soft: rgba(244, 114, 182, 0.12);
+  --mod-knowledge: #94A3B8;                    /* Silver — knowledge base    */
+  --mod-knowledge-soft: rgba(148, 163, 184, 0.12);
+  --mod-crm: #A78BFA;                          /* Lavender — contacts/CRM   */
+  --mod-crm-soft: rgba(167, 139, 250, 0.12);
+  --mod-ai: #7C5CFC;                           /* Purple — AI (= accent)    */
+  --mod-ai-soft: rgba(124, 92, 252, 0.12);
 
   /* ── RISE spec: surface tokens (dark-first — primary design target) ─────── */
   --surface-base: #0E0E11;

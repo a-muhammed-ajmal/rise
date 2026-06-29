@@ -147,7 +147,7 @@ export default function CRMPage() {
           {filtered.map((contact) => (
             <Card
               key={contact.id}
-              className="card-interactive cursor-pointer"
+              className="card-interactive cursor-pointer border-l-4 border-mod-crm"
               onClick={() => setSelected(contact)}
             >
               <CardContent className="p-4 flex items-center gap-3">

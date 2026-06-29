@@ -42,7 +42,7 @@ export function Sidebar() {
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 w-full",
                       active
-                        ? "bg-primary/10 text-primary shadow-[inset_2px_0_0_var(--primary)]"
+                        ? "bg-primary/10 text-primary shadow-[inset_2px_0_0_var(--accent-primary)]"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                     )}
                   />

@@ -176,11 +176,11 @@ export default function KnowledgePage() {
             </div>
           ) : (
             filteredNotes.map((note) => (
-              <Card key={note.id} className="card-interactive group">
+              <Card key={note.id} className="card-interactive group border-l-4 border-mod-knowledge">
                 <CardContent className="p-4 space-y-2">
                   <div className="flex justify-between items-start gap-2">
                     <p
-                      className="font-medium text-sm cursor-pointer flex-1"
+                      className="font-medium text-sm cursor-pointer flex-1 truncate"
                       onClick={() => { setEditNote(note); setNoteOpen(true); }}
                     >
                       {note.title}
