@@ -8,19 +8,25 @@ import {
   compactMessages,
   formatMemoriesForPrompt,
 } from "@/lib/ai/memory";
+import type { ChatAttachment } from "@/lib/types/database";
 import { format } from "date-fns";
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// Simple message type used by frontend (compatible with what we send over the wire)
-export type MessageParam = {
-  role: "user" | "assistant" | "model";
-  content: string;
-};
-
 // ─── Request body schema ──────────────────────────────────────────────────────
+
+const AttachmentSchema = z.object({
+  id: z.string().uuid(),
+  storage_path: z.string().max(500),
+  filename: z.string().max(255),
+  mime_type: z.string().max(100),
+  size_bytes: z.number().int().nonnegative(),
+  category: z.enum(["image", "file", "audio"]),
+  extracted_text: z.string().max(200_000).optional(),
+  transcript: z.string().max(50_000).optional(),
+});
 
 const ChatRequestBody = z.object({
   messages: z
@@ -28,11 +34,19 @@ const ChatRequestBody = z.object({
       z.object({
         role: z.enum(["user", "assistant", "model"]),
         content: z.string().max(100_000),
+        attachments: z.array(AttachmentSchema).max(10).optional(),
       }),
     )
     .max(200),
   approvalToken: z.string().optional(),
 });
+
+// Simple message type used by frontend (compatible with what we send over the wire)
+export type MessageParam = {
+  role: "user" | "assistant" | "model";
+  content: string;
+  attachments?: ChatAttachment[];
+};
 
 // ─── Approval token (HMAC-signed, 5-minute expiry) ────────────────────────────
 
@@ -146,11 +160,72 @@ async function buildContext(
   return parts.join("\n");
 }
 
-/** Convert our simple MessageParam format to Gemini Content format */
-function toGeminiHistory(messages: MessageParam[]): Content[] {
+// ─── Gemini parts builder ─────────────────────────────────────────────────────
+
+/**
+ * Builds a Gemini Part[] for a single message.
+ * For the current (last) user message, images are included as inlineData.
+ * For historical messages, images are represented as text placeholders to
+ * avoid re-downloading binaries on every request.
+ */
+function buildGeminiParts(
+  content: string,
+  attachments: ChatAttachment[] | undefined,
+  imageData: Map<string, { base64: string; mimeType: string }>,
+  isCurrentMessage: boolean,
+): Part[] {
+  const parts: Part[] = [];
+
+  // Inject file/audio text as context prefix before the user's own words
+  const contextLines: string[] = [];
+  for (const att of attachments ?? []) {
+    if (att.category === "file" && att.extracted_text) {
+      contextLines.push(
+        `[Attached file: ${att.filename}]\n${att.extracted_text}`,
+      );
+    }
+    if (att.category === "audio" && att.transcript) {
+      contextLines.push(`[Voice message transcript]: ${att.transcript}`);
+    }
+  }
+  if (contextLines.length) {
+    parts.push({ text: contextLines.join("\n\n") });
+  }
+
+  // Main message text
+  if (content.trim()) {
+    parts.push({ text: content });
+  }
+
+  // Images
+  for (const att of attachments ?? []) {
+    if (att.category !== "image") continue;
+
+    const data = imageData.get(att.storage_path);
+    if (isCurrentMessage && data) {
+      parts.push({ inlineData: { data: data.base64, mimeType: data.mimeType } });
+    } else {
+      // Historical message or image failed to download — use placeholder
+      parts.push({ text: `[Attached image: ${att.filename}]` });
+    }
+  }
+
+  // Gemini rejects an empty parts array
+  if (parts.length === 0) {
+    parts.push({ text: "" });
+  }
+
+  return parts;
+}
+
+/** Convert our MessageParam format to Gemini Content format */
+async function toGeminiHistory(messages: MessageParam[]): Promise<Content[]> {
+  // History messages never get image inlineData (empty map) to avoid
+  // re-downloading binaries on every request.
+  const emptyImageData = new Map<string, { base64: string; mimeType: string }>();
   return messages.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }] as Part[],
+    role: m.role === "assistant" ? "model" : ("user" as const),
+    parts: buildGeminiParts(m.content, m.attachments, emptyImageData, false),
   }));
 }
 
@@ -203,7 +278,32 @@ export async function POST(request: Request) {
 
   // Separate conversation history from the last user message
   const history = messages.slice(0, -1);
+  const currentMsg = messages[messages.length - 1];
   const userInput = latestText;
+
+  // ── Download images for the current message ──────────────────────────────
+  const imageData = new Map<string, { base64: string; mimeType: string }>();
+  if (currentMsg?.attachments?.length) {
+    await Promise.all(
+      currentMsg.attachments
+        .filter((a) => a.category === "image")
+        .map(async (att) => {
+          try {
+            const { data, error } = await supabase.storage
+              .from("chat-attachments")
+              .download(att.storage_path);
+            if (error || !data) return;
+            const ab = await data.arrayBuffer();
+            imageData.set(att.storage_path, {
+              base64: Buffer.from(ab).toString("base64"),
+              mimeType: att.mime_type,
+            });
+          } catch {
+            // Silently skip — partial image failures degrade gracefully
+          }
+        }),
+    );
+  }
 
   const encoder = new TextEncoder();
 
@@ -220,11 +320,19 @@ export async function POST(request: Request) {
             systemInstruction: systemPrompt,
             tools: [{ functionDeclarations: ALL_TOOLS }],
           },
-          history: toGeminiHistory(history),
+          history: await toGeminiHistory(history),
         });
 
+        // Build parts for the current user message (with image inlineData)
+        const currentParts = buildGeminiParts(
+          userInput,
+          currentMsg?.attachments,
+          imageData,
+          true,
+        );
+
         // First turn: stream the response
-        const stream = model.sendMessageStream({ message: userInput });
+        const stream = model.sendMessageStream({ message: currentParts });
 
         let fullText = "";
         const functionCalls: Array<{

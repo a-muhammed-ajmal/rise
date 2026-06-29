@@ -390,3 +390,26 @@ export type Link = LinkRow;
 export type AiConversation = AiConversationRow;
 export type AiMemory = AiMemoryRow;
 export type PushSubscription = PushSubscriptionRow;
+
+// ─── Chat attachment types ─────────────────────────────────────────────────
+
+export type ChatAttachmentCategory = "image" | "file" | "audio";
+
+export type ChatAttachment = {
+  /** UUID, client-assigned when the file is selected */
+  id: string;
+  /** Path in the chat-attachments Supabase Storage bucket */
+  storage_path: string;
+  /** Original filename */
+  filename: string;
+  /** Server-verified MIME type */
+  mime_type: string;
+  /** File size in bytes */
+  size_bytes: number;
+  /** Broad category driving server-side handling */
+  category: ChatAttachmentCategory;
+  /** Populated for file category: extracted plain text */
+  extracted_text?: string;
+  /** Populated for audio category: Gemini transcript */
+  transcript?: string;
+};

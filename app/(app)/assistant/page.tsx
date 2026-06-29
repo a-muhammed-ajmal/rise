@@ -3,9 +3,14 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AttachmentChip } from "@/components/assistant/attachment-chip";
+import { AudioRecorder } from "@/components/assistant/audio-recorder";
+import type { AttachmentStatus } from "@/components/assistant/attachment-chip";
+import type { ChatAttachment } from "@/lib/types/database";
 import {
   Sparkles,
   Send,
@@ -13,21 +18,45 @@ import {
   CheckCircle,
   X,
   Loader2,
+  Paperclip,
+  Mic,
+  FileText,
+  Music,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-type MessageParam = { role: "user" | "assistant" | "model"; content: string };
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+type MessageParam = {
+  role: "user" | "assistant" | "model";
+  content: string;
+  attachments?: ChatAttachment[];
+};
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   toolResults?: { tool: string; message: string; success: boolean }[];
+  attachments?: ChatAttachment[];
 };
 
 type PendingApproval = {
   tool: { id: string; name: string; input: Record<string, unknown> };
   token: string;
 };
+
+type PendingAttachment = {
+  id: string;
+  file: File;
+  status: AttachmentStatus;
+  progress: number;
+  errorMessage?: string;
+  previewUrl?: string;
+  result?: ChatAttachment;
+};
+
+// ─── Constants ──────────────────────────────────────────────────────────────
 
 const TOOL_LABELS: Record<string, string> = {
   delete_task: "Delete task",
@@ -49,6 +78,187 @@ const TOOL_LABELS: Record<string, string> = {
   delete_review: "Delete review",
 };
 
+const ACCEPTED_TYPES =
+  ".jpg,.jpeg,.png,.webp,.heic,.pdf,.doc,.docx,.csv,.xlsx";
+
+// ─── Attachment helpers ──────────────────────────────────────────────────────
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ─── Message attachment display ──────────────────────────────────────────────
+
+function MessageAttachments({ attachments }: { attachments: ChatAttachment[] }) {
+  const supabase = createClient();
+
+  if (!attachments.length) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {attachments.map((att) => {
+        if (att.category === "image") {
+          return (
+            <ImageAttachmentView
+              key={att.id}
+              att={att}
+              supabase={supabase}
+            />
+          );
+        }
+        if (att.category === "audio") {
+          return (
+            <AudioAttachmentView
+              key={att.id}
+              att={att}
+              supabase={supabase}
+            />
+          );
+        }
+        // file
+        return (
+          <FileAttachmentView
+            key={att.id}
+            att={att}
+            supabase={supabase}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function ImageAttachmentView({
+  att,
+  supabase,
+}: {
+  att: ChatAttachment;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.storage
+      .from("chat-attachments")
+      .createSignedUrl(att.storage_path, 3600)
+      .then(({ data }: { data: { signedUrl: string } | null }) => {
+        if (data?.signedUrl) setUrl(data.signedUrl);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [att.storage_path]);
+
+  return (
+    <div className="rounded-lg overflow-hidden border border-border">
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt={att.filename}
+          className="max-w-[200px] max-h-[200px] object-cover"
+        />
+      ) : (
+        <div className="w-16 h-16 bg-muted flex items-center justify-center rounded-lg">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FileAttachmentView({
+  att,
+  supabase,
+}: {
+  att: ChatAttachment;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.storage
+      .from("chat-attachments")
+      .createSignedUrl(att.storage_path, 3600)
+      .then(({ data }: { data: { signedUrl: string } | null }) => {
+        if (data?.signedUrl) setUrl(data.signedUrl);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [att.storage_path]);
+
+  return (
+    <a
+      href={url ?? "#"}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 px-3 py-2 rounded-lg glass-ai text-xs hover:opacity-80 transition-opacity"
+    >
+      <FileText className="w-4 h-4 shrink-0 text-muted-foreground" />
+      <span className="truncate max-w-[140px]">{att.filename}</span>
+      <span className="text-muted-foreground shrink-0">
+        {formatBytes(att.size_bytes)}
+      </span>
+    </a>
+  );
+}
+
+function AudioAttachmentView({
+  att,
+  supabase,
+}: {
+  att: ChatAttachment;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
+
+  useEffect(() => {
+    supabase.storage
+      .from("chat-attachments")
+      .createSignedUrl(att.storage_path, 3600)
+      .then(({ data }: { data: { signedUrl: string } | null }) => {
+        if (data?.signedUrl) setUrl(data.signedUrl);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [att.storage_path]);
+
+  return (
+    <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg glass-ai text-xs">
+        <Music className="w-4 h-4 shrink-0 text-mod-ai" />
+        {url ? (
+          <audio controls className="h-8 flex-1" title={att.filename}>
+            <source src={url} type={att.mime_type} />
+          </audio>
+        ) : (
+          <span className="text-muted-foreground">{att.filename}</span>
+        )}
+      </div>
+      {att.transcript && (
+        <div className="px-3">
+          <button
+            type="button"
+            onClick={() => setShowTranscript((v) => !v)}
+            className="text-xs text-mod-ai hover:underline"
+          >
+            {showTranscript ? "Hide transcript" : "Show transcript"}
+          </button>
+          {showTranscript && (
+            <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+              {att.transcript}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
+
 function AssistantContent() {
   const searchParams = useSearchParams();
   const initialQ = searchParams.get("q");
@@ -58,8 +268,15 @@ function AssistantContent() {
   const [loading, setLoading] = useState(false);
   const [pendingApproval, setPendingApproval] =
     useState<PendingApproval | null>(null);
+
+  // Attachment state
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
+  const [sessionId] = useState(() => crypto.randomUUID());
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -73,15 +290,117 @@ function AssistantContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── File upload ────────────────────────────────────────────────────────────
+
+  async function uploadFile(file: File, pendingId: string) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("session_id", sessionId);
+
+    try {
+      const res = await fetch("/api/ai/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        setPendingAttachments((prev) =>
+          prev.map((a) =>
+            a.id === pendingId
+              ? { ...a, status: "error", errorMessage: errText }
+              : a,
+          ),
+        );
+        return;
+      }
+
+      const result = (await res.json()) as Omit<ChatAttachment, "id">;
+      setPendingAttachments((prev) =>
+        prev.map((a) =>
+          a.id === pendingId
+            ? {
+                ...a,
+                status: "done",
+                progress: 100,
+                result: { ...result, id: pendingId },
+              }
+            : a,
+        ),
+      );
+    } catch {
+      setPendingAttachments((prev) =>
+        prev.map((a) =>
+          a.id === pendingId
+            ? {
+                ...a,
+                status: "error",
+                errorMessage: "Upload failed. Please try again.",
+              }
+            : a,
+        ),
+      );
+    }
+  }
+
+  function handleFilesSelected(files: FileList) {
+    const newPending: PendingAttachment[] = Array.from(files).map((file) => {
+      const id = crypto.randomUUID();
+      const previewUrl =
+        file.type.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : undefined;
+      return { id, file, status: "uploading", progress: 0, previewUrl };
+    });
+
+    setPendingAttachments((prev) => [...prev, ...newPending]);
+
+    // Start uploads
+    for (const pending of newPending) {
+      void uploadFile(pending.file, pending.id);
+    }
+  }
+
+  function handleAudioComplete(blob: Blob, mimeType: string) {
+    setShowAudioRecorder(false);
+    const id = crypto.randomUUID();
+    const file = new File([blob], `recording-${Date.now()}.webm`, {
+      type: mimeType,
+    });
+    setPendingAttachments((prev) => [
+      ...prev,
+      { id, file, status: "uploading", progress: 0 },
+    ]);
+    void uploadFile(file, id);
+  }
+
+  function removeAttachment(id: string) {
+    setPendingAttachments((prev) => {
+      const removed = prev.find((a) => a.id === id);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter((a) => a.id !== id);
+    });
+  }
+
+  // ── Send message ───────────────────────────────────────────────────────────
+
   async function sendMessage(userText: string) {
-    if (!userText.trim() || loading) return;
+    const readyAttachments = pendingAttachments
+      .filter((a) => a.status === "done" && a.result)
+      .map((a) => a.result!);
+
+    const hasContent = userText.trim() || readyAttachments.length > 0;
+    if (!hasContent || loading) return;
+
     setInput("");
+    setPendingAttachments([]);
     setLoading(true);
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
       content: userText,
+      attachments: readyAttachments.length ? readyAttachments : undefined,
     };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
@@ -89,6 +408,7 @@ function AssistantContent() {
     const apiMessages: MessageParam[] = newMessages.map((m) => ({
       role: m.role,
       content: m.content,
+      attachments: m.attachments,
     }));
 
     const assistantId = crypto.randomUUID();
@@ -155,7 +475,6 @@ function AssistantContent() {
                   toolResults: [...toolResults],
                 };
               } else {
-                // Claude used a tool without generating text first — create the message now
                 updated.push({
                   id: assistantId,
                   role: "assistant",
@@ -240,6 +559,11 @@ function AssistantContent() {
     "Log AED 30 expense for lunch",
   ];
 
+  const isUploading = pendingAttachments.some((a) => a.status === "uploading");
+  const hasReadyContent =
+    input.trim() ||
+    pendingAttachments.some((a) => a.status === "done");
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] max-w-2xl mx-auto">
       {/* Messages */}
@@ -309,6 +633,10 @@ function AssistantContent() {
                     >
                       {msg.content}
                     </div>
+                  )}
+                  {/* Attachments in message bubbles */}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <MessageAttachments attachments={msg.attachments} />
                   )}
                   {msg.toolResults && msg.toolResults.length > 0 && (
                     <div className="space-y-1">
@@ -387,9 +715,99 @@ function AssistantContent() {
         </div>
       )}
 
-      {/* Input */}
-      <div className={cn("p-4 border-t border-border transition-all", loading ? "ai-input-active" : "bg-background")}>
+      {/* Input area */}
+      <div
+        className={cn(
+          "p-4 border-t border-border transition-all",
+          loading ? "ai-input-active" : "bg-background",
+        )}
+      >
+        {/* Audio recorder (inline, above chips) */}
+        {showAudioRecorder && (
+          <div className="mb-2">
+            <AudioRecorder
+              onRecordingComplete={handleAudioComplete}
+              onCancel={() => setShowAudioRecorder(false)}
+            />
+          </div>
+        )}
+
+        {/* Pending attachment chips */}
+        {pendingAttachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {pendingAttachments.map((a) => (
+              <AttachmentChip
+                key={a.id}
+                id={a.id}
+                filename={a.file.name}
+                size_bytes={a.file.size}
+                category={
+                  a.file.type.startsWith("image/")
+                    ? "image"
+                    : a.file.type.startsWith("audio/")
+                      ? "audio"
+                      : "file"
+                }
+                mime_type={a.file.type}
+                status={a.status}
+                progress={a.progress}
+                errorMessage={a.errorMessage}
+                previewUrl={a.previewUrl}
+                onRemove={removeAttachment}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Input row */}
         <div className="flex gap-2 items-end">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept={ACCEPTED_TYPES}
+            multiple
+            onChange={(e) => {
+              if (e.target.files?.length) {
+                handleFilesSelected(e.target.files);
+                e.target.value = "";
+              }
+            }}
+          />
+
+          {/* Paperclip button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Attach file"
+            disabled={loading}
+            onClick={() => fileInputRef.current?.click()}
+            className="shrink-0 h-11 w-11 text-muted-foreground hover:text-foreground"
+          >
+            <Paperclip className="w-4 h-4" />
+          </Button>
+
+          {/* Mic button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={showAudioRecorder ? "Cancel recording" : "Record audio"}
+            disabled={loading}
+            onClick={() => setShowAudioRecorder((v) => !v)}
+            className={cn(
+              "shrink-0 h-11 w-11",
+              showAudioRecorder
+                ? "text-destructive hover:text-destructive"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Mic className="w-4 h-4" />
+          </Button>
+
+          {/* Textarea */}
           <Textarea
             ref={textareaRef}
             placeholder="Ask RISE anything…"
@@ -405,9 +823,11 @@ function AssistantContent() {
             className="resize-none min-h-[44px] max-h-[120px]"
             style={{ height: "auto" }}
           />
+
+          {/* Send button */}
           <Button
             onClick={() => void sendMessage(input)}
-            disabled={loading || !input.trim()}
+            disabled={loading || !hasReadyContent || isUploading}
             size="icon"
             className="shrink-0 h-11 w-11"
           >

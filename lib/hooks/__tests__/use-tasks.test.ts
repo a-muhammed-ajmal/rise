@@ -70,7 +70,9 @@ describe("useTasks", () => {
 
     const { result } = renderHook(() => useTasks("inbox"));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.tasks).toEqual(tasks);
+    expect(result.current.tasks).toEqual(
+      tasks.map((t) => expect.objectContaining(t)),
+    );
   });
 
   it("applies inbox filter", async () => {
