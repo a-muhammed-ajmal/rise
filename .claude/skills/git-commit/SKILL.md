@@ -97,3 +97,16 @@ Run `git log -1 --format='%an <%ae>'` and confirm the author line shows
 `ajmalconsults@gmail.com`. If it doesn't, the commit needs to be amended
 (`git commit --amend --reset-author`) before anything else happens —
 don't leave a wrong-identity commit in history "to fix later."
+
+## 6. Push to origin/main
+
+After identity is confirmed, push:
+
+```bash
+git push origin main
+```
+
+Remote: https://github.com/a-muhammed-ajmal/rise
+
+Confirm the push succeeded by checking the output line
+(`main -> main`). Never force-push unless the user explicitly asks.
