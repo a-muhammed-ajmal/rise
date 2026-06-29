@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RISE — Design System Preview</title>
+
+<!-- Variable fonts for this static preview only.
+     In the real app, load these via next/font/google instead. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Lexend:wght@500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="tokens.css">
+
+<style>
+  /* Demo-page-only styles — not part of the design system itself */
+  .demo-section { padding: var(--space-6) var(--space-4); max-width: 480px; margin: 0 auto; }
+  .demo-section + .demo-section { border-top: 1px solid var(--border-subtle); }
+  .demo-section__title { font-size: var(--text-h1); margin-bottom: var(--space-4); color: var(--text-secondary); }
+  .swatch-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); }
+  .swatch { border-radius: 8px; height: 56px; display: flex; align-items: flex-end; padding: 4px 6px; font-size: 9px; color: var(--text-primary); font-family: var(--font-mono); border: 1px solid var(--border-subtle); }
+  .type-row { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .type-row__label { width: 90px; color: var(--text-secondary); font-size: var(--text-label); font-family: var(--font-mono); flex-shrink: 0; }
+  body { padding-bottom: 100px; } /* clears fixed bottom nav for this preview */
+</style>
+</head>
+<body>
+
+  <!-- ============ DEAD ZONE — greeting, read-only ============ -->
+  <header class="demo-section" style="padding-top: var(--space-8);">
+    <div style="font-size: var(--text-label); color: var(--text-secondary);">Tuesday, 12 May</div>
+    <h1 style="font-size: var(--text-display); margin-top: var(--space-1);">Hi, Ajmal</h1>
+  </header>
+
+  <!-- ============ COLOR SYSTEM ============ -->
+  <section class="demo-section">
+    <div class="demo-section__title">Surfaces (4-level elevation)</div>
+    <div class="swatch-grid" style="margin-bottom: var(--space-5);">
+      <div class="swatch" style="background:var(--surface-base);">base</div>
+      <div class="swatch" style="background:var(--surface-1);">surf-1</div>
+      <div class="swatch" style="background:var(--surface-2);">surf-2</div>
+      <div class="swatch" style="background:var(--surface-overlay);">overlay</div>
+    </div>
+
+    <div class="demo-section__title">AI accent &amp; semantic data colors</div>
+    <div class="swatch-grid" style="margin-bottom: var(--space-5);">
+      <div class="swatch" style="background:var(--accent-primary); color:#fff;">accent</div>
+      <div class="swatch" style="background:var(--color-success); color:#0E0E11;">success</div>
+      <div class="swatch" style="background:var(--color-warning); color:#0E0E11;">warning</div>
+      <div class="swatch" style="background:var(--color-danger); color:#0E0E11;">danger</div>
+    </div>
+
+    <div class="demo-section__title">Module color coding</div>
+    <div class="swatch-grid">
+      <div class="swatch" style="background:var(--module-tasks); color:#0E0E11;">tasks</div>
+      <div class="swatch" style="background:var(--module-finance); color:#0E0E11;">finance</div>
+      <div class="swatch" style="background:var(--module-habits); color:#0E0E11;">habits</div>
+      <div class="swatch" style="background:var(--module-journal); color:#0E0E11;">journal</div>
+    </div>
+  </section>
+
+  <!-- ============ TYPE SCALE ============ -->
+  <section class="demo-section">
+    <div class="demo-section__title">Type scale</div>
+    <div class="type-row"><span class="type-row__label">display</span><span class="heading" style="font-size:var(--text-display);">Hi, Ajmal</span></div>
+    <div class="type-row"><span class="type-row__label">h1</span><span class="heading" style="font-size:var(--text-h1);">Today's overview</span></div>
+    <div class="type-row"><span class="type-row__label">h2 / card</span><span class="heading" style="font-size:var(--text-h2);">Calorie intake</span></div>
+    <div class="type-row"><span class="type-row__label">body</span><span style="font-size:var(--text-body);">Primary reading content</span></div>
+    <div class="type-row"><span class="type-row__label">label</span><span style="font-size:var(--text-label); color:var(--text-secondary);">METADATA LABEL</span></div>
+    <div class="type-row"><span class="type-row__label">micro</span><span style="font-size:var(--text-micro); color:var(--text-muted);">11px floor — never smaller</span></div>
+    <div class="type-row"><span class="type-row__label">metric</span><span class="metric" style="font-size:var(--text-metric);">1,842</span></div>
+  </section>
+
+  <!-- ============ CONTENT ZONE — cards ============ -->
+  <section class="demo-section">
+    <div class="demo-section__title">Cards — grid-safe, module-coded</div>
+    <div class="grid-safe">
+
+      <div class="card card--metric card--module" style="--module-color: var(--module-tasks);">
+        <div class="card__label" style="grid-area: label;">TASKS DONE</div>
+        <div class="card__label" style="grid-area: unit; text-align:right;">/8</div>
+        <div class="card__value" style="grid-area: value;">6</div>
+      </div>
+
+      <div class="card card--metric card--module" style="--module-color: var(--module-finance);">
+        <div class="card__label" style="grid-area: label;">BALANCE</div>
+        <div class="card__label" style="grid-area: unit; text-align:right;">AED</div>
+        <div class="card__value" style="grid-area: value;">12,480</div>
+      </div>
+
+      <div class="card card--metric card--module card--active" style="--module-color: var(--module-habits);">
+        <div class="card__label" style="grid-area: label;">STREAK</div>
+        <div class="card__label" style="grid-area: unit; text-align:right;">days</div>
+        <div class="card__value" style="grid-area: value;">14</div>
+      </div>
+
+      <div class="card card--module" style="--module-color: var(--module-journal);">
+        <div class="card__title text-truncate">A genuinely long journal entry title that would otherwise wrap</div>
+        <div class="card__label text-clamp-2" style="margin-top: var(--space-2);">
+          This is AI-suggestion or note body copy clamped to two lines maximum, with an ellipsis after that so the card never grows taller than its row siblings even with a long unbroken string of text inside it.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ LOADING STATE ============ -->
+  <section class="demo-section">
+    <div class="demo-section__title">Loading state (&gt; 200ms wait)</div>
+    <div class="card" style="height: 96px;">
+      <div class="skeleton" style="height: 14px; width: 60%; margin-bottom: var(--space-3);"></div>
+      <div class="skeleton" style="height: 28px; width: 40%;"></div>
+    </div>
+  </section>
+
+  <!-- ============ ACTION ZONE — buttons ============ -->
+  <section class="demo-section">
+    <div class="demo-section__title">Buttons</div>
+    <div class="cluster">
+      <button class="btn tappable">Add meal</button>
+      <button class="btn btn--ghost tappable">Cancel</button>
+    </div>
+  </section>
+
+  <!-- ============ BOTTOM NAV — fixed, glass, 5 items ============ -->
+  <nav class="bottom-nav glass-chrome" aria-label="Primary">
+    <button class="nav-item tappable" aria-current="true">Home</button>
+    <button class="nav-item tappable">Today</button>
+    <button class="nav-item nav-item--ai tappable" aria-label="AI Compose">+</button>
+    <button class="nav-item tappable">Insights</button>
+    <button class="nav-item tappable">Profile</button>
+  </nav>
+
+</body>
+</html>

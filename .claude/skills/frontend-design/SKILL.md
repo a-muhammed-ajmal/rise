@@ -1,3 +1,8 @@
+---
+name: frontend-design
+description: RISE's locked, project-specific design system — dark-first "cockpit" UI with Lexend headings (capped at SemiBold, no Bold), IBM Plex Sans body, JetBrains Mono data, a 4-level dark surface elevation system, a single purple AI-accent (#7C5CFC), per-module color coding, thumb-zone mobile layout, and spring-based motion. Use this skill whenever building, styling, reviewing, or modifying ANY screen, component, token, or style inside the RISE project — colors, typography, spacing, layout, navigation, motion, glassmorphism, or accessibility. Triggers on "design this screen", "style this component", "build the dashboard/card/nav", "does this match RISE", "apply RISE styling", or any UI work in this repo. See references/ for expanded WCAG, Core Web Vitals, and mobile-first detail — load the matching file only when that topic comes up.
+---
+
 # RISE — Frontend Design Skill
 
 ## Identity & Soul
@@ -510,3 +515,32 @@ Before shipping any screen, run this:
 9. **Bottom nav**: Exactly 5 items. Glassmorphic. Purple glowing center FAB. Active tab has a sliding indicator, not a jump-cut.
 
 ---
+
+## Reference Files
+
+For detail beyond what's needed inline, see `references/` — load the matching file only when that specific topic comes up, not by default:
+
+- **`aesthetics.md`** — the reasoning behind RISE's locked direction: why Lexend/IBM Plex Sans/JetBrains Mono, why purple-only-for-AI, why spring motion, why the glass-chrome-only rule. Read when questioning or extending a visual choice — not when you already have the token value above.
+- **`components.md`** — the token model, the full component state contract (default / active / focus-visible / disabled / loading / selected / error / empty), reusable layout primitives, and the Next.js + Tailwind wiring for these CSS variables. Read before building a component type not already specified above.
+- **`performance.md`** — Core Web Vitals targets (LCP/INP/CLS) plus RISE-specific traps: `backdrop-filter` cost on the glass bottom nav, the 200ms skeleton threshold, the 600ms count-up cap. Read when something feels janky or before shipping a data-heavy screen.
+- **`accessibility.md`** — the full WCAG 2.2 AA checklist mapped to RISE's actual tokens and verified contrast pairs. Read before shipping any new screen.
+- **`mobile.md`** — the Thumb Zone Law in full, bottom-nav spec, viewport/safe-area handling, and breakpoint posture. Read when laying out a new screen.
+
+These are supplements, not overrides. If anything in `references/` ever conflicts with a rule above, the rule above wins — this file is the locked source of truth.
+
+---
+
+## Assets
+
+`assets/` holds usable files, not instructions — nothing in here is read
+into context unless explicitly opened:
+
+- **`tokens.css`** — every CSS variable and utility class above
+  (`.card`, `.tappable`, `.bottom-nav`, `.skeleton`, etc.), consolidated
+  into one importable stylesheet. Import this once at the app root rather
+  than re-declaring any token inline in a component.
+- **`demo.html`** — a self-contained static preview (open directly in a
+  browser, no build step) rendering the color system, type scale, card
+  grid, loading state, and bottom nav from `tokens.css`. Use it as a fast
+  visual sanity-check after editing a token — if a change here doesn't
+  look right in `demo.html`, it won't look right in the app either.
