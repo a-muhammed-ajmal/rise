@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, X, Undo2, ChevronDown } from "lucide-react";
 import type { Habit } from "@/lib/types/database";
+import { AffirmationDialog } from "@/components/wellness/affirmation-dialog";
 
 const DAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const VISIBLE_COUNT = 5;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function HabitDashboardSection({ habits, logs }: Props) {
+  const [viewHabit, setViewHabit] = useState<Habit | null>(null);
   const [logMap, setLogMap] = useState<Map<string, boolean>>(
     () => new Map(logs.map((l) => [l.habit_id, l.completed])),
   );
@@ -86,7 +88,10 @@ export function HabitDashboardSection({ habits, logs }: Props) {
         return (
           <Card key={habit.id} className={`card-interactive ${cardBorderClass}`}>
             <CardContent className="p-3 flex items-center gap-3">
-              <div className="flex-1 min-w-0">
+              <div
+                className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
+                onClick={() => { if (habit.description) setViewHabit(habit); }}
+              >
                 <div className="flex items-center gap-2">
                   <div
                     className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -166,6 +171,8 @@ export function HabitDashboardSection({ habits, logs }: Props) {
           {expanded ? "Show less" : `${remaining} more`}
         </button>
       )}
+
+      <AffirmationDialog habit={viewHabit} onClose={() => setViewHabit(null)} />
     </div>
   );
 }

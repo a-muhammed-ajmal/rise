@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { AffirmationDialog } from "@/components/wellness/affirmation-dialog";
 import {
   Plus,
   Flame,
@@ -86,6 +87,7 @@ export default function WellnessPage() {
   const [editHabit, setEditHabit] = useState<Habit | null>(null);
   const [focusOpen, setFocusOpen] = useState(false);
   const [deleteHabitId, setDeleteHabitId] = useState<string | null>(null);
+  const [viewHabit, setViewHabit] = useState<Habit | null>(null);
   const today = todayISO();
   const todayDow = new Date().getDay();
 
@@ -254,7 +256,10 @@ export default function WellnessPage() {
             return (
               <Card key={habit.id} className={`card-interactive ${cardBorderClass}`}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
+                  <div
+                    className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
+                    onClick={() => { if (habit.description) setViewHabit(habit); }}
+                  >
                     <div className="flex items-center gap-2">
                       <div
                         className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -371,6 +376,7 @@ export default function WellnessPage() {
         onSaved={() => { fetchData(); toast.success(editHabit ? "Habit updated" : "Habit added"); }}
       />
       <FocusTimerDialog open={focusOpen} onOpenChange={setFocusOpen} />
+      <AffirmationDialog habit={viewHabit} onClose={() => setViewHabit(null)} />
 
       <ConfirmDialog
         open={!!deleteHabitId}
