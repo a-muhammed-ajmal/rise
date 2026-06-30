@@ -165,7 +165,7 @@ const CreateHabitInput = z.object({
   frequency: z.enum(['daily', 'weekly', 'custom']).optional(),
   target_days: z.array(z.number().int().min(0).max(6)).optional(),
   color: z.string().max(20).optional(),
-  icon: z.string().max(10).optional(),
+  reminder_time: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
 })
 
 const UpdateHabitInput = z.object({
@@ -175,7 +175,7 @@ const UpdateHabitInput = z.object({
   frequency: z.enum(['daily', 'weekly', 'custom']).optional(),
   target_days: z.array(z.number().int().min(0).max(6)).optional(),
   color: z.string().max(20).optional(),
-  icon: z.string().max(10).optional(),
+  reminder_time: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
   active: z.boolean().optional(),
 })
 
@@ -932,7 +932,8 @@ export async function executeTool(toolName: string, input: Record<string, unknow
         frequency: p.data.frequency ?? 'daily',
         target_days: p.data.target_days ?? [0, 1, 2, 3, 4, 5, 6],
         color: p.data.color ?? '#6366f1',
-        icon: p.data.icon ?? '⭐',
+        icon: '⭐',
+        reminder_time: p.data.reminder_time ?? null,
         active: true,
       }).select().single()
       if (error) return dbErr('create_habit', error)
