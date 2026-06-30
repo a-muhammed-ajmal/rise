@@ -22,27 +22,61 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Plus,
   Flame,
   Timer,
-  CheckCircle,
-  Circle,
   Loader2,
   Heart,
   MoreVertical,
   Pencil,
   Trash2,
   Archive,
+  Check,
+  X,
+  Undo2,
+  Clock,
 } from "lucide-react";
 import { subDays, format } from "date-fns";
 import { toast } from "sonner";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const ICONS = ["⭐", "💪", "📚", "🧘", "🏃", "💧", "🥗", "😴", "✍️", "🎯", "🎨", "🎵"];
+const DAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Ordered Mon–Sun for the specific-days compact picker (matching calendar convention)
+const DAY_PICKER_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAY_PICKER_DOW    = [1,   2,   3,   4,   5,   6,   0]; // Mon=1 … Sun=0
+
+const COLOR_SWATCHES = [
+  "#6366f1", // indigo (default)
+  "#f59e0b", // amber
+  "#10b981", // emerald
+  "#3b82f6", // blue
+  "#ef4444", // red
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#64748b", // slate
+];
+
+type RepeatMode = "daily" | "weekdays" | "weekends" | "specific";
+
+function detectRepeatMode(h: Habit): RepeatMode {
+  const sorted = [...h.target_days].sort((a, b) => a - b).join(",");
+  if (sorted === "0,1,2,3,4,5,6") return "daily";
+  if (sorted === "1,2,3,4,5") return "weekdays";
+  if (sorted === "0,6") return "weekends";
+  return "specific";
+}
 
 export default function WellnessPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -71,20 +105,31 @@ export default function WellnessPage() {
     fetchData();
   }, [fetchData]);
 
-  async function toggleHabit(habitId: string, done: boolean) {
+  async function markDone(habitId: string) {
     const supabase = createClient();
-    if (done) {
-      await supabase.from("habit_logs").delete().eq("habit_id", habitId).eq("logged_date", today);
-    } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("habit_logs").upsert({
-        user_id: user.id,
-        habit_id: habitId,
-        logged_date: today,
-        completed: true,
-      });
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("habit_logs").upsert(
+      { user_id: user.id, habit_id: habitId, logged_date: today, completed: true },
+      { onConflict: "habit_id,logged_date" },
+    );
+    await fetchData();
+  }
+
+  async function markNotDone(habitId: string) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("habit_logs").upsert(
+      { user_id: user.id, habit_id: habitId, logged_date: today, completed: false },
+      { onConflict: "habit_id,logged_date" },
+    );
+    await fetchData();
+  }
+
+  async function undoMark(habitId: string) {
+    const supabase = createClient();
+    await supabase.from("habit_logs").delete().eq("habit_id", habitId).eq("logged_date", today);
     await fetchData();
   }
 
@@ -104,29 +149,38 @@ export default function WellnessPage() {
     fetchData();
   }
 
-  function getStreak(habitId: string): number {
-    const doneDays = new Set(
-      logs.filter((l) => l.habit_id === habitId && l.completed).map((l) => l.logged_date),
+  // Streak counts consecutive completed scheduled days backward from yesterday.
+  // Non-scheduled days (not in target_days) are skipped — only scheduled days
+  // with no log or completed=false break the streak.
+  function getStreak(habitId: string, habit: Habit): number {
+    const logMap = new Map(
+      logs.filter((l) => l.habit_id === habitId).map((l) => [l.logged_date, l.completed]),
     );
     let streak = 0;
-    let d = new Date();
-    while (true) {
-      const key = format(d, "yyyy-MM-dd");
-      if (doneDays.has(key)) {
-        streak++;
-        d = subDays(d, 1);
-      } else {
-        break;
+    let d = subDays(new Date(), 1); // today is not over; start from yesterday
+    const created = new Date(habit.created_at);
+
+    while (d >= created) {
+      const dow = d.getDay();
+      if (habit.target_days.includes(dow)) {
+        const completed = logMap.get(format(d, "yyyy-MM-dd"));
+        if (completed === true) {
+          streak++;
+        } else {
+          break; // no log or completed:false on a scheduled day → streak ends
+        }
       }
+      d = subDays(d, 1);
     }
     return streak;
   }
 
   const todayHabits = habits.filter((h) => h.target_days.includes(todayDow));
-  const todayLogs = new Set(
-    logs.filter((l) => l.logged_date === today && l.completed).map((l) => l.habit_id),
+  // Map habit_id → completed (true/false) for today's logs (includes both states)
+  const todayLogMap = new Map(
+    logs.filter((l) => l.logged_date === today).map((l) => [l.habit_id, l.completed]),
   );
-  const completedToday = todayHabits.filter((h) => todayLogs.has(h.id)).length;
+  const completedToday = todayHabits.filter((h) => todayLogMap.get(h.id) === true).length;
 
   if (loading) {
     return (
@@ -185,42 +239,88 @@ export default function WellnessPage() {
         ) : (
           habits.map((habit) => {
             const isDueToday = habit.target_days.includes(todayDow);
-            const doneTodayFlag = todayLogs.has(habit.id);
-            const streak = getStreak(habit.id);
+            const logCompleted = todayLogMap.get(habit.id);
+            const markState =
+              logCompleted === true ? "done" : logCompleted === false ? "notDone" : "none";
+            const streak = getStreak(habit.id, habit);
+
+            const cardBorderClass =
+              markState === "done"
+                ? "border-green-500/25 bg-green-500/5"
+                : markState === "notDone"
+                  ? "border-red-500/25 bg-red-500/5"
+                  : "";
 
             return (
-              <Card key={habit.id} className={`card-interactive ${doneTodayFlag ? "opacity-75" : ""}`}>
+              <Card key={habit.id} className={`card-interactive ${cardBorderClass}`}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  {isDueToday ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleHabit(habit.id, doneTodayFlag)}
-                      className="shrink-0 transition-transform active:scale-95"
-                      aria-label={doneTodayFlag ? "Undo" : "Complete"}
-                    >
-                      {doneTodayFlag ? (
-                        <CheckCircle className="w-7 h-7 text-mod-finance" />
-                      ) : (
-                        <Circle className="w-7 h-7 text-muted-foreground" />
-                      )}
-                    </button>
-                  ) : (
-                    <span className="w-7 h-7 flex items-center justify-center shrink-0 text-muted-foreground/40">
-                      <Circle className="w-7 h-7" />
-                    </span>
-                  )}
+                  {/* Left: mark buttons / state indicator */}
+                  <div className="shrink-0 flex items-center gap-1">
+                    {markState === "none" && isDueToday ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => markDone(habit.id)}
+                          className="w-7 h-7 rounded-full border-2 border-green-500 text-green-500 flex items-center justify-center transition-colors hover:bg-green-500/10 active:scale-95"
+                          aria-label="Mark done"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => markNotDone(habit.id)}
+                          className="w-7 h-7 rounded-full border-2 border-red-500 text-red-500 flex items-center justify-center transition-colors hover:bg-red-500/10 active:scale-95"
+                          aria-label="Mark not done"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : markState === "done" ? (
+                      <>
+                        <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center">
+                          <Check className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => undoMark(habit.id)}
+                          className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                          aria-label="Undo"
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : markState === "notDone" ? (
+                      <>
+                        <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center">
+                          <X className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => undoMark(habit.id)}
+                          className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                          aria-label="Undo"
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      /* Not due today — neutral placeholder */
+                      <div className="w-7 h-7 rounded-full border-2 border-muted-foreground/20" />
+                    )}
+                  </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{habit.icon}</span>
-                      <span className={`text-sm font-medium ${doneTodayFlag ? "line-through text-muted-foreground" : ""}`}>
-                        {habit.name}
-                      </span>
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: habit.color ?? "#6366f1" }}
+                      />
+                      <span className="text-sm font-medium truncate">{habit.name}</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {habit.target_days.length === 7
                         ? "Every day"
-                        : habit.target_days.map((d) => DAYS[d]).join(", ")}
+                        : habit.target_days.map((d) => DAYS_LONG[d]).join(", ")}
                     </p>
                   </div>
 
@@ -301,54 +401,85 @@ function HabitDialog({
   onSaved: () => void;
 }) {
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState("⭐");
-  const [targetDays, setTargetDays] = useState([0, 1, 2, 3, 4, 5, 6]);
+  const [description, setDescription] = useState("");
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("daily");
+  const [targetDays, setTargetDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [reminderTime, setReminderTime] = useState("");
+  const [color, setColor] = useState("#6366f1");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (habit) {
       setName(habit.name);
-      setIcon(habit.icon);
+      setDescription(habit.description ?? "");
+      const mode = detectRepeatMode(habit);
+      setRepeatMode(mode);
       setTargetDays(habit.target_days);
+      setReminderTime(habit.reminder_time?.slice(0, 5) ?? "");
+      setColor(habit.color ?? "#6366f1");
     } else {
       setName("");
-      setIcon("⭐");
+      setDescription("");
+      setRepeatMode("daily");
       setTargetDays([0, 1, 2, 3, 4, 5, 6]);
+      setReminderTime("");
+      setColor("#6366f1");
     }
   }, [habit, open]);
 
-  function toggleDay(d: number) {
+  function handleRepeatModeChange(mode: RepeatMode) {
+    setRepeatMode(mode);
+    if (mode === "daily") setTargetDays([0, 1, 2, 3, 4, 5, 6]);
+    else if (mode === "weekdays") setTargetDays([1, 2, 3, 4, 5]);
+    else if (mode === "weekends") setTargetDays([0, 6]);
+    // "specific": keep current targetDays so user can refine from the previous selection
+  }
+
+  function toggleDay(dow: number) {
     setTargetDays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort(),
+      prev.includes(dow)
+        ? prev.filter((x) => x !== dow)
+        : [...prev, dow].sort((a, b) => a - b),
     );
   }
 
+  const repeatModeFrequency: Record<RepeatMode, "daily" | "weekly" | "custom"> = {
+    daily: "daily",
+    weekdays: "custom",
+    weekends: "custom",
+    specific: "custom",
+  };
+
+  const repeatModeTargetDays: Record<RepeatMode, number[]> = {
+    daily: [0, 1, 2, 3, 4, 5, 6],
+    weekdays: [1, 2, 3, 4, 5],
+    weekends: [0, 6],
+    specific: targetDays,
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || targetDays.length === 0) return;
+    const frequency = repeatModeFrequency[repeatMode];
+    const target_days = repeatModeTargetDays[repeatMode];
+    if (!name.trim() || target_days.length === 0) return;
+
     setSaving(true);
     const supabase = createClient();
+    const payload = {
+      name: name.trim(),
+      description: description.trim() || null,
+      frequency,
+      target_days,
+      color,
+      reminder_time: reminderTime || null,
+    };
 
     if (habit) {
-      await supabase.from("habits").update({
-        name: name.trim(),
-        icon,
-        frequency: targetDays.length === 7 ? "daily" : "custom",
-        target_days: targetDays,
-      }).eq("id", habit.id);
+      await supabase.from("habits").update(payload).eq("id", habit.id);
     } else {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("habits").insert({
-        user_id: user.id,
-        name: name.trim(),
-        description: null,
-        icon,
-        color: "#6366f1",
-        frequency: targetDays.length === 7 ? "daily" : "custom",
-        target_days: targetDays,
-        active: true,
-      });
+      if (!user) { setSaving(false); return; }
+      await supabase.from("habits").insert({ ...payload, user_id: user.id, active: true, icon: "⭐" });
     }
 
     setSaving(false);
@@ -363,6 +494,7 @@ function HabitDialog({
           <DialogTitle>{habit ? "Edit Habit" : "New Habit"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 1. Name */}
           <div className="space-y-2">
             <Label>Name</Label>
             <Input
@@ -373,39 +505,101 @@ function HabitDialog({
               required
             />
           </div>
+
+          {/* 2. Description (optional) */}
           <div className="space-y-2">
-            <Label>Icon</Label>
-            <div className="flex flex-wrap gap-2">
-              {ICONS.map((ic) => (
+            <Label>
+              Description{" "}
+              <span className="text-muted-foreground text-xs font-normal">(optional)</span>
+            </Label>
+            <Textarea
+              placeholder="What this habit means to you…"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="resize-none"
+            />
+          </div>
+
+          {/* 3. Repeat */}
+          <div className="space-y-2">
+            <Label>Repeat</Label>
+            <Select value={repeatMode} onValueChange={(v) => handleRepeatModeChange(v as RepeatMode)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Every day</SelectItem>
+                <SelectItem value="weekdays">Weekdays (Mon–Fri)</SelectItem>
+                <SelectItem value="weekends">Weekends (Sat–Sun)</SelectItem>
+                <SelectItem value="specific">Specific days</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {repeatMode === "specific" && (
+              <div className="flex gap-1 pt-1">
+                {DAY_PICKER_LABELS.map((label, i) => {
+                  const dow = DAY_PICKER_DOW[i];
+                  return (
+                    <button
+                      key={`${dow}-${i}`}
+                      type="button"
+                      onClick={() => toggleDay(dow)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        targetDays.includes(dow)
+                          ? "bg-mod-wellness text-white"
+                          : "bg-accent text-accent-foreground"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 4. Reminder time (optional) */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              Reminder time{" "}
+              <span className="text-muted-foreground text-xs font-normal">(optional)</span>
+            </Label>
+            <Input
+              type="time"
+              value={reminderTime}
+              onChange={(e) => setReminderTime(e.target.value)}
+              className="w-36"
+            />
+          </div>
+
+          {/* 5. Color */}
+          <div className="space-y-2">
+            <Label>Color</Label>
+            <div className="flex gap-2 flex-wrap">
+              {COLOR_SWATCHES.map((c) => (
                 <button
-                  key={ic}
+                  key={c}
                   type="button"
-                  onClick={() => setIcon(ic)}
-                  className={`text-xl p-1.5 rounded-lg transition-colors ${ic === icon ? "bg-mod-wellness-soft ring-2 ring-mod-wellness" : "hover:bg-accent"}`}
-                >
-                  {ic}
-                </button>
+                  onClick={() => setColor(c)}
+                  className={`w-7 h-7 rounded-full transition-transform active:scale-95 ${
+                    color === c ? "ring-2 ring-offset-2 ring-white/60 scale-110" : "hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: c }}
+                  aria-label={`Color ${c}`}
+                />
               ))}
             </div>
           </div>
-          <div className="space-y-2">
-            <Label>Repeat on</Label>
-            <div className="flex gap-1.5 flex-wrap">
-              {DAYS.map((d, i) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => toggleDay(i)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${targetDays.includes(i) ? "bg-mod-wellness text-white" : "bg-accent text-accent-foreground"}`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
+
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Saving…" : habit ? "Update" : "Add Habit"}</Button>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving || (repeatMode === "specific" && targetDays.length === 0)}>
+              {saving ? "Saving…" : habit ? "Update" : "Add Habit"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

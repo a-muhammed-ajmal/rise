@@ -138,6 +138,7 @@ type HabitRow = {
   target_days: number[];
   color: string;
   icon: string;
+  reminder_time: string | null; // stored as "HH:MM:SS", nullable
   active: boolean;
   created_at: string;
 };

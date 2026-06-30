@@ -313,6 +313,77 @@ describe("executeTool", () => {
     });
   });
 
+  describe("create_habit", () => {
+    it("inserts a habit with reminder_time and returns success", async () => {
+      const query = createMockQuery();
+      query.single = vi.fn().mockResolvedValue({
+        data: { id: "h-1", name: "Morning run", reminder_time: "07:00:00" },
+        error: null,
+      });
+      const mock = setupMockSupabase({ queries: { habits: query } });
+      mock.from = vi.fn((table: string) => {
+        if (table === "habits") return query;
+        return createMockQuery();
+      });
+
+      const result = await executeTool("create_habit", {
+        name: "Morning run",
+        reminder_time: "07:00",
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Morning run");
+      const insertArg = query.insert.mock.calls[0][0] as Record<string, unknown>;
+      expect(insertArg.reminder_time).toBe("07:00");
+    });
+
+    it("inserts a habit without reminder_time when omitted", async () => {
+      const query = createMockQuery();
+      query.single = vi.fn().mockResolvedValue({
+        data: { id: "h-2", name: "Read", reminder_time: null },
+        error: null,
+      });
+      const mock = setupMockSupabase({ queries: { habits: query } });
+      mock.from = vi.fn((table: string) => {
+        if (table === "habits") return query;
+        return createMockQuery();
+      });
+
+      const result = await executeTool("create_habit", { name: "Read" });
+      expect(result.success).toBe(true);
+      const insertArg = query.insert.mock.calls[0][0] as Record<string, unknown>;
+      expect(insertArg.reminder_time).toBeNull();
+    });
+  });
+
+  describe("update_habit", () => {
+    const validHabitId = "12345678-1234-4234-8234-123456789012"; // valid RFC 4122
+
+    it("updates a habit reminder_time to a valid time string", async () => {
+      const query = createMockQuery();
+      query.single = vi.fn().mockResolvedValue({
+        data: { name: "Read" },
+        error: null,
+      });
+      setupMockSupabase({ queries: { habits: query } });
+
+      const result = await executeTool("update_habit", {
+        id: validHabitId,
+        reminder_time: "20:00",
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Read");
+    });
+
+    it("rejects invalid reminder_time format", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("update_habit", {
+        id: validHabitId,
+        reminder_time: "7am",
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("create_goal", () => {
     it("inserts a goal and returns success", async () => {
       const query = createMockQuery();

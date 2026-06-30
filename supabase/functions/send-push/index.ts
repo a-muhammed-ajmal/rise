@@ -120,11 +120,12 @@ Deno.serve(async (_req) => {
     if (types.includes("habit_nudge")) {
       const { data: habits } = await supabase
         .from("habits")
-        .select("id, name, frequency, target_days")
+        .select("id, name, frequency, target_days, reminder_time")
         .eq("user_id", sub.user_id)
         .eq("active", true);
 
       const todayDow = new Date().getDay(); // 0=Sun … 6=Sat
+      const currentHour = new Date().getUTCHours();
 
       for (const habit of habits ?? []) {
         const isDueToday =
@@ -133,6 +134,12 @@ Deno.serve(async (_req) => {
           (habit.frequency === "custom" && (habit.target_days ?? []).includes(todayDow));
 
         if (!isDueToday) continue;
+
+        // If a reminder_time is set, only fire during that UTC hour
+        if (habit.reminder_time) {
+          const reminderHour = parseInt((habit.reminder_time as string).split(":")[0], 10);
+          if (currentHour !== reminderHour) continue;
+        }
 
         // Check if already logged today
         const { data: logged } = await supabase
