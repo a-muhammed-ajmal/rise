@@ -254,8 +254,30 @@ export default function WellnessPage() {
             return (
               <Card key={habit.id} className={`card-interactive ${cardBorderClass}`}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  {/* Left: mark buttons / state indicator */}
-                  <div className="shrink-0 flex items-center gap-1">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: habit.color ?? "#6366f1" }}
+                      />
+                      <span className="text-sm font-medium truncate">{habit.name}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {habit.target_days.length === 7
+                        ? "Every day"
+                        : habit.target_days.map((d) => DAYS_LONG[d]).join(", ")}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {streak > 0 && (
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        <Flame className="w-3 h-3 text-orange-500" />
+                        {streak}
+                      </Badge>
+                    )}
+
+                    {/* Mark buttons — right side, next to ⋮ */}
                     {markState === "none" && isDueToday ? (
                       <>
                         <button
@@ -283,7 +305,7 @@ export default function WellnessPage() {
                         <button
                           type="button"
                           onClick={() => undoMark(habit.id)}
-                          className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                          className="text-muted-foreground hover:text-foreground transition-colors"
                           aria-label="Undo"
                         >
                           <Undo2 className="w-3.5 h-3.5" />
@@ -297,40 +319,14 @@ export default function WellnessPage() {
                         <button
                           type="button"
                           onClick={() => undoMark(habit.id)}
-                          className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                          className="text-muted-foreground hover:text-foreground transition-colors"
                           aria-label="Undo"
                         >
                           <Undo2 className="w-3.5 h-3.5" />
                         </button>
                       </>
-                    ) : (
-                      /* Not due today — neutral placeholder */
-                      <div className="w-7 h-7 rounded-full border-2 border-muted-foreground/20" />
-                    )}
-                  </div>
+                    ) : null}
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: habit.color ?? "#6366f1" }}
-                      />
-                      <span className="text-sm font-medium truncate">{habit.name}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {habit.target_days.length === 7
-                        ? "Every day"
-                        : habit.target_days.map((d) => DAYS_LONG[d]).join(", ")}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {streak > 0 && (
-                      <Badge variant="secondary" className="gap-1 text-xs">
-                        <Flame className="w-3 h-3 text-orange-500" />
-                        {streak}
-                      </Badge>
-                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent">
                         <MoreVertical className="w-4 h-4" />

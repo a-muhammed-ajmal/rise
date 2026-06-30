@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { CheckSquare, Heart, DollarSign, Target, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { formatAED } from "@/lib/format";
+import { HabitDashboardSection } from "@/components/wellness/habit-dashboard-section";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -40,9 +41,8 @@ export default async function HomePage() {
       .contains("target_days", [new Date().getDay()]),
     supabase
       .from("habit_logs")
-      .select("habit_id")
-      .eq("logged_date", today)
-      .eq("completed", true),
+      .select("habit_id, completed")
+      .eq("logged_date", today),
     supabase
       .from("goals")
       .select("*")
@@ -57,10 +57,9 @@ export default async function HomePage() {
       .limit(3),
   ]);
 
-  const loggedHabitIds = new Set((habitLogs ?? []).map((l) => l.habit_id));
   const dueHabits = todayHabits ?? [];
   const completedCount = dueHabits.filter((h) =>
-    loggedHabitIds.has(h.id),
+    habitLogs?.some((l) => l.habit_id === h.id && l.completed === true),
   ).length;
 
   const greeting = (() => {
@@ -211,34 +210,13 @@ export default async function HomePage() {
             {dueHabits.length > 0 ? (
               <>
                 <Progress
-                  value={
-                    dueHabits.length > 0
-                      ? (completedCount / dueHabits.length) * 100
-                      : 0
-                  }
+                  value={(completedCount / dueHabits.length) * 100}
                   className="h-2 mb-3"
                 />
-                {dueHabits.map((habit) => {
-                  const done = loggedHabitIds.has(habit.id);
-                  return (
-                    <div
-                      key={habit.id}
-                      className="flex items-center gap-2 py-1"
-                    >
-                      <span className={done ? "opacity-100" : "opacity-40"}>
-                        {habit.icon}
-                      </span>
-                      <span
-                        className={`text-sm flex-1 ${done ? "line-through text-muted-foreground" : ""}`}
-                      >
-                        {habit.name}
-                      </span>
-                      {done && (
-                        <span className="text-xs text-mod-finance">✓</span>
-                      )}
-                    </div>
-                  );
-                })}
+                <HabitDashboardSection
+                  habits={dueHabits}
+                  logs={habitLogs ?? []}
+                />
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
