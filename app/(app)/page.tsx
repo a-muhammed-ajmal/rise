@@ -38,7 +38,8 @@ export default async function HomePage() {
       .from("habits")
       .select("*")
       .eq("active", true)
-      .contains("target_days", [new Date().getDay()]),
+      .contains("target_days", [new Date().getDay()])
+      .order("reminder_time", { ascending: true, nullsFirst: false }),
     supabase
       .from("habit_logs")
       .select("habit_id, completed")
