@@ -93,7 +93,6 @@ export default function FinancePage() {
 
   // Monthly view state
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [metricsView, setMetricsView] = useState<"monthly" | "overall">("monthly");
 
   // Transaction dialogs
   const [txnOpen, setTxnOpen] = useState(false);
@@ -182,22 +181,6 @@ export default function FinancePage() {
     .filter((t) => t.type === "expense")
     .reduce((s, t) => s + t.amount, 0);
   const monthlyNet = monthlyIncome - monthlyExpense;
-
-  // Overall (all-time) — income & expense only
-  const allFinancialTxns = useMemo(
-    () =>
-      allTransactions.filter(
-        (t) => t.type === "income" || t.type === "expense"
-      ),
-    [allTransactions]
-  );
-  const overallIncome = allFinancialTxns
-    .filter((t) => t.type === "income")
-    .reduce((s, t) => s + t.amount, 0);
-  const overallExpense = allFinancialTxns
-    .filter((t) => t.type === "expense")
-    .reduce((s, t) => s + t.amount, 0);
-  const overallNet = overallIncome - overallExpense;
 
   // Spending by category — current month only
   const spendingByCategory = useMemo(
@@ -426,112 +409,55 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* Financial metrics — Balloon In / Balloon Out / Net */}
-      <div className="animate-rise-in stagger-3 space-y-2">
-        {/* Toggle + month selector */}
-        <div className="flex items-center justify-between">
-          <div className="flex rounded-md border border-border overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setMetricsView("monthly")}
-              className={`px-3 py-1 text-xs transition-colors ${
-                metricsView === "monthly"
-                  ? "bg-mod-finance text-white"
-                  : "bg-card text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setMetricsView("overall")}
-              className={`px-3 py-1 text-xs transition-colors border-l border-border ${
-                metricsView === "overall"
-                  ? "bg-mod-finance text-white"
-                  : "bg-card text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              Overall
-            </button>
-          </div>
-
-          {metricsView === "monthly" && (
-            <div className="flex items-center gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                onClick={() => setSelectedMonth((m) => subMonths(m, 1))}
-                aria-label="Previous month"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <span className="text-xs text-muted-foreground min-w-[90px] text-center">
-                {format(selectedMonth, "MMM yyyy")}
-              </span>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                onClick={() => setSelectedMonth((m) => addMonths(m, 1))}
-                aria-label="Next month"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
+      {/* Monthly summary — compact */}
+      <div className="animate-rise-in stagger-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            onClick={() => setSelectedMonth((m) => subMonths(m, 1))}
+            aria-label="Previous month"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground min-w-[72px] text-center">
+            {format(selectedMonth, "MMM yyyy")}
+          </span>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            onClick={() => setSelectedMonth((m) => addMonths(m, 1))}
+            aria-label="Next month"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
 
-        {/* Metric cards */}
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="border-t-4 border-mod-finance">
-            <CardContent className="p-3 text-center">
-              <p className="text-xs text-muted-foreground truncate">
-                Balloon In
+        <div className="flex gap-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-card border border-border">
+            <TrendingUp className="w-3 h-3 text-mod-finance shrink-0" />
+            <div>
+              <p className="text-[10px] text-muted-foreground leading-none">
+                Income
               </p>
-              <p className="font-mono font-medium text-mod-finance truncate text-sm">
-                {formatAED(
-                  metricsView === "monthly" ? monthlyIncome : overallIncome
-                )}
+              <p className="text-xs font-mono font-medium text-mod-finance leading-tight">
+                {formatAED(monthlyIncome)}
               </p>
-            </CardContent>
-          </Card>
-          <Card className="border-t-4 border-destructive">
-            <CardContent className="p-3 text-center">
-              <p className="text-xs text-muted-foreground truncate">
-                Balloon Out
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-card border border-border">
+            <TrendingDown className="w-3 h-3 text-destructive shrink-0" />
+            <div>
+              <p className="text-[10px] text-muted-foreground leading-none">
+                Spent
               </p>
-              <p className="font-mono font-medium text-destructive truncate text-sm">
-                {formatAED(
-                  metricsView === "monthly" ? monthlyExpense : overallExpense
-                )}
+              <p className="text-xs font-mono font-medium text-destructive leading-tight">
+                {formatAED(monthlyExpense)}
               </p>
-            </CardContent>
-          </Card>
-          <Card
-            className={`border-t-4 ${
-              (metricsView === "monthly" ? monthlyNet : overallNet) >= 0
-                ? "border-mod-finance"
-                : "border-destructive"
-            }`}
-          >
-            <CardContent className="p-3 text-center">
-              <p className="text-xs text-muted-foreground truncate">Net</p>
-              <p
-                className={`font-mono font-medium truncate text-sm ${
-                  (metricsView === "monthly" ? monthlyNet : overallNet) >= 0
-                    ? "text-mod-finance"
-                    : "text-destructive"
-                }`}
-              >
-                {formatAED(
-                  Math.abs(
-                    metricsView === "monthly" ? monthlyNet : overallNet
-                  )
-                )}
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -567,6 +493,21 @@ export default function FinancePage() {
       {/* Overview */}
       {tab === "overview" && (
         <div className="space-y-3 animate-rise-in stagger-4">
+          {/* Balloon — net for selected month */}
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-card border border-border">
+            <span className="text-xs text-muted-foreground">
+              Balloon · {format(selectedMonth, "MMM yyyy")}
+            </span>
+            <span
+              className={`text-sm font-mono font-medium ${
+                monthlyNet >= 0 ? "text-mod-finance" : "text-destructive"
+              }`}
+            >
+              {monthlyNet >= 0 ? "+" : "−"}
+              {formatAED(Math.abs(monthlyNet))}
+            </span>
+          </div>
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Spending by Category</CardTitle>
@@ -574,11 +515,7 @@ export default function FinancePage() {
             <CardContent className="space-y-2">
               {Object.keys(spendingByCategory).length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No expenses{" "}
-                  {metricsView === "monthly"
-                    ? `in ${format(selectedMonth, "MMMM")}`
-                    : "yet"}
-                  .
+                  No expenses in {format(selectedMonth, "MMMM")}.
                 </p>
               ) : (
                 Object.entries(spendingByCategory)
