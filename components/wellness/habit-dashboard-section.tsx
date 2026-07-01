@@ -23,6 +23,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
+  const pending = habits.filter((h) => !logMap.has(h.id));
 
   async function markDone(habitId: string) {
     const supabase = createClient();
@@ -65,11 +66,14 @@ export function HabitDashboardSection({ habits, logs }: Props) {
     return habit.target_days.map((d) => DAYS_LONG[d]).join(", ");
   }
 
-  const visible = expanded ? habits : habits.slice(0, VISIBLE_COUNT);
-  const remaining = habits.length - VISIBLE_COUNT;
+  const visible = expanded ? pending : pending.slice(0, VISIBLE_COUNT);
+  const remaining = pending.length - VISIBLE_COUNT;
 
   if (!habits.length) {
     return <p className="text-sm text-muted-foreground">No habits due today.</p>;
+  }
+  if (!pending.length) {
+    return <p className="text-sm text-muted-foreground">All habits logged for today!</p>;
   }
 
   return (
@@ -159,7 +163,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
         );
       })}
 
-      {habits.length > VISIBLE_COUNT && (
+      {pending.length > VISIBLE_COUNT && (
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
