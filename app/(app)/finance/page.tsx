@@ -212,6 +212,15 @@ export default function FinancePage() {
     [allTransactions, monthStart, monthEnd]
   );
 
+  // Group transactions by date for the list view
+  const groupedTxns = useMemo(() => {
+    const groups: Record<string, Transaction[]> = {};
+    monthlyTxnsForList.forEach((t) => {
+      (groups[t.date] ??= []).push(t);
+    });
+    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
+  }, [monthlyTxnsForList]);
+
   // Wallet totals
   const activeWallets = paymentMethods.filter((m) => m.is_active);
   const totalWalletBalance = activeWallets.reduce(
@@ -328,29 +337,31 @@ export default function FinancePage() {
           </div>
           Finance
         </h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
-            size="sm"
-            variant="outline"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
             onClick={() => {
               setEditTxn(null);
               setTxnType("income");
               setTxnOpen(true);
             }}
-            className="gap-1.5"
+            aria-label="Add income"
           >
-            <TrendingUp className="w-4 h-4 text-mod-finance" /> Income
+            <TrendingUp className="w-4 h-4 text-mod-finance" />
           </Button>
           <Button
-            size="sm"
+            size="icon"
+            className="h-8 w-8 bg-mod-finance hover:bg-mod-finance/90 text-white"
             onClick={() => {
               setEditTxn(null);
               setTxnType("expense");
               setTxnOpen(true);
             }}
-            className="gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
+            aria-label="Add expense"
           >
-            <TrendingDown className="w-4 h-4" /> Expense
+            <TrendingDown className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -362,7 +373,7 @@ export default function FinancePage() {
             {activeWallets.map((wallet) => (
               <div
                 key={wallet.id}
-                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card"
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card min-h-[44px]"
               >
                 <div
                   className="w-2 h-2 rounded-full"
@@ -388,7 +399,7 @@ export default function FinancePage() {
               </div>
             ))}
             {/* Total balance tile */}
-            <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-mod-finance/30 bg-mod-finance-soft">
+            <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-mod-finance/30 bg-mod-finance-soft min-h-[44px]">
               <Wallet className="w-3.5 h-3.5 text-mod-finance" />
               <div>
                 <p className="text-xs text-muted-foreground leading-none mb-0.5">
@@ -409,25 +420,25 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* Monthly summary — compact */}
-      <div className="animate-rise-in stagger-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
+      {/* Monthly summary — centered nav + 3-column stat grid */}
+      <div className="animate-rise-in stagger-3 space-y-2.5">
+        <div className="flex items-center justify-center gap-0.5">
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="h-8 w-8"
             onClick={() => setSelectedMonth((m) => subMonths(m, 1))}
             aria-label="Previous month"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <span className="text-xs text-muted-foreground min-w-[72px] text-center">
+          <span className="text-sm font-medium text-foreground min-w-[88px] text-center">
             {format(selectedMonth, "MMM yyyy")}
           </span>
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="h-8 w-8"
             onClick={() => setSelectedMonth((m) => addMonths(m, 1))}
             aria-label="Next month"
           >
@@ -435,28 +446,46 @@ export default function FinancePage() {
           </Button>
         </div>
 
-        <div className="flex gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-card border border-border">
-            <TrendingUp className="w-3 h-3 text-mod-finance shrink-0" />
-            <div>
-              <p className="text-[10px] text-muted-foreground leading-none">
-                Income
-              </p>
-              <p className="text-xs font-mono font-medium text-mod-finance leading-tight">
-                {formatAED(monthlyIncome)}
-              </p>
-            </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="flex flex-col items-center gap-1 py-3 rounded-xl bg-card border border-border">
+            <TrendingUp className="w-3.5 h-3.5 text-mod-finance" />
+            <p className="text-[10px] text-muted-foreground leading-none">Income</p>
+            <p className="text-xs font-mono font-semibold text-mod-finance leading-none">
+              {formatAED(monthlyIncome)}
+            </p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-card border border-border">
-            <TrendingDown className="w-3 h-3 text-destructive shrink-0" />
-            <div>
-              <p className="text-[10px] text-muted-foreground leading-none">
-                Spent
-              </p>
-              <p className="text-xs font-mono font-medium text-destructive leading-tight">
-                {formatAED(monthlyExpense)}
-              </p>
-            </div>
+
+          <div
+            className={`flex flex-col items-center gap-1 py-3 rounded-xl border ${
+              monthlyNet >= 0
+                ? "bg-mod-finance-soft border-mod-finance/30"
+                : "bg-destructive/10 border-destructive/30"
+            }`}
+          >
+            <DollarSign
+              className={`w-3.5 h-3.5 ${
+                monthlyNet >= 0 ? "text-mod-finance" : "text-destructive"
+              }`}
+            />
+            <p className="text-[10px] text-muted-foreground leading-none">
+              {monthlyNet >= 0 ? "Saved" : "Deficit"}
+            </p>
+            <p
+              className={`text-xs font-mono font-semibold leading-none ${
+                monthlyNet >= 0 ? "text-mod-finance" : "text-destructive"
+              }`}
+            >
+              {monthlyNet >= 0 ? "+" : "−"}
+              {formatAED(Math.abs(monthlyNet))}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-1 py-3 rounded-xl bg-card border border-border">
+            <TrendingDown className="w-3.5 h-3.5 text-destructive" />
+            <p className="text-[10px] text-muted-foreground leading-none">Spent</p>
+            <p className="text-xs font-mono font-semibold text-destructive leading-none">
+              {formatAED(monthlyExpense)}
+            </p>
           </div>
         </div>
       </div>
@@ -464,26 +493,23 @@ export default function FinancePage() {
       {/* Tabs */}
       <div className="animate-rise-in stagger-4">
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-          <TabsList className="w-full overflow-x-auto flex whitespace-nowrap">
-            <TabsTrigger value="overview" className="flex-1 text-xs shrink-0">
+          <TabsList className="w-full overflow-x-auto flex justify-start whitespace-nowrap h-auto p-1 gap-0.5">
+            <TabsTrigger value="overview" className="shrink-0 text-xs px-3 py-1.5">
               Overview
             </TabsTrigger>
-            <TabsTrigger
-              value="transactions"
-              className="flex-1 text-xs shrink-0"
-            >
+            <TabsTrigger value="transactions" className="shrink-0 text-xs px-3 py-1.5">
               Transactions
             </TabsTrigger>
-            <TabsTrigger value="transfers" className="flex-1 text-xs shrink-0">
+            <TabsTrigger value="transfers" className="shrink-0 text-xs px-3 py-1.5">
               Transfers
             </TabsTrigger>
-            <TabsTrigger value="wallets" className="flex-1 text-xs shrink-0">
+            <TabsTrigger value="wallets" className="shrink-0 text-xs px-3 py-1.5">
               Wallets
             </TabsTrigger>
-            <TabsTrigger value="budgets" className="flex-1 text-xs shrink-0">
+            <TabsTrigger value="budgets" className="shrink-0 text-xs px-3 py-1.5">
               Budgets
             </TabsTrigger>
-            <TabsTrigger value="debts" className="flex-1 text-xs shrink-0">
+            <TabsTrigger value="debts" className="shrink-0 text-xs px-3 py-1.5">
               Debts
             </TabsTrigger>
           </TabsList>
@@ -493,21 +519,6 @@ export default function FinancePage() {
       {/* Overview */}
       {tab === "overview" && (
         <div className="space-y-3 animate-rise-in stagger-4">
-          {/* Balloon — net for selected month */}
-          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-card border border-border">
-            <span className="text-xs text-muted-foreground">
-              Balloon · {format(selectedMonth, "MMM yyyy")}
-            </span>
-            <span
-              className={`text-sm font-mono font-medium ${
-                monthlyNet >= 0 ? "text-mod-finance" : "text-destructive"
-              }`}
-            >
-              {monthlyNet >= 0 ? "+" : "−"}
-              {formatAED(Math.abs(monthlyNet))}
-            </span>
-          </div>
-
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Spending by Category</CardTitle>
@@ -522,9 +533,14 @@ export default function FinancePage() {
                   .sort(([, a], [, b]) => b - a)
                   .map(([cat, amount]) => (
                     <div key={cat} className="space-y-1">
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between items-baseline text-sm">
                         <span>{cat}</span>
-                        <span className="font-medium">{formatAED(amount)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground">
+                            {Math.round((amount / monthlyExpense) * 100)}%
+                          </span>
+                          <span className="font-mono font-medium">{formatAED(amount)}</span>
+                        </div>
                       </div>
                       <Progress
                         value={
@@ -544,77 +560,86 @@ export default function FinancePage() {
 
       {/* Transactions */}
       {tab === "transactions" && (
-        <div className="space-y-2 animate-rise-in stagger-4">
-          {monthlyTxnsForList.length === 0 ? (
+        <div className="space-y-1 animate-rise-in stagger-4">
+          {groupedTxns.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground text-sm">
               No transactions in {format(selectedMonth, "MMMM yyyy")}.
             </p>
           ) : (
-            monthlyTxnsForList.map((txn) => (
-              <div
-                key={txn.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      txn.type === "income"
-                        ? "bg-mod-finance-soft"
-                        : "bg-red-100 dark:bg-red-900/30"
-                    }`}
-                  >
-                    {txn.type === "income" ? (
-                      <ArrowUpRight className="w-4 h-4 text-mod-finance" />
-                    ) : (
-                      <ArrowDownLeft className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">
-                      {txn.description ?? txn.category}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {txn.category} · {formatDate(txn.date)}
-                      {txn.payment_method && ` · ${txn.payment_method}`}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-sm font-semibold ${
-                      txn.type === "income"
-                        ? "text-mod-finance"
-                        : "text-destructive"
-                    }`}
-                  >
-                    {txn.type === "income" ? "+" : "-"}
-                    {formatAED(txn.amount)}
-                  </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent">
-                      <MoreVertical className="w-3.5 h-3.5" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setEditTxn(txn);
-                          setTxnType(
-                            txn.type === "income" ? "income" : "expense"
-                          );
-                          setTxnOpen(true);
-                        }}
-                      >
-                        <Pencil className="w-4 h-4 mr-2" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteTxnId(txn.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            groupedTxns.map(([date, txns]) => (
+              <div key={date}>
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 pt-3 pb-1.5 first:pt-0">
+                  {formatDate(date)}
+                </p>
+                <div className="space-y-1.5">
+                  {txns.map((txn) => (
+                    <div
+                      key={txn.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            txn.type === "income"
+                              ? "bg-mod-finance-soft"
+                              : "bg-red-100 dark:bg-red-900/30"
+                          }`}
+                        >
+                          {txn.type === "income" ? (
+                            <ArrowUpRight className="w-4 h-4 text-mod-finance" />
+                          ) : (
+                            <ArrowDownLeft className="w-4 h-4 text-red-600 dark:text-red-400" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {txn.description ?? txn.category}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {txn.category}
+                            {txn.payment_method && ` · ${txn.payment_method}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-sm font-semibold font-mono ${
+                            txn.type === "income"
+                              ? "text-mod-finance"
+                              : "text-destructive"
+                          }`}
+                        >
+                          {txn.type === "income" ? "+" : "−"}
+                          {formatAED(txn.amount)}
+                        </span>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent">
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditTxn(txn);
+                                setTxnType(
+                                  txn.type === "income" ? "income" : "expense"
+                                );
+                                setTxnOpen(true);
+                              }}
+                            >
+                              <Pencil className="w-4 h-4 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeleteTxnId(txn.id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))
