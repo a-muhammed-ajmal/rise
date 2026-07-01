@@ -98,15 +98,18 @@ Run `git log -1 --format='%an <%ae>'` and confirm the author line shows
 (`git commit --amend --reset-author`) before anything else happens —
 don't leave a wrong-identity commit in history "to fix later."
 
-## 6. Push to origin/main
+## 6. Push — always, immediately after commit
 
-After identity is confirmed, push:
+After identity is confirmed, push the **current branch** automatically —
+do not ask, do not wait for the user to say "push":
 
 ```bash
-git push origin main
+git push origin <current-branch>
 ```
 
 Remote: https://github.com/a-muhammed-ajmal/rise
 
-Confirm the push succeeded by checking the output line
-(`main -> main`). Never force-push unless the user explicitly asks.
+- If on a feature branch (`feat/*`, `fix/*`, etc.), push that branch.
+- **Never** push directly to `main` — CLAUDE.md prohibits it.
+- Confirm the push succeeded by checking the output line.
+- Never force-push unless the user explicitly asks.

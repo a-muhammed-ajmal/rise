@@ -1,4 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
+
+const SubscribeBody = z.object({
+  endpoint: z.string().url().max(2000),
+  keys: z.object({
+    p256dh: z.string().min(1).max(256),
+    auth: z.string().min(1).max(64),
+  }),
+});
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -7,24 +16,19 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
 
-  const body = (await request.json()) as {
-    endpoint?: string;
-    keys?: { p256dh?: string; auth?: string };
-  };
-
-  if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
-    return Response.json(
-      { error: "Missing endpoint, keys.p256dh, or keys.auth" },
-      { status: 400 },
-    );
+  const parsed = SubscribeBody.safeParse(await request.json());
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid subscription data" }, { status: 400 });
   }
+
+  const { endpoint, keys } = parsed.data;
 
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
       user_id: user.id,
-      endpoint: body.endpoint,
-      p256dh: body.keys.p256dh,
-      auth: body.keys.auth,
+      endpoint,
+      p256dh: keys.p256dh,
+      auth: keys.auth,
       reminder_types: ["habit_nudge", "crm_followup"],
     },
     { onConflict: "endpoint" },

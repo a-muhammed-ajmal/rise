@@ -110,8 +110,9 @@ export async function extractText(
       mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     ) {
       const { Workbook } = await import("exceljs");
+      const { Readable } = await import("stream");
       const workbook = new Workbook();
-      await workbook.xlsx.load(buf);
+      await workbook.xlsx.read(Readable.from(buf));
       const worksheet = workbook.worksheets[0];
       if (!worksheet) return undefined;
       const rows: string[] = [];

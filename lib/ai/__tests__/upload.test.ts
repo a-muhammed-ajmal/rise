@@ -14,6 +14,11 @@ const mockGenerateContent = vi.hoisted(() =>
   }),
 );
 
+const mockWorkbookRead = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockWorksheetEachRow = vi.hoisted(() => vi.fn());
+// Controls whether the mocked workbook exposes a worksheet or empty array
+const mockHasWorksheet = vi.hoisted(() => ({ value: true }));
+
 // ── Mocks must be hoisted before imports of the module under test ──────────
 
 vi.mock("@google/genai", () => ({
@@ -32,20 +37,26 @@ vi.mock("mammoth", () => ({
   extractRawText: vi.fn().mockResolvedValue({ value: "Extracted Word text." }),
 }));
 
-vi.mock("xlsx", () => ({
-  read: vi.fn().mockReturnValue({
-    SheetNames: ["Sheet1"],
-    Sheets: { Sheet1: {} },
+// Use a named regular function (not arrow) as the constructor implementation
+// so Vitest correctly assigns properties to `this` when called with `new`.
+vi.mock("stream", () => ({
+  Readable: { from: vi.fn((buf: unknown) => buf) },
+}));
+
+vi.mock("exceljs", () => ({
+  Workbook: vi.fn(function WorkbookMock(this: Record<string, unknown>) {
+    this.xlsx = { read: mockWorkbookRead };
+    Object.defineProperty(this, "worksheets", {
+      get: () => (mockHasWorksheet.value ? [{ eachRow: mockWorksheetEachRow }] : []),
+      configurable: true,
+    });
   }),
-  utils: {
-    sheet_to_csv: vi.fn().mockReturnValue("col1,col2\nval1,val2"),
-  },
 }));
 
 import { validateMimeAndSize, extractText, transcribeAudio } from "../upload-helpers";
 import pdfParse from "pdf-parse";
 import * as mammoth from "mammoth";
-import * as XLSX from "xlsx";
+import { Workbook } from "exceljs";
 
 // ─── validateMimeAndSize ──────────────────────────────────────────────────
 
@@ -170,11 +181,54 @@ describe("validateMimeAndSize", () => {
 // ─── extractText ──────────────────────────────────────────────────────────
 
 describe("extractText", () => {
+  // Targeted clears rather than vi.clearAllMocks() so the Workbook
+  // constructor implementation (set in vi.mock()) is preserved between tests.
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.mocked(pdfParse).mockClear();
+    vi.mocked(mammoth.extractRawText).mockClear();
+    vi.mocked(Workbook).mockClear();
+    mockWorkbookRead.mockClear().mockResolvedValue(undefined);
+    mockWorksheetEachRow.mockClear();
+    mockHasWorksheet.value = true;
+
+    // Default xlsx mock: two rows → "col1,col2\nval1,val2"
+    mockWorksheetEachRow.mockImplementation(
+      (
+        _opts: { includeEmpty: boolean },
+        cb: (
+          row: {
+            eachCell: (
+              opts: { includeEmpty: boolean },
+              cellCb: (cell: { text: string }) => void,
+            ) => void;
+          },
+          n: number,
+        ) => void,
+      ) => {
+        cb(
+          {
+            eachCell: (_o, cellCb) => {
+              cellCb({ text: "col1" });
+              cellCb({ text: "col2" });
+            },
+          },
+          1,
+        );
+        cb(
+          {
+            eachCell: (_o, cellCb) => {
+              cellCb({ text: "val1" });
+              cellCb({ text: "val2" });
+            },
+          },
+          2,
+        );
+      },
+    );
   });
 
   it("calls pdf-parse for application/pdf and returns extracted text", async () => {
+    vi.mocked(pdfParse).mockResolvedValueOnce({ text: "Extracted PDF text." } as never);
     const buf = Buffer.from("fake pdf");
     const result = await extractText(buf, "application/pdf");
     expect(pdfParse).toHaveBeenCalledWith(buf);
@@ -182,6 +236,10 @@ describe("extractText", () => {
   });
 
   it("calls mammoth for docx MIME and returns extracted text", async () => {
+    vi.mocked(mammoth.extractRawText).mockResolvedValueOnce({
+      value: "Extracted Word text.",
+      messages: [],
+    });
     const buf = Buffer.from("fake docx");
     const mime =
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -191,6 +249,10 @@ describe("extractText", () => {
   });
 
   it("calls mammoth for application/msword", async () => {
+    vi.mocked(mammoth.extractRawText).mockResolvedValueOnce({
+      value: "doc text",
+      messages: [],
+    });
     const buf = Buffer.from("fake doc");
     await extractText(buf, "application/msword");
     expect(mammoth.extractRawText).toHaveBeenCalled();
@@ -209,12 +271,13 @@ describe("extractText", () => {
     expect(result).toBe("a,b\n1,2");
   });
 
-  it("calls xlsx.read for spreadsheetml.sheet and returns CSV string", async () => {
+  it("creates a Workbook, reads from a stream, and returns CSV for spreadsheetml.sheet", async () => {
     const buf = Buffer.from("fake xlsx");
     const mime =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     const result = await extractText(buf, mime);
-    expect(XLSX.read).toHaveBeenCalledWith(buf, { type: "buffer" });
+    expect(vi.mocked(Workbook)).toHaveBeenCalled();
+    expect(mockWorkbookRead).toHaveBeenCalled();
     expect(result).toBe("col1,col2\nval1,val2");
   });
 
@@ -229,11 +292,8 @@ describe("extractText", () => {
     expect(result).toBeUndefined();
   });
 
-  it("returns undefined when XLSX sheet list is empty", async () => {
-    vi.mocked(XLSX.read).mockReturnValueOnce({
-      SheetNames: [],
-      Sheets: {},
-    });
+  it("returns undefined when workbook has no worksheets", async () => {
+    mockHasWorksheet.value = false;
     const mime =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     const result = await extractText(Buffer.from("fake"), mime);
