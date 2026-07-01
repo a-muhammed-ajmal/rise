@@ -269,6 +269,11 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
 
   // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
   {
+    name: 'list_payment_methods',
+    description: "Get the user's wallet / payment methods with current balances. Call this first to resolve a payment_method_id before logging a transaction.",
+    parameters: { type: Type.OBJECT, properties: {}, required: [] },
+  },
+  {
     name: 'log_expense',
     description: 'Record an expense transaction in AED',
     parameters: {
@@ -278,6 +283,7 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
         category: { type: Type.STRING, description: 'Expense category e.g. Food & Drinks, Transport, Shopping' },
         description: { type: Type.STRING, description: 'What the expense was for' },
         date: { type: Type.STRING, description: 'Date in YYYY-MM-DD format, defaults to today' },
+        payment_method_id: { type: Type.STRING, description: 'UUID of the wallet to debit. Call list_payment_methods first to resolve the id.' },
       },
       required: ['amount', 'category'],
     },
@@ -292,6 +298,7 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
         category: { type: Type.STRING, description: 'Income category e.g. Salary, Freelance, Business' },
         description: { type: Type.STRING, description: 'Income source description' },
         date: { type: Type.STRING, description: 'Date in YYYY-MM-DD format' },
+        payment_method_id: { type: Type.STRING, description: 'UUID of the wallet to credit. Call list_payment_methods first to resolve the id.' },
       },
       required: ['amount', 'category'],
     },
@@ -302,7 +309,7 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
     parameters: {
       type: Type.OBJECT,
       properties: {
-        type: { type: Type.STRING, enum: ['income', 'expense', 'all'], description: 'Filter by transaction type' },
+        type: { type: Type.STRING, enum: ['income', 'expense', 'transfer', 'adjustment', 'all'], description: 'Filter by transaction type' },
         start_date: { type: Type.STRING, description: 'Only return transactions on or after this date (YYYY-MM-DD)' },
         limit: { type: Type.NUMBER, description: 'Max results, default 20' },
       },

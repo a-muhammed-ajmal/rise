@@ -22,8 +22,8 @@ describe("AUTO_TOOLS", () => {
     expect(names).toContain("search_data");
   });
 
-  it("has 57 auto-execute tools", () => {
-    expect(AUTO_TOOLS).toHaveLength(57);
+  it("has 58 auto-execute tools", () => {
+    expect(AUTO_TOOLS).toHaveLength(58);
   });
 
   it.each(AUTO_TOOLS)("$name has valid schema", (tool) => {

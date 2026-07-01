@@ -23,6 +23,7 @@ const LogMoneyInput = z.object({
   category: z.string().min(1).max(100),
   description: z.string().max(500).optional().nullable(),
   date: dateStr.optional(),
+  payment_method_id: z.string().uuid().optional().nullable(),
 })
 
 const LogHabitInput = z.object({
@@ -191,7 +192,7 @@ const DeleteHabitLogInput = z.object({
 
 // Transactions
 const ListTransactionsInput = z.object({
-  type: z.enum(['income', 'expense', 'all']).optional(),
+  type: z.enum(['income', 'expense', 'transfer', 'adjustment', 'all']).optional(),
   start_date: dateStr.optional(),
   limit: z.number().int().positive().max(100).optional(),
 })
@@ -501,6 +502,17 @@ export async function executeTool(toolName: string, input: Record<string, unknow
       return { success: true, message: `Completed task: "${data?.title}"` }
     }
 
+    case 'list_payment_methods': {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .select('id, name, balance, color, is_active, display_order')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('display_order')
+      if (error) return dbErr('list_payment_methods', error)
+      return { success: true, message: `Found ${data?.length ?? 0} payment methods`, data }
+    }
+
     case 'log_expense': {
       const p = LogMoneyInput.safeParse(input)
       if (!p.success) return badInput()
@@ -511,6 +523,7 @@ export async function executeTool(toolName: string, input: Record<string, unknow
         category: p.data.category,
         description: p.data.description ?? null,
         date: p.data.date ?? today,
+        payment_method_id: p.data.payment_method_id ?? null,
         tags: [],
       })
       if (error) return dbErr('log_expense', error)
@@ -527,6 +540,7 @@ export async function executeTool(toolName: string, input: Record<string, unknow
         category: p.data.category,
         description: p.data.description ?? null,
         date: p.data.date ?? today,
+        payment_method_id: p.data.payment_method_id ?? null,
         tags: [],
       })
       if (error) return dbErr('log_income', error)
@@ -992,7 +1006,7 @@ export async function executeTool(toolName: string, input: Record<string, unknow
       const startDate = p.success ? p.data.start_date : undefined
       const limitVal = (p.success && p.data.limit) ? p.data.limit : 20
       let query = supabase.from('transactions')
-        .select('id, type, amount, category, description, date, payment_method')
+        .select('id, type, amount, category, description, date, payment_method, payment_method_id, from_payment_method_id, to_payment_method_id')
         .eq('user_id', user.id)
       if (typeFilter && typeFilter !== 'all') query = query.eq('type', typeFilter)
       if (startDate) query = query.gte('date', startDate)

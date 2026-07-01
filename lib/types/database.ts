@@ -96,15 +96,29 @@ type JournalEntryRow = {
   created_at: string;
   updated_at: string;
 };
+type PaymentMethodRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  balance: number;
+  color: string | null;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+};
 type TransactionRow = {
   id: string;
   user_id: string;
-  type: "income" | "expense";
+  type: "income" | "expense" | "transfer" | "adjustment";
   amount: number;
   category: string;
   description: string | null;
   date: string;
   payment_method: string | null;
+  payment_method_id: string | null;
+  from_payment_method_id: string | null;
+  to_payment_method_id: string | null;
   tags: string[];
   created_at: string;
 };
@@ -293,6 +307,11 @@ export interface Database {
         Insertable<JournalEntryRow>,
         Partial<Insertable<JournalEntryRow>>
       >;
+      payment_methods: T<
+        PaymentMethodRow,
+        Insertable<PaymentMethodRow>,
+        Partial<Insertable<PaymentMethodRow>>
+      >;
       transactions: T<
         TransactionRow,
         Insertable<TransactionRow>,
@@ -377,6 +396,7 @@ export type Goal = GoalRow;
 export type Milestone = MilestoneRow;
 export type Review = ReviewRow;
 export type JournalEntry = JournalEntryRow;
+export type PaymentMethod = PaymentMethodRow;
 export type Transaction = TransactionRow;
 export type Budget = BudgetRow;
 export type Debt = DebtRow;

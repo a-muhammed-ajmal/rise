@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Transaction, Budget, Debt } from "@/lib/types/database";
+import type { Transaction, Budget, Debt, PaymentMethod } from "@/lib/types/database";
 import { formatAED, formatDate, todayISO } from "@/lib/format";
+import { usePaymentMethods } from "@/lib/hooks/use-payment-methods";
+import { TransactionForm } from "./transaction-form";
+import { TransferForm } from "./transfer-form";
+import { WalletForm } from "./wallet-form";
+import { AdjustBalanceForm } from "./adjust-balance-form";
+import { WalletCard } from "./wallet-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -12,9 +18,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -41,13 +47,23 @@ import {
   Loader2,
   ArrowUpRight,
   ArrowDownLeft,
+  ArrowLeftRight,
   DollarSign,
   MoreVertical,
   Pencil,
   Trash2,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Wallet,
 } from "lucide-react";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import {
+  startOfMonth,
+  endOfMonth,
+  format,
+  addMonths,
+  subMonths,
+} from "date-fns";
 import { toast } from "sonner";
 
 const EXPENSE_CATEGORIES = [
@@ -64,28 +80,35 @@ const EXPENSE_CATEGORIES = [
   "Personal Care",
   "Other",
 ];
-const INCOME_CATEGORIES = [
-  "Salary",
-  "Freelance",
-  "Business",
-  "Investment",
-  "Gift",
-  "Other",
-];
-const PAYMENT_METHODS = ["Cash", "Credit Card", "Debit Card", "Bank Transfer", "Other"];
 
 export default function FinancePage() {
-  const [tab, setTab] = useState<"overview" | "transactions" | "budgets" | "debts">("overview");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [tab, setTab] = useState<
+    "overview" | "transactions" | "transfers" | "wallets" | "budgets" | "debts"
+  >("overview");
+
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Monthly view state
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [metricsView, setMetricsView] = useState<"monthly" | "overall">("monthly");
 
   // Transaction dialogs
   const [txnOpen, setTxnOpen] = useState(false);
   const [txnType, setTxnType] = useState<"income" | "expense">("expense");
   const [editTxn, setEditTxn] = useState<Transaction | null>(null);
   const [deleteTxnId, setDeleteTxnId] = useState<string | null>(null);
+
+  // Transfer dialog
+  const [transferOpen, setTransferOpen] = useState(false);
+
+  // Wallet dialogs
+  const [walletFormOpen, setWalletFormOpen] = useState(false);
+  const [editWallet, setEditWallet] = useState<PaymentMethod | null>(null);
+  const [adjustWallet, setAdjustWallet] = useState<PaymentMethod | null>(null);
+  const [deactivateWalletId, setDeactivateWalletId] = useState<string | null>(null);
 
   // Budget dialogs
   const [budgetOpen, setBudgetOpen] = useState(false);
@@ -98,17 +121,25 @@ export default function FinancePage() {
   const [deleteDebtId, setDeleteDebtId] = useState<string | null>(null);
   const [markPaidDebtId, setMarkPaidDebtId] = useState<string | null>(null);
 
+  const {
+    paymentMethods,
+    loading: walletsLoading,
+    refresh: refreshWallets,
+    createPaymentMethod,
+    updatePaymentMethod,
+    setActiveStatus,
+    reorderPaymentMethods,
+    adjustBalance,
+    findOrCreateByName,
+  } = usePaymentMethods();
+
   const fetchData = useCallback(async () => {
     const supabase = createClient();
-    const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
-    const monthEnd = format(endOfMonth(new Date()), "yyyy-MM-dd");
-
     const [{ data: txns }, { data: buds }, { data: dts }] = await Promise.all([
+      // Fetch all transactions — needed for overall metrics and transfers tab
       supabase
         .from("transactions")
         .select("*")
-        .gte("date", monthStart)
-        .lte("date", monthEnd)
         .order("date", { ascending: false }),
       supabase.from("budgets").select("*").gte("period_end", todayISO()),
       supabase
@@ -117,7 +148,7 @@ export default function FinancePage() {
         .is("paid_at", null)
         .order("created_at", { ascending: false }),
     ]);
-    setTransactions(txns ?? []);
+    setAllTransactions(txns ?? []);
     setBudgets(buds ?? []);
     setDebts(dts ?? []);
     setLoading(false);
@@ -127,13 +158,102 @@ export default function FinancePage() {
     fetchData();
   }, [fetchData]);
 
+  // ── Derived data ─────────────────────────────────────────────────────────────
+
+  const monthStart = format(startOfMonth(selectedMonth), "yyyy-MM-dd");
+  const monthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
+
+  // Monthly income/expense transactions (excludes transfers & adjustments)
+  const monthlyFinancialTxns = useMemo(
+    () =>
+      allTransactions.filter(
+        (t) =>
+          t.type === "income" || t.type === "expense"
+            ? t.date >= monthStart && t.date <= monthEnd
+            : false
+      ),
+    [allTransactions, monthStart, monthEnd]
+  );
+
+  const monthlyIncome = monthlyFinancialTxns
+    .filter((t) => t.type === "income")
+    .reduce((s, t) => s + t.amount, 0);
+  const monthlyExpense = monthlyFinancialTxns
+    .filter((t) => t.type === "expense")
+    .reduce((s, t) => s + t.amount, 0);
+  const monthlyNet = monthlyIncome - monthlyExpense;
+
+  // Overall (all-time) — income & expense only
+  const allFinancialTxns = useMemo(
+    () =>
+      allTransactions.filter(
+        (t) => t.type === "income" || t.type === "expense"
+      ),
+    [allTransactions]
+  );
+  const overallIncome = allFinancialTxns
+    .filter((t) => t.type === "income")
+    .reduce((s, t) => s + t.amount, 0);
+  const overallExpense = allFinancialTxns
+    .filter((t) => t.type === "expense")
+    .reduce((s, t) => s + t.amount, 0);
+  const overallNet = overallIncome - overallExpense;
+
+  // Spending by category — current month only
+  const spendingByCategory = useMemo(
+    () =>
+      monthlyFinancialTxns
+        .filter((t) => t.type === "expense")
+        .reduce<Record<string, number>>((acc, t) => {
+          acc[t.category] = (acc[t.category] ?? 0) + t.amount;
+          return acc;
+        }, {}),
+    [monthlyFinancialTxns]
+  );
+
+  // Transfers tab — all transfer rows
+  const transfers = useMemo(
+    () => allTransactions.filter((t) => t.type === "transfer"),
+    [allTransactions]
+  );
+
+  // Transactions tab — only income/expense for selected month
+  const monthlyTxnsForList = useMemo(
+    () =>
+      allTransactions.filter(
+        (t) =>
+          (t.type === "income" || t.type === "expense") &&
+          t.date >= monthStart &&
+          t.date <= monthEnd
+      ),
+    [allTransactions, monthStart, monthEnd]
+  );
+
+  // Wallet totals
+  const activeWallets = paymentMethods.filter((m) => m.is_active);
+  const totalWalletBalance = activeWallets.reduce(
+    (s, m) => s + m.balance,
+    0
+  );
+
+  // Wallet name lookup for transfer display
+  const walletNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    paymentMethods.forEach((m) => {
+      map[m.id] = m.name;
+    });
+    return map;
+  }, [paymentMethods]);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
   async function handleDeleteTransaction() {
     if (!deleteTxnId) return;
     const supabase = createClient();
     await supabase.from("transactions").delete().eq("id", deleteTxnId);
     setDeleteTxnId(null);
     toast.success("Transaction deleted");
-    fetchData();
+    await Promise.all([fetchData(), refreshWallets()]);
   }
 
   async function handleDeleteBudget() {
@@ -166,24 +286,51 @@ export default function FinancePage() {
     fetchData();
   }
 
-  const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const totalExpense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-  const net = totalIncome - totalExpense;
+  async function handleWalletSave(data: {
+    name: string;
+    balance: number;
+    color: string | null;
+  }) {
+    if (editWallet) {
+      await updatePaymentMethod(editWallet.id, {
+        name: data.name,
+        color: data.color,
+      });
+      toast.success("Wallet updated");
+    } else {
+      await createPaymentMethod(data);
+      toast.success("Wallet added");
+    }
+    setEditWallet(null);
+  }
 
-  const spendingByCategory = transactions
-    .filter((t) => t.type === "expense")
-    .reduce<Record<string, number>>((acc, t) => {
-      acc[t.category] = (acc[t.category] ?? 0) + t.amount;
-      return acc;
-    }, {});
+  function handleWalletReorder(id: string, direction: "up" | "down") {
+    const sorted = [...paymentMethods].sort(
+      (a, b) => a.display_order - b.display_order
+    );
+    const idx = sorted.findIndex((m) => m.id === id);
+    if (direction === "up" && idx > 0) {
+      const swapped = [...sorted];
+      [swapped[idx - 1], swapped[idx]] = [swapped[idx], swapped[idx - 1]];
+      reorderPaymentMethods(swapped.map((m) => m.id));
+    } else if (direction === "down" && idx < sorted.length - 1) {
+      const swapped = [...sorted];
+      [swapped[idx], swapped[idx + 1]] = [swapped[idx + 1], swapped[idx]];
+      reorderPaymentMethods(swapped.map((m) => m.id));
+    }
+  }
 
-  if (loading) {
+  if (loading || walletsLoading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="w-6 h-6 animate-spin text-mod-finance" />
       </div>
     );
   }
+
+  const sortedWallets = [...paymentMethods].sort(
+    (a, b) => a.display_order - b.display_order
+  );
 
   return (
     <div
@@ -202,14 +349,22 @@ export default function FinancePage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => { setEditTxn(null); setTxnType("income"); setTxnOpen(true); }}
+            onClick={() => {
+              setEditTxn(null);
+              setTxnType("income");
+              setTxnOpen(true);
+            }}
             className="gap-1.5"
           >
             <TrendingUp className="w-4 h-4 text-mod-finance" /> Income
           </Button>
           <Button
             size="sm"
-            onClick={() => { setEditTxn(null); setTxnType("expense"); setTxnOpen(true); }}
+            onClick={() => {
+              setEditTxn(null);
+              setTxnType("expense");
+              setTxnOpen(true);
+            }}
             className="gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
           >
             <TrendingDown className="w-4 h-4" /> Expense
@@ -217,38 +372,194 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3 animate-rise-in stagger-2">
-        <Card className="border-t-4 border-mod-finance">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground truncate">Income</p>
-            <p className="font-mono font-medium text-mod-finance truncate">{formatAED(totalIncome)}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-t-4 border-destructive">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground truncate">Expenses</p>
-            <p className="font-mono font-medium text-destructive truncate">{formatAED(totalExpense)}</p>
-          </CardContent>
-        </Card>
-        <Card className={`border-t-4 ${net >= 0 ? "border-mod-finance" : "border-destructive"}`}>
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground truncate">Net</p>
-            <p className={`font-mono font-medium truncate ${net >= 0 ? "text-mod-finance" : "text-destructive"}`}>
-              {formatAED(Math.abs(net))}
-            </p>
-          </CardContent>
-        </Card>
+      {/* Wallet balance cards — always visible */}
+      {activeWallets.length > 0 && (
+        <div className="animate-rise-in stagger-2">
+          <div className="flex overflow-x-auto gap-2 pb-1 -mx-1 px-1">
+            {activeWallets.map((wallet) => (
+              <div
+                key={wallet.id}
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card"
+              >
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor:
+                      wallet.color ?? "var(--muted-foreground)",
+                  }}
+                />
+                <div>
+                  <p className="text-xs text-muted-foreground leading-none mb-0.5">
+                    {wallet.name}
+                  </p>
+                  <p
+                    className={`text-sm font-mono font-medium leading-none ${
+                      wallet.balance < 0
+                        ? "text-destructive"
+                        : "text-mod-finance"
+                    }`}
+                  >
+                    {formatAED(wallet.balance)}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {/* Total balance tile */}
+            <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-mod-finance/30 bg-mod-finance-soft">
+              <Wallet className="w-3.5 h-3.5 text-mod-finance" />
+              <div>
+                <p className="text-xs text-muted-foreground leading-none mb-0.5">
+                  Total
+                </p>
+                <p
+                  className={`text-sm font-mono font-medium leading-none ${
+                    totalWalletBalance < 0
+                      ? "text-destructive"
+                      : "text-mod-finance"
+                  }`}
+                >
+                  {formatAED(totalWalletBalance)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Financial metrics — Balloon In / Balloon Out / Net */}
+      <div className="animate-rise-in stagger-3 space-y-2">
+        {/* Toggle + month selector */}
+        <div className="flex items-center justify-between">
+          <div className="flex rounded-md border border-border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setMetricsView("monthly")}
+              className={`px-3 py-1 text-xs transition-colors ${
+                metricsView === "monthly"
+                  ? "bg-mod-finance text-white"
+                  : "bg-card text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setMetricsView("overall")}
+              className={`px-3 py-1 text-xs transition-colors border-l border-border ${
+                metricsView === "overall"
+                  ? "bg-mod-finance text-white"
+                  : "bg-card text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              Overall
+            </button>
+          </div>
+
+          {metricsView === "monthly" && (
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7"
+                onClick={() => setSelectedMonth((m) => subMonths(m, 1))}
+                aria-label="Previous month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground min-w-[90px] text-center">
+                {format(selectedMonth, "MMM yyyy")}
+              </span>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7"
+                onClick={() => setSelectedMonth((m) => addMonths(m, 1))}
+                aria-label="Next month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Metric cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="border-t-4 border-mod-finance">
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground truncate">
+                Balloon In
+              </p>
+              <p className="font-mono font-medium text-mod-finance truncate text-sm">
+                {formatAED(
+                  metricsView === "monthly" ? monthlyIncome : overallIncome
+                )}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-t-4 border-destructive">
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground truncate">
+                Balloon Out
+              </p>
+              <p className="font-mono font-medium text-destructive truncate text-sm">
+                {formatAED(
+                  metricsView === "monthly" ? monthlyExpense : overallExpense
+                )}
+              </p>
+            </CardContent>
+          </Card>
+          <Card
+            className={`border-t-4 ${
+              (metricsView === "monthly" ? monthlyNet : overallNet) >= 0
+                ? "border-mod-finance"
+                : "border-destructive"
+            }`}
+          >
+            <CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground truncate">Net</p>
+              <p
+                className={`font-mono font-medium truncate text-sm ${
+                  (metricsView === "monthly" ? monthlyNet : overallNet) >= 0
+                    ? "text-mod-finance"
+                    : "text-destructive"
+                }`}
+              >
+                {formatAED(
+                  Math.abs(
+                    metricsView === "monthly" ? monthlyNet : overallNet
+                  )
+                )}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="animate-rise-in stagger-3">
+      <div className="animate-rise-in stagger-4">
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-          <TabsList className="w-full">
-            <TabsTrigger value="overview" className="flex-1 text-xs">Overview</TabsTrigger>
-            <TabsTrigger value="transactions" className="flex-1 text-xs">Transactions</TabsTrigger>
-            <TabsTrigger value="budgets" className="flex-1 text-xs">Budgets</TabsTrigger>
-            <TabsTrigger value="debts" className="flex-1 text-xs">Debts</TabsTrigger>
+          <TabsList className="w-full overflow-x-auto flex whitespace-nowrap">
+            <TabsTrigger value="overview" className="flex-1 text-xs shrink-0">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="transactions"
+              className="flex-1 text-xs shrink-0"
+            >
+              Transactions
+            </TabsTrigger>
+            <TabsTrigger value="transfers" className="flex-1 text-xs shrink-0">
+              Transfers
+            </TabsTrigger>
+            <TabsTrigger value="wallets" className="flex-1 text-xs shrink-0">
+              Wallets
+            </TabsTrigger>
+            <TabsTrigger value="budgets" className="flex-1 text-xs shrink-0">
+              Budgets
+            </TabsTrigger>
+            <TabsTrigger value="debts" className="flex-1 text-xs shrink-0">
+              Debts
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -262,7 +573,13 @@ export default function FinancePage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {Object.keys(spendingByCategory).length === 0 ? (
-                <p className="text-sm text-muted-foreground">No expenses this month.</p>
+                <p className="text-sm text-muted-foreground">
+                  No expenses{" "}
+                  {metricsView === "monthly"
+                    ? `in ${format(selectedMonth, "MMMM")}`
+                    : "yet"}
+                  .
+                </p>
               ) : (
                 Object.entries(spendingByCategory)
                   .sort(([, a], [, b]) => b - a)
@@ -273,7 +590,11 @@ export default function FinancePage() {
                         <span className="font-medium">{formatAED(amount)}</span>
                       </div>
                       <Progress
-                        value={totalExpense > 0 ? (amount / totalExpense) * 100 : 0}
+                        value={
+                          monthlyExpense > 0
+                            ? (amount / monthlyExpense) * 100
+                            : 0
+                        }
                         className="h-1.5"
                       />
                     </div>
@@ -287,16 +608,24 @@ export default function FinancePage() {
       {/* Transactions */}
       {tab === "transactions" && (
         <div className="space-y-2 animate-rise-in stagger-4">
-          {transactions.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground text-sm">No transactions this month.</p>
+          {monthlyTxnsForList.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground text-sm">
+              No transactions in {format(selectedMonth, "MMMM yyyy")}.
+            </p>
           ) : (
-            transactions.map((txn) => (
+            monthlyTxnsForList.map((txn) => (
               <div
                 key={txn.id}
                 className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${txn.type === "income" ? "bg-mod-finance-soft" : "bg-red-100 dark:bg-red-900/30"}`}>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      txn.type === "income"
+                        ? "bg-mod-finance-soft"
+                        : "bg-red-100 dark:bg-red-900/30"
+                    }`}
+                  >
                     {txn.type === "income" ? (
                       <ArrowUpRight className="w-4 h-4 text-mod-finance" />
                     ) : (
@@ -304,7 +633,9 @@ export default function FinancePage() {
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{txn.description ?? txn.category}</p>
+                    <p className="text-sm font-medium">
+                      {txn.description ?? txn.category}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {txn.category} · {formatDate(txn.date)}
                       {txn.payment_method && ` · ${txn.payment_method}`}
@@ -312,15 +643,30 @@ export default function FinancePage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm font-semibold ${txn.type === "income" ? "text-mod-finance" : "text-destructive"}`}>
-                    {txn.type === "income" ? "+" : "-"}{formatAED(txn.amount)}
+                  <span
+                    className={`text-sm font-semibold ${
+                      txn.type === "income"
+                        ? "text-mod-finance"
+                        : "text-destructive"
+                    }`}
+                  >
+                    {txn.type === "income" ? "+" : "-"}
+                    {formatAED(txn.amount)}
                   </span>
                   <DropdownMenu>
                     <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent">
                       <MoreVertical className="w-3.5 h-3.5" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => { setEditTxn(txn); setTxnType(txn.type); setTxnOpen(true); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditTxn(txn);
+                          setTxnType(
+                            txn.type === "income" ? "income" : "expense"
+                          );
+                          setTxnOpen(true);
+                        }}
+                      >
                         <Pencil className="w-4 h-4 mr-2" /> Edit
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -339,12 +685,117 @@ export default function FinancePage() {
         </div>
       )}
 
+      {/* Transfers */}
+      {tab === "transfers" && (
+        <div className="space-y-3 animate-rise-in stagger-4">
+          <Button
+            size="sm"
+            onClick={() => setTransferOpen(true)}
+            className="w-full gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
+          >
+            <ArrowLeftRight className="w-4 h-4" /> New Transfer
+          </Button>
+          {transfers.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground text-sm">
+              No transfers yet.
+            </p>
+          ) : (
+            transfers.map((txn) => {
+              const fromName =
+                (txn.from_payment_method_id &&
+                  walletNameById[txn.from_payment_method_id]) ||
+                "Unknown";
+              const toName =
+                (txn.to_payment_method_id &&
+                  walletNameById[txn.to_payment_method_id]) ||
+                "Unknown";
+              return (
+                <div
+                  key={txn.id}
+                  className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted">
+                      <ArrowLeftRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">
+                        {fromName} → {toName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(txn.date)}
+                        {txn.description &&
+                          txn.description !== `${fromName} → ${toName}` &&
+                          ` · ${txn.description}`}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-muted-foreground">
+                    {formatAED(txn.amount)}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Wallets */}
+      {tab === "wallets" && (
+        <div className="space-y-3 animate-rise-in stagger-4">
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditWallet(null);
+              setWalletFormOpen(true);
+            }}
+            className="w-full gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
+          >
+            <Plus className="w-4 h-4" /> Add Wallet
+          </Button>
+          {sortedWallets.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground text-sm">
+              No wallets yet. Add one to get started.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {sortedWallets.map((wallet, idx) => (
+                <WalletCard
+                  key={wallet.id}
+                  paymentMethod={wallet}
+                  isFirst={idx === 0}
+                  isLast={idx === sortedWallets.length - 1}
+                  onEdit={() => {
+                    setEditWallet(wallet);
+                    setWalletFormOpen(true);
+                  }}
+                  onAdjust={() => setAdjustWallet(wallet)}
+                  onToggleActive={() => {
+                    if (wallet.is_active) {
+                      setDeactivateWalletId(wallet.id);
+                    } else {
+                      setActiveStatus(wallet.id, true);
+                      toast.success("Wallet activated");
+                    }
+                  }}
+                  onMoveUp={() => handleWalletReorder(wallet.id, "up")}
+                  onMoveDown={() => handleWalletReorder(wallet.id, "down")}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Budgets */}
       {tab === "budgets" && (
         <div className="space-y-3 animate-rise-in stagger-4">
           <Button
             size="sm"
-            onClick={() => { setEditBudget(null); setBudgetOpen(true); }}
+            onClick={() => {
+              setEditBudget(null);
+              setBudgetOpen(true);
+            }}
             className="w-full gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
           >
             <Plus className="w-4 h-4" /> Add Budget
@@ -363,14 +814,22 @@ export default function FinancePage() {
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex justify-between">
-                          <span className="text-sm font-medium">{budget.category}</span>
-                          <span className={`text-sm font-semibold ${pct >= 90 ? "text-destructive" : ""}`}>
+                          <span className="text-sm font-medium">
+                            {budget.category}
+                          </span>
+                          <span
+                            className={`text-sm font-semibold ${
+                              pct >= 90 ? "text-destructive" : ""
+                            }`}
+                          >
                             {formatAED(spent)} / {formatAED(budget.amount)}
                           </span>
                         </div>
                         <Progress
                           value={pct}
-                          className={`h-2 mt-2 ${pct >= 90 ? "[&>div]:bg-destructive" : ""}`}
+                          className={`h-2 mt-2 ${
+                            pct >= 90 ? "[&>div]:bg-destructive" : ""
+                          }`}
                         />
                         <p className="text-xs text-muted-foreground mt-1">
                           {Math.round(pct)}% used · {budget.period}
@@ -381,7 +840,12 @@ export default function FinancePage() {
                           <MoreVertical className="w-3.5 h-3.5" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setEditBudget(budget); setBudgetOpen(true); }}>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditBudget(budget);
+                              setBudgetOpen(true);
+                            }}
+                          >
                             <Pencil className="w-4 h-4 mr-2" /> Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -407,13 +871,18 @@ export default function FinancePage() {
         <div className="space-y-2 animate-rise-in stagger-4">
           <Button
             size="sm"
-            onClick={() => { setEditDebt(null); setDebtOpen(true); }}
+            onClick={() => {
+              setEditDebt(null);
+              setDebtOpen(true);
+            }}
             className="w-full gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
           >
             <Plus className="w-4 h-4" /> Add Debt / Loan
           </Button>
           {debts.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground text-sm">No outstanding debts.</p>
+            <p className="text-center py-8 text-muted-foreground text-sm">
+              No outstanding debts.
+            </p>
           ) : (
             debts.map((debt) => (
               <div
@@ -423,19 +892,31 @@ export default function FinancePage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{debt.creditor}</p>
                   {debt.description && (
-                    <p className="text-xs text-muted-foreground">{debt.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {debt.description}
+                    </p>
                   )}
                   {debt.due_date && (
-                    <p className="text-xs text-muted-foreground">Due: {formatDate(debt.due_date)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Due: {formatDate(debt.due_date)}
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="text-right">
-                    <p className={`text-sm font-semibold ${debt.type === "i_owe" ? "text-destructive" : "text-mod-finance"}`}>
+                    <p
+                      className={`text-sm font-semibold ${
+                        debt.type === "i_owe"
+                          ? "text-destructive"
+                          : "text-mod-finance"
+                      }`}
+                    >
                       {formatAED(debt.amount)}
                     </p>
                     <Badge
-                      variant={debt.type === "i_owe" ? "destructive" : "secondary"}
+                      variant={
+                        debt.type === "i_owe" ? "destructive" : "secondary"
+                      }
                       className="text-xs"
                     >
                       {debt.type === "i_owe" ? "I owe" : "They owe"}
@@ -446,10 +927,17 @@ export default function FinancePage() {
                       <MoreVertical className="w-3.5 h-3.5" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setMarkPaidDebtId(debt.id)}>
+                      <DropdownMenuItem
+                        onClick={() => setMarkPaidDebtId(debt.id)}
+                      >
                         <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as paid
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setEditDebt(debt); setDebtOpen(true); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditDebt(debt);
+                          setDebtOpen(true);
+                        }}
+                      >
                         <Pencil className="w-4 h-4 mr-2" /> Edit
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -471,7 +959,11 @@ export default function FinancePage() {
       {/* FAB */}
       <button
         type="button"
-        onClick={() => { setEditTxn(null); setTxnType("expense"); setTxnOpen(true); }}
+        onClick={() => {
+          setEditTxn(null);
+          setTxnType("expense");
+          setTxnOpen(true);
+        }}
         className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-finance text-white flex items-center justify-center z-40"
         aria-label="Add expense"
       >
@@ -481,187 +973,133 @@ export default function FinancePage() {
       {/* Dialogs */}
       <TransactionForm
         open={txnOpen}
-        onOpenChange={(v) => { setTxnOpen(v); if (!v) setEditTxn(null); }}
+        onOpenChange={(v) => {
+          setTxnOpen(v);
+          if (!v) setEditTxn(null);
+        }}
         defaultType={txnType}
         initial={editTxn}
-        onSaved={() => { fetchData(); toast.success(editTxn ? "Transaction updated" : "Transaction saved"); }}
+        paymentMethods={paymentMethods}
+        findOrCreateByName={findOrCreateByName}
+        onSaved={async () => {
+          await Promise.all([fetchData(), refreshWallets()]);
+          toast.success(editTxn ? "Transaction updated" : "Transaction saved");
+        }}
       />
+
+      <TransferForm
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        paymentMethods={paymentMethods}
+        onSaved={async () => {
+          await Promise.all([fetchData(), refreshWallets()]);
+        }}
+      />
+
+      <WalletForm
+        open={walletFormOpen}
+        onOpenChange={(v) => {
+          setWalletFormOpen(v);
+          if (!v) setEditWallet(null);
+        }}
+        initial={editWallet}
+        onSave={handleWalletSave}
+      />
+
+      <AdjustBalanceForm
+        open={!!adjustWallet}
+        onOpenChange={(v) => {
+          if (!v) setAdjustWallet(null);
+        }}
+        paymentMethod={adjustWallet}
+        onAdjust={async (id, current, target, reason) => {
+          await adjustBalance(id, current, target, reason);
+          toast.success("Balance adjusted");
+          await fetchData();
+        }}
+      />
+
       <BudgetForm
         open={budgetOpen}
-        onOpenChange={(v) => { setBudgetOpen(v); if (!v) setEditBudget(null); }}
+        onOpenChange={(v) => {
+          setBudgetOpen(v);
+          if (!v) setEditBudget(null);
+        }}
         initial={editBudget}
-        onSaved={() => { fetchData(); toast.success(editBudget ? "Budget updated" : "Budget created"); }}
+        onSaved={() => {
+          fetchData();
+          toast.success(editBudget ? "Budget updated" : "Budget created");
+        }}
       />
+
       <DebtForm
         open={debtOpen}
-        onOpenChange={(v) => { setDebtOpen(v); if (!v) setEditDebt(null); }}
+        onOpenChange={(v) => {
+          setDebtOpen(v);
+          if (!v) setEditDebt(null);
+        }}
         initial={editDebt}
-        onSaved={() => { fetchData(); toast.success(editDebt ? "Debt updated" : "Debt added"); }}
+        onSaved={() => {
+          fetchData();
+          toast.success(editDebt ? "Debt updated" : "Debt added");
+        }}
       />
 
       <ConfirmDialog
         open={!!deleteTxnId}
-        onOpenChange={(v) => { if (!v) setDeleteTxnId(null); }}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTxnId(null);
+        }}
         title="Delete transaction?"
         description="This transaction will be permanently removed."
         onConfirm={handleDeleteTransaction}
       />
       <ConfirmDialog
         open={!!deleteBudgetId}
-        onOpenChange={(v) => { if (!v) setDeleteBudgetId(null); }}
+        onOpenChange={(v) => {
+          if (!v) setDeleteBudgetId(null);
+        }}
         title="Delete budget?"
         description="This budget will be permanently removed."
         onConfirm={handleDeleteBudget}
       />
       <ConfirmDialog
         open={!!deleteDebtId}
-        onOpenChange={(v) => { if (!v) setDeleteDebtId(null); }}
+        onOpenChange={(v) => {
+          if (!v) setDeleteDebtId(null);
+        }}
         title="Delete debt?"
         description="This debt record will be permanently removed."
         onConfirm={handleDeleteDebt}
       />
       <ConfirmDialog
         open={!!markPaidDebtId}
-        onOpenChange={(v) => { if (!v) setMarkPaidDebtId(null); }}
+        onOpenChange={(v) => {
+          if (!v) setMarkPaidDebtId(null);
+        }}
         title="Mark as paid?"
         description="This debt will be marked as settled and removed from your outstanding list."
         confirmLabel="Mark paid"
         destructive={false}
         onConfirm={handleMarkPaid}
       />
+      <ConfirmDialog
+        open={!!deactivateWalletId}
+        onOpenChange={(v) => {
+          if (!v) setDeactivateWalletId(null);
+        }}
+        title="Deactivate wallet?"
+        description="This wallet will be hidden from dropdowns. Existing transactions are preserved."
+        confirmLabel="Deactivate"
+        onConfirm={async () => {
+          if (deactivateWalletId) {
+            await setActiveStatus(deactivateWalletId, false);
+            setDeactivateWalletId(null);
+            toast.success("Wallet deactivated");
+          }
+        }}
+      />
     </div>
-  );
-}
-
-// ─── Transaction Form ─────────────────────────────────────────────────────────
-
-function TransactionForm({
-  open,
-  onOpenChange,
-  defaultType,
-  initial,
-  onSaved,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  defaultType: "income" | "expense";
-  initial: Transaction | null;
-  onSaved: () => void;
-}) {
-  const [type, setType] = useState<"income" | "expense">(defaultType);
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [description, setDescription] = useState("");
-  const [date, setDate] = useState(todayISO());
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (initial) {
-      setType(initial.type);
-      setAmount(String(initial.amount));
-      setCategory(initial.category);
-      setDescription(initial.description ?? "");
-      setDate(initial.date);
-      setPaymentMethod(initial.payment_method ?? "");
-    } else {
-      setType(defaultType);
-      setAmount("");
-      setCategory("");
-      setDescription("");
-      setDate(todayISO());
-      setPaymentMethod("");
-    }
-  }, [initial, defaultType, open]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!amount || !category) return;
-    setSaving(true);
-    const supabase = createClient();
-
-    if (initial) {
-      await supabase.from("transactions").update({
-        type,
-        amount: parseFloat(amount),
-        category,
-        description: description || null,
-        date,
-        payment_method: paymentMethod || null,
-      }).eq("id", initial.id);
-    } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("transactions").insert({
-        user_id: user.id,
-        type,
-        amount: parseFloat(amount),
-        category,
-        description: description || null,
-        date,
-        payment_method: paymentMethod || null,
-        tags: [],
-      });
-    }
-
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
-  }
-
-  const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{initial ? "Edit Transaction" : type === "income" ? "Record Income" : "Record Expense"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant={type === "expense" ? "default" : "outline"} onClick={() => setType("expense")}>Expense</Button>
-            <Button type="button" variant={type === "income" ? "default" : "outline"} onClick={() => setType("income")}>Income</Button>
-          </div>
-          <div className="space-y-2">
-            <Label>Amount (AED)</Label>
-            <Input type="number" step="0.01" min="0" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select value={category} onValueChange={(v) => { if (v) setCategory(v); }} required>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Payment method</Label>
-              <Select value={paymentMethod || "none"} onValueChange={(v) => setPaymentMethod(v == null || v === "none" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">—</SelectItem>
-                  {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Description (optional)</Label>
-            <Textarea placeholder="What was this for?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-          </div>
-          <div className="space-y-2">
-            <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Saving…" : initial ? "Update" : "Save"}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -706,9 +1144,14 @@ function BudgetForm({
     const periodEnd = format(endOfMonth(today), "yyyy-MM-dd");
 
     if (initial) {
-      await supabase.from("budgets").update({ category, amount: parseFloat(amount), period }).eq("id", initial.id);
+      await supabase
+        .from("budgets")
+        .update({ category, amount: parseFloat(amount), period })
+        .eq("id", initial.id);
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       await supabase.from("budgets").insert({
         user_id: user.id,
@@ -734,22 +1177,48 @@ function BudgetForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={category} onValueChange={(v) => { if (v) setCategory(v); }} required>
-              <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+            <Select
+              value={category}
+              onValueChange={(v) => {
+                if (v) setCategory(v);
+              }}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
               <SelectContent>
-                {EXPENSE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                {EXPENSE_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Amount (AED)</Label>
-              <Input type="number" step="0.01" min="0" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+                autoFocus
+              />
             </div>
             <div className="space-y-2">
               <Label>Period</Label>
-              <Select value={period} onValueChange={(v) => setPeriod(v as Budget["period"])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={period}
+                onValueChange={(v) => setPeriod(v as Budget["period"])}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="monthly">Monthly</SelectItem>
                   <SelectItem value="quarterly">Quarterly</SelectItem>
@@ -759,8 +1228,16 @@ function BudgetForm({
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Saving…" : initial ? "Update" : "Add Budget"}</Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : initial ? "Update" : "Add Budget"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -811,15 +1288,20 @@ function DebtForm({
     const supabase = createClient();
 
     if (initial) {
-      await supabase.from("debts").update({
-        creditor: creditor.trim(),
-        type,
-        amount: parseFloat(amount),
-        description: description || null,
-        due_date: dueDate || null,
-      }).eq("id", initial.id);
+      await supabase
+        .from("debts")
+        .update({
+          creditor: creditor.trim(),
+          type,
+          amount: parseFloat(amount),
+          description: description || null,
+          due_date: dueDate || null,
+        })
+        .eq("id", initial.id);
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       await supabase.from("debts").insert({
         user_id: user.id,
@@ -844,30 +1326,73 @@ function DebtForm({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant={type === "i_owe" ? "default" : "outline"} onClick={() => setType("i_owe")}>I owe</Button>
-            <Button type="button" variant={type === "they_owe" ? "default" : "outline"} onClick={() => setType("they_owe")}>They owe</Button>
+            <Button
+              type="button"
+              variant={type === "i_owe" ? "default" : "outline"}
+              onClick={() => setType("i_owe")}
+            >
+              I owe
+            </Button>
+            <Button
+              type="button"
+              variant={type === "they_owe" ? "default" : "outline"}
+              onClick={() => setType("they_owe")}
+            >
+              They owe
+            </Button>
           </div>
           <div className="space-y-2">
             <Label>{type === "i_owe" ? "Creditor / Lender" : "Debtor name"}</Label>
-            <Input placeholder="Name or institution" value={creditor} onChange={(e) => setCreditor(e.target.value)} required autoFocus />
+            <Input
+              placeholder="Name or institution"
+              value={creditor}
+              onChange={(e) => setCreditor(e.target.value)}
+              required
+              autoFocus
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Amount (AED)</Label>
-              <Input type="number" step="0.01" min="0" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label>Due date</Label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
             </div>
           </div>
           <div className="space-y-2">
             <Label>Notes (optional)</Label>
-            <Textarea placeholder="Reason or details" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+            <Textarea
+              placeholder="Reason or details"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+            />
           </div>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Saving…" : initial ? "Update" : "Add"}</Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : initial ? "Update" : "Add"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
