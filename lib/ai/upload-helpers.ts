@@ -71,6 +71,15 @@ export function validateMimeAndSize(
   return { category };
 }
 
+// ─── CSV cell escaping ─────────────────────────────────────────────────────
+
+function escapeCsvCell(text: string): string {
+  if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
 // ─── Text extraction ───────────────────────────────────────────────────────
 
 export async function extractText(
@@ -100,11 +109,20 @@ export async function extractText(
     if (
       mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     ) {
-      const XLSX = await import("xlsx");
-      const workbook = XLSX.read(buf, { type: "buffer" });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      if (!firstSheet) return undefined;
-      return XLSX.utils.sheet_to_csv(firstSheet);
+      const { Workbook } = await import("exceljs");
+      const workbook = new Workbook();
+      await workbook.xlsx.load(buf);
+      const worksheet = workbook.worksheets[0];
+      if (!worksheet) return undefined;
+      const rows: string[] = [];
+      worksheet.eachRow({ includeEmpty: false }, (row) => {
+        const cells: string[] = [];
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cells.push(escapeCsvCell(cell.text));
+        });
+        rows.push(cells.join(","));
+      });
+      return rows.join("\n") || undefined;
     }
   } catch {
     // Extraction failure is non-fatal — the file is still stored
@@ -120,7 +138,9 @@ export async function transcribeAudio(
   buf: Buffer,
   mime: string,
 ): Promise<string> {
-  const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is required");
+  const genai = new GoogleGenAI({ apiKey });
   const audioB64 = buf.toString("base64");
 
   const result = await genai.models.generateContent({

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { format } from 'date-fns'
+import { format, startOfMonth } from 'date-fns'
 import { z } from 'zod'
 
 // ─── Input schemas ────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ const DeleteNoteInput = z.object({
 
 const uuid = z.string().uuid()
 const rating1to5 = z.number().int().min(1).max(5)
-const isoDatetime = z.string().min(1).max(50)
+const isoDatetime = z.string().regex(/^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]+)?$/)
 
 // Tasks
 const UpdateTaskInput = z.object({
@@ -471,8 +471,8 @@ export async function executeTool(toolName: string, input: Record<string, unknow
         is_recurring: false,
         is_starred: false,
         tags: [],
-        subtasks: [] as unknown as never,
-        attachments: [] as unknown as never,
+        subtasks: [],
+        attachments: [],
       }).select().single()
       if (error) return dbErr('create_task', error)
       return { success: true, message: `Created task: "${p.data.title}"`, data }
@@ -495,6 +495,7 @@ export async function executeTool(toolName: string, input: Record<string, unknow
       const { error, data } = await supabase.from('tasks')
         .update({ status: 'done', completed_at: new Date().toISOString() })
         .eq('id', p.data.task_id)
+        .eq('user_id', user.id)
         .select('title').single()
       if (error) return dbErr('complete_task', error)
       return { success: true, message: `Completed task: "${data?.title}"` }
@@ -597,6 +598,7 @@ export async function executeTool(toolName: string, input: Record<string, unknow
     }
 
     case 'get_daily_briefing': {
+      const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd')
       const [
         { data: todayTasks },
         { data: overdue },
@@ -607,14 +609,14 @@ export async function executeTool(toolName: string, input: Record<string, unknow
         { data: monthExpenses },
         { data: followUps },
       ] = await Promise.all([
-        supabase.from('tasks').select('title, priority').neq('status','done').eq('due_date', today).limit(10),
-        supabase.from('tasks').select('title, due_date').neq('status','done').lt('due_date', today).limit(5),
-        supabase.from('habits').select('name, icon').eq('active', true).contains('target_days', [new Date().getDay()]),
-        supabase.from('habit_logs').select('habit_id').eq('logged_date', today).eq('completed', true),
-        supabase.from('goals').select('title, progress').eq('status', 'active').limit(5),
-        supabase.from('budgets').select('category, amount').gte('period_end', today),
-        supabase.from('transactions').select('category, amount').eq('type', 'expense').gte('date', format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd')),
-        supabase.from('interactions').select('contacts(name), follow_up_date').lte('follow_up_date', today).not('follow_up_date', 'is', null).limit(5),
+        supabase.from('tasks').select('title, priority').eq('user_id', user.id).neq('status','done').eq('due_date', today).limit(10),
+        supabase.from('tasks').select('title, due_date').eq('user_id', user.id).neq('status','done').lt('due_date', today).limit(5),
+        supabase.from('habits').select('name, icon').eq('user_id', user.id).eq('active', true).contains('target_days', [new Date().getDay()]),
+        supabase.from('habit_logs').select('habit_id').eq('user_id', user.id).eq('logged_date', today).eq('completed', true),
+        supabase.from('goals').select('title, progress').eq('user_id', user.id).eq('status', 'active').limit(5),
+        supabase.from('budgets').select('category, amount').eq('user_id', user.id).gte('period_end', today),
+        supabase.from('transactions').select('category, amount').eq('user_id', user.id).eq('type', 'expense').gte('date', monthStart),
+        supabase.from('interactions').select('contacts(name), follow_up_date').eq('user_id', user.id).lte('follow_up_date', today).not('follow_up_date', 'is', null).limit(5),
       ])
 
       const loggedIds = new Set((todayLogs ?? []).map((l: { habit_id: string }) => l.habit_id))
@@ -645,8 +647,14 @@ export async function executeTool(toolName: string, input: Record<string, unknow
       await Promise.all([
         types.includes('tasks') && supabase.from('tasks').select('id, title, status, priority').ilike('title', `%${query}%`).limit(5)
           .then(({ data }) => { results.tasks = data ?? [] }),
-        types.includes('notes') && supabase.from('notes').select('id, title, content').or(`title.ilike.%${query}%,content.ilike.%${query}%`).limit(5)
-          .then(({ data }) => { results.notes = data ?? [] }),
+        types.includes('notes') && Promise.all([
+          supabase.from('notes').select('id, title, content').ilike('title', `%${query}%`).limit(5),
+          supabase.from('notes').select('id, title, content').ilike('content', `%${query}%`).limit(5),
+        ]).then(([byTitle, byContent]) => {
+          const seen = new Set<string>()
+          const combined = [...(byTitle.data ?? []), ...(byContent.data ?? [])]
+          results.notes = combined.filter(n => !seen.has(n.id) && seen.add(n.id) !== undefined).slice(0, 5)
+        }),
         types.includes('contacts') && supabase.from('contacts').select('id, name, company, email').ilike('name', `%${query}%`).limit(5)
           .then(({ data }) => { results.contacts = data ?? [] }),
         types.includes('goals') && supabase.from('goals').select('id, title, progress, status').ilike('title', `%${query}%`).limit(5)
@@ -722,6 +730,7 @@ export async function executeTool(toolName: string, input: Record<string, unknow
       const { error } = await supabase.from('tasks')
         .update({ status: 'done', completed_at: new Date().toISOString() })
         .in('id', p.data.task_ids)
+        .eq('user_id', user.id)
       if (error) return dbErr('bulk_complete_tasks', error)
       return { success: true, message: `Completed ${p.data.task_ids.length} tasks` }
     }

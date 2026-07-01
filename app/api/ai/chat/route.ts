@@ -50,15 +50,18 @@ export type MessageParam = {
 
 // ─── Approval token (HMAC-signed, 5-minute expiry) ────────────────────────────
 
-interface ApprovalPayload {
-  userId: string;
-  toolName: string;
-  input: Record<string, unknown>;
-  exp: number;
-}
+const ApprovalPayloadSchema = z.object({
+  userId: z.string(),
+  toolName: z.string(),
+  input: z.record(z.string(), z.unknown()),
+  exp: z.number(),
+});
+type ApprovalPayload = z.infer<typeof ApprovalPayloadSchema>;
 
 function hmacSecret(): string {
-  return process.env.APPROVAL_HMAC_SECRET ?? process.env.GEMINI_API_KEY ?? "";
+  const s = process.env.APPROVAL_HMAC_SECRET;
+  if (!s) throw new Error("APPROVAL_HMAC_SECRET env var is required");
+  return s;
 }
 
 function signApprovalToken(payload: ApprovalPayload): string {
@@ -83,7 +86,11 @@ function verifyApprovalToken(
       !timingSafeEqual(expectedSigBuf, actualSigBuf)
     )
       return null;
-    const payload = JSON.parse(Buffer.from(data, "base64url").toString()) as ApprovalPayload;
+    const payloadParsed = ApprovalPayloadSchema.safeParse(
+      JSON.parse(Buffer.from(data, "base64url").toString()),
+    );
+    if (!payloadParsed.success) return null;
+    const payload = payloadParsed.data;
     if (payload.userId !== userId) return null;
     if (Date.now() > payload.exp) return null;
     return { toolName: payload.toolName, input: payload.input };
@@ -247,6 +254,8 @@ export async function POST(request: Request) {
     const verified = verifyApprovalToken(approvalToken, user.id);
     if (!verified)
       return new Response("Invalid or expired approval", { status: 403 });
+    if (!APPROVAL_TOOL_NAMES.has(verified.toolName))
+      return new Response("Forbidden", { status: 403 });
     const result = await executeTool(verified.toolName, verified.input);
     return Response.json({ type: "tool_result", result });
   }
@@ -334,7 +343,6 @@ export async function POST(request: Request) {
         // First turn: stream the response
         const stream = model.sendMessageStream({ message: currentParts });
 
-        let fullText = "";
         const functionCalls: Array<{
           id: string;
           name: string;
@@ -347,7 +355,6 @@ export async function POST(request: Request) {
 
           for (const part of candidate.content?.parts ?? []) {
             if (part.text) {
-              fullText += part.text;
               controller.enqueue(sseChunk({ type: "text", text: part.text }));
             }
             if (part.functionCall) {
@@ -360,9 +367,6 @@ export async function POST(request: Request) {
           }
         }
 
-        // Suppress unused var warning — fullText is accumulated for potential future use
-        void fullText;
-
         // Process function calls
         if (functionCalls.length > 0) {
           const toolResultParts: Part[] = [];
@@ -373,20 +377,46 @@ export async function POST(request: Request) {
               // Verify the referenced resource exists before presenting approval
               let resourceExists = true;
               if (fc.name === "delete_task" && typeof fc.args.task_id === "string") {
-                const { data } = await supabase
-                  .from("tasks")
-                  .select("id")
-                  .eq("id", fc.args.task_id)
-                  .eq("user_id", user.id)
-                  .maybeSingle();
+                const { data } = await supabase.from("tasks").select("id").eq("id", fc.args.task_id).eq("user_id", user.id).maybeSingle();
                 resourceExists = !!data;
               } else if (fc.name === "delete_note" && typeof fc.args.note_id === "string") {
-                const { data } = await supabase
-                  .from("notes")
-                  .select("id")
-                  .eq("id", fc.args.note_id)
-                  .eq("user_id", user.id)
-                  .maybeSingle();
+                const { data } = await supabase.from("notes").select("id").eq("id", fc.args.note_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_project" && typeof fc.args.project_id === "string") {
+                const { data } = await supabase.from("projects").select("id").eq("id", fc.args.project_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_goal" && typeof fc.args.goal_id === "string") {
+                const { data } = await supabase.from("goals").select("id").eq("id", fc.args.goal_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_milestone" && typeof fc.args.milestone_id === "string") {
+                const { data } = await supabase.from("milestones").select("id").eq("id", fc.args.milestone_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_habit" && typeof fc.args.habit_id === "string") {
+                const { data } = await supabase.from("habits").select("id").eq("id", fc.args.habit_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if ((fc.name === "delete_transaction" || fc.name === "update_transaction") && typeof fc.args.transaction_id === "string") {
+                const { data } = await supabase.from("transactions").select("id").eq("id", fc.args.transaction_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_budget" && typeof fc.args.budget_id === "string") {
+                const { data } = await supabase.from("budgets").select("id").eq("id", fc.args.budget_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if ((fc.name === "delete_debt" || fc.name === "update_debt") && typeof fc.args.debt_id === "string") {
+                const { data } = await supabase.from("debts").select("id").eq("id", fc.args.debt_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_contact" && typeof fc.args.contact_id === "string") {
+                const { data } = await supabase.from("contacts").select("id").eq("id", fc.args.contact_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_interaction" && typeof fc.args.interaction_id === "string") {
+                const { data } = await supabase.from("interactions").select("id").eq("id", fc.args.interaction_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_document" && typeof fc.args.document_id === "string") {
+                const { data } = await supabase.from("documents").select("id").eq("id", fc.args.document_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_journal_entry" && typeof fc.args.entry_id === "string") {
+                const { data } = await supabase.from("journal_entries").select("id").eq("id", fc.args.entry_id).eq("user_id", user.id).maybeSingle();
+                resourceExists = !!data;
+              } else if (fc.name === "delete_review" && typeof fc.args.review_id === "string") {
+                const { data } = await supabase.from("reviews").select("id").eq("id", fc.args.review_id).eq("user_id", user.id).maybeSingle();
                 resourceExists = !!data;
               }
 
