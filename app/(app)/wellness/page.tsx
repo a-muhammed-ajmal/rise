@@ -253,8 +253,15 @@ export default function WellnessPage() {
                   ? "border-[var(--color-danger)]/25 bg-[var(--color-danger-soft)]"
                   : "";
 
+            const cardLeftBorder =
+              markState === "done"
+                ? "border-l-[3px] border-l-[var(--color-success)]"
+                : markState === "notDone"
+                  ? "border-l-[3px] border-l-[var(--color-danger)]"
+                  : "border-l-[3px] border-l-mod-wellness";
+
             return (
-              <Card key={habit.id} className={`card-interactive ${cardBorderClass}`}>
+              <Card key={habit.id} className={`card-interactive ${cardBorderClass} ${cardLeftBorder}`}>
                 <CardContent className="p-4 flex items-center gap-3">
                   <div
                     className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}

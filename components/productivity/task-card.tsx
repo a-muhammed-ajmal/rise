@@ -110,7 +110,8 @@ export function TaskCard({
             : selected
               ? 'border-primary/60 bg-primary/5'
               : 'border-border bg-card hover:bg-accent/30',
-          task.is_starred && !isCompleted && 'border-[var(--color-warning)]/40'
+          task.is_starred && !isCompleted && 'border-[var(--color-warning)]/40',
+          isCompleted ? 'border-l-[3px] border-l-mod-tasks/30' : 'border-l-[3px] border-l-mod-tasks'
         )}
       >
         {/* Bulk checkbox / Complete button */}

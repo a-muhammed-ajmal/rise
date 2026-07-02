@@ -145,7 +145,7 @@ export default async function HomePage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Today's tasks */}
-        <Card className="animate-rise-in stagger-3">
+        <Card className="animate-rise-in stagger-3 border-t-4 border-t-mod-tasks">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-tasks-soft flex items-center justify-center">
@@ -192,7 +192,7 @@ export default async function HomePage() {
         </Card>
 
         {/* Today's habits */}
-        <Card className="animate-rise-in stagger-4">
+        <Card className="animate-rise-in stagger-4 border-t-4 border-t-mod-wellness">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-wellness-soft flex items-center justify-center">
@@ -228,7 +228,7 @@ export default async function HomePage() {
         </Card>
 
         {/* Active goals */}
-        <Card className="animate-rise-in stagger-5">
+        <Card className="animate-rise-in stagger-5 border-t-4 border-t-mod-goals">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-goals-soft flex items-center justify-center">
@@ -267,7 +267,7 @@ export default async function HomePage() {
         </Card>
 
         {/* AI Assistant CTA */}
-        <Card className="animate-rise-in stagger-6 border-mod-ai/30 bg-gradient-to-br from-mod-ai-soft to-transparent shadow-[0_0_24px_rgba(109,40,217,0.08)]">
+        <Card className="animate-rise-in stagger-6 border-t-4 border-t-mod-ai border-mod-ai/30 bg-gradient-to-br from-mod-ai-soft to-transparent shadow-[0_0_24px_rgba(109,40,217,0.08)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-ai-soft flex items-center justify-center">
@@ -301,7 +301,7 @@ export default async function HomePage() {
 
       {/* Today's finance */}
       {recentTransactions && recentTransactions.length > 0 && (
-        <Card className="animate-rise-in stagger-6">
+        <Card className="animate-rise-in stagger-6 border-t-4 border-t-mod-finance">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-finance-soft flex items-center justify-center">
@@ -329,7 +329,7 @@ export default async function HomePage() {
                   </p>
                 </div>
                 <span
-                  className={`text-sm font-medium ${
+                  className={`text-sm font-medium font-mono ${
                     txn.type === "income"
                       ? "text-mod-finance"
                       : "text-destructive"
