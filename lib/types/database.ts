@@ -96,6 +96,13 @@ type JournalEntryRow = {
   created_at: string;
   updated_at: string;
 };
+type CategoryRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  type: "income" | "expense";
+  created_at: string;
+};
 type PaymentMethodRow = {
   id: string;
   user_id: string;
@@ -307,6 +314,11 @@ export interface Database {
         Insertable<JournalEntryRow>,
         Partial<Insertable<JournalEntryRow>>
       >;
+      categories: T<
+        CategoryRow,
+        Insertable<CategoryRow>,
+        Partial<Insertable<CategoryRow>>
+      >;
       payment_methods: T<
         PaymentMethodRow,
         Insertable<PaymentMethodRow>,
@@ -396,6 +408,7 @@ export type Goal = GoalRow;
 export type Milestone = MilestoneRow;
 export type Review = ReviewRow;
 export type JournalEntry = JournalEntryRow;
+export type Category = CategoryRow;
 export type PaymentMethod = PaymentMethodRow;
 export type Transaction = TransactionRow;
 export type Budget = BudgetRow;

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Transaction, Budget, Debt, PaymentMethod } from "@/lib/types/database";
+import type { Transaction, Budget, Debt, PaymentMethod, Category } from "@/lib/types/database";
+import { useCategories } from "@/lib/hooks/use-categories";
 import { formatAED, formatDate, todayISO } from "@/lib/format";
 import { usePaymentMethods } from "@/lib/hooks/use-payment-methods";
 import { TransactionForm } from "./transaction-form";
@@ -69,7 +70,13 @@ import { toast } from "sonner";
 
 export default function FinancePage() {
   const [tab, setTab] = useState<
-    "overview" | "transactions" | "transfers" | "wallets" | "budgets" | "debts"
+    | "overview"
+    | "transactions"
+    | "transfers"
+    | "wallets"
+    | "budgets"
+    | "debts"
+    | "categories"
   >("overview");
 
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
@@ -105,6 +112,20 @@ export default function FinancePage() {
   const [editDebt, setEditDebt] = useState<Debt | null>(null);
   const [deleteDebtId, setDeleteDebtId] = useState<string | null>(null);
   const [markPaidDebtId, setMarkPaidDebtId] = useState<string | null>(null);
+
+  const {
+    categories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+  } = useCategories();
+
+  // Categories tab UI state
+  const [addCatType, setAddCatType] = useState<"income" | "expense" | null>(null);
+  const [addCatName, setAddCatName] = useState("");
+  const [editCatId, setEditCatId] = useState<string | null>(null);
+  const [editCatName, setEditCatName] = useState("");
+  const [deleteCatId, setDeleteCatId] = useState<string | null>(null);
 
   const {
     paymentMethods,
@@ -296,6 +317,29 @@ export default function FinancePage() {
       [swapped[idx], swapped[idx + 1]] = [swapped[idx + 1], swapped[idx]];
       reorderPaymentMethods(swapped.map((m) => m.id));
     }
+  }
+
+  async function handleCategoryAdd(catType: "income" | "expense") {
+    if (!addCatName.trim()) return;
+    await createCategory(addCatName.trim(), catType);
+    setAddCatType(null);
+    setAddCatName("");
+    toast.success("Category added");
+  }
+
+  async function handleCategoryUpdate() {
+    if (!editCatId || !editCatName.trim()) return;
+    await updateCategory(editCatId, editCatName.trim());
+    setEditCatId(null);
+    setEditCatName("");
+    toast.success("Category renamed");
+  }
+
+  async function handleCategoryDelete() {
+    if (!deleteCatId) return;
+    await deleteCategory(deleteCatId);
+    setDeleteCatId(null);
+    toast.success("Category deleted");
   }
 
   if (loading || walletsLoading) {
@@ -497,6 +541,9 @@ export default function FinancePage() {
             </TabsTrigger>
             <TabsTrigger value="debts" className="shrink-0 text-xs px-3 py-1.5">
               Debts
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="shrink-0 text-xs px-3 py-1.5">
+              Categories
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -904,6 +951,149 @@ export default function FinancePage() {
         </div>
       )}
 
+      {/* Categories */}
+      {tab === "categories" && (
+        <div className="space-y-4 animate-rise-in stagger-4">
+          {(["expense", "income"] as const).map((catType) => {
+            const typeCats = categories.filter((c) => c.type === catType);
+            const atLimit = typeCats.length >= 10;
+            return (
+              <Card key={catType}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm capitalize">
+                      {catType} Categories
+                    </CardTitle>
+                    {!atLimit && addCatType !== catType && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => {
+                          setAddCatType(catType);
+                          setAddCatName("");
+                          setEditCatId(null);
+                        }}
+                      >
+                        <Plus className="w-3 h-3" /> Add
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-1.5">
+                  {typeCats.length === 0 && addCatType !== catType && (
+                    <p className="text-sm text-muted-foreground">
+                      No categories yet.
+                    </p>
+                  )}
+                  {typeCats.map((cat) =>
+                    editCatId === cat.id ? (
+                      <div key={cat.id} className="flex items-center gap-2">
+                        <Input
+                          className="h-8 text-sm flex-1"
+                          value={editCatName}
+                          onChange={(e) => setEditCatName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleCategoryUpdate();
+                            }
+                            if (e.key === "Escape") setEditCatId(null);
+                          }}
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs shrink-0"
+                          disabled={!editCatName.trim()}
+                          onClick={handleCategoryUpdate}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs shrink-0"
+                          onClick={() => setEditCatId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <div
+                        key={cat.id}
+                        className="flex items-center gap-2 py-0.5"
+                      >
+                        <span className="flex-1 text-sm">{cat.name}</span>
+                        <button
+                          type="button"
+                          aria-label="Rename category"
+                          className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground"
+                          onClick={() => {
+                            setEditCatId(cat.id);
+                            setEditCatName(cat.name);
+                            setAddCatType(null);
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Delete category"
+                          className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent text-destructive"
+                          onClick={() => setDeleteCatId(cat.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )
+                  )}
+                  {addCatType === catType && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Input
+                        className="h-8 text-sm flex-1"
+                        placeholder="Category name"
+                        value={addCatName}
+                        onChange={(e) => setAddCatName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleCategoryAdd(catType);
+                          }
+                          if (e.key === "Escape") setAddCatType(null);
+                        }}
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs shrink-0"
+                        disabled={!addCatName.trim()}
+                        onClick={() => handleCategoryAdd(catType)}
+                      >
+                        Add
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-xs shrink-0"
+                        onClick={() => setAddCatType(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                  {atLimit && (
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Limit of 10 reached.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
       {/* FAB */}
       <button
         type="button"
@@ -929,6 +1119,8 @@ export default function FinancePage() {
         initial={editTxn}
         paymentMethods={paymentMethods}
         findOrCreateByName={findOrCreateByName}
+        categories={categories}
+        createCategory={createCategory}
         onSaved={async () => {
           await Promise.all([fetchData(), refreshWallets()]);
           toast.success(editTxn ? "Transaction updated" : "Transaction saved");
@@ -974,6 +1166,8 @@ export default function FinancePage() {
           if (!v) setEditBudget(null);
         }}
         initial={editBudget}
+        expenseCategories={categories.filter((c) => c.type === "expense")}
+        createCategory={createCategory}
         onSaved={() => {
           fetchData();
           toast.success(editBudget ? "Budget updated" : "Budget created");
@@ -1032,6 +1226,15 @@ export default function FinancePage() {
         onConfirm={handleMarkPaid}
       />
       <ConfirmDialog
+        open={!!deleteCatId}
+        onOpenChange={(v) => {
+          if (!v) setDeleteCatId(null);
+        }}
+        title="Delete category?"
+        description="This category will be removed. Existing transactions keep their current label."
+        onConfirm={handleCategoryDelete}
+      />
+      <ConfirmDialog
         open={!!deactivateWalletId}
         onOpenChange={(v) => {
           if (!v) setDeactivateWalletId(null);
@@ -1058,16 +1261,26 @@ function BudgetForm({
   onOpenChange,
   initial,
   onSaved,
+  expenseCategories,
+  createCategory,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial: Budget | null;
   onSaved: () => void;
+  expenseCategories: Category[];
+  createCategory: (
+    name: string,
+    type: "income" | "expense"
+  ) => Promise<Category | null>;
 }) {
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [period, setPeriod] = useState<Budget["period"]>("monthly");
   const [saving, setSaving] = useState(false);
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [creatingCat, setCreatingCat] = useState(false);
 
   useEffect(() => {
     if (initial) {
@@ -1079,7 +1292,26 @@ function BudgetForm({
       setAmount("");
       setPeriod("monthly");
     }
+    setShowNewCat(false);
+    setNewCatName("");
   }, [initial, open]);
+
+  async function handleBudgetCreateCategory() {
+    if (!newCatName.trim() || creatingCat) return;
+    setCreatingCat(true);
+    try {
+      const created = await createCategory(newCatName.trim(), "expense");
+      if (created) {
+        setCategory(created.name);
+        setNewCatName("");
+        setShowNewCat(false);
+      } else {
+        toast.error("Could not create category");
+      }
+    } finally {
+      setCreatingCat(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1125,12 +1357,64 @@ function BudgetForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Category</Label>
-            <Input
-              placeholder="e.g. Food, Transport…"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              required
-            />
+            <Select
+              value={showNewCat ? "__new__" : category || ""}
+              onValueChange={(v) => {
+                if (!v) return;
+                if (v === "__new__") {
+                  setShowNewCat(true);
+                  setCategory("");
+                } else {
+                  setCategory(v);
+                  setShowNewCat(false);
+                  setNewCatName("");
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    expenseCategories.length === 0
+                      ? "No categories yet"
+                      : "Select category"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {expenseCategories.map((c) => (
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+                <SelectItem value="__new__">+ New category…</SelectItem>
+              </SelectContent>
+            </Select>
+            {showNewCat && (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Category name"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleBudgetCreateCategory();
+                    }
+                  }}
+                  className="h-8 text-sm"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 shrink-0"
+                  disabled={creatingCat || !newCatName.trim()}
+                  onClick={handleBudgetCreateCategory}
+                >
+                  Add
+                </Button>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

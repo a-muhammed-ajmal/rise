@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Transaction, PaymentMethod } from "@/lib/types/database";
+import type { Transaction, PaymentMethod, Category } from "@/lib/types/database";
 import { todayISO } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-
 export function TransactionForm({
   open,
   onOpenChange,
@@ -33,6 +32,8 @@ export function TransactionForm({
   onSaved,
   paymentMethods,
   findOrCreateByName,
+  categories,
+  createCategory,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -41,6 +42,11 @@ export function TransactionForm({
   onSaved: () => void;
   paymentMethods: PaymentMethod[];
   findOrCreateByName: (name: string) => Promise<string | null>;
+  categories: Category[];
+  createCategory: (
+    name: string,
+    type: "income" | "expense"
+  ) => Promise<Category | null>;
 }) {
   const [type, setType] = useState<"income" | "expense">(defaultType);
   const [amount, setAmount] = useState("");
@@ -51,7 +57,12 @@ export function TransactionForm({
   const [otherName, setOtherName] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [creatingCat, setCreatingCat] = useState(false);
+
   const activeWallets = paymentMethods.filter((m) => m.is_active);
+  const typeCategories = categories.filter((c) => c.type === type);
 
   useEffect(() => {
     if (initial) {
@@ -71,7 +82,33 @@ export function TransactionForm({
       setPaymentMethodId("");
       setOtherName("");
     }
+    setShowNewCat(false);
+    setNewCatName("");
   }, [initial, defaultType, open]);
+
+  function changeType(newType: "income" | "expense") {
+    setType(newType);
+    setCategory("");
+    setShowNewCat(false);
+    setNewCatName("");
+  }
+
+  async function handleCreateCategory() {
+    if (!newCatName.trim() || creatingCat) return;
+    setCreatingCat(true);
+    try {
+      const created = await createCategory(newCatName.trim(), type);
+      if (created) {
+        setCategory(created.name);
+        setNewCatName("");
+        setShowNewCat(false);
+      } else {
+        toast.error("Could not create category");
+      }
+    } finally {
+      setCreatingCat(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -163,7 +200,7 @@ export function TransactionForm({
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
-              onClick={() => setType("expense")}
+              onClick={() => changeType("expense")}
               className={
                 type === "expense"
                   ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -174,7 +211,7 @@ export function TransactionForm({
             </Button>
             <Button
               type="button"
-              onClick={() => setType("income")}
+              onClick={() => changeType("income")}
               className={
                 type === "income"
                   ? "bg-mod-finance text-white hover:bg-mod-finance/90"
@@ -202,12 +239,64 @@ export function TransactionForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Category</Label>
-              <Input
-                placeholder="e.g. Food, Transport, Salary…"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                required
-              />
+              <Select
+                value={showNewCat ? "__new__" : category || ""}
+                onValueChange={(v) => {
+                  if (!v) return;
+                  if (v === "__new__") {
+                    setShowNewCat(true);
+                    setCategory("");
+                  } else {
+                    setCategory(v);
+                    setShowNewCat(false);
+                    setNewCatName("");
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      typeCategories.length === 0
+                        ? "No categories yet"
+                        : "Select"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeCategories.map((c) => (
+                    <SelectItem key={c.id} value={c.name}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__new__">+ New category…</SelectItem>
+                </SelectContent>
+              </Select>
+              {showNewCat && (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Category name"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleCreateCategory();
+                      }
+                    }}
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 shrink-0"
+                    disabled={creatingCat || !newCatName.trim()}
+                    onClick={handleCreateCategory}
+                  >
+                    Add
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Wallet</Label>
@@ -272,7 +361,7 @@ export function TransactionForm({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !category}>
               {saving ? "Saving…" : initial ? "Update" : "Save"}
             </Button>
           </DialogFooter>
