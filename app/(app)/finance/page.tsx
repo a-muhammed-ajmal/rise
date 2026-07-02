@@ -66,20 +66,6 @@ import {
 } from "date-fns";
 import { toast } from "sonner";
 
-const EXPENSE_CATEGORIES = [
-  "Food & Drinks",
-  "Transport",
-  "Shopping",
-  "Housing",
-  "Health",
-  "Entertainment",
-  "Education",
-  "Travel",
-  "Utilities",
-  "Insurance",
-  "Personal Care",
-  "Other",
-];
 
 export default function FinancePage() {
   const [tab, setTab] = useState<
@@ -1139,24 +1125,12 @@ function BudgetForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select
+            <Input
+              placeholder="e.g. Food, Transport…"
               value={category}
-              onValueChange={(v) => {
-                if (v) setCategory(v);
-              }}
+              onChange={(e) => setCategory(e.target.value)}
               required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {EXPENSE_CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

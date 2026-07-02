@@ -24,28 +24,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-const EXPENSE_CATEGORIES = [
-  "Food & Drinks",
-  "Transport",
-  "Shopping",
-  "Housing",
-  "Health",
-  "Entertainment",
-  "Education",
-  "Travel",
-  "Utilities",
-  "Insurance",
-  "Personal Care",
-  "Other",
-];
-const INCOME_CATEGORIES = [
-  "Salary",
-  "Freelance",
-  "Business",
-  "Investment",
-  "Gift",
-  "Other",
-];
 
 export function TransactionForm({
   open,
@@ -167,7 +145,6 @@ export function TransactionForm({
     }
   }
 
-  const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   const showOtherInput = paymentMethodId === "__other__";
 
   return (
@@ -225,24 +202,12 @@ export function TransactionForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Category</Label>
-              <Select
+              <Input
+                placeholder="e.g. Food, Transport, Salary…"
                 value={category}
-                onValueChange={(v) => {
-                  if (v) setCategory(v);
-                }}
+                onChange={(e) => setCategory(e.target.value)}
                 required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
             <div className="space-y-2">
               <Label>Wallet</Label>
