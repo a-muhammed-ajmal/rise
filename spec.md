@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 151 passing |
-| Line coverage | 97.21% on `lib/**` |
-| Migrations | 6 (001–006) |
-| DB tables | 20 (19 core + push_subscriptions) |
-| AI tools | 12 AUTO + 3 APPROVAL = 15 total |
-| Last feature shipped | Phase 5 — RISE design system (2026-06-28) |
+| Test count | 265 passing |
+| Line coverage | 49.38% on `lib/**` |
+| Migrations | 11 (001–011) |
+| DB tables | 21 (20 core + push_subscriptions) |
+| AI tools | 58 AUTO + 17 APPROVAL = 75 total |
+| Last feature shipped | Phase 9 — Payment methods / wallets (2026-07-01) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -123,7 +123,7 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 | Metric | Target |
 | --- | --- |
-| Test coverage | ≥ 85% line on `lib/**` excluding `lib/types/` (current: 97.21%) |
+| Test coverage | ≥ 85% line on `lib/**` excluding `lib/types/` (current: 49.38% — below target; `execute-tool.ts` expansion and new `use-payment-methods.ts` at 0% drove the drop) |
 | Build | `next build` exits 0; 0 TypeScript errors |
 | Lint | ESLint exits 0; 0 errors. (5 pre-existing warnings in `productivity/page.tsx`, `api/ai/chat/route.ts`, `task-calendar.tsx` — tracked for next cleanup pass, not introduced by design work) |
 | SSE first chunk | < 3 s under normal Gemini API latency |
@@ -157,15 +157,34 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 
 ### AI tool set
 
-**AUTO_TOOLS** (execute immediately):
-`create_task` · `list_tasks` · `complete_task` · `log_expense` · `log_income` · `log_habit` · `create_goal` · `add_note` · `add_contact` · `get_daily_briefing` · `search_data` · `get_analytics`
+**AUTO_TOOLS** (execute immediately, 58 total):
 
-**APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes):
-`delete_task` · `bulk_complete_tasks` · `delete_note`
+| Group | Tools |
+| --- | --- |
+| Tasks (4) | `create_task` · `list_tasks` · `update_task` · `complete_task` |
+| Projects (3) | `list_projects` · `create_project` · `update_project` |
+| Goals (4) | `list_goals` · `create_goal` · `update_goal` · `complete_goal` |
+| Milestones (4) | `create_milestone` · `list_milestones` · `update_milestone` · `complete_milestone` |
+| Habits (5) | `log_habit` · `list_habits` · `create_habit` · `update_habit` · `delete_habit_log` |
+| Finance (4) | `list_payment_methods` · `log_expense` · `log_income` · `list_transactions` |
+| Budgets (3) | `list_budgets` · `create_budget` · `update_budget` |
+| Debts (2) | `list_debts` · `create_debt` |
+| Contacts (3) | `list_contacts` · `add_contact` · `update_contact` |
+| Interactions (3) | `create_interaction` · `list_interactions` · `update_interaction` |
+| Notes (3) | `add_note` · `list_notes` · `update_note` |
+| Documents (3) | `list_documents` · `create_document` · `update_document` |
+| Links (4) | `list_links` · `create_link` · `update_link` · `delete_link` |
+| Journal entries (3) | `list_journal_entries` · `create_journal_entry` · `update_journal_entry` |
+| Reviews (3) | `list_reviews` · `create_review` · `update_review` |
+| Focus sessions (4) | `list_focus_sessions` · `create_focus_session` · `update_focus_session` · `delete_focus_session` |
+| Analytics & Search (3) | `get_daily_briefing` · `get_analytics` · `search_data` |
+
+**APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes, 17 total):
+`delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `update_transaction` · `delete_transaction` · `delete_budget` · `update_debt` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review`
 
 > Tool schemas use Google GenAI's `FunctionDeclaration` format (`Type.OBJECT`, `Type.STRING`, etc.) from `@google/genai` — not the Anthropic `input_schema` format.
 
-### Data model (20 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–006)
+### Data model (21 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–011)
 
 ```text
 projects            id, name, description, status(active|completed|archived), color
@@ -177,11 +196,14 @@ goals               id, title, description, category, target_date, status, progr
 milestones          id, goal_id, title, due_date, completed_at
 reviews             id, type, period_start, period_end, content(Json), mood, energy
 journal_entries     id, date(unique/day), content, mood(1-5), energy(1-5), tags
-transactions        id, type(income|expense), amount, category, description, date,
-                    payment_method, tags
+payment_methods     id, name, balance, color, is_active, display_order
+transactions        id, type(income|expense|transfer|adjustment), amount, category, description,
+                    date, payment_method, payment_method_id, from_payment_method_id,
+                    to_payment_method_id, tags
 budgets             id, category, amount, period, period_start, period_end
 debts               id, creditor, type(i_owe|they_owe), amount, description, due_date, paid_at
-habits              id, name, description, frequency, target_days(int[0-6]), color, icon, active
+habits              id, name, description, frequency, target_days(int[0-6]), color, icon,
+                    reminder_time("HH:MM:SS" | null), active
 habit_logs          id, habit_id, logged_date, completed, note
 focus_sessions      id, task_id, duration_minutes, started_at, ended_at, notes
 contacts            id, name, email, phone, company, role, type, stage, deal_value,
@@ -273,7 +295,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 - All 8 module pages (productivity, finance, wellness, goals, CRM, knowledge, analytics, assistant) render without runtime errors.
 - AI assistant streams text and executes approved tool calls end-to-end.
 - `npm run build` exits 0 (0 TypeScript errors, 0 lint warnings).
-- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 151 tests, 97.21%.
+- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 265 tests, 49.38% (below target — see Performance Targets note).
 - Pushing `main` produces a working Vercel production deployment.
 
 ---
@@ -299,6 +321,11 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 | 2026-06-26 | VAPID JWT signed via SubtleCrypto in Deno edge function (no npm web-push) | Deno runtime in Supabase Edge Functions has no npm compatibility for `web-push`. SubtleCrypto is a Deno built-in. |
 | 2026-06-26 | Migrations are append-only, applied manually via Supabase SQL editor | Prevents accidental schema drift in CI; single-person project means manual apply is low overhead. |
 | 2026-06-28 | RISE design spec applied app-wide: Lexend + JetBrains Mono, 4-level surface elevation, spec type utilities, 5-slot bottom nav | Design system overhaul for the dark-first cockpit aesthetic. `font-bold` (700) is now banned; weight ceiling is 600. Purple `#7C5CFC` is the sole AI-accent. |
+| 2026-06-29 | RLS hardening applied (migration 007) | Additional row-level security policies strengthened across all 20 user-data tables; AI approval token flow hardened with HMAC signing and 5-minute expiry. |
+| 2026-06-30 | AI tools expanded to full CRUD across all 17 user-facing entities (58 AUTO + 17 APPROVAL = 75 total) | Systematic tool addition to enable the AI assistant to create, read, update, and delete every entity type. `update_task`, `update_goal`, and equivalent tools for all other entities were added as AUTO_TOOLS. Destructive/financial updates moved to APPROVAL_TOOLS. |
+| 2026-06-30 | Multimodal chat attachments added (migration 008) | `chat-attachments` Supabase Storage bucket created; `ChatAttachment` type defined in `lib/types/database.ts`; image download and injection wired into `/api/ai/chat` for Gemini vision. |
+| 2026-07-01 | `reminder_time` column added to `habits` table (migration 009) | Enables time-based habit reminders. Stored as `"HH:MM:SS"` or `null`. Habit cards and form overhauled; cards now sort by `reminder_time` ascending, nulls last. |
+| 2026-07-01 | `payment_methods` table added (migrations 010, 011) | Wallet/balance tracking for the finance module. `transactions` extended with `payment_method_id`, `from_payment_method_id`, `to_payment_method_id` FK columns and two new types: `transfer` and `adjustment`. |
 
 ---
 
@@ -310,8 +337,10 @@ Candidate areas (not prioritized):
 
 - Task attachments UI (storage bucket `task-attachments` created in migration 006; no upload UI yet)
 - Recurring task generation (schema has `is_recurring` / `recurrence_rule`; no recurrence engine yet)
-- AI tool expansions: `update_task`, `update_goal`, `log_journal`
 - Analytics deep-dive: per-category spending charts, habit streak history
+- AI Assistant CRUD — full create/read/update/delete for all user-facing entities (tasks, goals, habits, transactions, contacts and related tables) via AI tools; excludes ai_conversations, ai_memory, push_subscriptions
+- Multimodal chat input — image, file, and audio upload support in the AI assistant via Supabase Storage with per-user RLS
+- Habit UX improvements — revised creation form with time/reminder settings, repeat-frequency dropdown, icon removal, green tick / red cross done/not-done marking on habit cards, read-time auto-fail logic for unmarked past days
 
 ---
 
@@ -324,3 +353,7 @@ Candidate areas (not prioritized):
 | 3 | Push notification settings UI | 2026-06-26 | `lib/hooks/use-push-subscription.ts`, `app/(app)/settings/page.tsx` |
 | 4 | AI-assisted development framework | 2026-06-26 | `.claude/skills/` (4 skills), `.claude/commands/` (4 commands), `get_analytics` AUTO_TOOL, 151 tests at 97.21% coverage |
 | 5 | RISE design system implementation | 2026-06-28 | `app/globals.css` (RISE spec tokens + type utilities + glassmorphism classes), `app/layout.tsx` (Lexend + JetBrains Mono via `next/font/google`), `components/layout/bottom-nav.tsx` (5-slot with center AI FAB), `components/layout/sidebar.tsx`, `components/layout/topbar.tsx`, all 8 module pages (font-bold → spec weights), `.claude/skills/frontend-design.md` |
+| 6 | Security hardening | 2026-06-29 | `supabase/migrations/007_rls_hardening.sql` (RLS policies strengthened on all 20 tables), `app/api/ai/chat/route.ts` (HMAC-signed approval tokens with 5-min expiry, timing-safe comparison) |
+| 7 | AI tools expansion to full CRUD + multimodal chat | 2026-06-30 | `lib/ai/tools.ts` (58 AUTO + 17 APPROVAL = 75 tools), `lib/ai/execute-tool.ts` (handlers for all new tools), `supabase/migrations/008_chat_attachments.sql` (chat-attachments bucket), `lib/types/database.ts` (ChatAttachment types), `app/api/ai/chat/route.ts` (image download + Gemini vision injection) |
+| 8 | Habit UX overhaul + reminder_time | 2026-07-01 | `supabase/migrations/009_habit_reminder_time.sql` (adds `reminder_time` column), `lib/types/database.ts` (HabitRow updated), `app/(app)/wellness/page.tsx` (form overhaul, card marking, streak logic, sort by reminder_time) |
+| 9 | Payment methods / wallets | 2026-07-01 | `supabase/migrations/010_payment_methods.sql`, `011_fix_payment_methods.sql`, `lib/types/database.ts` (PaymentMethodRow, TransactionRow with transfer/adjustment types + FK columns), `app/(app)/finance/` (wallet cards, live balance tracking) |

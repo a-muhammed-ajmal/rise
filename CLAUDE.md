@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 151 tests at 97.21%.
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 265 tests, 49.38% — below target due to execute-tool.ts expansion and use-payment-methods.ts at 0% coverage; recovery is next priority.
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -57,8 +57,8 @@ app/
   (app)/                    Authenticated core workspace shell (layout.tsx handles auth protection)
     page.tsx                Central OS Executive Dashboard
     productivity/           Task orchestration and project boards
-    finance/                Income and expense monitoring ledgers (Strict AED)
-    wellness/               Habit tracker sheets and performance streaks
+    finance/                Income, expense, transfer and adjustment ledgers; wallet/payment method balance tracking (Strict AED)
+    wellness/               Habit tracker with reminder_time scheduling, done/not-done marking, streak logic, and sort-by-reminder-time (Phase 8)
     goals/                  Strategic goal tracking and milestone matrices
     crm/                    Contact lifecycle managers and interaction logs
     knowledge/              Rich-text documentation workspace (Tiptap implementation)
@@ -81,17 +81,23 @@ lib/
     tools.ts                System parameters for AUTO_TOOLS and APPROVAL_TOOLS arrays
     execute-tool.ts         Core tool executors bridging Gemini function calls to database functions
     memory.ts               Voyage AI (1024-dim pgvector) tracking logic with keyword fallback
-  hooks/                    Localized state tools (use-tasks.ts, use-projects.ts, use-theme.tsx)
+    upload-helpers.ts       File upload parsing and text/audio extraction for chat attachments
+  hooks/
+    use-tasks.ts            Task CRUD with Supabase Realtime subscription
+    use-projects.ts         Project CRUD with Supabase Realtime subscription
+    use-push-subscription.ts Push notification subscription management
+    use-payment-methods.ts  Wallet balance state and CRUD operations
+    use-theme.tsx           Dark/light mode toggle; persists to localStorage
   supabase/
     client.ts               Client-side client initializations for browser interactions
     server.ts               Server-side isolated client handlers
     middleware.ts           Session lifecycle handlers and authentication filters
   types/
-    database.ts             Single Source of Truth mapping for the 20 Supabase database tables
+    database.ts             Single Source of Truth mapping for the 21 Supabase database tables
   format.ts                 System formatting scripts (Strict AED presentation, DD/MM/YYYY, 12h)
   utils.ts                  General design tool utilities and class consolidations
 
-supabase/migrations/        001_schema through 006_task_enhancements scripts (Run in order)
+supabase/migrations/        001 through 011 (append-only; execute via Supabase SQL editor)
 supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
 proxy.ts                    Next.js 16 centralized gateway logic entry point
