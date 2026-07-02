@@ -7,11 +7,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* IBM Plex Sans for body; Lexend for headings (spec: 500 default, 600 exception, 700 banned) */
-  --font-sans: var(--font-plex-sans);
-  --font-heading: var(--font-lexend);
-  --font-display: var(--font-lexend);
-  --font-mono: var(--font-jetbrains-mono);
+  /* Inter — single typeface across all roles (TaskFlow design system) */
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-inter);
+  --font-display: var(--font-inter);
+  --font-mono: var(--font-inter);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -67,8 +67,8 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   LIGHT MODE (default) — violet palette from frontend-design skill
-   Primary: #6D28D9 · Text: #2E1065 · Background: #FAF8FD · Surface: #FFFFFF
+   LIGHT MODE (default) — TaskFlow palette
+   Primary: #5B5BD6 · Text: #111827 · Background: #F4F5F7 · Surface: #FFFFFF
    ══════════════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -81,42 +81,42 @@
   --step-4:  clamp(2.07rem, 1.49rem + 2.90vw, 3.55rem);
   --step-5:  clamp(2.49rem, 1.59rem + 4.49vw, 4.74rem);
 
-  /* ── shadcn tokens — violet light mode ──────────────────────────────────── */
-  --background: oklch(0.979 0.007 290);     /* #FAF8FD — soft violet white        */
-  --foreground: oklch(0.210 0.175 293);     /* #2E1065 — deep violet headline     */
-  --card: oklch(1 0 0);                     /* #FFFFFF — pure white card          */
-  --card-foreground: oklch(0.210 0.175 293);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.210 0.175 293);
-  --primary: oklch(0.470 0.215 291);        /* #6D28D9 — brand violet CTA         */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.970 0.010 291);      /* #F3F0FC — light violet tint        */
-  --secondary-foreground: oklch(0.210 0.175 293);
-  --muted: oklch(0.970 0.010 291);          /* #F3F0FC                            */
-  --muted-foreground: oklch(0.500 0.025 240); /* #5E6C7A — blue-gray muted        */
-  --accent: oklch(0.970 0.010 291);
-  --accent-foreground: oklch(0.210 0.175 293);
-  --destructive: oklch(0.530 0.220 28);     /* #E92D2D — error red                */
-  --border: oklch(0.470 0.215 291 / 20%);  /* #6D28D933 — violet border          */
-  --input: oklch(0.470 0.215 291 / 15%);
-  --ring: oklch(0.470 0.215 291 / 25%);
-  /* Chart palette — violet scale */
-  --chart-1: oklch(0.470 0.215 291);        /* #6D28D9 primary                    */
-  --chart-2: oklch(0.420 0.195 291);        /* #5B21B6 accent-strong              */
-  --chart-3: oklch(0.550 0.210 291);        /* #7C3AED lighter violet             */
-  --chart-4: oklch(0.690 0.140 291);        /* #A78BFA light violet               */
-  --chart-5: oklch(0.210 0.175 293);        /* #2E1065 dark violet                */
-  --radius: 1rem;                           /* 16px card radius per skill          */
-  --sidebar: oklch(1 0 0);                  /* #FFFFFF — white sidebar            */
-  --sidebar-foreground: oklch(0.210 0.175 293);
-  --sidebar-primary: oklch(0.470 0.215 291);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.970 0.010 291);
-  --sidebar-accent-foreground: oklch(0.210 0.175 293);
-  --sidebar-border: oklch(0.470 0.215 291 / 20%);
-  --sidebar-ring: oklch(0.470 0.215 291 / 25%);
+  /* ── shadcn tokens — TaskFlow light mode ───────────────────────────────────── */
+  --background: #F4F5F7;
+  --foreground: #111827;
+  --card: #FFFFFF;
+  --card-foreground: #111827;
+  --popover: #FFFFFF;
+  --popover-foreground: #111827;
+  --primary: #5B5BD6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F9FAFB;
+  --secondary-foreground: #111827;
+  --muted: #F9FAFB;
+  --muted-foreground: #6B7280;
+  --accent: #EEEEFF;
+  --accent-foreground: #5B5BD6;
+  --destructive: #EF4444;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #5B5BD6;
+  /* Chart palette */
+  --chart-1: #5B5BD6;
+  --chart-2: #22C55E;
+  --chart-3: #F59E0B;
+  --chart-4: #3B82F6;
+  --chart-5: #EF4444;
+  --radius: 0.625rem;               /* 10px card radius — TaskFlow spec */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #5B5BD6;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EEEEFF;
+  --sidebar-accent-foreground: #5B5BD6;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #5B5BD6;
 
-  /* ── Module colors — light mode (aligned to frontend-design spec) ───────── */
+  /* ── Module colors — light mode ─────────────────────────────────────────── */
   --mod-tasks: #34D399;                        /* Green — task management    */
   --mod-tasks-soft: rgba(52, 211, 153, 0.10);
   --mod-finance: #60A5FA;                      /* Blue — finance             */
@@ -132,82 +132,88 @@
   --mod-ai: #7C5CFC;                           /* Purple — AI (= accent)    */
   --mod-ai-soft: rgba(124, 92, 252, 0.08);
 
-  /* ── Skill: semantic token layer ────────────────────────────────────────── */
-  --color-primary:        #6D28D9;
-  --color-accent-strong:  #5B21B6;
-  --color-secondary:      #2E1065;
-  --color-background:     #FAF8FD;
+  /* ── TaskFlow semantic token layer ─────────────────────────────────────────── */
+  --color-base:           #F4F5F7;
   --color-surface:        #FFFFFF;
-  --color-muted-text:     #5E6C7A;
-  --color-border-token:   #6D28D933;
-  --color-error:          #E92D2D;
-  --color-success:        #16A34A;
-  --color-focus:          rgba(109, 40, 217, 0.35);
+  --color-surface-alt:    #F9FAFB;
+  --color-primary:        #5B5BD6;
+  --color-primary-light:  #EEEEFF;
+  --color-focus-accent:   #FF6B35;
+  --color-focus-light:    #FFF1EC;
+  --color-content:        #111827;
+  --color-subtle:         #6B7280;
+  --color-muted-text:     #9CA3AF;
+  --color-border-token:   #E5E7EB;
 
-  /* ── Skill: spacing scale ────────────────────────────────────────────────── */
+  /* ── Spacing scale ──────────────────────────────────────────────────────── */
   --spacing-xs: 6px;   --spacing-sm: 16px;  --spacing-md: 24px;
   --spacing-lg: 32px;  --spacing-xl: 40px;  --spacing-2xl: 64px;
 
-  /* ── Skill: radius scale ─────────────────────────────────────────────────── */
-  --radius-card:  16px;
-  --radius-input: 8px;
+  /* ── Radius scale ───────────────────────────────────────────────────────── */
+  --radius-card:  10px;
+  --radius-popup: 16px;
+  --radius-input: 6px;
   --radius-pill:  9999px;
 
-  /* ── Skill: violet primitive scale ──────────────────────────────────────── */
-  --violet-950: #1E0552;  --violet-900: #2E1065;  --violet-800: #3B0F82;
-  --violet-700: #4C1D95;  --violet-600: #5B21B6;  --violet-500: #6D28D9;
-  --violet-400: #7C3AED;  --violet-300: #8B5CF6;  --violet-200: #A78BFA;
-  --violet-100: #DDD6FE;  --violet-50:  #F5F3FF;
+  /* ── TaskFlow shadow tokens ─────────────────────────────────────────────── */
+  --shadow-card:       0 1px 3px rgba(0,0,0,0.08);
+  --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.10);
+  --shadow-popup:      0 4px 12px rgba(0,0,0,0.12);
+  /* Legacy aliases */
+  --shadow-sm:  var(--shadow-card);
+  --shadow-md:  var(--shadow-card-hover);
+  --shadow-lg:  var(--shadow-popup);
+  --shadow-glow: 0 0 20px rgba(91, 91, 214, 0.20);
+  --shadow-1:   var(--shadow-card);
+  --shadow-2:   var(--shadow-card-hover);
+  --shadow-3:   var(--shadow-popup);
 
-  /* ── Elevation — light mode ──────────────────────────────────────────────── */
-  --shadow-sm: 0 1px 2px rgba(46, 16, 101, 0.05);
-  --shadow-md: 0 4px 12px rgba(46, 16, 101, 0.08), 0 2px 4px rgba(46, 16, 101, 0.04);
-  --shadow-lg: 0 20px 40px rgba(46, 16, 101, 0.12), 0 8px 16px rgba(46, 16, 101, 0.06);
-  --shadow-glow: 0 0 20px rgba(109, 40, 217, 0.20);
-  --shadow-1: 0 1px 2px rgba(46, 16, 101, 0.06);
-  --shadow-2: 0 4px 12px rgba(46, 16, 101, 0.08);
-  --shadow-3: 0 18px 40px rgba(46, 16, 101, 0.10);
+  /* ── TaskFlow priority colors ───────────────────────────────────────────── */
+  --color-p1: #EF4444;
+  --color-p2: #F97316;
+  --color-p3: #3B82F6;
+  --color-p4: #9CA3AF;
 
-  /* ── Motion ──────────────────────────────────────────────────────────────── */
+  /* ── Motion ─────────────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in:  cubic-bezier(0.5, 0, 0.75, 0);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);  /* personality on key moments */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --dur-fast:   120ms;  --dur-1: 120ms;
   --dur-normal: 220ms;  --dur-2: 220ms;
   --dur-slow:   400ms;  --dur-3: 400ms;
   --dur-reveal: 600ms;  --dur-4: 650ms;
 
-  /* ── Font aliases ────────────────────────────────────────────────────────── */
-  --font-sans:    var(--font-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
-  --font-display: var(--font-lexend), "Lexend", system-ui, sans-serif;
-  --font-mono:    var(--font-jetbrains-mono), "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+  /* ── Font aliases (all Inter) ───────────────────────────────────────────── */
+  --font-sans:    var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-display: var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-mono:    var(--font-inter), "Inter", system-ui, sans-serif;
 
-  /* ── RISE spec: surface tokens (light mode equivalents) ──────────────────── */
-  --surface-base: #FAF8FD;
-  --surface-1: #FFFFFF;
-  --surface-2: #F3F0FC;
-  --surface-overlay: #EDE9F7;
-  --accent-primary: #7C5CFC;
-  --accent-glow: rgba(124, 92, 252, 0.15);
-  --border-subtle: rgba(109, 40, 217, 0.10);
-  --border-active: rgba(124, 92, 252, 0.4);
+  /* ── Surface tokens (light mode) ───────────────────────────────────────── */
+  --surface-base:    #F4F5F7;
+  --surface-1:       #FFFFFF;
+  --surface-2:       #F9FAFB;
+  --surface-overlay: #FFFFFF;
+  --accent-primary:  #5B5BD6;
+  --accent-glow:     rgba(91, 91, 214, 0.15);
+  --border-subtle:   rgba(229, 231, 235, 0.8);
+  --border-active:   rgba(91, 91, 214, 0.4);
 
-  /* ── RISE spec: text tokens (light mode) ─────────────────────────────────── */
-  --text-primary: #2E1065;
-  --text-secondary: #5E6C7A;
-  --text-muted: #9CA3AF;
+  /* ── Text tokens (light mode) ───────────────────────────────────────────── */
+  --text-primary:   #111827;
+  --text-secondary: #6B7280;
+  --text-muted:     #9CA3AF;
 
-  /* ── RISE spec: semantic colors ──────────────────────────────────────────── */
-  --color-success: #34D399;
-  --color-warning: #FBBF24;
-  --color-danger:  #F87171;
-  --color-info:    #60A5FA;
-  --color-success-soft: rgba(52, 211, 153, 0.10);
-  --color-warning-soft: rgba(251, 191, 36, 0.10);
-  --color-danger-soft:  rgba(248, 113, 113, 0.10);
-  --color-info-soft:    rgba(96, 165, 250, 0.10);
+  /* ── Semantic colors ────────────────────────────────────────────────────── */
+  --color-success:      #22C55E;
+  --color-warning:      #F59E0B;
+  --color-danger:       #EF4444;
+  --color-info:         #3B82F6;
+  --color-success-soft: rgba(34, 197, 94, 0.10);
+  --color-warning-soft: rgba(245, 158, 11, 0.10);
+  --color-danger-soft:  rgba(239, 68, 68, 0.10);
+  --color-info-soft:    rgba(59, 130, 246, 0.10);
 
-  /* ── RISE spec: type scale ───────────────────────────────────────────────── */
+  /* ── RISE spec: type scale ──────────────────────────────────────────────── */
   --text-display: clamp(1.375rem, 4.2vw, 1.625rem);   /* 22–26px — greeting ONLY */
   --text-h1: clamp(1rem, 3.2vw, 1.125rem);             /* 16–18px — section headers */
   --text-h2: 0.9375rem;                                 /* 15px — card titles */
@@ -216,22 +222,22 @@
   --text-micro: 0.6875rem;                              /* 11px — floor, never go below */
   --text-metric: clamp(1.25rem, 3.8vw, 1.625rem);      /* 20–26px — mono metric numbers */
 
-  /* ── RISE spec: heading weight tokens (no 700 token — spec bans it) ─────── */
-  --weight-heading-default: 500;
-  --weight-heading-emphasis: 600;
+  /* ── Heading weight tokens (TaskFlow: bold for h1, semibold for h2+) ───── */
+  --weight-heading-default:   700;
+  --weight-heading-emphasis:  600;
 
-  /* ── RISE spec: 8pt spacing grid ─────────────────────────────────────────── */
+  /* ── 8pt spacing grid ───────────────────────────────────────────────────── */
   --space-1: 4px;   --space-2: 8px;   --space-3: 12px;
   --space-4: 16px;  --space-5: 20px;  --space-6: 24px;
   --space-8: 32px;  --space-10: 40px; --space-12: 48px;
 
-  /* ── RISE spec: motion aliases ───────────────────────────────────────────── */
+  /* ── Motion aliases ─────────────────────────────────────────────────────── */
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --dur-instant: 80ms;
   --dur-enter: 350ms;
 
-  /* ── RISE spec: module accent tokens (light mode) ────────────────────────── */
+  /* ── Module accent tokens ───────────────────────────────────────────────── */
   --module-tasks: #34D399;
   --module-finance: #60A5FA;
   --module-habits: #FBBF24;
@@ -242,86 +248,86 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   DARK MODE — deep violet variant
-   Background: #0D0A1A · Surface: #1A1229 · Primary: #7C3AED · Text: #E2D9F3
+   DARK MODE — deep dark with TaskFlow-indigo primary
+   Background: #0D0A1A · Surface: #1A1229 · Primary: #7C82E0 · Text: #E8E8F0
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .dark {
-  --background: oklch(0.090 0.035 290);     /* #0D0A1A — deepest dark violet      */
-  --foreground: oklch(0.930 0.025 290);     /* #E2D9F3 — light violet text        */
+  --background: oklch(0.090 0.035 290);     /* #0D0A1A — deepest dark             */
+  --foreground: oklch(0.930 0.025 290);     /* #E2D9F3 — light text               */
   --card: oklch(0.130 0.040 290);           /* #1A1229 — card surface             */
   --card-foreground: oklch(0.930 0.025 290);
   --popover: oklch(0.170 0.050 290);        /* #231535 — elevated dropdown        */
   --popover-foreground: oklch(0.930 0.025 290);
-  --primary: oklch(0.550 0.210 291);        /* #7C3AED — lighter violet for dark  */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.170 0.050 290);      /* #231535 — raised surface           */
+  --primary: #7C82E0;                        /* TaskFlow indigo lightened for dark */
+  --primary-foreground: #FFFFFF;
+  --secondary: oklch(0.170 0.050 290);
   --secondary-foreground: oklch(0.930 0.025 290);
   --muted: oklch(0.170 0.050 290);
-  --muted-foreground: oklch(0.680 0.050 290); /* #9B8EC0 — muted violet text      */
+  --muted-foreground: oklch(0.680 0.050 290);
   --accent: oklch(0.170 0.050 290);
   --accent-foreground: oklch(0.930 0.025 290);
-  --destructive: oklch(0.650 0.200 28);     /* #F87171 — brighter red on dark     */
-  --border: oklch(0.550 0.210 291 / 25%);   /* violet-400 @ 25%                  */
+  --destructive: #EF4444;
+  --border: oklch(0.550 0.210 291 / 25%);
   --input: oklch(0.550 0.210 291 / 15%);
-  --ring: oklch(0.700 0.140 291);           /* #A78BFA — bright violet focus ring */
-  /* Chart palette — violet scale for dark */
-  --chart-1: oklch(0.550 0.210 291);        /* #7C3AED                            */
-  --chart-2: oklch(0.650 0.150 291);        /* #8B5CF6                            */
-  --chart-3: oklch(0.470 0.215 291);        /* #6D28D9                            */
-  --chart-4: oklch(0.760 0.110 291);        /* #C4B5FD bright violet              */
-  --chart-5: oklch(0.350 0.180 291);        /* #4C1D95 deep violet                */
-  --sidebar: oklch(0.130 0.040 290);        /* same as card                       */
+  --ring: #7C82E0;
+  /* Chart palette — dark */
+  --chart-1: #7C82E0;
+  --chart-2: #34D399;
+  --chart-3: #FBBF24;
+  --chart-4: #60A5FA;
+  --chart-5: #F87171;
+  --sidebar: oklch(0.130 0.040 290);
   --sidebar-foreground: oklch(0.930 0.025 290);
-  --sidebar-primary: oklch(0.550 0.210 291);
-  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-primary: #7C82E0;
+  --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: oklch(0.170 0.050 290);
   --sidebar-accent-foreground: oklch(0.930 0.025 290);
   --sidebar-border: oklch(0.550 0.210 291 / 25%);
-  --sidebar-ring: oklch(0.700 0.140 291);
+  --sidebar-ring: #7C82E0;
 
-  /* ── Module colors — dark mode (aligned to frontend-design spec) ────────── */
-  --mod-tasks: #34D399;                        /* Green — task management    */
+  /* ── Module colors — dark mode ──────────────────────────────────────────── */
+  --mod-tasks: #34D399;
   --mod-tasks-soft: rgba(52, 211, 153, 0.12);
-  --mod-finance: #60A5FA;                      /* Blue — finance             */
+  --mod-finance: #60A5FA;
   --mod-finance-soft: rgba(96, 165, 250, 0.12);
-  --mod-wellness: #FBBF24;                     /* Amber — habits/wellness    */
+  --mod-wellness: #FBBF24;
   --mod-wellness-soft: rgba(251, 191, 36, 0.12);
-  --mod-goals: #F472B6;                        /* Pink — goals               */
+  --mod-goals: #F472B6;
   --mod-goals-soft: rgba(244, 114, 182, 0.12);
-  --mod-knowledge: #94A3B8;                    /* Silver — knowledge base    */
+  --mod-knowledge: #94A3B8;
   --mod-knowledge-soft: rgba(148, 163, 184, 0.12);
-  --mod-crm: #A78BFA;                          /* Lavender — contacts/CRM   */
+  --mod-crm: #A78BFA;
   --mod-crm-soft: rgba(167, 139, 250, 0.12);
-  --mod-ai: #7C5CFC;                           /* Purple — AI (= accent)    */
+  --mod-ai: #7C5CFC;
   --mod-ai-soft: rgba(124, 92, 252, 0.12);
 
-  /* ── RISE spec: surface tokens (dark-first — primary design target) ─────── */
-  --surface-base: #0E0E11;
-  --surface-1: #17171C;
-  --surface-2: #1F1F27;
+  /* ── Surface tokens (dark) ──────────────────────────────────────────────── */
+  --surface-base:    #0E0E11;
+  --surface-1:       #17171C;
+  --surface-2:       #1F1F27;
   --surface-overlay: #2A2A35;
-  --accent-primary: #7C5CFC;
-  --accent-glow: rgba(124, 92, 252, 0.15);
-  --border-subtle: rgba(255,255,255,0.06);
-  --border-active: rgba(124, 92, 252, 0.4);
+  --accent-primary:  #7C82E0;
+  --accent-glow:     rgba(124, 130, 224, 0.15);
+  --border-subtle:   rgba(255,255,255,0.06);
+  --border-active:   rgba(124, 130, 224, 0.4);
 
-  /* ── RISE spec: text tokens (dark) ──────────────────────────────────────── */
-  --text-primary: #E8E8F0;
+  /* ── Text tokens (dark) ─────────────────────────────────────────────────── */
+  --text-primary:   #E8E8F0;
   --text-secondary: #8E8EA0;
-  --text-muted: #52525E;
+  --text-muted:     #52525E;
 
-  /* ── RISE spec: semantic colors (dark) ───────────────────────────────────── */
-  --color-success: #34D399;
-  --color-warning: #FBBF24;
-  --color-danger:  #F87171;
-  --color-info:    #60A5FA;
-  --color-success-soft: rgba(52, 211, 153, 0.12);
-  --color-warning-soft: rgba(251, 191, 36, 0.12);
-  --color-danger-soft:  rgba(248, 113, 113, 0.12);
-  --color-info-soft:    rgba(96, 165, 250, 0.12);
+  /* ── Semantic colors (dark) ─────────────────────────────────────────────── */
+  --color-success:      #22C55E;
+  --color-warning:      #F59E0B;
+  --color-danger:       #EF4444;
+  --color-info:         #60A5FA;
+  --color-success-soft: rgba(34, 197, 94, 0.12);
+  --color-warning-soft: rgba(245, 158, 11, 0.12);
+  --color-danger-soft:  rgba(239, 68, 68, 0.12);
+  --color-info-soft:    rgba(59, 130, 246, 0.12);
 
-  /* ── RISE spec: module accent tokens (dark — brighter variants) ──────────── */
+  /* ── Module accent tokens (dark) ────────────────────────────────────────── */
   --module-tasks: #34D399;
   --module-finance: #60A5FA;
   --module-habits: #FBBF24;
@@ -330,25 +336,29 @@
   --module-notes: #94A3B8;
   --module-ai: #7C5CFC;
 
-  /* ── Elevation — dark mode ───────────────────────────────────────────────── */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.40), 0 2px 4px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 22px 50px rgba(0, 0, 0, 0.55), 0 8px 16px rgba(0, 0, 0, 0.35);
-  --shadow-glow: 0 0 30px rgba(109, 40, 217, 0.25);
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.50);
-  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.50);
-  --shadow-3: 0 22px 50px rgba(0, 0, 0, 0.65);
+  /* ── Elevation — dark mode ──────────────────────────────────────────────── */
+  --shadow-card:       0 1px 3px rgba(0,0,0,0.35);
+  --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.40);
+  --shadow-popup:      0 4px 16px rgba(0,0,0,0.50);
+  --shadow-sm:  var(--shadow-card);
+  --shadow-md:  var(--shadow-card-hover);
+  --shadow-lg:  var(--shadow-popup);
+  --shadow-glow: 0 0 30px rgba(124, 130, 224, 0.25);
+  --shadow-1:   var(--shadow-card);
+  --shadow-2:   var(--shadow-card-hover);
+  --shadow-3:   var(--shadow-popup);
 
-  /* ── Semantic color layer — dark violet ──────────────────────────────────── */
-  --color-primary:        #7C3AED;
-  --color-accent-strong:  #6D28D9;
-  --color-secondary:      #E2D9F3;
-  --color-background:     #0D0A1A;
-  --color-surface:        #1A1229;
-  --color-muted-text:     #9B8EC0;
-  --color-border-token:   rgba(109, 40, 217, 0.25);
-  --color-error:          #F87171;
-  --color-focus:          #A78BFA;
+  /* ── Semantic layer aliases ─────────────────────────────────────────────── */
+  --color-primary:    #7C82E0;
+  --color-background: #0D0A1A;
+  --color-surface:    #1A1229;
+  --color-muted-text: #9B8EC0;
+
+  /* ── Priority colors (dark) ─────────────────────────────────────────────── */
+  --color-p1: #F87171;
+  --color-p2: #FB923C;
+  --color-p3: #60A5FA;
+  --color-p4: #6B7280;
 }
 
 /* ─── Animations ─────────────────────────────────────────────────────────── */
@@ -371,6 +381,31 @@
 @keyframes shimmer {
   from { background-position: -200% 0; }
   to   { background-position: 200% 0; }
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes skeletonPulse {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes aiPulse {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes checkmark {
+  to { stroke-dashoffset: 0; }
 }
 
 .animate-rise-in {
@@ -400,11 +435,31 @@
   backdrop-filter: blur(12px) saturate(1.5);
 }
 
-.login-card {
-  box-shadow: 0 0 60px rgba(109, 40, 217, 0.18), 0 22px 50px rgba(46, 16, 101, 0.12);
+.glass-chrome {
+  background: rgba(255, 255, 255, 0.88);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--border);
 }
 
-/* ─── Module page glow — subtle radial gradient behind each section ─────── */
+.dark .glass-chrome {
+  background: rgba(14, 14, 17, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.login-card {
+  box-shadow: 0 0 60px rgba(91, 91, 214, 0.18), 0 22px 50px rgba(17, 24, 39, 0.12);
+}
+
+.glass-ai {
+  background: rgba(124, 92, 252, 0.08);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(124, 92, 252, 0.2);
+  border-radius: 20px;
+}
+
+/* ─── Module page glow ─────────────────────────────────────────────────────── */
 
 .page-glow {
   position: relative;
@@ -418,7 +473,7 @@
   height: 300px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--glow-color, transparent) 0%, transparent 70%);
-  opacity: 0.12;
+  opacity: 0.08;
   pointer-events: none;
   z-index: 0;
 }
@@ -429,7 +484,7 @@
 /* ─── FAB ─────────────────────────────────────────────────────────────────── */
 
 .fab {
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-card-hover), var(--shadow-glow);
   transition: transform var(--dur-normal) var(--ease-out),
               box-shadow var(--dur-normal) var(--ease-out);
 }
@@ -439,7 +494,7 @@
 @media (hover: hover) {
   .fab:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    box-shadow: var(--shadow-popup), var(--shadow-glow);
   }
 }
 
@@ -453,7 +508,7 @@
 @media (hover: hover) {
   .card-interactive:hover {
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-card-hover);
   }
 }
 .card-interactive:active {
@@ -466,21 +521,29 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: var(--font-sans);
+    font-family: var(--font-inter), var(--font-sans);
+    font-size: 14px;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-inter), var(--font-sans);
   }
-  /* Lexend — Medium (500) default everywhere; SemiBold (600) exception only; Bold banned */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-lexend), var(--font-display), system-ui, sans-serif;
-    font-weight: var(--weight-heading-default); /* 500 — spec bans 700 */
+  /* Inter — TaskFlow typography: bold for page titles, semibold for headings */
+  h1 {
+    font-family: var(--font-inter), system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  h2, h3, h4, h5, h6 {
+    font-family: var(--font-inter), system-ui, sans-serif;
+    font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1.2;
     text-wrap: balance;
   }
   :focus-visible {
-    outline: 2px solid var(--color-focus, var(--ring));
+    outline: 2px solid var(--color-primary, var(--ring));
     outline-offset: 2px;
   }
 }
@@ -488,7 +551,7 @@
 /* ─── Brand glow utilities ───────────────────────────────────────────────── */
 
 @utility rise-title-glow {
-  text-shadow: 0 0 48px rgba(109, 40, 217, 0.65);
+  text-shadow: 0 0 48px rgba(91, 91, 214, 0.65);
   letter-spacing: -0.04em;
 }
 
@@ -511,47 +574,28 @@
 @utility text-micro   { font-size: var(--text-micro); line-height: 1.3; }
 @utility text-metric  { font-size: var(--text-metric); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 
-/* ─── Light mode: subtle violet atmosphere ───────────────────────────────── */
-
-body {
-  background-image:
-    radial-gradient(ellipse 70% 50% at 85% -5%, rgba(109, 40, 217, 0.03) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 10% 100%, rgba(109, 40, 217, 0.02) 0%, transparent 55%);
-  background-attachment: fixed;
-}
-
-/* ─── Dark mode: violet aurora glow ──────────────────────────────────────── */
-
-.dark body {
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.030'/%3E%3C/svg%3E"),
-    radial-gradient(ellipse 80% 60% at 15% -10%, rgba(109, 40, 217, 0.14) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 50% at 85% 110%, rgba(167, 139, 250, 0.06) 0%, transparent 55%);
-  background-attachment: fixed;
-}
-
-/* ─── Scrollbar theming ───────────────────────────────────────────────────── */
+/* ─── Scrollbar theming ─────────────────────────────────────────────────── */
 
 :root {
-  scrollbar-color: oklch(0.470 0.215 291 / 25%) oklch(0.970 0.010 291 / 80%);
+  scrollbar-color: #D1D5DB #F9FAFB;
   scrollbar-width: thin;
 }
 
 .dark {
-  scrollbar-color: oklch(0.550 0.210 291 / 30%) oklch(0.130 0.040 290 / 80%);
+  scrollbar-color: rgba(255,255,255,0.15) rgba(23,23,23,0.8);
   scrollbar-width: thin;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: oklch(0.970 0.010 291 / 80%); }
-::-webkit-scrollbar-thumb { background: oklch(0.470 0.215 291 / 25%); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: oklch(0.470 0.215 291 / 45%); }
+::-webkit-scrollbar-track { background: #F9FAFB; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
 
 .dark ::-webkit-scrollbar-track { background: oklch(0.130 0.040 290 / 80%); }
-.dark ::-webkit-scrollbar-thumb { background: oklch(0.550 0.210 291 / 30%); }
-.dark ::-webkit-scrollbar-thumb:hover { background: oklch(0.550 0.210 291 / 50%); }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 
-/* ─── RISE spec: text overflow utilities (mandatory on fixed-width cards) ─── */
+/* ─── Text overflow utilities (mandatory on fixed-width cards) ─────────── */
 
 .text-truncate {
   white-space: nowrap;
@@ -566,14 +610,13 @@ body {
   overflow: hidden;
 }
 
-/* Prevents long unbroken strings from expanding a 2-col grid past the viewport */
 .grid-safe {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
-/* ─── RISE spec: touch feedback — every tappable element needs :active ────── */
+/* ─── Touch feedback ─────────────────────────────────────────────────────── */
 
 .tappable {
   transition: transform var(--dur-instant) var(--ease-smooth);
@@ -582,7 +625,48 @@ body {
   transform: scale(0.96);
 }
 
-/* ─── RISE spec: skeleton loading state ──────────────────────────────────── */
+/* ─── TaskFlow utilities ──────────────────────────────────────────────────── */
+
+.tap-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.shadow-card       { box-shadow: var(--shadow-card); }
+.shadow-card-hover { box-shadow: var(--shadow-card-hover); }
+.shadow-popup      { box-shadow: var(--shadow-popup); }
+
+.task-title-complete {
+  text-decoration: line-through;
+  color: var(--color-muted-text, var(--muted-foreground));
+}
+
+.slide-up {
+  animation: slideUpFade 0.2s ease-out both;
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease-out both;
+}
+
+.checkmark-path {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: checkmark 0.3s ease-out forwards;
+}
+
+/* ─── Skeleton loading state ─────────────────────────────────────────────── */
 
 .skeleton {
   background: linear-gradient(
@@ -596,24 +680,7 @@ body {
   border-radius: 8px;
 }
 
-/* ─── RISE spec: glassmorphism — structural chrome only, never content ─────── */
-
-.glass-chrome {
-  background: rgba(14, 14, 17, 0.75);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.glass-ai {
-  background: rgba(124, 92, 252, 0.08);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(124, 92, 252, 0.2);
-  border-radius: 20px;
-}
-
-/* ─── RISE spec: AI compose state ────────────────────────────────────────── */
+/* ─── AI compose state ──────────────────────────────────────────────────── */
 
 .ai-input-active {
   background: linear-gradient(135deg, #7C5CFC, #60A5FA, #34D399, #7C5CFC);
@@ -621,15 +688,20 @@ body {
   animation: aiPulse 3s ease infinite;
 }
 
-/* ─── Bottom nav spec classes ────────────────────────────────────────────── */
+/* ─── Bottom nav ─────────────────────────────────────────────────────────── */
 
 .bottom-nav {
   height: calc(56px + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: rgba(14, 14, 17, 0.85);
+  background: rgba(255, 255, 255, 0.90);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border);
+}
+
+.dark .bottom-nav {
+  background: rgba(14, 14, 17, 0.88);
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
 
 .bottom-nav__item {
@@ -639,14 +711,14 @@ body {
 .bottom-nav__fab {
   margin-bottom: 20px;
   background: var(--accent-primary);
-  box-shadow: 0 0 20px var(--accent-glow), 0 4px 16px rgba(124, 92, 252, 0.4);
+  box-shadow: 0 0 20px var(--accent-glow), 0 4px 16px rgba(91, 91, 214, 0.4);
 }
 
 .bottom-nav__fab--active {
   box-shadow:
     0 0 32px var(--accent-glow),
-    0 4px 20px rgba(124, 92, 252, 0.55),
-    0 0 0 3px rgba(124, 92, 252, 0.25);
+    0 4px 20px rgba(91, 91, 214, 0.55),
+    0 0 0 3px rgba(91, 91, 214, 0.25);
 }
 
 .nav-drawer {
@@ -656,7 +728,7 @@ body {
 
 .nav-drawer__item {
   font-size: var(--text-label);
-  font-weight: var(--weight-heading-default);
+  font-weight: 600;
   background: var(--surface-2, var(--secondary));
   color: var(--text-secondary);
 }
@@ -665,24 +737,6 @@ body {
   background: var(--accent-primary);
   color: #ffffff;
   box-shadow: 0 0 16px var(--accent-glow);
-}
-
-/* ─── RISE spec: additional keyframes ────────────────────────────────────── */
-
-@keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes skeletonPulse {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-@keyframes aiPulse {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
 
 /* ─── Priority badge utilities ────────────────────────────────────────────── */
@@ -702,7 +756,7 @@ body {
 .stage-new         { background: var(--surface-2, var(--secondary)); color: var(--text-secondary, var(--muted-foreground)); }
 .stage-qualified   { background: var(--color-info-soft);    color: var(--color-info); }
 .stage-proposal    { background: var(--color-warning-soft); color: var(--color-warning); }
-.stage-negotiation { background: rgba(251,191,36,0.18);     color: var(--color-warning); }
+.stage-negotiation { background: rgba(245,158,11,0.18);     color: var(--color-warning); }
 .stage-won         { background: var(--color-success-soft); color: var(--color-success); }
 .stage-lost        { background: var(--color-danger-soft);  color: var(--color-danger); }
 
