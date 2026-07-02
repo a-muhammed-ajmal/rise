@@ -7,7 +7,11 @@
       "Bash(git:*)"
     ],
     "deny": [
-      "Bash(git reset --hard*)"
+      "Bash(git reset --hard*)",
+      "Bash(git push --force*)",
+      "Bash(git clean -fd*)",
+      "Bash(rm -rf*)",
+      "Bash(npm publish*)"
     ]
   },
   "hooks": {
