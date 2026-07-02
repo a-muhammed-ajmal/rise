@@ -192,7 +192,7 @@ export default async function AnalyticsPage() {
     <div className="p-4 md:p-6 space-y-10 max-w-6xl">
       {/* Page header */}
       <div className="animate-rise-in stagger-1">
-        <h1 className="text-step-2">Analytics</h1>
+        <h1 className="text-h1 font-heading tracking-tight">Analytics</h1>
         <p className="text-sm text-muted-foreground mt-1">Your RISE data at a glance</p>
       </div>
 

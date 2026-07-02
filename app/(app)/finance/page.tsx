@@ -615,13 +615,13 @@ export default function FinancePage() {
                           className={`w-8 h-8 rounded-full flex items-center justify-center ${
                             txn.type === "income"
                               ? "bg-mod-finance-soft"
-                              : "bg-red-100 dark:bg-red-900/30"
+                              : "bg-[var(--color-danger-soft)]"
                           }`}
                         >
                           {txn.type === "income" ? (
                             <ArrowUpRight className="w-4 h-4 text-mod-finance" />
                           ) : (
-                            <ArrowDownLeft className="w-4 h-4 text-red-600 dark:text-red-400" />
+                            <ArrowDownLeft className="w-4 h-4 text-[var(--color-danger)]" />
                           )}
                         </div>
                         <div>

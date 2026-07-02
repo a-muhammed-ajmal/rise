@@ -29,17 +29,17 @@ const PRIORITY_LABEL: Record<Task['priority'], string> = {
 }
 
 const PRIORITY_PILL: Record<Task['priority'], string> = {
-  urgent: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400',
-  high:   'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400',
-  medium: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400',
-  low:    'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  urgent: 'badge-urgent',
+  high:   'badge-high',
+  medium: 'badge-medium',
+  low:    'badge-low',
 }
 
 const PRIORITY_DOT: Record<Task['priority'], string> = {
-  urgent: 'bg-red-500',
-  high:   'bg-orange-500',
-  medium: 'bg-blue-500',
-  low:    'bg-slate-400',
+  urgent: 'priority-dot-urgent',
+  high:   'priority-dot-high',
+  medium: 'priority-dot-medium',
+  low:    'priority-dot-low',
 }
 
 // ─── Repeat label helper ──────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ export function TaskCard({
             : selected
               ? 'border-primary/60 bg-primary/5'
               : 'border-border bg-card hover:bg-accent/30',
-          task.is_starred && !isCompleted && 'border-amber-300/60 dark:border-amber-700/40'
+          task.is_starred && !isCompleted && 'border-[var(--color-warning)]/40'
         )}
       >
         {/* Bulk checkbox / Complete button */}
@@ -263,12 +263,12 @@ export function TaskCard({
               className={cn(
                 'w-7 h-7 inline-flex items-center justify-center rounded-md transition-colors',
                 task.is_starred
-                  ? 'text-amber-500 hover:text-amber-600'
-                  : 'text-muted-foreground/30 hover:text-amber-500 opacity-0 group-hover:opacity-100'
+                  ? 'text-[var(--color-warning)] hover:text-[var(--color-warning)]/80'
+                  : 'text-muted-foreground/30 hover:text-[var(--color-warning)] opacity-0 group-hover:opacity-100'
               )}
               aria-label={task.is_starred ? 'Unstar task' : 'Star task'}
             >
-              <Star className={cn('w-4 h-4', task.is_starred && 'fill-amber-500')} />
+              <Star className={cn('w-4 h-4', task.is_starred && 'fill-[var(--color-warning)]')} />
             </button>
           )}
 

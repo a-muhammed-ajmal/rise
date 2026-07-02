@@ -104,7 +104,7 @@ export function AudioRecorder({ onRecordingComplete, onCancel }: AudioRecorderPr
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 glass-ai rounded-xl border border-[rgba(124,92,252,0.2)]">
+    <div className="flex items-center gap-3 px-4 py-2 glass-ai rounded-xl">
       {/* Animated recording indicator */}
       <span
         className={cn(

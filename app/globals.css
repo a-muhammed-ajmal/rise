@@ -198,9 +198,14 @@
   --text-muted: #9CA3AF;
 
   /* ── RISE spec: semantic colors ──────────────────────────────────────────── */
+  --color-success: #34D399;
   --color-warning: #FBBF24;
   --color-danger:  #F87171;
   --color-info:    #60A5FA;
+  --color-success-soft: rgba(52, 211, 153, 0.10);
+  --color-warning-soft: rgba(251, 191, 36, 0.10);
+  --color-danger-soft:  rgba(248, 113, 113, 0.10);
+  --color-info-soft:    rgba(96, 165, 250, 0.10);
 
   /* ── RISE spec: type scale ───────────────────────────────────────────────── */
   --text-display: clamp(1.375rem, 4.2vw, 1.625rem);   /* 22–26px — greeting ONLY */
@@ -309,8 +314,12 @@
   /* ── RISE spec: semantic colors (dark) ───────────────────────────────────── */
   --color-success: #34D399;
   --color-warning: #FBBF24;
-  --color-danger: #F87171;
-  --color-info: #60A5FA;
+  --color-danger:  #F87171;
+  --color-info:    #60A5FA;
+  --color-success-soft: rgba(52, 211, 153, 0.12);
+  --color-warning-soft: rgba(251, 191, 36, 0.12);
+  --color-danger-soft:  rgba(248, 113, 113, 0.12);
+  --color-info-soft:    rgba(96, 165, 250, 0.12);
 
   /* ── RISE spec: module accent tokens (dark — brighter variants) ──────────── */
   --module-tasks: #34D399;
@@ -339,7 +348,6 @@
   --color-muted-text:     #9B8EC0;
   --color-border-token:   rgba(109, 40, 217, 0.25);
   --color-error:          #F87171;
-  --color-success:        #4ADE80;
   --color-focus:          #A78BFA;
 }
 
@@ -675,4 +683,34 @@ body {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+/* ─── Priority badge utilities ────────────────────────────────────────────── */
+
+.badge-urgent  { background: var(--color-danger-soft);  color: var(--color-danger); }
+.badge-high    { background: var(--color-warning-soft); color: var(--color-warning); }
+.badge-medium  { background: var(--color-info-soft);    color: var(--color-info); }
+.badge-low     { background: var(--surface-2, var(--secondary)); color: var(--text-muted, var(--muted-foreground)); }
+
+.priority-dot-urgent  { background: var(--color-danger); }
+.priority-dot-high    { background: var(--color-warning); }
+.priority-dot-medium  { background: var(--color-info); }
+.priority-dot-low     { background: var(--text-muted, var(--muted-foreground)); }
+
+/* ─── CRM pipeline stage badge utilities ──────────────────────────────────── */
+
+.stage-new         { background: var(--surface-2, var(--secondary)); color: var(--text-secondary, var(--muted-foreground)); }
+.stage-qualified   { background: var(--color-info-soft);    color: var(--color-info); }
+.stage-proposal    { background: var(--color-warning-soft); color: var(--color-warning); }
+.stage-negotiation { background: rgba(251,191,36,0.18);     color: var(--color-warning); }
+.stage-won         { background: var(--color-success-soft); color: var(--color-success); }
+.stage-lost        { background: var(--color-danger-soft);  color: var(--color-danger); }
+
+/* ─── Assistant tool result badge utilities ──────────────────────────────── */
+
+.tool-result-success  { background: var(--color-success-soft); color: var(--color-success); }
+.tool-result-failed   { background: var(--color-danger-soft);  color: var(--color-danger); }
+.tool-approval-banner {
+  background: var(--color-warning-soft);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
 }

@@ -84,9 +84,9 @@ export function HabitDashboardSection({ habits, logs }: Props) {
           logVal === true ? "done" : logVal === false ? "notDone" : "none";
         const cardBorderClass =
           markState === "done"
-            ? "border-green-500/25 bg-green-500/5"
+            ? "border-[var(--color-success)]/25 bg-[var(--color-success-soft)]"
             : markState === "notDone"
-              ? "border-red-500/25 bg-red-500/5"
+              ? "border-[var(--color-danger)]/25 bg-[var(--color-danger-soft)]"
               : "";
 
         return (
@@ -99,7 +99,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                 <div className="flex items-center gap-2">
                   <div
                     className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: habit.color ?? "#6366f1" }}
+                    style={{ backgroundColor: habit.color ?? "var(--accent-primary)" }}
                   />
                   <span className="text-sm font-medium truncate">{habit.name}</span>
                 </div>
@@ -114,7 +114,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                     <button
                       type="button"
                       onClick={() => markDone(habit.id)}
-                      className="w-7 h-7 rounded-full border-2 border-green-500 text-green-500 flex items-center justify-center transition-colors hover:bg-green-500/10 active:scale-95"
+                      className="w-7 h-7 rounded-full border-2 border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-soft)] active:scale-95"
                       aria-label="Mark done"
                     >
                       <Check className="w-3.5 h-3.5" />
@@ -122,7 +122,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                     <button
                       type="button"
                       onClick={() => markNotDone(habit.id)}
-                      className="w-7 h-7 rounded-full border-2 border-red-500 text-red-500 flex items-center justify-center transition-colors hover:bg-red-500/10 active:scale-95"
+                      className="w-7 h-7 rounded-full border-2 border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-soft)] active:scale-95"
                       aria-label="Mark not done"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -130,7 +130,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                   </>
                 ) : markState === "done" ? (
                   <>
-                    <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-full bg-[var(--color-success)] flex items-center justify-center">
                       <Check className="w-3.5 h-3.5 text-white" />
                     </div>
                     <button
@@ -144,7 +144,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                   </>
                 ) : (
                   <>
-                    <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-full bg-[var(--color-danger)] flex items-center justify-center">
                       <X className="w-3.5 h-3.5 text-white" />
                     </div>
                     <button

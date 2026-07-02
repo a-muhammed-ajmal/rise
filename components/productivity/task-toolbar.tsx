@@ -56,7 +56,7 @@ export function TaskToolbar({
         className="gap-1.5 text-xs h-8"
         onClick={onComplete}
       >
-        <Check className="w-3.5 h-3.5 text-green-500" />
+        <Check className="w-3.5 h-3.5 text-[var(--color-success)]" />
         Complete
       </Button>
 

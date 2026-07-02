@@ -568,8 +568,8 @@ export default function ProductivityPage() {
             {filter === "today" && starredTodayTasks.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+                  <Star className="w-3.5 h-3.5 fill-[var(--color-warning)] text-[var(--color-warning)]" />
+                  <span className="text-xs font-semibold text-[var(--color-warning)] uppercase tracking-wide">
                     Focus — Top {starredTodayTasks.length}
                   </span>
                 </div>

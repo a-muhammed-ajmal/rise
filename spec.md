@@ -9,9 +9,9 @@ Living specification for the RISE codebase. Describes what is currently implemen
 | Metric | Value |
 | --- | --- |
 | Test count | 265 passing |
-| Line coverage | 49.38% on `lib/**` |
-| Migrations | 11 (001–011) |
-| DB tables | 21 (20 core + push_subscriptions) |
+| Line coverage | 48.10% on `lib/**` |
+| Migrations | 12 (001–012) |
+| DB tables | 22 (21 core + push_subscriptions) |
 | AI tools | 58 AUTO + 17 APPROVAL = 75 total |
 | Last feature shipped | Phase 9 — Payment methods / wallets (2026-07-01) |
 
@@ -81,17 +81,17 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 - **Surface elevation (dark mode, 4 levels)**: `--surface-base: #0E0E11` → `--surface-1: #17171C` → `--surface-2: #1F1F27` → `--surface-overlay: #2A2A35`. Never use a single flat dark shade.
 - **Text**: `--text-primary: #E8E8F0`, `--text-secondary: #8E8EA0`, `--text-muted: #52525E`. Never use `#000000` or `#FFFFFF` directly.
 - **Borders**: `--border-subtle: rgba(255,255,255,0.06)`, `--border-active: rgba(124,92,252,0.4)`.
-- Module accent tokens (each has a `-soft` translucent variant; dark values shown):
+- Module accent tokens (each has a `-soft` translucent variant; same hex in light and dark):
 
-| Module | Token | Dark hex |
+| Module | Token | Hex |
 | --- | --- | --- |
-| Tasks | `mod-tasks` | `#60a5fa` |
-| Finance | `mod-finance` | `#34d399` |
-| Wellness | `mod-wellness` | `#fb7185` |
-| Goals | `mod-goals` | `#a78bfa` |
-| Knowledge | `mod-knowledge` | `#fbbf24` |
-| CRM | `mod-crm` | `#22d3ee` |
-| AI | `mod-ai` | `#a78bfa` |
+| Tasks | `mod-tasks` | `#34D399` |
+| Finance | `mod-finance` | `#60A5FA` |
+| Wellness | `mod-wellness` | `#FBBF24` |
+| Goals | `mod-goals` | `#F472B6` |
+| Knowledge | `mod-knowledge` | `#94A3B8` |
+| CRM | `mod-crm` | `#A78BFA` |
+| AI | `mod-ai` | `#7C5CFC` |
 
 - Dark mode: `.dark` class on `<html>`, toggled via `lib/hooks/use-theme.tsx`. Preference persisted to `localStorage` key `rise-theme`; falls back to `prefers-color-scheme`.
 

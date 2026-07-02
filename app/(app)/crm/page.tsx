@@ -47,12 +47,12 @@ import {
 import { toast } from "sonner";
 
 const STAGE_COLORS: Record<Contact["stage"], string> = {
-  new: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  qualified: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  proposal: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  negotiation: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  won: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
-  lost: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+  new:         "stage-new",
+  qualified:   "stage-qualified",
+  proposal:    "stage-proposal",
+  negotiation: "stage-negotiation",
+  won:         "stage-won",
+  lost:        "stage-lost",
 };
 
 const STAGES: Contact["stage"][] = ["new", "qualified", "proposal", "negotiation", "won", "lost"];

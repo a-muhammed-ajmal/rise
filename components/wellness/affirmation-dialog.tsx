@@ -23,7 +23,7 @@ export function AffirmationDialog({ habit, onClose }: Props) {
           <DialogTitle className="flex items-center gap-2">
             <div
               className="w-3 h-3 rounded-full shrink-0"
-              style={{ backgroundColor: habit?.color ?? "#6366f1" }}
+              style={{ backgroundColor: habit?.color ?? "var(--accent-primary)" }}
             />
             {habit?.name}
           </DialogTitle>

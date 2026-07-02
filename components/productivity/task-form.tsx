@@ -41,10 +41,10 @@ import { toast } from 'sonner'
 // ─── Priority system: P1=urgent, P2=high, P3=medium, P4=low ─────────────────
 
 const PRIORITY_MAP: Array<{ value: Task['priority']; label: string; color: string }> = [
-  { value: 'urgent', label: 'P1', color: 'bg-red-500 text-white' },
-  { value: 'high',   label: 'P2', color: 'bg-orange-500 text-white' },
-  { value: 'medium', label: 'P3', color: 'bg-blue-500 text-white' },
-  { value: 'low',    label: 'P4', color: 'bg-slate-400 text-white' },
+  { value: 'urgent', label: 'P1', color: 'bg-[var(--color-danger)] text-white' },
+  { value: 'high',   label: 'P2', color: 'bg-[var(--color-warning)] text-white' },
+  { value: 'medium', label: 'P3', color: 'bg-[var(--color-info)] text-white' },
+  { value: 'low',    label: 'P4', color: 'bg-[var(--text-muted)] text-white' },
 ]
 
 type TabId = 'details' | 'schedule' | 'organize' | 'subtasks' | 'attachments'

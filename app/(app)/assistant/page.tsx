@@ -645,9 +645,7 @@ function AssistantContent() {
                           key={i}
                           className={cn(
                             "flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg",
-                            r.success
-                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                              : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                            r.success ? "tool-result-success" : "tool-result-failed",
                           )}
                         >
                           {r.success ? (
@@ -682,16 +680,16 @@ function AssistantContent() {
 
       {/* Approval banner */}
       {pendingApproval && (
-        <div className="mx-4 mb-2 p-3 rounded-xl border border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800 space-y-3">
+        <div className="mx-4 mb-2 p-3 rounded-xl tool-approval-banner space-y-3">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+            <AlertTriangle className="w-4 h-4 text-[var(--color-warning)] shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
+              <p className="text-sm font-medium text-[var(--color-warning)]">
                 {TOOL_LABELS[pendingApproval.tool.name] ??
                   pendingApproval.tool.name}{" "}
                 — confirmation required
               </p>
-              <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+              <p className="text-xs text-[var(--color-warning)]/70 mt-0.5">
                 {JSON.stringify(pendingApproval.tool.input)}
               </p>
             </div>
