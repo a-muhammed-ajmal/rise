@@ -1,3 +1,884 @@
+# RISE OS — Frontend Design System
+> Orange brand palette · Inter-only typography · All files in one document
+
+---
+
+## File Index
+
+| File | Purpose |
+|------|---------|
+| `SKILL.md` | Master design rules & token reference |
+| `assets/tokens.css` | CSS custom properties — single source of truth |
+| `assets/demo.html` | Live component showcase |
+| `references/accessibility.md` | Accessibility standards |
+| `references/aesthetics.md` | Visual & motion guidelines |
+| `references/components.md` | Component architecture patterns |
+| `references/mobile.md` | Mobile-first optimization |
+| `references/performance.md` | Performance targets |
+
+---
+
+## SKILL.md
+
+---
+name: frontend-design
+version: 2.0.0
+description: Use this skill whenever building new UI components, pages, or interfaces. Defines the design token system, color rules, typography, motion, component patterns, accessibility requirements, and anti-patterns for all frontend work. Orange brand palette, Inter-only type.
+---
+
+# Frontend Design Skill
+
+Single source of truth for all visual and implementation decisions. Apply before writing any component, page, or style. Every value is intentional — do not deviate without explicit instruction.
+
+---
+
+## Stack
+
+| Concern       | Technology                                                                 |
+|---------------|----------------------------------------------------------------------------|
+| Framework     | Next.js 16 (App Router)                                                    |
+| UI runtime    | React 19                                                                   |
+| Styling       | Tailwind CSS v4 — all tokens in `@theme {}`, no config file                |
+| State         | Zustand v5 with `persist` middleware                                       |
+| Language      | TypeScript — strict mode, `any` is forbidden                               |
+| Icons         | lucide-react only — no hand-authored SVGs                                  |
+| Class merging | `cn()` = `twMerge(clsx(...inputs))`                                        |
+| Date handling | date-fns + date-fns-tz (timezone: Asia/Dubai, UTC+4, no DST)              |
+
+---
+
+## Typography — Inter only
+
+**Single typeface: Inter** (loaded via `next/font/google`). No other font families — not Playfair, not Plus Jakarta Sans, not Lexend.
+
+Font stack: `'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
+Base: `font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased`
+
+| Role                  | Size | Weight | Letter-spacing | Notes                              |
+|-----------------------|------|--------|----------------|------------------------------------|
+| Hero display          | 48px | 800    | −0.02em        | `font-extrabold tracking-tight`    |
+| Page title            | 20px | 700    | −0.02em        | `text-xl font-bold`                |
+| Card / section title  | 16px | 700    | −0.01em        | `text-base font-bold`              |
+| Section heading       | 14px | 600    | 0              | `text-sm font-semibold`            |
+| Body / task title     | 14px | 500    | 0              | `text-sm font-medium`              |
+| Meta / caption        | 12px | 400–500| 0              | `text-xs`                          |
+| Eyebrow label         | 11px | 700    | +0.15em        | uppercase, brand orange            |
+| Micro label / chip    | 11px | 600    | +0.05em        | `text-[11px] font-semibold`        |
+| Kanban column header  | 12px | 700    | +0.05em        | uppercase                          |
+
+---
+
+## Color System
+
+All colors live as CSS custom properties in `tokens.css`. **Never hardcode hex in JSX** — use the token.
+
+### Core Brand Palette
+
+| Token                  | Hex       | Role                                                   |
+|------------------------|-----------|--------------------------------------------------------|
+| `--brand`              | `#FF6535` | Primary CTA, active states, accents, focus rings       |
+| `--brand-hover`        | `#FF8159` | Hover / gradient end for orange elements               |
+| `--brand-text`         | `#D6450F` | Orange text on white (AA 4.5:1 contrast)               |
+| `--brand-tint`         | `#FFF0EB` | Badge/chip backgrounds, tinted fills                   |
+| `--surface-base`       | `#FFFFFF` | Page background                                        |
+| `--surface-paper`      | `#F9FAFB` | Alternating light sections                             |
+| `--surface-card`       | `#FFFFFF` | Cards, modals, inputs                                  |
+| `--surface-dark`       | `#1A1A2E` | Dark inverted sections                                 |
+| `--surface-footer`     | `#0B1120` | Footer                                                 |
+| `--text-strong`        | `#1A1A2E` | Primary headings / strong body text                    |
+| `--text-body`          | `navy/70` | Paragraph copy                                         |
+| `--text-muted`         | `navy/50` | Captions, disabled                                     |
+| `--text-on-dark`       | `#FFFFFF` | Text on navy sections                                  |
+| `--color-success`      | `#10B981` | Completed, done, positive                              |
+| `--color-danger`       | `#E11D48` | Error, blocked, delete                                 |
+| `--color-warning`      | `#F59E0B` | On hold, overdue                                       |
+| `--border-subtle`      | `navy/10` | Default card borders                                   |
+| `--border-focus`       | `#FF6535` | Focus rings                                            |
+
+### Priority Tokens — Do Not Change
+
+| Token        | Hex       | Priority   |
+|--------------|-----------|------------|
+| `--color-p1` | `#EF4444` | P1 Urgent  |
+| `--color-p2` | `#FF6535` | P2 High (brand orange) |
+| `--color-p3` | `#3B82F6` | P3 Medium  |
+| `--color-p4` | `#9CA3AF` | P4 Low     |
+
+Always read priority colors from `PRIORITY_CONFIG[task.priority]`:
+
+```ts
+export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bgColor: string }> = {
+  P1: { label: 'P1', color: '#EF4444', bgColor: '#FEF2F2' },
+  P2: { label: 'P2', color: '#FF6535', bgColor: '#FFF0EB' },
+  P3: { label: 'P3', color: '#3B82F6', bgColor: '#EFF6FF' },
+  P4: { label: 'P4', color: '#9CA3AF', bgColor: '#F9FAFB' },
+};
+```
+
+### Status Colors
+
+| Status        | Color     | Token                |
+|---------------|-----------|----------------------|
+| `todo`        | `#6B6B6B` | `--color-slate`      |
+| `in_progress` | `#FF6535` | `--brand`            |
+| `blocked`     | `#E11D48` | `--color-danger`     |
+| `on_hold`     | `#F59E0B` | `--color-warning`    |
+| `done`        | `#10B981` | `--color-success`    |
+
+---
+
+## Borders & Radii
+
+| Token             | Value  | Usage                                 |
+|-------------------|--------|---------------------------------------|
+| `--radius-sm`     | `4px`  | Buttons, chips                        |
+| `--radius-input`  | `8px`  | Form inputs                           |
+| `--radius-card`   | `12px` | Cards, task cards, progress bars      |
+| `--radius-panel`  | `16px` | Feature panels, modals, bottom sheets |
+| `--radius-full`   | `9999px` | Pills, badges, avatar dots          |
+
+---
+
+## Shadows
+
+| Token             | Value                                       | Usage                    |
+|-------------------|---------------------------------------------|--------------------------|
+| `--shadow-card`   | `0 1px 3px rgba(26,26,46,0.08)`             | Resting cards            |
+| `--shadow-hover`  | `0 4px 16px rgba(26,26,46,0.12)`            | Cards on hover           |
+| `--shadow-popup`  | `0 8px 32px rgba(26,26,46,0.14)`            | Modals, sheets           |
+| `--shadow-brand`  | `0 4px 16px rgba(255,101,53,0.25)`          | Orange CTA glow          |
+
+Standard hover lift for interactive cards:
+```css
+transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+/* hover: */
+border-color: var(--brand);
+box-shadow: var(--shadow-hover);
+transform: translateY(-1px);
+```
+
+---
+
+## Motion
+
+```css
+--ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);  /* entrances, confirmations */
+--ease-smooth:  cubic-bezier(0.4, 0, 0.2, 1);         /* state changes */
+--ease-out:     cubic-bezier(0.16, 1, 0.3, 1);        /* brand slide */
+--ease-exit:    cubic-bezier(0.4, 0, 1, 1);            /* exits */
+
+--dur-instant:  80ms;
+--dur-fast:     150ms;
+--dur-normal:   250ms;
+--dur-slow:     400ms;
+--dur-enter:    350ms;
+```
+
+### slideUp
+```css
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+```
+
+### fadeIn
+```css
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+```
+
+Animate `transform` and `opacity` only — never layout-triggering properties.
+
+---
+
+## Brand Signature: Graph-paper Background
+
+White sections use a faint navy grid. Dark navy sections use an orange grid.
+
+```css
+/* Light section */
+background-image:
+  linear-gradient(rgba(26,26,46,0.045) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(26,26,46,0.045) 1px, transparent 1px);
+background-size: 40px 40px;
+
+/* Dark section */
+background-image:
+  linear-gradient(rgba(255,101,53,0.07) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,101,53,0.07) 1px, transparent 1px);
+background-size: 40px 40px;
+```
+
+---
+
+## Layout
+
+- **Content rail** — `max-width: 1280px; margin-inline: auto; padding-inline: 24px`
+- **Prose / forms** — `max-width: 768px`
+- **Sidebar** — `hidden md:flex`, fixed left rail, desktop only
+- **BottomNav** — `md:hidden`, fixed bottom, mobile only
+- **FAB** — `md:hidden`, `fixed bottom-20 right-4`, mobile only
+- Single breakpoint: `md` at 768px — no `sm`, `lg`, `xl`
+- Sections alternate `--surface-base` / `--surface-paper` ↔ `--surface-dark`
+
+---
+
+## Custom Utility Classes
+
+| Class                 | Purpose                                               |
+|-----------------------|-------------------------------------------------------|
+| `.scrollbar-hide`     | Hide scrollbars on overflow containers                |
+| `.shadow-card`        | Resting card elevation                                |
+| `.shadow-hover`       | Hover elevation                                       |
+| `.shadow-popup`       | Sheet / modal elevation                               |
+| `.tap-target`         | `min-height: 44px; min-width: 44px` — all icon buttons|
+| `.slide-up`           | Sheet entrance animation                              |
+| `.fade-in`            | Overlay fade                                          |
+| `.checkmark-path`     | Checkbox checked stroke animation                     |
+| `.task-title-complete`| `line-through` + `--text-muted` for completed tasks   |
+| `.eyebrow`            | 11px bold uppercase orange label                      |
+| `.graph-bg`           | Light section graph-paper texture                     |
+| `.graph-bg-dark`      | Dark section orange graph-paper texture               |
+| `.stagger-1`–`.stagger-4` | Animation delay helpers (0.08s increments)       |
+
+Global focus ring — never remove:
+```css
+*:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+```
+
+---
+
+## Implementation Rules
+
+### cn() — always use for conditional classes
+```tsx
+// Correct
+className={cn('base', condition && 'extra', variant === 'x' && 'active')}
+
+// Wrong
+className={`base ${condition ? 'extra' : ''}`}
+```
+
+### Dynamic colors — always inline style, never arbitrary Tailwind
+```tsx
+// Correct
+style={{ backgroundColor: color + '20' }}
+
+// Wrong
+className={`bg-[${color}]`}
+```
+
+### Hex alpha tint pattern
+```tsx
+style={{ backgroundColor: color + '20' }}  // ~12% opacity
+style={{ borderColor: color + '40' }}       // ~25% opacity
+```
+
+---
+
+## Accessibility — Required on Every Component
+
+- Semantic HTML: `<main>`, `<nav>`, `<section>`, `<article>` over bare `<div>`
+- ARIA labels on all icon-only interactive elements
+- Full keyboard navigability; never remove focus ring without replacement
+- Color contrast: 4.5:1 body text, 3.0:1 large text / UI elements
+- All inputs have a `<label>` or `aria-labelledby`
+- Decorative icons: `aria-hidden="true"`
+- Status messages use `aria-live` regions
+- All icon buttons have `.tap-target` (44×44px minimum)
+
+---
+
+## Testing — Required on Every New File
+
+- Corresponding test file alongside every new component
+- Cover happy path, edge cases, error cases
+- `describe` / `it` blocks with clear descriptions
+- Minimum 80% coverage for all new code
+
+---
+
+## Anti-Patterns
+
+| Wrong                                   | Right                                              |
+|-----------------------------------------|----------------------------------------------------|
+| Hardcoded hex in JSX                    | CSS var or `PRIORITY_CONFIG[p].color`              |
+| Any font other than Inter               | `font-family: var(--font-sans)` always             |
+| `text-gray-*` / `bg-gray-*`            | Semantic tokens: `--text-muted`, `--surface-paper` |
+| `any` TypeScript type                   | Correct type or proper generic                     |
+| Arbitrary Tailwind for dynamic color    | Inline `style={{}}`                                |
+| Template literals for class merging     | `cn()` always                                      |
+| Icon button without `.tap-target`       | Always add `.tap-target`                           |
+| `updateProject({ ...project, changes })`| `updateProject(id, { field: value })`              |
+| Glassmorphism on content cards          | Glass only on structural chrome (nav, modals)      |
+
+---
+
+## Checklist — Before Every Component
+
+- [ ] All colors use CSS tokens — no hardcoded hex in JSX
+- [ ] Font is Inter only — `var(--font-sans)` on every element
+- [ ] `--brand` is `#FF6535` (orange), not purple or any other color
+- [ ] Priority colors read from `PRIORITY_CONFIG[priority]` only
+- [ ] `cn()` used for all conditional class merging
+- [ ] Dynamic colors use inline `style={{}}`
+- [ ] Icon buttons have `.tap-target` (44×44px)
+- [ ] Semantic HTML and ARIA labels present
+- [ ] Keyboard navigability confirmed
+- [ ] Responsive at < 768px and ≥ 768px
+- [ ] No `any` types — strict TypeScript enforced
+- [ ] Test file created with ≥ 80% coverage
+
+
+---
+
+## assets/tokens.css
+
+```css
+/* ============================================================
+   RISE OS — Design Tokens (Orange Brand Edition)
+   Color palette: Muhammed Ajmal Consulting orange system.
+   Typography: Inter only — no other typefaces.
+   Import once at app root via @import or <link>.
+   Never hardcode hex values in components — use tokens only.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+
+  /* ── Brand palette ──────────────────────────────────────── */
+  --color-navy:         #1A1A2E;   /* charcoal — primary text & dark sections */
+  --color-navy-deep:    #0B1120;   /* deepest navy — footer */
+  --color-orange:       #FF6535;   /* brand orange — CTAs, accents, primary */
+  --color-orange-hover: #FF8159;   /* lighter orange — hover / gradient end */
+  --color-orange-ink:   #D6450F;   /* deep orange — text on white (AA 4.5:1) */
+  --color-orange-tint:  #FFF0EB;   /* 6% orange — badge/chip backgrounds */
+  --color-ivory:        #FFFFFF;   /* white base */
+  --color-paper:        #F9FAFB;   /* gray-50 — alternating light sections */
+  --color-crimson:      #E11D48;   /* error / danger */
+  --color-emerald:      #10B981;   /* success / positive */
+  --color-slate:        #6B6B6B;   /* secondary text */
+  --color-line:         #E5E5E5;   /* borders / dividers */
+
+  /* ── Semantic surface aliases ───────────────────────────── */
+  --surface-base:       var(--color-ivory);
+  --surface-paper:      var(--color-paper);
+  --surface-card:       var(--color-ivory);
+  --surface-dark:       var(--color-navy);
+  --surface-footer:     var(--color-navy-deep);
+  --surface-overlay:    rgba(26, 26, 46, 0.60);  /* modal scrim */
+
+  /* ── Semantic text aliases ──────────────────────────────── */
+  --text-strong:        var(--color-navy);
+  --text-body:          rgba(26, 26, 46, 0.70);   /* navy/70 — paragraph copy */
+  --text-muted:         rgba(26, 26, 46, 0.50);   /* navy/50 — captions */
+  --text-on-dark:       #FFFFFF;
+  --text-on-dark-soft:  rgba(255, 255, 255, 0.70);
+  --text-on-brand:      #FFFFFF;                   /* text on orange fill */
+
+  /* ── Brand semantic ─────────────────────────────────────── */
+  --brand:              var(--color-orange);
+  --brand-hover:        var(--color-orange-hover);
+  --brand-text:         var(--color-orange-ink);   /* orange text on white */
+  --brand-tint:         var(--color-orange-tint);
+
+  /* ── Borders ────────────────────────────────────────────── */
+  --border-subtle:      rgba(26, 26, 46, 0.10);    /* default card border */
+  --border-line:        var(--color-line);
+  --border-brand:       rgba(255, 101, 53, 0.30);  /* orange border accent */
+  --border-on-dark:     rgba(255, 101, 53, 0.20);  /* borders in dark sections */
+  --border-focus:       var(--color-orange);        /* focus ring */
+
+  /* ── Semantic status ────────────────────────────────────── */
+  --color-success:      var(--color-emerald);
+  --color-success-tint: #D1FAE5;
+  --color-danger:       var(--color-crimson);
+  --color-danger-tint:  #FEE2E2;
+  --color-warning:      #F59E0B;
+  --color-warning-tint: #FEF3C7;
+
+  /* ── Priority tokens ─────────────────────────────────────  */
+  --color-p1:           #EF4444;   /* P1 Urgent */
+  --color-p2:           var(--color-orange);   /* P2 High — brand orange */
+  --color-p3:           #3B82F6;   /* P3 Medium */
+  --color-p4:           #9CA3AF;   /* P4 Low */
+
+  /* ── Typography — Inter only ────────────────────────────── */
+  --font-sans:   'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:   'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Weights */
+  --fw-regular:   400;
+  --fw-medium:    500;
+  --fw-semibold:  600;
+  --fw-bold:      700;
+  --fw-extrabold: 800;
+
+  /* Type scale */
+  --text-eyebrow: 0.6875rem;  /* 11px — uppercase section labels */
+  --text-xs:      0.75rem;    /* 12px */
+  --text-sm:      0.875rem;   /* 14px — base body */
+  --text-base:    1rem;       /* 16px — min input (prevents iOS zoom) */
+  --text-lg:      1.125rem;   /* 18px */
+  --text-xl:      1.25rem;    /* 20px — page title */
+  --text-2xl:     1.5rem;     /* 24px */
+  --text-3xl:     1.875rem;   /* 30px */
+  --text-4xl:     2.25rem;    /* 36px */
+  --text-5xl:     3rem;       /* 48px — hero display */
+
+  /* Letter-spacing */
+  --tracking-tight:   -0.02em;  /* display headings */
+  --tracking-normal:   0;
+  --tracking-wide:     0.05em;
+  --tracking-widest:   0.15em;  /* uppercase eyebrows */
+
+  /* Line-height */
+  --leading-tight:    1.15;
+  --leading-snug:     1.35;
+  --leading-normal:   1.5;
+  --leading-relaxed:  1.65;
+
+  /* ── Spacing — 8pt grid ─────────────────────────────────── */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+  --space-24:  96px;
+
+  /* ── Radii ──────────────────────────────────────────────── */
+  --radius-sm:     4px;    /* buttons, chips */
+  --radius-input:  8px;    /* inputs */
+  --radius-card:   12px;   /* cards */
+  --radius-panel:  16px;   /* feature panels, modals */
+  --radius-full:   9999px; /* pills, badges, dots */
+
+  /* ── Shadows ────────────────────────────────────────────── */
+  --shadow-sm:     0 1px 3px rgba(26, 26, 46, 0.08);
+  --shadow-card:   0 1px 3px rgba(26, 26, 46, 0.08);
+  --shadow-hover:  0 4px 16px rgba(26, 26, 46, 0.12);
+  --shadow-popup:  0 8px 32px rgba(26, 26, 46, 0.14);
+  --shadow-brand:  0 4px 16px rgba(255, 101, 53, 0.25);  /* orange glow CTAs */
+
+  /* ── Motion ─────────────────────────────────────────────── */
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);  /* entrances / confirmations */
+  --ease-smooth:  cubic-bezier(0.4, 0, 0.2, 1);        /* state changes */
+  --ease-out:     cubic-bezier(0.16, 1, 0.3, 1);       /* brand easing */
+  --ease-exit:    cubic-bezier(0.4, 0, 1, 1);           /* exits */
+
+  --dur-instant:  80ms;
+  --dur-fast:     150ms;
+  --dur-normal:   250ms;
+  --dur-slow:     400ms;
+  --dur-enter:    350ms;
+}
+
+
+/* ============================================================
+   Base reset
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-regular);
+  line-height: var(--leading-normal);
+  color: var(--text-strong);
+  background: var(--surface-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-strong);
+}
+
+/* ── Global focus ring ──────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+
+/* ============================================================
+   Typography utilities
+   ============================================================ */
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--text-eyebrow);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-title-complete {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+
+/* ============================================================
+   Layout primitives
+   ============================================================ */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.content-rail {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: var(--space-6);
+}
+
+
+/* ============================================================
+   Card system
+   ============================================================ */
+
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition:
+    border-color var(--dur-fast) var(--ease-smooth),
+    box-shadow   var(--dur-fast) var(--ease-smooth),
+    transform    var(--dur-fast) var(--ease-smooth);
+}
+
+.card:hover {
+  border-color: var(--brand);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
+
+/* Orange top-bar wipe on hover */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 3px;
+  background: var(--brand);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-normal) var(--ease-out);
+}
+.card:hover::before {
+  transform: scaleX(1);
+}
+
+.card--dark {
+  background: var(--surface-dark);
+  border-color: var(--border-on-dark);
+  color: var(--text-on-dark);
+}
+
+.card--active {
+  border-color: var(--brand);
+  box-shadow: var(--shadow-brand);
+}
+
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  min-width: 44px;
+  padding-inline: var(--space-5);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background var(--dur-fast) var(--ease-smooth),
+    box-shadow  var(--dur-fast) var(--ease-smooth),
+    transform   var(--dur-instant) var(--ease-smooth);
+}
+
+/* Primary — orange fill */
+.btn--primary {
+  background: var(--brand);
+  color: var(--text-on-brand);
+  box-shadow: var(--shadow-brand);
+}
+.btn--primary:hover {
+  background: var(--brand-hover);
+}
+.btn--primary:active {
+  transform: scale(0.97);
+}
+
+/* Secondary — navy outline */
+.btn--secondary {
+  background: transparent;
+  color: var(--text-strong);
+  border-color: var(--border-subtle);
+}
+.btn--secondary:hover {
+  border-color: var(--brand);
+  color: var(--brand-text);
+}
+
+/* Ghost — on dark sections */
+.btn--ghost {
+  background: transparent;
+  color: var(--text-on-dark);
+  border-color: var(--border-on-dark);
+}
+.btn--ghost:hover {
+  background: rgba(255, 101, 53, 0.10);
+  border-color: var(--brand);
+}
+
+
+/* ============================================================
+   Badge / Chip
+   ============================================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  font-size: var(--text-eyebrow);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  border-radius: var(--radius-full);
+  background: var(--brand-tint);
+  color: var(--brand-text);
+}
+
+
+/* ============================================================
+   Tap target
+   ============================================================ */
+
+.tap-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+
+/* ============================================================
+   Touch feedback
+   ============================================================ */
+
+.tappable {
+  transition: transform var(--dur-instant) var(--ease-smooth);
+}
+.tappable:active {
+  transform: scale(0.96);
+}
+
+
+/* ============================================================
+   Skeleton loader
+   ============================================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-paper) 25%,
+    var(--color-line)  50%,
+    var(--color-paper) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+  border-radius: var(--radius-input);
+}
+@keyframes skeletonPulse {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-up {
+  animation: slideUp var(--dur-enter) var(--ease-out) both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in {
+  animation: fadeIn var(--dur-normal) var(--ease-smooth) both;
+}
+
+@keyframes checkmark {
+  0%   { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+.checkmark-path {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  animation: checkmark 0.25s ease forwards;
+}
+
+/* Stagger helpers */
+.stagger-1 { animation-delay: 0.08s; }
+.stagger-2 { animation-delay: 0.16s; }
+.stagger-3 { animation-delay: 0.24s; }
+.stagger-4 { animation-delay: 0.32s; }
+
+
+/* ============================================================
+   Graph-paper texture (brand signature)
+   ============================================================ */
+
+.graph-bg {
+  background-image:
+    linear-gradient(rgba(26, 26, 46, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 26, 46, 0.045) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.graph-bg-dark {
+  background-image:
+    linear-gradient(rgba(255, 101, 53, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 101, 53, 0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+
+/* ============================================================
+   Scrollbar
+   ============================================================ */
+
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+
+/* ============================================================
+   Bottom navigation (mobile only)
+   ============================================================ */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--border-subtle);
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(56px + env(safe-area-inset-bottom));
+}
+
+.nav-item {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-smooth);
+}
+.nav-item[aria-current="true"] {
+  color: var(--brand);
+}
+
+
+/* ============================================================
+   Accessibility
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+```
+
+---
+
+## assets/demo.html
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1107,3 +1988,195 @@
 
 </body>
 </html>
+
+```
+
+---
+
+## references/accessibility.md
+
+# RISE OS — Accessibility Standards
+
+## Core Requirements
+- **Semantic HTML**: Use appropriate tags (`<main>`, `<nav>`, `<section>`, `<article>`) instead of generic `<div>` wrappers for screen reader compatibility.
+- **Interactive Elements**: Every interactive element must be keyboard-accessible. Never remove the focus ring (`outline`) without providing a visible replacement using `--border-focus` (`#FF6535`).
+- **ARIA Labels**: All icon-only buttons or interactive elements without visible text must have descriptive `aria-label` attributes.
+- **Color Contrast**: Minimum 4.5:1 for body text, 3.0:1 for large text/UI elements. Note: `--brand-text` (`#D6450F`) is the correct token for orange text on white — not `--brand` (`#FF6535`), which fails AA at small sizes.
+- **Form Labels**: Every input must have a programmatically associated `<label>` or `aria-labelledby`.
+
+## Focus Ring — Mandatory
+```css
+*:focus-visible {
+  outline: 2px solid var(--border-focus); /* #FF6535 */
+  outline-offset: 2px;
+}
+```
+Never override this to `outline: none` without adding a replacement.
+
+## Implementation Checklist
+- [ ] Use `lucide-react` icons with `aria-hidden="true"` when decorative.
+- [ ] Tab order follows the logical visual flow.
+- [ ] All images have an `alt` attribute; decorative images use `alt=""`.
+- [ ] Status messages (e.g. "Task Saved") announced via `aria-live` regions.
+- [ ] All icon-only buttons use `.tap-target` (44×44px minimum).
+- [ ] Use `--brand-text` (`#D6450F`) for orange text on white, never raw `--brand`.
+- [ ] `prefers-reduced-motion` respected — tokens.css handles this globally.
+
+
+---
+
+## references/aesthetics.md
+
+# RISE OS — Visual Aesthetics & Motion
+
+## Typography
+- **Single typeface: Inter.** No exceptions — not Playfair Display, not Plus Jakarta Sans, not Lexend, not system-serif. Use `var(--font-sans)` on every element.
+- **Weight drives hierarchy**, not font changes. Use 400 (body), 500 (medium emphasis), 600 (section heads), 700 (titles), 800 (hero display).
+- **Tracking on display**: `letter-spacing: -0.02em` on anything 20px and above. Eyebrows go the other way: `+0.15em` uppercase.
+- **No fluid `clamp()` scaling** unless a specific breakpoint won't handle it — prefer the fixed type scale tokens.
+
+## Color Aesthetic
+- **Orange is the only brand accent.** `--brand` (`#FF6535`) for fills, `--brand-hover` (`#FF8159`) on hover, `--brand-text` (`#D6450F`) for colored text on white.
+- **Dark sections use navy** (`#1A1A2E`), not black. The brand is charcoal-navy + orange — not monochrome.
+- **No decorative gradients** except the orange CTA glow shadow (`--shadow-brand`) and the graph-paper overlay. No rainbow gradients, no purple, no AI pulse effects.
+
+## Brand Signature: Graph-paper Grid
+Apply on every section. Light sections: faint navy lines. Dark sections: faint orange lines. Cell size 40×40px. This is the aesthetic — it must be present.
+
+## Motion
+- **Signature easing**: `cubic-bezier(0.16, 1, 0.3, 1)` (`--ease-out`) for brand slide-ins.
+- **Stagger entrances**: 0.08s increments (`.stagger-1` through `.stagger-4`) for lists and card grids.
+- **Micro-interactions**: Every button and card hover includes a subtle "lift" (`translateY(-1px)`) and shadow increase. Active state scales to `0.96–0.97`.
+- **Glassmorphism**: Only for structural chrome (nav bar, modal overlays, bottom sheets). Never on content cards.
+- No animation longer than `--dur-slow` (400ms) for UI interactions. Respect `prefers-reduced-motion`.
+
+## Card Hover Pattern
+```css
+/* On hover: orange top-bar wipes in from the left */
+.card::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 100%; height: 3px;
+  background: var(--brand);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 250ms var(--ease-out);
+}
+.card:hover::before { transform: scaleX(1); }
+```
+
+
+---
+
+## references/components.md
+
+# RISE OS — Component Architecture
+
+## Standards
+- **Strict Typing**: All props must have an explicit TypeScript `interface`. `any` is forbidden.
+- **Named Exports**: Use `export const Component = …` over default exports for IDE safety.
+- **Class Merging**: Always use `cn()` from `lib/cn.ts` for conditional Tailwind classes.
+- **Dynamic Colors**: Data-driven hex values use the **Hex Alpha Trick** with inline style — never arbitrary Tailwind:
+  ```tsx
+  style={{ backgroundColor: color + '20', borderColor: color + '40' }}
+  ```
+- **Font**: Every component inherits `var(--font-sans)` (Inter) from `body`. Never set a different font-family on any component.
+
+## File Structure Pattern
+1. Imports — external libs → internal hooks/utils → types
+2. TypeScript interface definition
+3. Component definition using `cn()`
+4. Sub-components or helper functions (if small)
+5. Named export
+
+## Token Usage Pattern
+```tsx
+// Correct — semantic token
+<div style={{ color: 'var(--brand-text)', background: 'var(--brand-tint)' }}>
+
+// Wrong — hardcoded hex
+<div style={{ color: '#D6450F', background: '#FFF0EB' }}>
+```
+
+## Priority Color Pattern
+```tsx
+import { PRIORITY_CONFIG } from '@/lib/constants';
+
+// Correct
+const { color, bgColor } = PRIORITY_CONFIG[task.priority];
+<span style={{ color, backgroundColor: bgColor }}>
+
+// Wrong — switch/case on priority string
+```
+
+## Button Usage
+| Variant         | Context                              | Token used           |
+|-----------------|--------------------------------------|----------------------|
+| `btn--primary`  | Main CTA, destructive confirm        | `--brand` fill       |
+| `btn--secondary`| Secondary actions on light sections  | `--border-subtle`    |
+| `btn--ghost`    | Actions on dark/navy sections        | `--border-on-dark`   |
+
+Every button and icon-only control must meet the `.tap-target` requirement (44×44px).
+
+
+---
+
+## references/mobile.md
+
+# RISE OS — Mobile-First Optimization
+
+## Viewport Strategy
+- **Binary breakpoint**: RISE OS uses a single `md` breakpoint at **768px**. Design mobile first, add `md:` for desktop.
+- **Content rail**: `max-width: 1280px; margin-inline: auto; padding-inline: var(--space-6)` (24px).
+- No `sm`, `lg`, `xl` breakpoints — they don't exist in this system.
+
+## Touch Interactions
+- **Tap targets**: Every icon-only button and checkbox **must** use `.tap-target` for a minimum 44×44px touch area.
+- **Active feedback**: Use `.tappable` class (`transform: scale(0.96)` on `:active`) on all interactive surfaces.
+- **BottomSheet**: Complex forms and menus slide up with `border-radius: var(--radius-panel) var(--radius-panel) 0 0` and a 40px drag handle. Use `.slide-up` animation.
+- **Bottom nav**: `.bottom-nav` pattern — `md:hidden`, glassmorphism chrome (`backdrop-filter: blur(20px)`), `env(safe-area-inset-bottom)` padding, 5 items max.
+- **FAB**: `md:hidden`, `position: fixed; bottom: calc(56px + 16px + env(safe-area-inset-bottom)); right: 16px`.
+
+## Readability
+- No horizontal scrolling at 375px width — test every layout.
+- Minimum font size 14px (`var(--text-sm)`) — prevents iOS zoom on inputs if using `var(--text-base)` (16px) on inputs.
+- Use `.scrollbar-hide` on horizontally scrolling containers.
+
+## Safe Area
+```css
+padding-bottom: env(safe-area-inset-bottom);
+height: calc(56px + env(safe-area-inset-bottom));
+```
+Always account for iPhone home indicator on fixed-bottom elements.
+
+
+---
+
+## references/performance.md
+
+# RISE OS — Performance Targets
+
+## Core Web Vitals
+- **LCP** < 2.5s — optimize the critical rendering path; fonts load via `next/font/google` (Inter) which self-hosts and avoids FOUT.
+- **CLS** < 0.1 — always provide `width` and `height` on images; reserve space for dynamic content with skeleton loaders (`.skeleton` class).
+- **FID** < 100ms — avoid blocking the main thread with tasks > 50ms.
+
+## Font Loading
+Inter is the only typeface. Load it once:
+```ts
+// app/layout.tsx
+import { Inter } from 'next/font/google';
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+```
+Never use a `<link>` to Google Fonts in production — `next/font` self-hosts and eliminates the round-trip. The `tokens.css` `@import` is for demo/storybook only.
+
+## Optimization Rules
+- **Images**: WebP/AVIF formats, `loading="lazy"` for off-screen assets, `next/image` for all production images.
+- **State**: Zustand for lightweight state — avoid heavy React Context for frequently-updating data.
+- **Layout thrashing**: Never read and write DOM style in the same loop; batch all reads before any writes.
+- **Animations**: Animate `transform` and `opacity` only — never `width`, `height`, `top`, `left`, or any layout-triggering property.
+- **Transitions**: Keep all UI transitions ≤ `--dur-slow` (400ms). Respect `prefers-reduced-motion` — tokens.css handles this globally via `@media (prefers-reduced-motion: reduce)`.
+
+## Bundle
+- No icon sets beyond `lucide-react` — tree-shakes per icon.
+- No utility-heavy dependencies (lodash, moment) — use native JS and `date-fns`.
+- Zustand stores should use `persist` middleware sparingly; only persist state the user explicitly owns.
+

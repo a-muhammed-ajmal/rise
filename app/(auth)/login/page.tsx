@@ -131,7 +131,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div
-      className="min-h-[100dvh] flex items-center justify-center p-4"
+      className="min-h-[100dvh] flex items-center justify-center p-4 graph-bg"
       style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
       <Suspense

@@ -67,8 +67,8 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   LIGHT MODE (default) — TaskFlow palette
-   Primary: #5B5BD6 · Text: #111827 · Background: #F4F5F7 · Surface: #FFFFFF
+   LIGHT MODE (default) — RISE OS orange brand
+   Primary: #FF6535 · Text: #1A1A2E · Background: #FFFFFF · Surface: #FFFFFF
    ══════════════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -81,40 +81,40 @@
   --step-4:  clamp(2.07rem, 1.49rem + 2.90vw, 3.55rem);
   --step-5:  clamp(2.49rem, 1.59rem + 4.49vw, 4.74rem);
 
-  /* ── shadcn tokens — TaskFlow light mode ───────────────────────────────────── */
-  --background: #F4F5F7;
-  --foreground: #111827;
+  /* ── shadcn tokens — RISE OS orange brand ──────────────────────────────────── */
+  --background: #FFFFFF;
+  --foreground: #1A1A2E;
   --card: #FFFFFF;
-  --card-foreground: #111827;
+  --card-foreground: #1A1A2E;
   --popover: #FFFFFF;
-  --popover-foreground: #111827;
-  --primary: #5B5BD6;
+  --popover-foreground: #1A1A2E;
+  --primary: #FF6535;
   --primary-foreground: #FFFFFF;
   --secondary: #F9FAFB;
-  --secondary-foreground: #111827;
+  --secondary-foreground: #1A1A2E;
   --muted: #F9FAFB;
   --muted-foreground: #6B7280;
-  --accent: #EEEEFF;
-  --accent-foreground: #5B5BD6;
+  --accent: #FFF0EB;
+  --accent-foreground: #D6450F;
   --destructive: #EF4444;
   --border: #E5E7EB;
   --input: #E5E7EB;
-  --ring: #5B5BD6;
+  --ring: #FF6535;
   /* Chart palette */
-  --chart-1: #5B5BD6;
+  --chart-1: #FF6535;
   --chart-2: #22C55E;
   --chart-3: #F59E0B;
   --chart-4: #3B82F6;
   --chart-5: #EF4444;
-  --radius: 0.625rem;               /* 10px card radius — TaskFlow spec */
+  --radius: 0.625rem;               /* 10px base radius */
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #111827;
-  --sidebar-primary: #5B5BD6;
+  --sidebar-foreground: #1A1A2E;
+  --sidebar-primary: #FF6535;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EEEEFF;
-  --sidebar-accent-foreground: #5B5BD6;
+  --sidebar-accent: #FFF0EB;
+  --sidebar-accent-foreground: #D6450F;
   --sidebar-border: #E5E7EB;
-  --sidebar-ring: #5B5BD6;
+  --sidebar-ring: #FF6535;
 
   /* ── Module colors — light mode ─────────────────────────────────────────── */
   --mod-tasks: #34D399;                        /* Green — task management    */
@@ -132,12 +132,12 @@
   --mod-ai: #7C5CFC;                           /* Purple — AI (= accent)    */
   --mod-ai-soft: rgba(124, 92, 252, 0.08);
 
-  /* ── TaskFlow semantic token layer ─────────────────────────────────────────── */
-  --color-base:           #F4F5F7;
+  /* ── RISE OS semantic token layer ──────────────────────────────────────────── */
+  --color-base:           #FFFFFF;
   --color-surface:        #FFFFFF;
   --color-surface-alt:    #F9FAFB;
-  --color-primary-light:  #EEEEFF;
-  --color-content:        #111827;
+  --color-primary-light:  #FFF0EB;
+  --color-content:        #1A1A2E;
   --color-subtle:         #6B7280;
   --color-muted-text:     #9CA3AF;
   --color-border-token:   #E5E7EB;
@@ -147,15 +147,17 @@
   --spacing-lg: 32px;  --spacing-xl: 40px;  --spacing-2xl: 64px;
 
   /* ── Radius scale ───────────────────────────────────────────────────────── */
-  --radius-card:  10px;
+  --radius-card:  12px;
+  --radius-panel: 16px;
   --radius-popup: 16px;
-  --radius-input: 6px;
+  --radius-input: 8px;
   --radius-pill:  9999px;
 
-  /* ── TaskFlow shadow tokens ─────────────────────────────────────────────── */
-  --shadow-card:       0 1px 3px rgba(0,0,0,0.08);
-  --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.10);
-  --shadow-popup:      0 4px 12px rgba(0,0,0,0.12);
+  /* ── RISE OS shadow tokens ──────────────────────────────────────────────── */
+  --shadow-card:       0 1px 3px rgba(26,26,46,0.08);
+  --shadow-card-hover: 0 4px 16px rgba(26,26,46,0.12);
+  --shadow-popup:      0 8px 32px rgba(26,26,46,0.14);
+  --shadow-brand:      0 4px 16px rgba(255,101,53,0.25);
   /* Legacy aliases */
   --shadow-sm:  var(--shadow-card);
   --shadow-md:  var(--shadow-card-hover);
@@ -165,9 +167,9 @@
   --shadow-2:   var(--shadow-card-hover);
   --shadow-3:   var(--shadow-popup);
 
-  /* ── TaskFlow priority colors ───────────────────────────────────────────── */
+  /* ── Priority colors ────────────────────────────────────────────────────── */
   --color-p1: #EF4444;
-  --color-p2: #F97316;
+  --color-p2: #FF6535;
   --color-p3: #3B82F6;
   --color-p4: #9CA3AF;
 
@@ -186,17 +188,23 @@
   --font-mono:    var(--font-inter), "Inter", system-ui, sans-serif;
 
   /* ── Surface tokens (light mode) ───────────────────────────────────────── */
-  --surface-base:    #F4F5F7;
+  --surface-base:    #FFFFFF;
   --surface-1:       #FFFFFF;
   --surface-2:       #F9FAFB;
   --surface-overlay: #FFFFFF;
-  --accent-primary:  #5B5BD6;
-  --accent-glow:     rgba(91, 91, 214, 0.15);
+  --accent-primary:  #FF6535;
+  --accent-glow:     rgba(255, 101, 53, 0.15);
   --border-subtle:   rgba(229, 231, 235, 0.8);
-  --border-active:   rgba(91, 91, 214, 0.4);
+  --border-active:   rgba(255, 101, 53, 0.4);
+
+  /* ── Brand tokens ───────────────────────────────────────────────────────── */
+  --brand:       #FF6535;
+  --brand-hover: #FF8159;
+  --brand-text:  #D6450F;
+  --brand-tint:  #FFF0EB;
 
   /* ── Text tokens (light mode) ───────────────────────────────────────────── */
-  --text-primary:   #111827;
+  --text-primary:   #1A1A2E;
   --text-secondary: #6B7280;
   --text-muted:     #9CA3AF;
 
@@ -245,8 +253,8 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   DARK MODE — deep dark with TaskFlow-indigo primary
-   Background: #0D0A1A · Surface: #1A1229 · Primary: #7C82E0 · Text: #E8E8F0
+   DARK MODE — deep dark with RISE OS orange brand primary
+   Background: #0D0A1A · Surface: #1A1229 · Primary: #FF8159 · Text: #E8E8F0
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .dark {
@@ -256,7 +264,7 @@
   --card-foreground: oklch(0.930 0.025 290);
   --popover: oklch(0.170 0.050 290);        /* #231535 — elevated dropdown        */
   --popover-foreground: oklch(0.930 0.025 290);
-  --primary: #7C82E0;                        /* TaskFlow indigo lightened for dark */
+  --primary: #FF8159;                        /* Orange lightened for dark backgrounds */
   --primary-foreground: #FFFFFF;
   --secondary: oklch(0.170 0.050 290);
   --secondary-foreground: oklch(0.930 0.025 290);
@@ -265,23 +273,23 @@
   --accent: oklch(0.170 0.050 290);
   --accent-foreground: oklch(0.930 0.025 290);
   --destructive: #EF4444;
-  --border: oklch(0.550 0.210 291 / 25%);
-  --input: oklch(0.550 0.210 291 / 15%);
-  --ring: #7C82E0;
+  --border: oklch(0.250 0.020 30 / 40%);
+  --input: oklch(0.250 0.020 30 / 20%);
+  --ring: #FF8159;
   /* Chart palette — dark */
-  --chart-1: #7C82E0;
+  --chart-1: #FF8159;
   --chart-2: #34D399;
   --chart-3: #FBBF24;
   --chart-4: #60A5FA;
   --chart-5: #F87171;
   --sidebar: oklch(0.130 0.040 290);
   --sidebar-foreground: oklch(0.930 0.025 290);
-  --sidebar-primary: #7C82E0;
+  --sidebar-primary: #FF8159;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: oklch(0.170 0.050 290);
   --sidebar-accent-foreground: oklch(0.930 0.025 290);
-  --sidebar-border: oklch(0.550 0.210 291 / 25%);
-  --sidebar-ring: #7C82E0;
+  --sidebar-border: oklch(0.250 0.020 30 / 40%);
+  --sidebar-ring: #FF8159;
 
   /* ── Module colors — dark mode ──────────────────────────────────────────── */
   --mod-tasks: #34D399;
@@ -304,10 +312,16 @@
   --surface-1:       #17171C;
   --surface-2:       #1F1F27;
   --surface-overlay: #2A2A35;
-  --accent-primary:  #7C82E0;
-  --accent-glow:     rgba(124, 130, 224, 0.15);
+  --accent-primary:  #FF8159;
+  --accent-glow:     rgba(255, 101, 53, 0.15);
   --border-subtle:   rgba(255,255,255,0.06);
-  --border-active:   rgba(124, 130, 224, 0.4);
+  --border-active:   rgba(255, 101, 53, 0.4);
+
+  /* ── Brand tokens (dark) ────────────────────────────────────────────────── */
+  --brand:       #FF8159;
+  --brand-hover: #FF6535;
+  --brand-text:  #FF8159;
+  --brand-tint:  rgba(255, 101, 53, 0.12);
 
   /* ── Text tokens (dark) ─────────────────────────────────────────────────── */
   --text-primary:   #E8E8F0;
@@ -326,12 +340,13 @@
 
   /* ── Elevation — dark mode ──────────────────────────────────────────────── */
   --shadow-card:       0 1px 3px rgba(0,0,0,0.35);
-  --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.40);
-  --shadow-popup:      0 4px 16px rgba(0,0,0,0.50);
+  --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.40);
+  --shadow-popup:      0 8px 32px rgba(0,0,0,0.50);
+  --shadow-brand:      0 4px 16px rgba(255,101,53,0.30);
   --shadow-sm:  var(--shadow-card);
   --shadow-md:  var(--shadow-card-hover);
   --shadow-lg:  var(--shadow-popup);
-  --shadow-glow: 0 0 30px rgba(124, 130, 224, 0.25);
+  --shadow-glow: 0 0 30px rgba(255, 101, 53, 0.25);
   --shadow-1:   var(--shadow-card);
   --shadow-2:   var(--shadow-card-hover);
   --shadow-3:   var(--shadow-popup);
@@ -339,17 +354,17 @@
   /* ── Semantic layer aliases ─────────────────────────────────────────────── */
   --color-background:    #0D0A1A;
   --color-surface:       #1A1229;
-  --color-muted-text:    #9B8EC0;
+  --color-muted-text:    #9B9BAA;
   --color-base:          #0E0E11;
   --color-surface-alt:   #1F1F27;
-  --color-primary-light: rgba(124,130,224,0.15);
+  --color-primary-light: rgba(255,101,53,0.15);
   --color-content:       #E8E8F0;
   --color-subtle:        #8E8EA0;
   --color-border-token:  rgba(255,255,255,0.08);
 
   /* ── Priority colors (dark) ─────────────────────────────────────────────── */
   --color-p1: #F87171;
-  --color-p2: #FB923C;
+  --color-p2: #FF8159;
   --color-p3: #60A5FA;
   --color-p4: #6B7280;
 }
@@ -441,7 +456,7 @@
 }
 
 .login-card {
-  box-shadow: 0 0 60px rgba(91, 91, 214, 0.18), 0 22px 50px rgba(17, 24, 39, 0.12);
+  box-shadow: 0 0 60px rgba(255, 101, 53, 0.22), 0 22px 50px rgba(26, 26, 46, 0.12);
 }
 
 .glass-ai {
@@ -544,7 +559,7 @@
 /* ─── Brand glow utilities ───────────────────────────────────────────────── */
 
 @utility rise-title-glow {
-  text-shadow: 0 0 48px rgba(91, 91, 214, 0.65);
+  text-shadow: 0 0 48px rgba(255, 101, 53, 0.65);
   letter-spacing: -0.04em;
 }
 
@@ -639,6 +654,32 @@
 .shadow-card       { box-shadow: var(--shadow-card); }
 .shadow-card-hover { box-shadow: var(--shadow-card-hover); }
 .shadow-popup      { box-shadow: var(--shadow-popup); }
+
+/* ─── Brand graph-paper background textures ──────────────────────────────── */
+
+.graph-bg {
+  background-image:
+    linear-gradient(rgba(26,26,46,0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26,26,46,0.045) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.graph-bg-dark {
+  background-image:
+    linear-gradient(rgba(255,101,53,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,101,53,0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ─── Eyebrow label ──────────────────────────────────────────────────────── */
+
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--brand, var(--primary));
+}
 
 .task-title-complete {
   text-decoration: line-through;

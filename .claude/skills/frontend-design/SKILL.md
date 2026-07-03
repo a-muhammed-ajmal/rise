@@ -1,12 +1,12 @@
 ---
 name: frontend-design
-version: 1.0.0
-description: Use this skill whenever building new UI components, pages, or interfaces. Defines the design token system, color rules, typography, motion, component patterns, accessibility requirements, and anti-patterns for all frontend work.
+version: 2.0.0
+description: Use this skill whenever building new UI components, pages, or interfaces. Defines the design token system, color rules, typography, motion, component patterns, accessibility requirements, and anti-patterns for all frontend work. Orange brand palette, Inter-only type.
 ---
 
 # Frontend Design Skill
 
-This skill is the single source of truth for all visual and implementation decisions. Apply it before writing any component, page, or style. Every value here is intentional — do not deviate without explicit instruction.
+Single source of truth for all visual and implementation decisions. Apply before writing any component, page, or style. Every value is intentional — do not deviate without explicit instruction.
 
 ---
 
@@ -25,117 +25,139 @@ This skill is the single source of truth for all visual and implementation decis
 
 ---
 
-## Typography
+## Typography — Inter only
 
-Single typeface: **Inter** via `next/font/google`.
-Font stack fallback: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
+**Single typeface: Inter** (loaded via `next/font/google`). No other font families — not Playfair, not Plus Jakarta Sans, not Lexend.
+
+Font stack: `'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
 Base: `font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased`
 
-| Role                  | Size | Weight          | Tailwind                                    |
-|-----------------------|------|-----------------|---------------------------------------------|
-| Page title            | 20px | 700             | `text-xl font-bold`                         |
-| Card / section title  | 16px | 700             | `text-base font-bold`                       |
-| Section heading       | 14px | 600             | `text-sm font-semibold`                     |
-| Body / task title     | 14px | 500             | `text-sm font-medium`                       |
-| Meta / caption        | 12px | 400–500         | `text-xs`                                   |
-| Micro label / chip    | 11px | 600             | `text-[11px] font-semibold`                 |
-| Kanban column header  | 12px | 700             | `text-xs font-bold tracking-wider uppercase`|
-| Progress label        | 11px | 500             | `text-[11px] font-medium`                   |
+| Role                  | Size | Weight | Letter-spacing | Notes                              |
+|-----------------------|------|--------|----------------|------------------------------------|
+| Hero display          | 48px | 800    | −0.02em        | `font-extrabold tracking-tight`    |
+| Page title            | 20px | 700    | −0.02em        | `text-xl font-bold`                |
+| Card / section title  | 16px | 700    | −0.01em        | `text-base font-bold`              |
+| Section heading       | 14px | 600    | 0              | `text-sm font-semibold`            |
+| Body / task title     | 14px | 500    | 0              | `text-sm font-medium`              |
+| Meta / caption        | 12px | 400–500| 0              | `text-xs`                          |
+| Eyebrow label         | 11px | 700    | +0.15em        | uppercase, brand orange            |
+| Micro label / chip    | 11px | 600    | +0.05em        | `text-[11px] font-semibold`        |
+| Kanban column header  | 12px | 700    | +0.05em        | uppercase                          |
 
 ---
 
 ## Color System
 
-All colors live in `@theme {}` as CSS custom properties. Never hardcode hex values in JSX — always use the token.
+All colors live as CSS custom properties in `tokens.css`. **Never hardcode hex in JSX** — use the token.
 
-### Core Palette
+### Core Brand Palette
 
-| Token                   | Hex       | Role                                              |
-|-------------------------|-----------|---------------------------------------------------|
-| `--color-base`          | `#F4F5F7` | App background (`<body>`)                         |
-| `--color-surface`       | `#FFFFFF` | Cards, modals, input backgrounds                  |
-| `--color-surface-alt`   | `#F9FAFB` | Hover states, alternate row backgrounds           |
-| `--color-primary`       | `#663399` | Brand — CTAs, active states, focus rings          |
-| `--color-primary-light` | `#F0E8F7` | Active tab background, primary tinted fills       |
-| `--color-focus-accent`  | `#669933` | Focus / Today feature highlight                   |
-| `--color-focus-light`   | `#EEF5E3` | Focus accent tint                                 |
-| `--color-success`       | `#22C55E` | Completed tasks, done checkboxes                  |
-| `--color-success-light` | `#DCFCE7` | Success tint backgrounds                          |
-| `--color-warning`       | `#F59E0B` | On Hold status, overdue date badges               |
-| `--color-danger`        | `#EF4444` | Blocked status, P1 priority, delete actions       |
-| `--color-content`       | `#111827` | Primary body text                                 |
-| `--color-subtle`        | `#6B7280` | Secondary text, muted icons, labels               |
-| `--color-muted`         | `#9CA3AF` | Placeholder text, disabled states, strikethrough  |
-| `--color-border`        | `#E5E7EB` | All borders, dividers                             |
+| Token                  | Hex       | Role                                                   |
+|------------------------|-----------|--------------------------------------------------------|
+| `--brand`              | `#FF6535` | Primary CTA, active states, accents, focus rings       |
+| `--brand-hover`        | `#FF8159` | Hover / gradient end for orange elements               |
+| `--brand-text`         | `#D6450F` | Orange text on white (AA 4.5:1 contrast)               |
+| `--brand-tint`         | `#FFF0EB` | Badge/chip backgrounds, tinted fills                   |
+| `--surface-base`       | `#FFFFFF` | Page background                                        |
+| `--surface-paper`      | `#F9FAFB` | Alternating light sections                             |
+| `--surface-card`       | `#FFFFFF` | Cards, modals, inputs                                  |
+| `--surface-dark`       | `#1A1A2E` | Dark inverted sections                                 |
+| `--surface-footer`     | `#0B1120` | Footer                                                 |
+| `--text-strong`        | `#1A1A2E` | Primary headings / strong body text                    |
+| `--text-body`          | `navy/70` | Paragraph copy                                         |
+| `--text-muted`         | `navy/50` | Captions, disabled                                     |
+| `--text-on-dark`       | `#FFFFFF` | Text on navy sections                                  |
+| `--color-success`      | `#10B981` | Completed, done, positive                              |
+| `--color-danger`       | `#E11D48` | Error, blocked, delete                                 |
+| `--color-warning`      | `#F59E0B` | On hold, overdue                                       |
+| `--border-subtle`      | `navy/10` | Default card borders                                   |
+| `--border-focus`       | `#FF6535` | Focus rings                                            |
 
 ### Priority Tokens — Do Not Change
 
-| Token          | Hex       | Priority                          |
-|----------------|-----------|-----------------------------------|
-| `--color-p1`   | `#EF4444` | P1 Urgent                         |
-| `--color-p2`   | `#F97316` | P2 High                           |
-| `--color-p3`   | `#3B82F6` | P3 Medium                         |
-| `--color-p4`   | `#9CA3AF` | P4 Low                            |
+| Token        | Hex       | Priority   |
+|--------------|-----------|------------|
+| `--color-p1` | `#EF4444` | P1 Urgent  |
+| `--color-p2` | `#FF6535` | P2 High (brand orange) |
+| `--color-p3` | `#3B82F6` | P3 Medium  |
+| `--color-p4` | `#9CA3AF` | P4 Low     |
 
-Always read priority colors from `PRIORITY_CONFIG[task.priority]` — never switch/case on priority string.
+Always read priority colors from `PRIORITY_CONFIG[task.priority]`:
 
 ```ts
 export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bgColor: string }> = {
   P1: { label: 'P1', color: '#EF4444', bgColor: '#FEF2F2' },
-  P2: { label: 'P2', color: '#F97316', bgColor: '#FFF7ED' },
+  P2: { label: 'P2', color: '#FF6535', bgColor: '#FFF0EB' },
   P3: { label: 'P3', color: '#3B82F6', bgColor: '#EFF6FF' },
   P4: { label: 'P4', color: '#9CA3AF', bgColor: '#F9FAFB' },
 };
 ```
 
-### Status Colors — Do Not Change
+### Status Colors
 
-| Status        | Color     | Token reference       |
-|---------------|-----------|-----------------------|
-| `todo`        | `#6B7280` | `--color-subtle`      |
-| `in_progress` | `#663399` | `--color-primary`     |
-| `blocked`     | `#EF4444` | `--color-danger`      |
-| `on_hold`     | `#F59E0B` | `--color-warning`     |
-| `done`        | `#22C55E` | `--color-success`     |
+| Status        | Color     | Token                |
+|---------------|-----------|----------------------|
+| `todo`        | `#6B6B6B` | `--color-slate`      |
+| `in_progress` | `#FF6535` | `--brand`            |
+| `blocked`     | `#E11D48` | `--color-danger`     |
+| `on_hold`     | `#F59E0B` | `--color-warning`    |
+| `done`        | `#10B981` | `--color-success`    |
 
 ---
 
-## Shadows & Elevation
+## Borders & Radii
 
-| Token                | Value                           | Usage                              |
-|----------------------|---------------------------------|------------------------------------|
-| `--shadow-card`      | `0 1px 3px rgba(0,0,0,0.08)`   | Resting cards                      |
-| `--shadow-card-hover`| `0 2px 8px rgba(0,0,0,0.10)`   | Card on hover                      |
-| `--shadow-popup`     | `0 4px 12px rgba(0,0,0,0.12)`  | BottomSheet, Modal, dropdowns      |
+| Token             | Value  | Usage                                 |
+|-------------------|--------|---------------------------------------|
+| `--radius-sm`     | `4px`  | Buttons, chips                        |
+| `--radius-input`  | `8px`  | Form inputs                           |
+| `--radius-card`   | `12px` | Cards, task cards, progress bars      |
+| `--radius-panel`  | `16px` | Feature panels, modals, bottom sheets |
+| `--radius-full`   | `9999px` | Pills, badges, avatar dots          |
 
-Standard hover lift — apply on all interactive cards:
+---
 
-```tsx
-className="shadow-card hover:shadow-card-hover hover:-translate-y-px transition-all duration-150"
+## Shadows
+
+| Token             | Value                                       | Usage                    |
+|-------------------|---------------------------------------------|--------------------------|
+| `--shadow-card`   | `0 1px 3px rgba(26,26,46,0.08)`             | Resting cards            |
+| `--shadow-hover`  | `0 4px 16px rgba(26,26,46,0.12)`            | Cards on hover           |
+| `--shadow-popup`  | `0 8px 32px rgba(26,26,46,0.14)`            | Modals, sheets           |
+| `--shadow-brand`  | `0 4px 16px rgba(255,101,53,0.25)`          | Orange CTA glow          |
+
+Standard hover lift for interactive cards:
+```css
+transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+/* hover: */
+border-color: var(--brand);
+box-shadow: var(--shadow-hover);
+transform: translateY(-1px);
 ```
 
 ---
 
-## Border Radius
+## Motion
 
-| Token             | Value  | Usage                                   |
-|-------------------|--------|-----------------------------------------|
-| `--radius-card`   | `10px` | Task cards, Kanban cards, progress bars |
-| `--radius-popup`  | `16px` | BottomSheet, Modal top corners          |
+```css
+--ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);  /* entrances, confirmations */
+--ease-smooth:  cubic-bezier(0.4, 0, 0.2, 1);         /* state changes */
+--ease-out:     cubic-bezier(0.16, 1, 0.3, 1);        /* brand slide */
+--ease-exit:    cubic-bezier(0.4, 0, 1, 1);            /* exits */
 
-Use `rounded-xl` (12px) for bordered containers: `border border-border rounded-xl`
+--dur-instant:  80ms;
+--dur-fast:     150ms;
+--dur-normal:   250ms;
+--dur-slow:     400ms;
+--dur-enter:    350ms;
+```
 
----
-
-## Animations
-
-### slideUp / slideDown
+### slideUp
 ```css
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-.slide-up { animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
 ```
 
 ### fadeIn
@@ -144,59 +166,69 @@ Use `rounded-xl` (12px) for bordered containers: `border border-border rounded-x
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-.fade-in { animation: fadeIn 0.2s ease; }
 ```
 
-### checkmark
-```css
-@keyframes checkmark {
-  0%   { stroke-dashoffset: 20; }
-  100% { stroke-dashoffset: 0; }
-}
-.checkmark-path {
-  stroke-dasharray: 20;
-  stroke-dashoffset: 20;
-  animation: checkmark 0.25s ease forwards;
-}
-```
-
-Animate transforms only — never properties that trigger layout reflow.
+Animate `transform` and `opacity` only — never layout-triggering properties.
 
 ---
 
-## Custom Utility Classes
+## Brand Signature: Graph-paper Background
 
-| Class                 | Purpose                                              |
-|-----------------------|------------------------------------------------------|
-| `.scrollbar-hide`     | Hide scrollbars on overflow containers               |
-| `.shadow-card`        | Resting card elevation                               |
-| `.shadow-card-hover`  | Hover elevation                                      |
-| `.shadow-popup`       | Sheet / modal elevation                              |
-| `.radius-card`        | Card border radius                                   |
-| `.radius-popup`       | Popup border radius                                  |
-| `.tap-target`         | `min-height: 44px; min-width: 44px` — all icon buttons|
-| `.slide-up`           | BottomSheet entrance animation                       |
-| `.fade-in`            | Overlay fade animation                               |
-| `.checkmark-path`     | Checkbox checked stroke animation                    |
-| `.task-title-complete`| `line-through` + `--color-muted` for completed tasks |
+White sections use a faint navy grid. Dark navy sections use an orange grid.
 
-Global focus ring — never remove without a replacement:
 ```css
-*:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
+/* Light section */
+background-image:
+  linear-gradient(rgba(26,26,46,0.045) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(26,26,46,0.045) 1px, transparent 1px);
+background-size: 40px 40px;
+
+/* Dark section */
+background-image:
+  linear-gradient(rgba(255,101,53,0.07) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,101,53,0.07) 1px, transparent 1px);
+background-size: 40px 40px;
 ```
 
 ---
 
 ## Layout
 
+- **Content rail** — `max-width: 1280px; margin-inline: auto; padding-inline: 24px`
+- **Prose / forms** — `max-width: 768px`
 - **Sidebar** — `hidden md:flex`, fixed left rail, desktop only
-- **Main content** — `max-w-5xl mx-auto px-4 md:px-6`
 - **BottomNav** — `md:hidden`, fixed bottom, mobile only
 - **FAB** — `md:hidden`, `fixed bottom-20 right-4`, mobile only
 - Single breakpoint: `md` at 768px — no `sm`, `lg`, `xl`
+- Sections alternate `--surface-base` / `--surface-paper` ↔ `--surface-dark`
+
+---
+
+## Custom Utility Classes
+
+| Class                 | Purpose                                               |
+|-----------------------|-------------------------------------------------------|
+| `.scrollbar-hide`     | Hide scrollbars on overflow containers                |
+| `.shadow-card`        | Resting card elevation                                |
+| `.shadow-hover`       | Hover elevation                                       |
+| `.shadow-popup`       | Sheet / modal elevation                               |
+| `.tap-target`         | `min-height: 44px; min-width: 44px` — all icon buttons|
+| `.slide-up`           | Sheet entrance animation                              |
+| `.fade-in`            | Overlay fade                                          |
+| `.checkmark-path`     | Checkbox checked stroke animation                     |
+| `.task-title-complete`| `line-through` + `--text-muted` for completed tasks   |
+| `.eyebrow`            | 11px bold uppercase orange label                      |
+| `.graph-bg`           | Light section graph-paper texture                     |
+| `.graph-bg-dark`      | Dark section orange graph-paper texture               |
+| `.stagger-1`–`.stagger-4` | Animation delay helpers (0.08s increments)       |
+
+Global focus ring — never remove:
+```css
+*:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+```
 
 ---
 
@@ -230,45 +262,51 @@ style={{ borderColor: color + '40' }}       // ~25% opacity
 
 ## Accessibility — Required on Every Component
 
-- Use semantic HTML elements
-- Add ARIA labels to all interactive elements
-- Ensure full keyboard navigability
-- Never remove focus outlines without a replacement
-- All icon-only buttons must have `.tap-target` class (44×44px minimum)
+- Semantic HTML: `<main>`, `<nav>`, `<section>`, `<article>` over bare `<div>`
+- ARIA labels on all icon-only interactive elements
+- Full keyboard navigability; never remove focus ring without replacement
+- Color contrast: 4.5:1 body text, 3.0:1 large text / UI elements
+- All inputs have a `<label>` or `aria-labelledby`
+- Decorative icons: `aria-hidden="true"`
+- Status messages use `aria-live` regions
+- All icon buttons have `.tap-target` (44×44px minimum)
 
 ---
 
 ## Testing — Required on Every New File
 
-- Create a corresponding test file alongside every new component
-- Cover happy path, edge cases, and error cases
-- Use `describe` / `it` blocks with clear descriptions
+- Corresponding test file alongside every new component
+- Cover happy path, edge cases, error cases
+- `describe` / `it` blocks with clear descriptions
 - Minimum 80% coverage for all new code
 
 ---
 
 ## Anti-Patterns
 
-| Wrong                                      | Right                                              |
-|--------------------------------------------|----------------------------------------------------|
-| Hardcoded hex in JSX                       | CSS var or `PRIORITY_CONFIG[p].color`              |
-| `text-gray-*` / `bg-gray-*`               | Semantic tokens: `text-subtle`, `bg-surface-alt`   |
-| `any` TypeScript type                      | Correct type or proper generic                     |
-| Arbitrary Tailwind for dynamic color       | Inline `style={{}}`                                |
-| Template literals for class merging        | `cn()` always                                      |
-| Icon button without `.tap-target`          | Always add `.tap-target`                           |
-| `updateProject({ ...project, changes })`   | `updateProject(id, { field: value })`              |
+| Wrong                                   | Right                                              |
+|-----------------------------------------|----------------------------------------------------|
+| Hardcoded hex in JSX                    | CSS var or `PRIORITY_CONFIG[p].color`              |
+| Any font other than Inter               | `font-family: var(--font-sans)` always             |
+| `text-gray-*` / `bg-gray-*`            | Semantic tokens: `--text-muted`, `--surface-paper` |
+| `any` TypeScript type                   | Correct type or proper generic                     |
+| Arbitrary Tailwind for dynamic color    | Inline `style={{}}`                                |
+| Template literals for class merging     | `cn()` always                                      |
+| Icon button without `.tap-target`       | Always add `.tap-target`                           |
+| `updateProject({ ...project, changes })`| `updateProject(id, { field: value })`              |
+| Glassmorphism on content cards          | Glass only on structural chrome (nav, modals)      |
 
 ---
 
 ## Checklist — Before Every Component
 
 - [ ] All colors use CSS tokens — no hardcoded hex in JSX
-- [ ] `--color-primary` is `#663399`, `--color-focus-accent` is `#669933`
+- [ ] Font is Inter only — `var(--font-sans)` on every element
+- [ ] `--brand` is `#FF6535` (orange), not purple or any other color
 - [ ] Priority colors read from `PRIORITY_CONFIG[priority]` only
 - [ ] `cn()` used for all conditional class merging
 - [ ] Dynamic colors use inline `style={{}}`
-- [ ] Icon buttons have `.tap-target`
+- [ ] Icon buttons have `.tap-target` (44×44px)
 - [ ] Semantic HTML and ARIA labels present
 - [ ] Keyboard navigability confirmed
 - [ ] Responsive at < 768px and ≥ 768px

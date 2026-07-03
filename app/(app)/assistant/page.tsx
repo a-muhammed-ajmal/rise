@@ -698,7 +698,7 @@ function AssistantContent() {
             <Button
               size="sm"
               onClick={handleApprove}
-              className="bg-orange-500 hover:bg-orange-600"
+              className="bg-primary hover:bg-primary/90"
             >
               Approve
             </Button>
