@@ -289,9 +289,11 @@ h1, h2, h3, .heading {
 .glass-ai {
   background: rgba(124, 92, 252, 0.08);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(124, 92, 252, 0.2);
   border-radius: 20px;
 }
+```
 
 /* ============================================================
    Bottom navigation — exactly 5 items

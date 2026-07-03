@@ -136,17 +136,14 @@
   --color-base:           #F4F5F7;
   --color-surface:        #FFFFFF;
   --color-surface-alt:    #F9FAFB;
-  --color-primary:        #5B5BD6;
   --color-primary-light:  #EEEEFF;
-  --color-focus-accent:   #FF6B35;
-  --color-focus-light:    #FFF1EC;
   --color-content:        #111827;
   --color-subtle:         #6B7280;
   --color-muted-text:     #9CA3AF;
   --color-border-token:   #E5E7EB;
 
   /* ── Spacing scale ──────────────────────────────────────────────────────── */
-  --spacing-xs: 6px;   --spacing-sm: 16px;  --spacing-md: 24px;
+  --spacing-xs: 8px;   --spacing-sm: 16px;  --spacing-md: 24px;
   --spacing-lg: 32px;  --spacing-xl: 40px;  --spacing-2xl: 64px;
 
   /* ── Radius scale ───────────────────────────────────────────────────────── */
@@ -163,7 +160,7 @@
   --shadow-sm:  var(--shadow-card);
   --shadow-md:  var(--shadow-card-hover);
   --shadow-lg:  var(--shadow-popup);
-  --shadow-glow: 0 0 20px rgba(91, 91, 214, 0.20);
+  --shadow-glow: 0 0 20px var(--accent-glow);
   --shadow-1:   var(--shadow-card);
   --shadow-2:   var(--shadow-card-hover);
   --shadow-3:   var(--shadow-popup);
@@ -181,7 +178,7 @@
   --dur-fast:   120ms;  --dur-1: 120ms;
   --dur-normal: 220ms;  --dur-2: 220ms;
   --dur-slow:   400ms;  --dur-3: 400ms;
-  --dur-reveal: 600ms;  --dur-4: 650ms;
+  --dur-reveal: 600ms;  --dur-4: 600ms;
 
   /* ── Font aliases (all Inter) ───────────────────────────────────────────── */
   --font-sans:    var(--font-inter), "Inter", system-ui, sans-serif;
@@ -237,14 +234,14 @@
   --dur-instant: 80ms;
   --dur-enter: 350ms;
 
-  /* ── Module accent tokens ───────────────────────────────────────────────── */
-  --module-tasks: #34D399;
-  --module-finance: #60A5FA;
-  --module-habits: #FBBF24;
-  --module-journal: #F472B6;
-  --module-contacts: #A78BFA;
-  --module-notes: #94A3B8;
-  --module-ai: #7C5CFC;
+  /* ── Module accent tokens (aliases → canonical --mod-* series) ─────────── */
+  --module-tasks:    var(--mod-tasks);
+  --module-finance:  var(--mod-finance);
+  --module-habits:   var(--mod-wellness);
+  --module-journal:  var(--mod-goals);
+  --module-contacts: var(--mod-crm);
+  --module-notes:    var(--mod-knowledge);
+  --module-ai:       var(--mod-ai);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -315,7 +312,7 @@
   /* ── Text tokens (dark) ─────────────────────────────────────────────────── */
   --text-primary:   #E8E8F0;
   --text-secondary: #8E8EA0;
-  --text-muted:     #52525E;
+  --text-muted:     #72727F;
 
   /* ── Semantic colors (dark) ─────────────────────────────────────────────── */
   --color-success:      #22C55E;
@@ -326,15 +323,6 @@
   --color-warning-soft: rgba(245, 158, 11, 0.12);
   --color-danger-soft:  rgba(239, 68, 68, 0.12);
   --color-info-soft:    rgba(59, 130, 246, 0.12);
-
-  /* ── Module accent tokens (dark) ────────────────────────────────────────── */
-  --module-tasks: #34D399;
-  --module-finance: #60A5FA;
-  --module-habits: #FBBF24;
-  --module-journal: #F472B6;
-  --module-contacts: #A78BFA;
-  --module-notes: #94A3B8;
-  --module-ai: #7C5CFC;
 
   /* ── Elevation — dark mode ──────────────────────────────────────────────── */
   --shadow-card:       0 1px 3px rgba(0,0,0,0.35);
@@ -349,10 +337,15 @@
   --shadow-3:   var(--shadow-popup);
 
   /* ── Semantic layer aliases ─────────────────────────────────────────────── */
-  --color-primary:    #7C82E0;
-  --color-background: #0D0A1A;
-  --color-surface:    #1A1229;
-  --color-muted-text: #9B8EC0;
+  --color-background:    #0D0A1A;
+  --color-surface:       #1A1229;
+  --color-muted-text:    #9B8EC0;
+  --color-base:          #0E0E11;
+  --color-surface-alt:   #1F1F27;
+  --color-primary-light: rgba(124,130,224,0.15);
+  --color-content:       #E8E8F0;
+  --color-subtle:        #8E8EA0;
+  --color-border-token:  rgba(255,255,255,0.08);
 
   /* ── Priority colors (dark) ─────────────────────────────────────────────── */
   --color-p1: #F87171;
@@ -577,23 +570,23 @@
 /* ─── Scrollbar theming ─────────────────────────────────────────────────── */
 
 :root {
-  scrollbar-color: #D1D5DB #F9FAFB;
+  scrollbar-color: var(--muted-foreground) var(--muted);
   scrollbar-width: thin;
 }
 
 .dark {
-  scrollbar-color: rgba(255,255,255,0.15) rgba(23,23,23,0.8);
+  scrollbar-color: var(--muted-foreground) var(--muted);
   scrollbar-width: thin;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #F9FAFB; }
-::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+::-webkit-scrollbar-track { background: var(--muted); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 
-.dark ::-webkit-scrollbar-track { background: oklch(0.130 0.040 290 / 80%); }
-.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
-.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+.dark ::-webkit-scrollbar-track { background: var(--card); }
+.dark ::-webkit-scrollbar-thumb { background: var(--border); }
+.dark ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 
 /* ─── Text overflow utilities (mandatory on fixed-width cards) ─────────── */
 
@@ -711,14 +704,14 @@
 .bottom-nav__fab {
   margin-bottom: 20px;
   background: var(--accent-primary);
-  box-shadow: 0 0 20px var(--accent-glow), 0 4px 16px rgba(91, 91, 214, 0.4);
+  box-shadow: 0 0 20px var(--accent-glow), 0 4px 16px var(--border-active);
 }
 
 .bottom-nav__fab--active {
   box-shadow:
     0 0 32px var(--accent-glow),
-    0 4px 20px rgba(91, 91, 214, 0.55),
-    0 0 0 3px rgba(91, 91, 214, 0.25);
+    0 4px 20px var(--border-active),
+    0 0 0 3px var(--accent-glow);
 }
 
 .nav-drawer {
