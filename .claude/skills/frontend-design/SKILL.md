@@ -191,6 +191,9 @@ Global focus ring — never remove without a replacement:
 ---
 
 ## Layout
+## Layout
+
+​```
 ┌──────────────────────────────────────┐
 │ Sidebar (hidden md:flex, fixed left) │
 │  ┌─────────────────────────────────┐ │
@@ -199,6 +202,7 @@ Global focus ring — never remove without a replacement:
 └──────────────────────────────────────┘
       BottomNav (md:hidden, fixed bottom)
       FAB      (md:hidden, fixed bottom-right)
+​```
 
 - Single breakpoint: `md` at 768px — no `sm`, `lg`, `xl`
 - Main content: `max-w-5xl mx-auto px-4 md:px-6`
