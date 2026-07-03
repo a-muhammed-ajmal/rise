@@ -1,141 +1,135 @@
 ---
 name: frontend-design
-description: Source of truth for all visual and component decisions in the TaskFlow codebase (Next.js 16, React 19, Tailwind CSS v4, Zustand v5, TypeScript strict). Use this skill whenever building, editing, or reviewing ANY component, page, or UI element in TaskFlow — including colors, typography, shadows, animations, layout, or interactive patterns. Also trigger when resolving Tailwind class conflicts, applying priority/status/project colors, or checking anti-patterns. If the task touches TaskFlow UI in any way, consult this skill before writing a single line of JSX.
+version: 1.0.0
+description: Use this skill whenever building new UI components, pages, or interfaces. Defines the design token system, color rules, typography, motion, component patterns, accessibility requirements, and anti-patterns for all frontend work.
 ---
 
-# TaskFlow — Design System Reference
+# Frontend Design Skill
 
-> Every value in this document is derived directly from the code.
-> If the code and this document disagree, fix this document.
+This skill is the single source of truth for all visual and implementation decisions. Apply it before writing any component, page, or style. Every value here is intentional — do not deviate without explicit instruction.
 
 ---
 
 ## Stack
 
-| Concern | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| UI runtime | React 19 |
-| Styling | Tailwind CSS v4 — all tokens in `@theme {}` in `app/globals.css` |
-| State | Zustand v5 with `persist` middleware (localStorage key: `"task-app-storage"`) |
-| Language | TypeScript strict — `any` is forbidden |
-| Icons | lucide-react only — no hand-authored SVG |
-| Class merging | `cn()` in `lib/cn.ts` = `twMerge(clsx(...inputs))` |
-| Date handling | date-fns + date-fns-tz (timezone: Asia/Dubai, UTC+4, no DST) |
+| Concern       | Technology                                                                 |
+|---------------|----------------------------------------------------------------------------|
+| Framework     | Next.js 16 (App Router)                                                    |
+| UI runtime    | React 19                                                                   |
+| Styling       | Tailwind CSS v4 — all tokens in `@theme {}`, no config file                |
+| State         | Zustand v5 with `persist` middleware                                       |
+| Language      | TypeScript — strict mode, `any` is forbidden                               |
+| Icons         | lucide-react only — no hand-authored SVGs                                  |
+| Class merging | `cn()` = `twMerge(clsx(...inputs))`                                        |
+| Date handling | date-fns + date-fns-tz (timezone: Asia/Dubai, UTC+4, no DST)              |
 
 ---
 
 ## Typography
 
-Single typeface: **Inter** (Google Fonts, via `next/font/google` in `app/layout.tsx`).
+Single typeface: **Inter** via `next/font/google`.
+Font stack fallback: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
+Base: `font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased`
 
-CSS variable: `--font-inter`. Applied on `<html>`. Fallback: `--font-sans`.
-
-Base body: `font-size: 14px; line-height: 1.5`. Smoothing: `-webkit-font-smoothing: antialiased`.
-
-| Role | Size | Weight | Tailwind Class |
-|---|---|---|---|
-| Page title | 20px | 700 | `text-xl font-bold` |
-| Card / section title | 16px | 700 | `text-base font-bold` |
-| Section heading | 14px | 600 | `text-sm font-semibold` |
-| Body / task title | 14px | 500 | `text-sm font-medium` |
-| Meta row / caption | 12px | 400–500 | `text-xs` |
-| Micro label / chip | 11px | 600 | `text-[11px] font-semibold` |
-| Column header (kanban) | 12px | 700 | `text-xs font-bold tracking-wider uppercase` |
-| Progress label | 11px | 500 | `text-[11px] font-medium` |
+| Role                  | Size | Weight          | Tailwind                                    |
+|-----------------------|------|-----------------|---------------------------------------------|
+| Page title            | 20px | 700             | `text-xl font-bold`                         |
+| Card / section title  | 16px | 700             | `text-base font-bold`                       |
+| Section heading       | 14px | 600             | `text-sm font-semibold`                     |
+| Body / task title     | 14px | 500             | `text-sm font-medium`                       |
+| Meta / caption        | 12px | 400–500         | `text-xs`                                   |
+| Micro label / chip    | 11px | 600             | `text-[11px] font-semibold`                 |
+| Kanban column header  | 12px | 700             | `text-xs font-bold tracking-wider uppercase`|
+| Progress label        | 11px | 500             | `text-[11px] font-medium`                   |
 
 ---
 
 ## Color System
 
-All colors are CSS custom properties in `@theme {}` in `app/globals.css`.
-**Never hardcode hex values in JSX** — always use semantic token names.
+All colors live in `@theme {}` as CSS custom properties. Never hardcode hex values in JSX — always use the token.
 
 ### Core Palette
 
-| Token | Hex | Role |
-|---|---|---|
-| `--color-base` | `#F4F5F7` | App background (`<body>`) |
-| `--color-surface` | `#FFFFFF` | Cards, modals, input backgrounds |
-| `--color-surface-alt` | `#F9FAFB` | Hover states, alternate rows |
-| `--color-primary` | `#5B5BD6` | Brand — CTAs, active states, focus rings |
-| `--color-primary-light` | `#EEEEFF` | Active tab background, primary tinted fills |
-| `--color-focus-accent` | `#FF6B35` | "Focus" / Today feature highlight |
-| `--color-focus-light` | `#FFF1EC` | Focus accent tint |
-| `--color-success` | `#22C55E` | Completed tasks, done checkboxes |
-| `--color-success-light` | `#DCFCE7` | Success tint backgrounds |
-| `--color-warning` | `#F59E0B` | On Hold status, overdue date badges |
-| `--color-danger` | `#EF4444` | Blocked status, P1 priority, Delete actions |
-| `--color-content` | `#111827` | Primary body text |
-| `--color-subtle` | `#6B7280` | Secondary text, muted icons, labels |
-| `--color-muted` | `#9CA3AF` | Placeholder text, disabled, strikethrough |
-| `--color-border` | `#E5E7EB` | All borders, dividers, calendar gap fill |
+| Token                   | Hex       | Role                                              |
+|-------------------------|-----------|---------------------------------------------------|
+| `--color-base`          | `#F4F5F7` | App background (`<body>`)                         |
+| `--color-surface`       | `#FFFFFF` | Cards, modals, input backgrounds                  |
+| `--color-surface-alt`   | `#F9FAFB` | Hover states, alternate row backgrounds           |
+| `--color-primary`       | `#663399` | Brand — CTAs, active states, focus rings          |
+| `--color-primary-light` | `#F0E8F7` | Active tab background, primary tinted fills       |
+| `--color-focus-accent`  | `#669933` | Focus / Today feature highlight                   |
+| `--color-focus-light`   | `#EEF5E3` | Focus accent tint                                 |
+| `--color-success`       | `#22C55E` | Completed tasks, done checkboxes                  |
+| `--color-success-light` | `#DCFCE7` | Success tint backgrounds                          |
+| `--color-warning`       | `#F59E0B` | On Hold status, overdue date badges               |
+| `--color-danger`        | `#EF4444` | Blocked status, P1 priority, delete actions       |
+| `--color-content`       | `#111827` | Primary body text                                 |
+| `--color-subtle`        | `#6B7280` | Secondary text, muted icons, labels               |
+| `--color-muted`         | `#9CA3AF` | Placeholder text, disabled states, strikethrough  |
+| `--color-border`        | `#E5E7EB` | All borders, dividers                             |
 
-### Priority Color Tokens (mirrored in `PRIORITY_CONFIG`, `lib/types.ts`)
+### Priority Tokens — Do Not Change
 
-| Token | Hex | Priority |
-|---|---|---|
-| `--color-p1` | `#EF4444` | P1 Urgent |
-| `--color-p2` | `#F97316` | P2 High |
-| `--color-p3` | `#3B82F6` | P3 Medium |
-| `--color-p4` | `#9CA3AF` | P4 Low |
+| Token          | Hex       | Priority                          |
+|----------------|-----------|-----------------------------------|
+| `--color-p1`   | `#EF4444` | P1 Urgent                         |
+| `--color-p2`   | `#F97316` | P2 High                           |
+| `--color-p3`   | `#3B82F6` | P3 Medium                         |
+| `--color-p4`   | `#9CA3AF` | P4 Low                            |
 
-### PRIORITY_CONFIG (`lib/types.ts:152`)
-
-Always read from `PRIORITY_CONFIG[task.priority]` — never switch/case on priority.
+Always read priority colors from `PRIORITY_CONFIG[task.priority]` — never switch/case on priority string.
 
 ```ts
 export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bgColor: string }> = {
-  P1: { label: 'Urgent', color: '#EF4444', bgColor: '#FEF2F2' },
-  P2: { label: 'High',   color: '#F97316', bgColor: '#FFF7ED' },
-  P3: { label: 'Medium', color: '#3B82F6', bgColor: '#EFF6FF' },
-  P4: { label: 'Low',    color: '#9CA3AF', bgColor: '#F9FAFB' },
+  P1: { label: 'P1', color: '#EF4444', bgColor: '#FEF2F2' },
+  P2: { label: 'P2', color: '#F97316', bgColor: '#FFF7ED' },
+  P3: { label: 'P3', color: '#3B82F6', bgColor: '#EFF6FF' },
+  P4: { label: 'P4', color: '#9CA3AF', bgColor: '#F9FAFB' },
 };
 ```
 
-### Status Colors (`components/projects/ProjectKanbanView.tsx`)
+### Status Colors — Do Not Change
 
-| Status | Label | Color |
-|---|---|---|
-| `todo` | TO DO | `#6B7280` |
-| `in_progress` | IN PROGRESS | `#5B5BD6` |
-| `blocked` | BLOCKED | `#EF4444` |
-| `on_hold` | ON HOLD | `#F59E0B` |
-| `done` | — | `#22C55E` — not a kanban column |
+| Status        | Color     | Token reference       |
+|---------------|-----------|-----------------------|
+| `todo`        | `#6B7280` | `--color-subtle`      |
+| `in_progress` | `#663399` | `--color-primary`     |
+| `blocked`     | `#EF4444` | `--color-danger`      |
+| `on_hold`     | `#F59E0B` | `--color-warning`     |
+| `done`        | `#22C55E` | `--color-success`     |
 
 ---
 
 ## Shadows & Elevation
 
-| Token | Value | Usage |
-|---|---|---|
-| `--shadow-card` | `0 1px 3px rgba(0,0,0,0.08)` | Resting cards |
-| `--shadow-card-hover` | `0 2px 8px rgba(0,0,0,0.10)` | Card on hover |
-| `--shadow-popup` | `0 4px 12px rgba(0,0,0,0.12)` | BottomSheet, Modal, dropdowns |
+| Token                | Value                           | Usage                              |
+|----------------------|---------------------------------|------------------------------------|
+| `--shadow-card`      | `0 1px 3px rgba(0,0,0,0.08)`   | Resting cards                      |
+| `--shadow-card-hover`| `0 2px 8px rgba(0,0,0,0.10)`   | Card on hover                      |
+| `--shadow-popup`     | `0 4px 12px rgba(0,0,0,0.12)`  | BottomSheet, Modal, dropdowns      |
 
-Available as Tailwind utilities: `.shadow-card`, `.shadow-card-hover`, `.shadow-popup`.
+Standard hover lift — apply on all interactive cards:
 
-**Standard hover lift:**
 ```tsx
-className="... hover:shadow-card-hover hover:-translate-y-px transition-all duration-150"
+className="shadow-card hover:shadow-card-hover hover:-translate-y-px transition-all duration-150"
 ```
 
 ---
 
 ## Border Radius
 
-| Token | Value | Usage |
-|---|---|---|
-| `--radius-card` | `10px` | TaskCard, KanbanCard, project cards |
-| `--radius-popup` | `16px` | BottomSheet, Modal (top corners only: `rounded-t-3xl`) |
+| Token             | Value  | Usage                                   |
+|-------------------|--------|-----------------------------------------|
+| `--radius-card`   | `10px` | Task cards, Kanban cards, progress bars |
+| `--radius-popup`  | `16px` | BottomSheet, Modal top corners          |
 
-In practice, `rounded-xl` (12px) is used for bordered containers. Reserve the CSS var utilities for custom shadow contexts.
+Use `rounded-xl` (12px) for bordered containers: `border border-border rounded-xl`
 
 ---
 
-## Animations & Motion
+## Animations
 
-### slideUp / slideDown — BottomSheet
+### slideUp / slideDown
 ```css
 @keyframes slideUp {
   from { transform: translateY(100%); }
@@ -143,15 +137,22 @@ In practice, `rounded-xl` (12px) is used for bordered containers. Reserve the CS
 }
 .slide-up { animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
 ```
-`cubic-bezier(0.32, 0.72, 0, 1)` = snappy iOS-style deceleration.
 
-### fadeIn — Overlay
+### fadeIn
 ```css
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 .fade-in { animation: fadeIn 0.2s ease; }
 ```
 
-### checkmark — Checkbox SVG
+### checkmark
 ```css
+@keyframes checkmark {
+  0%   { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
 .checkmark-path {
   stroke-dasharray: 20;
   stroke-dashoffset: 20;
@@ -159,128 +160,123 @@ In practice, `rounded-xl` (12px) is used for bordered containers. Reserve the CS
 }
 ```
 
+Animate transforms only — never properties that trigger layout reflow.
+
 ---
 
 ## Custom Utility Classes
 
-| Class | CSS | When to use |
-|---|---|---|
-| `.scrollbar-hide` | `scrollbar-width: none` + webkit | Overflow containers |
-| `.shadow-card` / `.shadow-card-hover` / `.shadow-popup` | box-shadow vars | Elevation levels |
-| `.radius-card` / `.radius-popup` | border-radius vars | Card/popup radius |
-| `.tap-target` | `min-height: 44px; min-width: 44px` | All icon-only buttons |
-| `.slide-up` | slideUp animation | BottomSheet entrance |
-| `.fade-in` | fadeIn animation | Overlay |
-| `.checkmark-path` | stroke animation | Checked checkbox SVG |
-| `.task-title-complete` | `text-decoration: line-through; color: var(--color-muted)` | Completed task titles |
+| Class                 | Purpose                                              |
+|-----------------------|------------------------------------------------------|
+| `.scrollbar-hide`     | Hide scrollbars on overflow containers               |
+| `.shadow-card`        | Resting card elevation                               |
+| `.shadow-card-hover`  | Hover elevation                                      |
+| `.shadow-popup`       | Sheet / modal elevation                              |
+| `.radius-card`        | Card border radius                                   |
+| `.radius-popup`       | Popup border radius                                  |
+| `.tap-target`         | `min-height: 44px; min-width: 44px` — all icon buttons|
+| `.slide-up`           | BottomSheet entrance animation                       |
+| `.fade-in`            | Overlay fade animation                               |
+| `.checkmark-path`     | Checkbox checked stroke animation                    |
+| `.task-title-complete`| `line-through` + `--color-muted` for completed tasks |
 
-**Focus ring (global):**
+Global focus ring — never remove without a replacement:
 ```css
-*:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
 ```
 
 ---
 
-## Component Patterns
+## Layout
+┌──────────────────────────────────────┐
+│ Sidebar (hidden md:flex, fixed left) │
+│  ┌─────────────────────────────────┐ │
+│  │ Main — max-w-5xl mx-auto        │ │
+│  └─────────────────────────────────┘ │
+└──────────────────────────────────────┘
+BottomNav (md:hidden, fixed bottom)
+FAB      (md:hidden, fixed bottom-right)
 
-### `cn()` — Always use for conditional classes
-```ts
-// lib/cn.ts
-export function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
+- Single breakpoint: `md` at 768px — no `sm`, `lg`, `xl`
+- Main content: `max-w-5xl mx-auto px-4 md:px-6`
+- FAB: `fixed bottom-20 right-4`
 
+---
+
+## Implementation Rules
+
+### cn() — always use for conditional classes
+```tsx
 // Correct
-className={cn('base', condition && 'extra', variant === 'active' && 'active')}
-// Wrong — never concatenate strings
+className={cn('base', condition && 'extra', variant === 'x' && 'active')}
+
+// Wrong
 className={`base ${condition ? 'extra' : ''}`}
 ```
 
-### Hex Alpha Trick — Dynamic Tinted Fills
-When color comes from user data (project/label), Tailwind can't generate the class. Use inline style:
+### Dynamic colors — always inline style, never arbitrary Tailwind
+```tsx
+// Correct
+style={{ backgroundColor: color + '20' }}
+
+// Wrong
+className={`bg-[${color}]`}
+```
+
+### Hex alpha tint pattern
 ```tsx
 style={{ backgroundColor: color + '20' }}  // ~12% opacity
 style={{ borderColor: color + '40' }}       // ~25% opacity
 ```
-Used in: `LabelChip.tsx`, project header avatar, calendar task dots.
-
-### Dynamic Colors — Always `style={{}}`
-```tsx
-// Correct
-<div style={{ width: `${pct}%`, backgroundColor: project.color }} />
-// Wrong — Tailwind can't purge runtime arbitrary values
-<div className={`bg-[${project.color}]`} />
-```
-
-### Key UI Components
-
-**BottomSheet** (`components/ui/BottomSheet.tsx`): Mobile = slides from bottom, `rounded-t-3xl`, `.slide-up`, `bg-black/40` backdrop. Desktop = centered modal `md:rounded-2xl`. Drag handle: `w-10 h-1 bg-border rounded-full mx-auto mb-4` (mobile only).
-
-**Checkbox** (`components/ui/Checkbox.tsx`): Always `rounded-full`. Unchecked: `border border-border bg-surface`. Checked: `bg-success border-success` + `.checkmark-path` SVG. Sizes: `sm` (16px), `md` (20px). Always in `.tap-target`.
-
-**PriorityBadge** (`components/ui/PriorityBadge.tsx`): Reads `color`/`bgColor` from `PRIORITY_CONFIG[priority]`. Optional `showLabel` prop.
-
-**LabelChip** (`components/ui/LabelChip.tsx`): `bg: label.color + '20'`, `border: label.color + '40'`.
 
 ---
 
-## Layout System
+## Accessibility — Required on Every Component
 
-```
-┌─────────────────────────────────────────┐
-│ Sidebar (hidden md:flex, fixed left)    │
-│  ┌─────────────────────────────────┐    │
-│  │ Main — max-w-5xl mx-auto px-4   │    │
-│  └─────────────────────────────────┘    │
-└─────────────────────────────────────────┘
-         BottomNav (md:hidden, fixed bottom)
-         FAB — fixed bottom-20 right-4
-```
-
-- **Single breakpoint**: `md` (768px). No `sm`, `lg`, `xl` — binary mobile/desktop only.
-- **Main content**: `max-w-5xl mx-auto px-4 md:px-6`
-- **Kanban scroll**: `overflow-x-auto` outer → `flex gap-4 min-w-max` inner, each column `w-64 flex-shrink-0`
-- **Calendar grid**: `grid grid-cols-7 gap-px bg-border rounded-xl overflow-hidden border border-border`
+- Use semantic HTML elements
+- Add ARIA labels to all interactive elements
+- Ensure full keyboard navigability
+- Never remove focus outlines without a replacement
+- All icon-only buttons must have `.tap-target` class (44×44px minimum)
 
 ---
 
-## File Map
+## Testing — Required on Every New File
 
-| Concern | File |
-|---|---|
-| All design tokens | `app/globals.css` — `@theme {}` block |
-| Font loading | `app/layout.tsx` |
-| Core type definitions | `lib/types.ts` |
-| Class merging | `lib/cn.ts` |
-| Date utilities | `lib/utils.ts` |
-| Global state | `lib/store.ts` |
-| Shared UI | `components/ui/` |
-| Task UI | `components/tasks/` |
-| Project views | `components/projects/` |
-| Routes | `app/` |
+- Create a corresponding test file alongside every new component
+- Cover happy path, edge cases, and error cases
+- Use `describe` / `it` blocks with clear descriptions
+- Minimum 80% coverage for all new code
 
 ---
 
-## Anti-Patterns (Forbidden)
+## Anti-Patterns
 
-| Anti-pattern | Correct alternative |
-|---|---|
-| `any` TypeScript type | Use the actual type or a proper generic |
-| Hardcoding hex colors in JSX | `PRIORITY_CONFIG[p].color` or CSS vars |
-| `text-gray-*` / `bg-gray-*` | Semantic tokens: `text-subtle`, `text-muted`, `bg-surface-alt` |
-| `updateProject({ ...project, ...changes })` | `updateProject(id, { field: value })` — store takes `(id, Partial<Project>)` |
-| String concatenation for class merging | `cn()` always |
-| Dynamic colors via Tailwind arbitrary values | Inline `style={{}}` |
-| Icon buttons without `.tap-target` | Always add `tap-target` to icon-only buttons |
-| Committing `.env` files | Never commit secrets |
+| Wrong                                      | Right                                              |
+|--------------------------------------------|----------------------------------------------------|
+| Hardcoded hex in JSX                       | CSS var or `PRIORITY_CONFIG[p].color`              |
+| `text-gray-*` / `bg-gray-*`               | Semantic tokens: `text-subtle`, `bg-surface-alt`   |
+| `any` TypeScript type                      | Correct type or proper generic                     |
+| Arbitrary Tailwind for dynamic color       | Inline `style={{}}`                                |
+| Template literals for class merging        | `cn()` always                                      |
+| Icon button without `.tap-target`          | Always add `.tap-target`                           |
+| `updateProject({ ...project, changes })`   | `updateProject(id, { field: value })`              |
 
 ---
 
-## New Component Checklist
+## Checklist — Before Every Component
 
-- [ ] Uses `cn()` for all conditional classes
-- [ ] Dynamic/data-driven colors use `style={{}}`, not arbitrary Tailwind values
-- [ ] All icon-only buttons have `.tap-target`
-- [ ] Semantic color tokens used — not raw `gray-*` palette
-- [ ] Priority display reads from `PRIORITY_CONFIG[priority]`
-- [ ] Status display maps through STATUS_COLORS constant
-- [ ] No `any` types — all props have explicit TypeScript interfaces
-- [ ] Tested at mobile (< 768px) and desktop (≥ 768px)
+- [ ] All colors use CSS tokens — no hardcoded hex in JSX
+- [ ] `--color-primary` is `#663399`, `--color-focus-accent` is `#669933`
+- [ ] Priority colors read from `PRIORITY_CONFIG[priority]` only
+- [ ] `cn()` used for all conditional class merging
+- [ ] Dynamic colors use inline `style={{}}`
+- [ ] Icon buttons have `.tap-target`
+- [ ] Semantic HTML and ARIA labels present
+- [ ] Keyboard navigability confirmed
+- [ ] Responsive at < 768px and ≥ 768px
+- [ ] No `any` types — strict TypeScript enforced
+- [ ] Test file created with ≥ 80% coverage
