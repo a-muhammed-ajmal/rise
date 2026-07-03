@@ -59,12 +59,12 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
     return () => { supabase.removeChannel(channel) }
   }, [fetchTasks])
 
-  async function createTask(data: Partial<Task>) {
+  async function createTask(data: Partial<Task>): Promise<string | null> {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) return null
 
-    await supabase.from('tasks').insert({
+    const { data: row } = await supabase.from('tasks').insert({
       user_id: user.id,
       title: data.title ?? '',
       description: data.description ?? null,
@@ -81,8 +81,9 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       subtasks: (data.subtasks ?? []) as unknown as never,
       estimated_minutes: data.estimated_minutes ?? null,
       attachments: (data.attachments ?? []) as unknown as never,
-    })
+    }).select('id').single()
     await fetchTasks()
+    return row?.id ?? null
   }
 
   async function updateTask(id: string, updates: Partial<Task>) {

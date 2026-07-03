@@ -61,6 +61,7 @@ interface TaskCardProps {
   onDelete: (id: string) => void
   onDuplicate?: (id: string) => void
   onStar?: (id: string) => void
+  onOpenDetail?: (task: Task) => void
   // Bulk selection
   bulkMode?: boolean
   selected?: boolean
@@ -78,6 +79,7 @@ export function TaskCard({
   onDelete,
   onDuplicate,
   onStar,
+  onOpenDetail,
   bulkMode = false,
   selected = false,
   onToggleSelect,
@@ -280,7 +282,7 @@ export function TaskCard({
                 <MoreVertical className="w-4 h-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                <DropdownMenuItem onClick={() => onOpenDetail ? onOpenDetail(task) : setEditOpen(true)}>
                   <Pencil className="w-4 h-4 mr-2" /> Edit
                 </DropdownMenuItem>
                 {!isCompleted && (

@@ -8,6 +8,7 @@ const mockChannel = {
 
 const mockQueryChain = {
   select: vi.fn().mockReturnThis(),
+  single: vi.fn().mockReturnThis(),
   insert: vi.fn().mockReturnThis(),
   update: vi.fn().mockReturnThis(),
   delete: vi.fn().mockReturnThis(),

@@ -7,6 +7,8 @@ import { TaskCard } from "@/components/productivity/task-card";
 import { TaskForm } from "@/components/productivity/task-form";
 import { TaskToolbar } from "@/components/productivity/task-toolbar";
 import { TaskCalendar } from "@/components/productivity/task-calendar";
+import { QuickAddPanel } from "@/components/productivity/QuickAddPanel";
+import { TaskDetailPopup } from "@/components/productivity/TaskDetailPopup";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -143,6 +145,8 @@ export default function ProductivityPage() {
   const [sortBy, setSortBy] = useState<SortBy>("priority");
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
   const [newOpen, setNewOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -159,6 +163,11 @@ export default function ProductivityPage() {
   const {
     projects, loading: projectsLoading, createProject, updateProject, deleteProject,
   } = useProjects();
+
+  const detailTask = useMemo(
+    () => (detailTaskId ? tasks.find((t) => t.id === detailTaskId) ?? null : null),
+    [detailTaskId, tasks]
+  );
 
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
@@ -241,6 +250,7 @@ export default function ProductivityPage() {
       onDelete: deleteTask,
       onDuplicate: duplicateTask,
       onStar: starTask,
+      onOpenDetail: (t: Task) => setDetailTaskId(t.id),
       projects,
       bulkMode,
       selected: selectedIds.has(task.id),
@@ -634,11 +644,13 @@ export default function ProductivityPage() {
       {/* FAB for mobile */}
       <button
         type="button"
-        onClick={() =>
-          filter === "projects" && !selectedProject
-            ? setProjectFormOpen(true)
-            : setNewOpen(true)
-        }
+        onClick={() => {
+          if (filter === "projects" && !selectedProject) {
+            setProjectFormOpen(true);
+          } else {
+            setQuickAddOpen(true);
+          }
+        }}
         className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-tasks text-white flex items-center justify-center z-40"
         aria-label="Add task"
       >
@@ -653,6 +665,34 @@ export default function ProductivityPage() {
         onSetPriority={handleBulkPriority}
         onClearSelection={() => { setSelectedIds(new Set()); setBulkMode(false); }}
       />
+
+      {/* QuickAddPanel — mobile quick entry (FAB) */}
+      <QuickAddPanel
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        onOpenFull={(id) => {
+          setQuickAddOpen(false);
+          setDetailTaskId(id);
+        }}
+        defaultProjectId={selectedProject?.id}
+        defaultStatus={filter === "inbox" ? "inbox" : "todo"}
+        onAdd={createTask}
+        projects={projects}
+      />
+
+      {/* TaskDetailPopup — full edit view */}
+      {detailTask && (
+        <TaskDetailPopup
+          task={detailTask}
+          onClose={() => setDetailTaskId(null)}
+          onUpdate={updateTask}
+          onComplete={completeTask}
+          onDelete={(id) => { deleteTask(id); setDetailTaskId(null); }}
+          onDuplicate={duplicateTask}
+          projects={projects}
+        />
+      )}
 
       {/* Project form */}
       <ProjectForm

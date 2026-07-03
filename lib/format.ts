@@ -42,3 +42,13 @@ export function todayISO(): string {
 export function parseDate(dateStr: string): Date {
   return parseISO(dateStr)
 }
+
+// Convert HH:MM (24h stored format) → "h:mm AM/PM" display
+export function display12h(time: string): string {
+  const [hStr, mStr] = time.split(':')
+  const h24 = parseInt(hStr, 10)
+  const m = parseInt(mStr, 10)
+  const ampm = h24 >= 12 ? 'PM' : 'AM'
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+  return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`
+}
