@@ -174,7 +174,7 @@ export default async function HomePage() {
                     <p className="text-sm truncate">{task.title}</p>
                     <Badge
                       variant={
-                        task.priority === "urgent" ? "destructive" : "secondary"
+                        task.priority === "P1" ? "destructive" : "secondary"
                       }
                       className="text-xs mt-0.5"
                     >

@@ -101,7 +101,7 @@ describe("executeTool", () => {
 
       const result = await executeTool("create_task", {
         title: "Buy groceries",
-        priority: "high",
+        priority: "P2",
         due_date: "2026-06-25",
       });
 
@@ -111,7 +111,7 @@ describe("executeTool", () => {
         expect.objectContaining({
           user_id: "user-123",
           title: "Buy groceries",
-          priority: "high",
+          priority: "P2",
           due_date: "2026-06-25",
         }),
       );
@@ -128,9 +128,8 @@ describe("executeTool", () => {
 
       expect(query.insert).toHaveBeenCalledWith(
         expect.objectContaining({
-          priority: "medium",
-          status: "inbox",
-          is_recurring: false,
+          priority: "P3",
+          status: "todo",
         }),
       );
     });
@@ -164,20 +163,6 @@ describe("executeTool", () => {
       const result = await executeTool("list_tasks", {});
       expect(result.success).toBe(true);
       expect(result.message).toContain("1 tasks");
-    });
-
-    it("applies inbox filter", async () => {
-      const query = createMockQuery();
-      Object.defineProperty(query, "then", {
-        value: (resolve: (v: unknown) => void) =>
-          Promise.resolve({ data: [], error: null }).then(resolve),
-        writable: true,
-        configurable: true,
-      });
-      setupMockSupabase({ queries: { tasks: query } });
-
-      await executeTool("list_tasks", { filter: "inbox" });
-      expect(query.eq).toHaveBeenCalledWith("status", "inbox");
     });
 
     it("applies today filter", async () => {
@@ -541,7 +526,7 @@ describe("executeTool", () => {
 
       const tableMap: Record<string, ReturnType<typeof createMockQuery>> = {
         tasks: makeResolvable([
-          { id: "t-1", title: "Test task", status: "todo", priority: "high" },
+          { id: "t-1", title: "Test task", status: "todo", priority: "P2" },
         ]),
         notes: makeResolvable([]),
         contacts: makeResolvable([

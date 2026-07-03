@@ -38,13 +38,11 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
-// ─── Priority system: P1=urgent, P2=high, P3=medium, P4=low ─────────────────
-
 const PRIORITY_MAP: Array<{ value: Task['priority']; label: string; color: string }> = [
-  { value: 'urgent', label: 'P1', color: 'bg-[var(--color-danger)] text-white' },
-  { value: 'high',   label: 'P2', color: 'bg-[var(--color-warning)] text-white' },
-  { value: 'medium', label: 'P3', color: 'bg-[var(--color-info)] text-white' },
-  { value: 'low',    label: 'P4', color: 'bg-[var(--text-muted)] text-white' },
+  { value: 'P1', label: 'P1', color: 'bg-[var(--color-danger)] text-white' },
+  { value: 'P2', label: 'P2', color: 'bg-[var(--color-warning)] text-white' },
+  { value: 'P3', label: 'P3', color: 'bg-[var(--color-info)] text-white' },
+  { value: 'P4', label: 'P4', color: 'bg-[var(--text-muted)] text-white' },
 ]
 
 type TabId = 'details' | 'schedule' | 'organize' | 'subtasks' | 'attachments'
@@ -81,25 +79,25 @@ export function TaskForm({
   // ── Details
   const [taskTitle, setTaskTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
-  const [priority, setPriority] = useState<Task['priority']>(initial?.priority ?? 'medium')
-  const [status, setStatus] = useState<Task['status']>(initial?.status ?? 'inbox')
+  const [priority, setPriority] = useState<Task['priority']>(initial?.priority ?? 'P3')
+  const [status, setStatus] = useState<Task['status']>(initial?.status ?? 'todo')
 
   // ── Schedule
   const [dueDate, setDueDate] = useState(initial?.due_date ?? '')
   const [dueTime, setDueTime] = useState(initial?.due_time ?? '')
-  const [repeat, setRepeat] = useState(initial?.recurrence_rule ?? 'none')
+  const [repeat, setRepeat] = useState(initial?.recurrence ?? 'none')
   const [reminderAt, setReminderAt] = useState(
-    initial?.reminder_at ? initial.reminder_at.slice(0, 16) : ''
+    initial?.reminder ? initial.reminder.slice(0, 16) : ''
   )
   const [estimatedMinutes, setEstimatedMinutes] = useState(
-    initial?.estimated_minutes?.toString() ?? ''
+    initial?.estimated_time?.toString() ?? ''
   )
 
   // ── Organize
   const [projectId, setProjectId] = useState(
     initial?.project_id ?? defaultProjectId ?? ''
   )
-  const [tags, setTags] = useState<string[]>(initial?.tags ?? [])
+  const [tags, setTags] = useState<string[]>(initial?.labels ?? [])
   const [tagInput, setTagInput] = useState('')
 
   // ── Subtasks
@@ -117,15 +115,15 @@ export function TaskForm({
     setActiveTab('details')
     setTaskTitle(initial?.title ?? '')
     setDescription(initial?.description ?? '')
-    setPriority(initial?.priority ?? 'medium')
-    setStatus(initial?.status ?? 'inbox')
+    setPriority(initial?.priority ?? 'P3')
+    setStatus(initial?.status ?? 'todo')
     setDueDate(initial?.due_date ?? '')
     setDueTime(initial?.due_time ?? '')
-    setRepeat(initial?.recurrence_rule ?? 'none')
-    setReminderAt(initial?.reminder_at ? initial.reminder_at.slice(0, 16) : '')
-    setEstimatedMinutes(initial?.estimated_minutes?.toString() ?? '')
+    setRepeat(initial?.recurrence ?? 'none')
+    setReminderAt(initial?.reminder ? initial.reminder.slice(0, 16) : '')
+    setEstimatedMinutes(initial?.estimated_time?.toString() ?? '')
     setProjectId(initial?.project_id ?? defaultProjectId ?? '')
-    setTags(initial?.tags ?? [])
+    setTags(initial?.labels ?? [])
     setTagInput('')
     setSubtasks(initial?.subtasks ?? [])
     setSubtaskInput('')
@@ -195,12 +193,11 @@ export function TaskForm({
       status,
       due_date: dueDate || null,
       due_time: dueTime || null,
-      recurrence_rule: repeat === 'none' ? null : repeat,
-      is_recurring: repeat !== 'none',
-      reminder_at: reminderAt ? new Date(reminderAt).toISOString() : null,
-      estimated_minutes: estimatedMinutes ? parseInt(estimatedMinutes, 10) : null,
+      recurrence: repeat === 'none' ? null : repeat,
+      reminder: reminderAt ? new Date(reminderAt).toISOString() : null,
+      estimated_time: estimatedMinutes ? parseInt(estimatedMinutes, 10) : null,
       project_id: projectId || null,
-      tags,
+      labels: tags,
       subtasks,
       attachments,
     })
@@ -288,10 +285,10 @@ export function TaskForm({
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {priorityInfo.label} — {
-                      priority === 'urgent' ? 'Critical / must do now' :
-                      priority === 'high'   ? 'High importance' :
-                      priority === 'medium' ? 'Normal priority' :
-                                              'Low priority / someday'
+                      priority === 'P1' ? 'Urgent — must do now' :
+                      priority === 'P2' ? 'High importance' :
+                      priority === 'P3' ? 'Medium — normal priority' :
+                                          'Low priority / someday'
                     }
                   </p>
                 </div>
@@ -303,9 +300,10 @@ export function TaskForm({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="inbox">Inbox</SelectItem>
                       <SelectItem value="todo">To Do</SelectItem>
                       <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="blocked">Blocked</SelectItem>
+                      <SelectItem value="on_hold">On Hold</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -12,10 +12,10 @@ import { cn } from '@/lib/utils'
 import type { Task } from '@/lib/types/database'
 
 const PRIORITY_MAP: Array<{ value: Task['priority']; label: string }> = [
-  { value: 'urgent', label: 'P1 – Urgent' },
-  { value: 'high',   label: 'P2 – High' },
-  { value: 'medium', label: 'P3 – Medium' },
-  { value: 'low',    label: 'P4 – Low' },
+  { value: 'P1', label: 'P1 – Urgent' },
+  { value: 'P2', label: 'P2 – High' },
+  { value: 'P3', label: 'P3 – Medium' },
+  { value: 'P4', label: 'P4 – Low' },
 ]
 
 interface TaskToolbarProps {

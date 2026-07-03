@@ -55,7 +55,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Project, Task } from "@/lib/types/database";
 
-type Filter = "today" | "inbox" | "all" | "completed" | "projects";
+type Filter = "today" | "all" | "completed" | "projects";
 type ViewMode = "list" | "grid" | "calendar";
 type SortBy = "priority" | "due_date" | "created_at" | "title" | "estimated";
 type GroupBy = "none" | "priority" | "project" | "status" | "tag";
@@ -66,13 +66,10 @@ const PROJECT_COLORS = [
 ];
 
 const PRIORITY_ORDER: Record<Task["priority"], number> = {
-  urgent: 0, high: 1, medium: 2, low: 3,
-};
-const PRIORITY_LABEL: Record<Task["priority"], string> = {
-  urgent: "P1", high: "P2", medium: "P3", low: "P4",
+  P1: 0, P2: 1, P3: 2, P4: 3,
 };
 const STATUS_LABEL: Record<string, string> = {
-  inbox: "Inbox", todo: "To Do", in_progress: "In Progress", done: "Done",
+  todo: "To Do", in_progress: "In Progress", blocked: "Blocked", on_hold: "On Hold", done: "Done",
 };
 
 function sortTasks(tasks: Task[], sortBy: SortBy): Task[] {
@@ -91,8 +88,8 @@ function sortTasks(tasks: Task[], sortBy: SortBy): Task[] {
       case "title":
         return a.title.localeCompare(b.title);
       case "estimated": {
-        const ae = a.estimated_minutes ?? Infinity;
-        const be = b.estimated_minutes ?? Infinity;
+        const ae = a.estimated_time ?? Infinity;
+        const be = b.estimated_time ?? Infinity;
         return ae - be;
       }
       default: return 0;
@@ -115,7 +112,7 @@ function groupTasks(
       case "priority": key = task.priority; break;
       case "status":   key = task.status;   break;
       case "project":  key = task.project_id ?? "__none__"; break;
-      case "tag":      key = task.tags?.[0] ?? "__none__"; break;
+      case "tag":      key = task.labels?.[0] ?? "__none__"; break;
     }
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(task);
@@ -124,7 +121,7 @@ function groupTasks(
   return Array.from(groups.entries())
     .map(([key, tasks]) => {
       let label = key;
-      if (groupBy === "priority") label = `${PRIORITY_LABEL[key as Task["priority"]]} – ${key.charAt(0).toUpperCase() + key.slice(1)}`;
+      if (groupBy === "priority") label = `${key} – ${key === 'P1' ? 'Urgent' : key === 'P2' ? 'High' : key === 'P3' ? 'Medium' : 'Low'}`;
       if (groupBy === "status") label = STATUS_LABEL[key] ?? key;
       if (groupBy === "project") {
         if (key === "__none__") label = "No Project";
@@ -420,9 +417,6 @@ export default function ProductivityPage() {
             <TabsTrigger value="today" className="flex-1 gap-1.5">
               <Star className="w-3.5 h-3.5" /> Today
             </TabsTrigger>
-            <TabsTrigger value="inbox" className="flex-1 gap-1.5">
-              <Inbox className="w-3.5 h-3.5" /> Inbox
-            </TabsTrigger>
             <TabsTrigger value="all" className="flex-1 gap-1.5">
               <List className="w-3.5 h-3.5" /> All
             </TabsTrigger>
@@ -548,8 +542,7 @@ export default function ProductivityPage() {
               )}
             </div>
             <p className="text-muted-foreground text-sm">
-              {filter === "inbox" ? "Your inbox is empty." :
-               filter === "today" ? "Nothing due today! 🎉" :
+              {filter === "today" ? "Nothing due today! 🎉" :
                filter === "completed" ? "No completed tasks yet." :
                filter === "projects" && selectedProject ? "No tasks in this project." :
                "No active tasks."}
@@ -676,9 +669,7 @@ export default function ProductivityPage() {
           setDetailTaskId(id);
         }}
         defaultProjectId={selectedProject?.id}
-        defaultStatus={filter === "inbox" ? "inbox" : "todo"}
-        onAdd={createTask}
-        projects={projects}
+        defaultStatus="todo"
       />
 
       {/* TaskDetailPopup — full edit view */}
@@ -686,11 +677,6 @@ export default function ProductivityPage() {
         <TaskDetailPopup
           task={detailTask}
           onClose={() => setDetailTaskId(null)}
-          onUpdate={updateTask}
-          onComplete={completeTask}
-          onDelete={(id) => { deleteTask(id); setDetailTaskId(null); }}
-          onDuplicate={duplicateTask}
-          projects={projects}
         />
       )}
 

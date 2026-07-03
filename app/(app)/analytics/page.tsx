@@ -182,7 +182,7 @@ export default async function AnalyticsPage() {
   // Tasks aggregations
   const taskList = (tasks ?? []) as Task[]
   const taskByStatus = buildTaskByStatus(taskList)
-  const taskByPriority = (["low", "medium", "high", "urgent"] as const).map((p) => ({
+  const taskByPriority = (["P1", "P2", "P3", "P4"] as const).map((p) => ({
     priority: p,
     count: taskList.filter((t) => t.priority === p).length,
   }))

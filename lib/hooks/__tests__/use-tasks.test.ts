@@ -57,30 +57,23 @@ describe("useTasks", () => {
   });
 
   it("returns initial loading state", () => {
-    const { result } = renderHook(() => useTasks("inbox"));
+    const { result } = renderHook(() => useTasks("all"));
     expect(result.current.loading).toBe(true);
     expect(result.current.tasks).toEqual([]);
   });
 
   it("fetches tasks and sets loading to false", async () => {
     const tasks = [
-      { id: "t-1", title: "Task 1", status: "inbox", priority: "high" },
-      { id: "t-2", title: "Task 2", status: "inbox", priority: "medium" },
+      { id: "t-1", title: "Task 1", status: "todo", priority: "P2" },
+      { id: "t-2", title: "Task 2", status: "todo", priority: "P3" },
     ];
     setupQueryResolve(tasks);
 
-    const { result } = renderHook(() => useTasks("inbox"));
+    const { result } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.tasks).toEqual(
       tasks.map((t) => expect.objectContaining(t)),
     );
-  });
-
-  it("applies inbox filter", async () => {
-    setupQueryResolve([]);
-    const { result } = renderHook(() => useTasks("inbox"));
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(mockQueryChain.eq).toHaveBeenCalledWith("status", "inbox");
   });
 
   it("applies today filter with or clause", async () => {
@@ -99,7 +92,7 @@ describe("useTasks", () => {
 
   it("subscribes to realtime changes", async () => {
     setupQueryResolve([]);
-    const { result } = renderHook(() => useTasks("inbox"));
+    const { result } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(mockSupabase.channel).toHaveBeenCalledWith("tasks");
@@ -113,7 +106,7 @@ describe("useTasks", () => {
 
   it("cleans up channel on unmount", async () => {
     setupQueryResolve([]);
-    const { result, unmount } = renderHook(() => useTasks("inbox"));
+    const { result, unmount } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.loading).toBe(false));
     unmount();
     expect(mockSupabase.removeChannel).toHaveBeenCalledWith(mockChannel);
@@ -121,25 +114,25 @@ describe("useTasks", () => {
 
   it("createTask inserts and refreshes", async () => {
     setupQueryResolve([]);
-    const { result } = renderHook(() => useTasks("inbox"));
+    const { result } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
-      await result.current.createTask({ title: "New task", priority: "high" });
+      await result.current.createTask({ title: "New task", priority: "P2" });
     });
 
     expect(mockSupabase.from).toHaveBeenCalledWith("tasks");
     expect(mockQueryChain.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "New task", priority: "high" }),
+      expect.objectContaining({ title: "New task", priority: "P2" }),
     );
   });
 
   it("completeTask updates status to done and removes from list", async () => {
     const tasks = [
-      { id: "t-1", title: "Task 1", status: "inbox", priority: "high" },
+      { id: "t-1", title: "Task 1", status: "todo", priority: "P2" },
     ];
     setupQueryResolve(tasks);
-    const { result } = renderHook(() => useTasks("inbox"));
+    const { result } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.tasks).toHaveLength(1));
 
     await act(async () => {
@@ -154,10 +147,10 @@ describe("useTasks", () => {
 
   it("deleteTask removes from list", async () => {
     const tasks = [
-      { id: "t-1", title: "Task 1", status: "inbox", priority: "high" },
+      { id: "t-1", title: "Task 1", status: "todo", priority: "P2" },
     ];
     setupQueryResolve(tasks);
-    const { result } = renderHook(() => useTasks("inbox"));
+    const { result } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.tasks).toHaveLength(1));
 
     await act(async () => {
@@ -170,7 +163,7 @@ describe("useTasks", () => {
 
   it("updateTask strips DB-managed fields", async () => {
     setupQueryResolve([]);
-    const { result } = renderHook(() => useTasks("inbox"));
+    const { result } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
@@ -205,7 +198,7 @@ describe("useTasks", () => {
 
   it("exposes refresh function", async () => {
     setupQueryResolve([]);
-    const { result } = renderHook(() => useTasks("inbox"));
+    const { result } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(typeof result.current.refresh).toBe("function");
   });

@@ -8,9 +8,9 @@ const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
 const CreateTaskInput = z.object({
   title: z.string().min(1).max(500),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  priority: z.enum(['P1', 'P2', 'P3', 'P4']).optional(),
   due_date: dateStr.optional().nullable(),
-  status: z.enum(['inbox', 'todo', 'in_progress', 'done']).optional(),
+  status: z.enum(['todo', 'in_progress', 'blocked', 'on_hold', 'done']).optional(),
   description: z.string().max(5000).optional().nullable(),
 })
 
@@ -61,7 +61,7 @@ const GetAnalyticsInput = z.object({
 })
 
 const ListTasksInput = z.object({
-  filter: z.enum(['all', 'inbox', 'today']).optional(),
+  filter: z.enum(['all', 'today']).optional(),
 })
 
 const DeleteTaskInput = z.object({
@@ -88,13 +88,13 @@ const isoDatetime = z.string().regex(/^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]+)?$/)
 const UpdateTaskInput = z.object({
   id: uuid,
   title: z.string().min(1).max(500).optional(),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-  status: z.enum(['inbox', 'todo', 'in_progress', 'done']).optional(),
+  priority: z.enum(['P1', 'P2', 'P3', 'P4']).optional(),
+  status: z.enum(['todo', 'in_progress', 'blocked', 'on_hold', 'done']).optional(),
   due_date: dateStr.optional().nullable(),
   description: z.string().max(5000).optional().nullable(),
   project_id: uuid.optional().nullable(),
   is_starred: z.boolean().optional(),
-  tags: z.array(z.string().max(100)).optional(),
+  labels: z.array(z.string().max(100)).optional(),
 })
 
 // Projects
@@ -465,15 +465,18 @@ export async function executeTool(toolName: string, input: Record<string, unknow
       const { error, data } = await supabase.from('tasks').insert({
         user_id: user.id,
         title: p.data.title,
-        priority: p.data.priority ?? 'medium',
+        priority: p.data.priority ?? 'P3',
         due_date: p.data.due_date ?? null,
-        status: p.data.status ?? 'inbox',
+        status: p.data.status ?? 'todo',
         description: p.data.description ?? null,
-        is_recurring: false,
         is_starred: false,
-        tags: [],
+        is_focus: false,
+        labels: [],
         subtasks: [],
         attachments: [],
+        comments: [],
+        activity: [],
+        linked_tasks: [],
       }).select().single()
       if (error) return dbErr('create_task', error)
       return { success: true, message: `Created task: "${p.data.title}"`, data }
@@ -483,8 +486,7 @@ export async function executeTool(toolName: string, input: Record<string, unknow
       const p = ListTasksInput.safeParse(input)
       const filter = p.success ? (p.data.filter ?? 'all') : 'all'
       let query = supabase.from('tasks').select('id, title, priority, due_date, status').neq('status', 'done')
-      if (filter === 'inbox') query = query.eq('status', 'inbox')
-      else if (filter === 'today') query = query.or(`due_date.eq.${today},due_date.lt.${today}`)
+      if (filter === 'today') query = query.or(`due_date.eq.${today},due_date.lt.${today}`)
       const { data, error } = await query.order('priority', { ascending: false }).limit(20)
       if (error) return dbErr('list_tasks', error)
       return { success: true, message: `Found ${data?.length ?? 0} tasks`, data }

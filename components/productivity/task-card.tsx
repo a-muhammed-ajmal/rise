@@ -21,38 +21,7 @@ import { cn } from '@/lib/utils'
 import { TaskForm } from './task-form'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
-
-// ─── P1/P2/P3/P4 priority mapping ────────────────────────────────────────────
-
-const PRIORITY_LABEL: Record<Task['priority'], string> = {
-  urgent: 'P1', high: 'P2', medium: 'P3', low: 'P4',
-}
-
-const PRIORITY_PILL: Record<Task['priority'], string> = {
-  urgent: 'badge-urgent',
-  high:   'badge-high',
-  medium: 'badge-medium',
-  low:    'badge-low',
-}
-
-const PRIORITY_DOT: Record<Task['priority'], string> = {
-  urgent: 'priority-dot-urgent',
-  high:   'priority-dot-high',
-  medium: 'priority-dot-medium',
-  low:    'priority-dot-low',
-}
-
-// ─── Repeat label helper ──────────────────────────────────────────────────────
-
-function repeatLabel(rule: string | null): string {
-  if (!rule) return ''
-  if (rule.includes('WEEKLY;BYDAY=MO')) return 'Weekdays'
-  if (rule.includes('FREQ=DAILY'))   return 'Daily'
-  if (rule.includes('FREQ=WEEKLY'))  return 'Weekly'
-  if (rule.includes('FREQ=MONTHLY')) return 'Monthly'
-  if (rule.includes('FREQ=YEARLY'))  return 'Yearly'
-  return 'Recurring'
-}
+import { PRIORITY_PILL, PRIORITY_DOT, repeatLabel } from './task-constants'
 
 interface TaskCardProps {
   task: Task
@@ -170,7 +139,7 @@ export function TaskCard({
               PRIORITY_PILL[task.priority]
             )}>
               <span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOT[task.priority])} />
-              {PRIORITY_LABEL[task.priority]}
+              {task.priority}
             </span>
 
             {/* Due date */}
@@ -191,16 +160,16 @@ export function TaskCard({
             )}
 
             {/* Repeat */}
-            {task.is_recurring && task.recurrence_rule && (
+            {task.recurrence && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Repeat2 className="w-3 h-3" />
-                {repeatLabel(task.recurrence_rule)}
+                {repeatLabel(task.recurrence)}
               </span>
             )}
 
             {/* Reminder */}
-            {task.reminder_at && (
-              <span className="text-xs text-muted-foreground" title={new Date(task.reminder_at).toLocaleString()}>
+            {task.reminder && (
+              <span className="text-xs text-muted-foreground" title={new Date(task.reminder).toLocaleString()}>
                 <Bell className="w-3 h-3" />
               </span>
             )}
@@ -226,14 +195,14 @@ export function TaskCard({
               </span>
             )}
 
-            {/* Tags */}
-            {(task.tags?.length ?? 0) > 0 && (
+            {/* Labels */}
+            {(task.labels?.length ?? 0) > 0 && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Tag className="w-3 h-3" />
-                {task.tags.slice(0, 2).map((t) => (
+                {task.labels.slice(0, 2).map((t) => (
                   <span key={t} className="bg-secondary px-1 rounded text-secondary-foreground">#{t}</span>
                 ))}
-                {task.tags.length > 2 && <span>+{task.tags.length - 2}</span>}
+                {task.labels.length > 2 && <span>+{task.labels.length - 2}</span>}
               </span>
             )}
           </div>
@@ -303,20 +272,20 @@ export function TaskCard({
                 )}
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <span className="text-xs font-semibold mr-2">{PRIORITY_LABEL[task.priority]}</span>
+                    <span className="text-xs font-semibold mr-2">{task.priority}</span>
                     Set Priority
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
-                    {(['urgent', 'high', 'medium', 'low'] as Task['priority'][]).map((p) => (
+                    {(['P1', 'P2', 'P3', 'P4'] as Task['priority'][]).map((p) => (
                       <DropdownMenuItem
                         key={p}
                         onClick={() => onUpdate(task.id, { priority: p })}
                         className={task.priority === p ? 'font-semibold' : ''}
                       >
                         <span className={cn('text-xs font-semibold mr-2', PRIORITY_PILL[p], 'px-1 rounded')}>
-                          {PRIORITY_LABEL[p]}
+                          {p}
                         </span>
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
+                        {p === 'P1' ? 'Urgent' : p === 'P2' ? 'High' : p === 'P3' ? 'Medium' : 'Low'}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuSubContent>

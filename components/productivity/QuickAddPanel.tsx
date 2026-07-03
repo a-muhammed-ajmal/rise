@@ -15,6 +15,8 @@ import { PRIORITY_MAP } from './task-constants'
 import { formatRelativeDate, display12h } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useTasks } from '@/lib/hooks/use-tasks'
+import { useProjects } from '@/lib/hooks/use-projects'
 import type { Task } from '@/lib/types/database'
 
 interface QuickAddPanelProps {
@@ -25,8 +27,6 @@ interface QuickAddPanelProps {
   defaultDate?: string
   defaultProjectId?: string
   defaultStatus?: Task['status']
-  onAdd: (data: Partial<Task>) => Promise<string | null>
-  projects: Array<{ id: string; name: string; color: string }>
 }
 
 export function QuickAddPanel({
@@ -37,16 +37,17 @@ export function QuickAddPanel({
   defaultDate,
   defaultProjectId,
   defaultStatus,
-  onAdd,
-  projects,
 }: QuickAddPanelProps) {
-  const [title, setTitle]           = useState('')
-  const [priority, setPriority]     = useState<Task['priority']>('medium')
-  const [projectId, setProjectId]   = useState(defaultProjectId ?? '')
-  const [dueDate, setDueDate]       = useState(defaultDate ?? '')
-  const [dueTime, setDueTime]       = useState('')
+  const { createTask } = useTasks('all')
+  const { projects } = useProjects()
+
+  const [title, setTitle]         = useState('')
+  const [priority, setPriority]   = useState<Task['priority']>('P3')
+  const [projectId, setProjectId] = useState(defaultProjectId ?? '')
+  const [dueDate, setDueDate]     = useState(defaultDate ?? '')
+  const [dueTime, setDueTime]     = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
-  const [saving, setSaving]         = useState(false)
+  const [saving, setSaving]       = useState(false)
 
   const titleRef = useRef<HTMLInputElement>(null)
 
@@ -56,7 +57,7 @@ export function QuickAddPanel({
       setTimeout(() => titleRef.current?.focus(), 50)
     } else {
       setTitle('')
-      setPriority('medium')
+      setPriority('P3')
       setProjectId(defaultProjectId ?? '')
       setDueDate(defaultDate ?? '')
       setDueTime('')
@@ -72,10 +73,10 @@ export function QuickAddPanel({
     }
     setSaving(true)
     try {
-      const newId = await onAdd({
+      const newId = await createTask({
         title: t,
         priority,
-        status: defaultStatus ?? 'inbox',
+        status: defaultStatus ?? 'todo',
         project_id: projectId || null,
         due_date: dueDate || null,
         due_time: dueTime || null,

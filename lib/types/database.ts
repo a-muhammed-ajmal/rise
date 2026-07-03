@@ -30,24 +30,55 @@ export type TaskAttachment = {
   type: string; // MIME type
 };
 
+export type TaskStatus = "todo" | "in_progress" | "blocked" | "on_hold" | "done";
+export type TaskPriority = "P1" | "P2" | "P3" | "P4";
+
+export type Comment = {
+  id: string;
+  text: string;
+  created_at: string;
+};
+
+export type ActivityEntry = {
+  id: string;
+  action: string;
+  field?: string;
+  old_value?: string;
+  new_value?: string;
+  created_at: string;
+};
+
+export type LinkedTask = {
+  task_id: string;
+  relationship: "blocks" | "blocked_by" | "related";
+};
+
+/** iCal RRULE string, e.g. "FREQ=DAILY" */
+export type RecurrenceRule = string;
+
 type TaskRow = {
   id: string;
   user_id: string;
   title: string;
   description: string | null;
-  status: "inbox" | "todo" | "in_progress" | "done";
-  priority: "low" | "medium" | "high" | "urgent";
+  status: TaskStatus;
+  priority: TaskPriority;
   due_date: string | null;
-  due_time: string | null;        // HH:MM time string
+  due_time: string | null;
   completed_at: string | null;
-  is_recurring: boolean;
-  recurrence_rule: string | null;
-  reminder_at: string | null;     // ISO timestamptz
+  is_focus: boolean;
+  focus_date: string | null;
   is_starred: boolean;
-  tags: string[];
+  labels: string[];
   subtasks: Subtask[];
-  estimated_minutes: number | null;
   attachments: TaskAttachment[];
+  comments: Comment[];
+  activity: ActivityEntry[];
+  recurrence: RecurrenceRule | null;
+  reminder: string | null;
+  estimated_time: number | null;
+  location: string | null;
+  linked_tasks: LinkedTask[];
   project_id: string | null;
   created_at: string;
   updated_at: string;
@@ -403,7 +434,8 @@ export interface Database {
 // ─── Convenience row type exports ─────────────────────────────────────────────
 
 export type Project = ProjectRow;
-export type Task = TaskRow;
+/** Task with the derived is_completed field (computed from completed_at in the hook) */
+export type Task = TaskRow & { is_completed: boolean };
 export type Goal = GoalRow;
 export type Milestone = MilestoneRow;
 export type Review = ReviewRow;

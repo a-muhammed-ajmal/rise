@@ -22,10 +22,10 @@ import type { Task } from '@/lib/types/database'
 import { TaskCard } from './task-card'
 
 const PRIORITY_DOT: Record<Task['priority'], string> = {
-  urgent: 'priority-dot-urgent',
-  high:   'priority-dot-high',
-  medium: 'priority-dot-medium',
-  low:    'priority-dot-low',
+  P1: 'priority-dot-urgent',
+  P2: 'priority-dot-high',
+  P3: 'priority-dot-medium',
+  P4: 'priority-dot-low',
 }
 
 interface TaskCalendarProps {
