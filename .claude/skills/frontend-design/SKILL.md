@@ -188,7 +188,8 @@ Global focus ring — never remove without a replacement:
 }
 ```
 
-```
+---
+
 ## Layout
 
 - **Sidebar** — `hidden md:flex`, fixed left rail, desktop only
