@@ -191,7 +191,6 @@ Global focus ring — never remove without a replacement:
 ---
 
 ## Layout
-## Layout
 
 ​```
 ┌──────────────────────────────────────┐
