@@ -188,24 +188,14 @@ Global focus ring — never remove without a replacement:
 }
 ```
 
----
-
+```
 ## Layout
 
-​```
-┌──────────────────────────────────────┐
-│ Sidebar (hidden md:flex, fixed left) │
-│  ┌─────────────────────────────────┐ │
-│  │ Main — max-w-5xl mx-auto        │ │
-│  └─────────────────────────────────┘ │
-└──────────────────────────────────────┘
-      BottomNav (md:hidden, fixed bottom)
-      FAB      (md:hidden, fixed bottom-right)
-​```
-
+- **Sidebar** — `hidden md:flex`, fixed left rail, desktop only
+- **Main content** — `max-w-5xl mx-auto px-4 md:px-6`
+- **BottomNav** — `md:hidden`, fixed bottom, mobile only
+- **FAB** — `md:hidden`, `fixed bottom-20 right-4`, mobile only
 - Single breakpoint: `md` at 768px — no `sm`, `lg`, `xl`
-- Main content: `max-w-5xl mx-auto px-4 md:px-6`
-- FAB: `fixed bottom-20 right-4`
 
 ---
 
