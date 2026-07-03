@@ -95,7 +95,7 @@ describe("useTasks", () => {
     const { result } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(mockSupabase.channel).toHaveBeenCalledWith("tasks");
+    expect(mockSupabase.channel).toHaveBeenCalledWith(expect.stringContaining("tasks"));
     expect(mockChannel.on).toHaveBeenCalledWith(
       "postgres_changes",
       expect.objectContaining({ event: "*", table: "tasks" }),

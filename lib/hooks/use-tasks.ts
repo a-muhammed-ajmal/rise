@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useId } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Task, Subtask, TaskAttachment, Comment, ActivityEntry, LinkedTask } from '@/lib/types/database'
 import { todayISO } from '@/lib/format'
@@ -23,6 +23,7 @@ function coerceTask(t: Record<string, unknown>): Task {
 export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+  const channelName = `tasks-${useId().replace(/:/g, '')}`
 
   const fetchTasks = useCallback(async () => {
     const supabase = createClient()
@@ -56,12 +57,12 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
 
     const supabase = createClient()
     const channel = supabase
-      .channel('tasks')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchTasks)
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [fetchTasks])
+  }, [fetchTasks, channelName])
 
   async function createTask(data: Partial<Task>): Promise<string | null> {
     const supabase = createClient()
