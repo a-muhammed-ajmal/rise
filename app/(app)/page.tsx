@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail } from "lucide-react";
+import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, Star } from "lucide-react";
 import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
 import { formatAED } from "@/lib/format";
@@ -21,6 +21,9 @@ export default async function HomePage() {
     { data: activeGoals },
     { data: recentTransactions },
     { data: followUps },
+    { data: starredFocusTasks },
+    { count: completedTodayCount },
+    { count: pendingTodayCount },
   ] = await Promise.all([
     supabase
       .from("tasks")
@@ -65,6 +68,27 @@ export default async function HomePage() {
       .or(`last_contacted_at.is.null,last_contacted_at.lte.${format(new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")}`)
       .order("last_contacted_at", { ascending: true, nullsFirst: true })
       .limit(3),
+    // Starred focus tasks for today
+    supabase
+      .from("tasks")
+      .select("id, title, priority")
+      .eq("is_starred", true)
+      .eq("due_date", today)
+      .neq("status", "done")
+      .order("priority", { ascending: true })
+      .limit(3),
+    // Completed today count
+    supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .eq("due_date", today)
+      .eq("status", "done"),
+    // Pending today count
+    supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .eq("due_date", today)
+      .neq("status", "done"),
   ]);
 
   const dueHabits = todayHabits ?? [];
@@ -170,11 +194,53 @@ export default async function HomePage() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-2">
+            {/* Completion progress */}
+            {((completedTodayCount ?? 0) + (pendingTodayCount ?? 0)) > 0 && (
+              <div className="mb-3 space-y-1">
+                <Progress
+                  value={
+                    ((completedTodayCount ?? 0) /
+                      ((completedTodayCount ?? 0) + (pendingTodayCount ?? 0))) *
+                    100
+                  }
+                  className="h-1.5"
+                />
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  {completedTodayCount ?? 0}/
+                  {(completedTodayCount ?? 0) + (pendingTodayCount ?? 0)} done today
+                </p>
+              </div>
+            )}
+
+            {/* Focus: starred tasks */}
+            {starredFocusTasks && starredFocusTasks.length > 0 && (
+              <div className="space-y-1 mb-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--color-warning)]">
+                  Focus
+                </p>
+                {starredFocusTasks.map((task) => (
+                  <div key={task.id} className="flex items-center gap-2 py-0.5">
+                    <Star
+                      className="w-3 h-3 fill-[var(--color-warning)] text-[var(--color-warning)] shrink-0"
+                      aria-hidden="true"
+                    />
+                    <p className="text-sm truncate flex-1">{task.title}</p>
+                  </div>
+                ))}
+                {(todayTasks?.length ?? 0) > 0 && (
+                  <div className="h-px bg-border my-1" aria-hidden="true" />
+                )}
+              </div>
+            )}
+
+            {/* Overdue indicator */}
             {overdueTasks && overdueTasks.length > 0 && (
               <div className="text-xs text-destructive font-medium mb-1">
                 {overdueTasks.length} overdue
               </div>
             )}
+
+            {/* Regular today tasks */}
             {todayTasks && todayTasks.length > 0 ? (
               todayTasks.map((task) => (
                 <div key={task.id} className="flex items-start gap-2 py-1">
@@ -182,9 +248,7 @@ export default async function HomePage() {
                   <div className="min-w-0">
                     <p className="text-sm truncate">{task.title}</p>
                     <Badge
-                      variant={
-                        task.priority === "P1" ? "destructive" : "secondary"
-                      }
+                      variant={task.priority === "P1" ? "destructive" : "secondary"}
                       className="text-xs mt-0.5"
                     >
                       {task.priority}

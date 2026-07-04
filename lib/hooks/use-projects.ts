@@ -23,7 +23,7 @@ export function useProjects() {
     fetchProjects();
   }, [fetchProjects]);
 
-  async function createProject(name: string, color: string) {
+  async function createProject(name: string, color: string, description?: string | null) {
     const supabase = createClient();
     const {
       data: { user },
@@ -32,7 +32,7 @@ export function useProjects() {
     await supabase.from("projects").insert({
       user_id: user.id,
       name,
-      description: null,
+      description: description ?? null,
       status: "active",
       color,
     });

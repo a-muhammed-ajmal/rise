@@ -10,5 +10,6 @@
     "python.testing.unittestEnabled": true,
     "editor.fontSize": 16,
     "editor.fontFamily": "Segoe UI",
-    "editor.wordWrap": "on"
+    "editor.wordWrap": "on",
+    "claudeCode.allowDangerouslySkipPermissions": true
 }

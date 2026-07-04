@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 import { TaskForm } from './task-form'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
-import { PRIORITY_PILL, PRIORITY_DOT, repeatLabel } from './task-constants'
+import { PRIORITY_PILL, PRIORITY_DOT, repeatLabel, getLabelColor } from './task-constants'
 
 interface TaskCardProps {
   task: Task
@@ -75,7 +75,7 @@ export function TaskCard({
       <div
         className={cn(
           'flex items-start gap-3 p-3 rounded-lg border transition-colors group',
-          view === 'grid' ? 'flex-col' : '',
+          view === 'grid' ? 'flex-col min-h-[120px]' : '',
           isCompleted
             ? 'border-border/50 bg-muted/30 opacity-60'
             : selected
@@ -100,22 +100,25 @@ export function TaskCard({
             {selected && <Check className="w-3 h-3 text-primary-foreground" />}
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => onComplete(task.id)}
-            className={cn(
-              'mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
-              isCompleted
-                ? 'bg-muted border-muted-foreground/30'
-                : 'border-muted-foreground/40 hover:border-primary hover:bg-primary/10'
-            )}
-            aria-label="Complete task"
-          >
-            <Check className={cn(
-              'w-3 h-3 transition-opacity text-primary',
-              isCompleted ? 'opacity-50' : 'opacity-0 group-hover:opacity-100'
-            )} />
-          </button>
+          <div className="relative mt-0.5 shrink-0 w-5 h-5">
+            <button
+              type="button"
+              onClick={() => onComplete(task.id)}
+              className={cn(
+                'absolute inset-0 rounded-full border-2 flex items-center justify-center transition-colors',
+                'before:absolute before:inset-[-10px] before:content-[""]',
+                isCompleted
+                  ? 'bg-muted border-muted-foreground/30'
+                  : 'border-muted-foreground/40 hover:border-primary hover:bg-primary/10'
+              )}
+              aria-label="Complete task"
+            >
+              <Check className={cn(
+                'w-3 h-3 transition-opacity text-primary',
+                isCompleted ? 'opacity-50' : 'opacity-0 group-hover:opacity-100'
+              )} />
+            </button>
+          </div>
         )}
 
         {/* Content */}
@@ -197,12 +200,22 @@ export function TaskCard({
 
             {/* Labels */}
             {(task.labels?.length ?? 0) > 0 && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Tag className="w-3 h-3" />
+              <span className="flex items-center gap-1 flex-wrap">
+                <Tag className="w-3 h-3 text-muted-foreground shrink-0" aria-hidden="true" />
                 {task.labels.slice(0, 2).map((t) => (
-                  <span key={t} className="bg-secondary px-1 rounded text-secondary-foreground">#{t}</span>
+                  <span
+                    key={t}
+                    className={cn(
+                      'text-[11px] font-semibold px-1.5 py-0.5 rounded-full leading-none',
+                      getLabelColor(t)
+                    )}
+                  >
+                    #{t}
+                  </span>
                 ))}
-                {task.labels.length > 2 && <span>+{task.labels.length - 2}</span>}
+                {task.labels.length > 2 && (
+                  <span className="text-[11px] text-muted-foreground">+{task.labels.length - 2}</span>
+                )}
               </span>
             )}
           </div>
