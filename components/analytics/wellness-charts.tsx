@@ -10,9 +10,9 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const WELLNESS_COLOR = "#FBBF24"  // --mod-wellness (Amber)
-const TASKS_COLOR = "#34D399"     // --mod-tasks (Green)
-const MOOD_COLOR = "#F472B6"      // --mod-goals (Pink)
+const WELLNESS_COLOR = "#BE123C"  // --mod-wellness (Rose)
+const TASKS_COLOR = "#2563EB"     // --mod-tasks (Blue)
+const MOOD_COLOR = "#7C3AED"      // --mod-goals (Violet)
 
 const tooltipStyle = {
   backgroundColor: "var(--card)",

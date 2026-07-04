@@ -117,10 +117,10 @@ export default function GoalsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl space-y-4 page-glow [--glow-color:var(--mod-goals)]">
-      <div className="flex items-center justify-between animate-rise-in stagger-1">
+    <div className="p-4 md:p-6 max-w-2xl space-y-4">
+      <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-mod-goals-soft flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-mod-goals-tint flex items-center justify-center">
             <Target className="w-4 h-4 text-mod-goals" />
           </div>
           Goals
@@ -132,14 +132,14 @@ export default function GoalsPage() {
           <Button
             size="sm"
             onClick={() => { setEditGoal(null); setGoalOpen(true); }}
-            className="gap-1.5 bg-mod-goals hover:bg-mod-goals/90 text-white"
+            className="gap-1.5"
           >
             <Plus className="w-4 h-4" /> Goal
           </Button>
         </div>
       </div>
 
-      <div className="animate-rise-in stagger-2">
+      <div className="slide-up stagger-2">
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="w-full">
             <TabsTrigger value="goals" className="flex-1">Goals ({active.length})</TabsTrigger>
@@ -149,17 +149,17 @@ export default function GoalsPage() {
       </div>
 
       {tab === "goals" && (
-        <div className="space-y-3 animate-rise-in stagger-3">
+        <div className="space-y-3 slide-up stagger-3">
           {active.length === 0 ? (
             <div className="text-center py-12 space-y-2">
-              <div className="w-16 h-16 rounded-2xl bg-mod-goals-soft flex items-center justify-center mx-auto mb-3">
+              <div className="w-16 h-16 rounded-2xl bg-mod-goals-tint flex items-center justify-center mx-auto mb-3">
                 <Target className="w-8 h-8 text-mod-goals" />
               </div>
               <p className="text-muted-foreground text-sm">No active goals. Set one to get started.</p>
             </div>
           ) : (
             active.map((goal) => (
-              <Card key={goal.id} className="card-interactive border-t-4 border-mod-goals">
+              <Card key={goal.id} className="card-hover border-t-4 border-mod-goals">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div
@@ -237,10 +237,10 @@ export default function GoalsPage() {
       )}
 
       {tab === "journal" && (
-        <div className="space-y-3 animate-rise-in stagger-3">
+        <div className="space-y-3 slide-up stagger-3">
           {!todayEntry ? (
             <Card
-              className="border-dashed card-interactive cursor-pointer"
+              className="border-dashed card-hover cursor-pointer"
               onClick={() => { setEditJournal(null); setJournalOpen(true); }}
             >
               <CardContent className="p-6 text-center space-y-2">
@@ -305,7 +305,7 @@ export default function GoalsPage() {
       <button
         type="button"
         onClick={() => { setEditGoal(null); setGoalOpen(true); }}
-        className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-goals text-white flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label="Add goal"
       >
         <Plus className="w-6 h-6" />

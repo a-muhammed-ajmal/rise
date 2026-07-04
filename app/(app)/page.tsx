@@ -83,17 +83,17 @@ export default async function HomePage() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-4xl">
       {/* Header */}
-      <div className="animate-rise-in stagger-1">
+      <div className="slide-up stagger-1">
         <p className="text-micro text-muted-foreground tracking-wide uppercase">{dayName}</p>
         <h1 className="text-display mt-1">{greeting}</h1>
       </div>
 
       {/* Quick stats */}
-      <div className="grid [grid-template-columns:repeat(2,minmax(0,1fr))] md:grid-cols-4 gap-3 animate-rise-in stagger-2">
+      <div className="grid [grid-template-columns:repeat(2,minmax(0,1fr))] md:grid-cols-4 gap-3 slide-up stagger-2">
         <Link href="/productivity">
-          <Card className="card-interactive cursor-pointer border-t-4 border-mod-tasks hover:border-mod-tasks/80">
+          <Card className="card-hover cursor-pointer border-t-4 border-mod-tasks hover:border-mod-tasks/80">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mod-tasks-soft flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-mod-tasks-tint flex items-center justify-center shrink-0">
                 <CheckSquare className="w-5 h-5 text-mod-tasks" />
               </div>
               <div>
@@ -105,9 +105,9 @@ export default async function HomePage() {
         </Link>
 
         <Link href="/wellness">
-          <Card className="card-interactive cursor-pointer border-t-4 border-mod-wellness hover:border-mod-wellness/80">
+          <Card className="card-hover cursor-pointer border-t-4 border-mod-wellness hover:border-mod-wellness/80">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mod-wellness-soft flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-mod-wellness-tint flex items-center justify-center shrink-0">
                 <Heart className="w-5 h-5 text-mod-wellness" />
               </div>
               <div>
@@ -121,9 +121,9 @@ export default async function HomePage() {
         </Link>
 
         <Link href="/goals">
-          <Card className="card-interactive cursor-pointer border-t-4 border-mod-goals hover:border-mod-goals/80">
+          <Card className="card-hover cursor-pointer border-t-4 border-mod-goals hover:border-mod-goals/80">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mod-goals-soft flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-mod-goals-tint flex items-center justify-center shrink-0">
                 <Target className="w-5 h-5 text-mod-goals" />
               </div>
               <div>
@@ -135,9 +135,9 @@ export default async function HomePage() {
         </Link>
 
         <Link href="/finance">
-          <Card className="card-interactive cursor-pointer border-t-4 border-mod-finance hover:border-mod-finance/80">
+          <Card className="card-hover cursor-pointer border-t-4 border-mod-finance hover:border-mod-finance/80">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mod-finance-soft flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-mod-finance-tint flex items-center justify-center shrink-0">
                 <DollarSign className="w-5 h-5 text-mod-finance" />
               </div>
               <div>
@@ -153,10 +153,10 @@ export default async function HomePage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Today's tasks */}
-        <Card className="animate-rise-in stagger-3 border-t-4 border-t-mod-tasks">
+        <Card className="slide-up stagger-3 border-t-4 border-t-mod-tasks">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-mod-tasks-soft flex items-center justify-center">
+              <div className="w-6 h-6 rounded-md bg-mod-tasks-tint flex items-center justify-center">
                 <CheckSquare className="w-3.5 h-3.5 text-mod-tasks" />
               </div>
               Today&apos;s Tasks
@@ -200,10 +200,10 @@ export default async function HomePage() {
         </Card>
 
         {/* Today's habits */}
-        <Card className="animate-rise-in stagger-4 border-t-4 border-t-mod-wellness">
+        <Card className="slide-up stagger-4 border-t-4 border-t-mod-wellness">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-mod-wellness-soft flex items-center justify-center">
+              <div className="w-6 h-6 rounded-md bg-mod-wellness-tint flex items-center justify-center">
                 <Heart className="w-3.5 h-3.5 text-mod-wellness" />
               </div>
               Habits
@@ -236,10 +236,10 @@ export default async function HomePage() {
         </Card>
 
         {/* Active goals */}
-        <Card className="animate-rise-in stagger-5 border-t-4 border-t-mod-goals">
+        <Card className="slide-up stagger-4 border-t-4 border-t-mod-goals">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-mod-goals-soft flex items-center justify-center">
+              <div className="w-6 h-6 rounded-md bg-mod-goals-tint flex items-center justify-center">
                 <Target className="w-3.5 h-3.5 text-mod-goals" />
               </div>
               Goals
@@ -275,11 +275,11 @@ export default async function HomePage() {
         </Card>
 
         {/* AI Assistant CTA */}
-        <Card className="animate-rise-in stagger-6 border-t-4 border-t-mod-ai border-mod-ai/30 bg-gradient-to-br from-mod-ai-soft to-transparent shadow-[0_0_24px_rgba(109,40,217,0.08)]">
+        <Card className="slide-up stagger-4 border-t-4 border-t-brand border-brand/30 bg-brand-tint/40 shadow-brand">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-mod-ai-soft flex items-center justify-center">
-                <Sparkles className="w-3.5 h-3.5 text-mod-ai" />
+              <div className="w-6 h-6 rounded-md bg-brand-tint flex items-center justify-center">
+                <Sparkles className="w-3.5 h-3.5 text-brand-text" />
               </div>
               AI Assistant
             </CardTitle>
@@ -297,7 +297,7 @@ export default async function HomePage() {
                 <Link
                   key={prompt}
                   href={`/assistant?q=${encodeURIComponent(prompt)}`}
-                  className="block text-xs text-mod-ai hover:underline px-2 py-1.5 rounded-md bg-mod-ai-soft/50 hover:bg-mod-ai-soft transition-colors"
+                  className="block text-xs text-brand-text hover:underline px-2 py-1.5 rounded-md bg-brand-tint/50 hover:bg-brand-tint transition-colors"
                 >
                   &ldquo;{prompt}&rdquo;
                 </Link>
@@ -309,10 +309,10 @@ export default async function HomePage() {
 
       {/* CRM contacts needing attention */}
       {followUps && followUps.length > 0 && (
-        <Card className="animate-rise-in stagger-6 border-t-4 border-t-mod-crm">
+        <Card className="slide-up stagger-4 border-t-4 border-t-mod-crm">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-mod-crm-soft flex items-center justify-center">
+              <div className="w-6 h-6 rounded-md bg-mod-crm-tint flex items-center justify-center">
                 <Users className="w-3.5 h-3.5 text-mod-crm" />
               </div>
               Touch Base
@@ -328,7 +328,7 @@ export default async function HomePage() {
             {followUps.map((contact) => (
               <div key={contact.id} className="flex items-center justify-between py-1">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full bg-mod-crm-soft flex items-center justify-center shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-mod-crm-tint flex items-center justify-center shrink-0">
                     <span className="text-mod-crm text-xs font-semibold">
                       {contact.name[0]?.toUpperCase()}
                     </span>
@@ -371,10 +371,10 @@ export default async function HomePage() {
 
       {/* Today's finance */}
       {recentTransactions && recentTransactions.length > 0 && (
-        <Card className="animate-rise-in stagger-6 border-t-4 border-t-mod-finance">
+        <Card className="slide-up stagger-4 border-t-4 border-t-mod-finance">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-mod-finance-soft flex items-center justify-center">
+              <div className="w-6 h-6 rounded-md bg-mod-finance-tint flex items-center justify-center">
                 <DollarSign className="w-3.5 h-3.5 text-mod-finance" />
               </div>
               Today&apos;s Transactions

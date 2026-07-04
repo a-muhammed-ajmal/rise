@@ -12,9 +12,9 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const KNOWLEDGE_COLOR = "#8B5CF6"
-const LINK_COLORS = ["#60A5FA", "#34D399", "#F472B6", "#94A3B8"]
-const TAG_COLORS = ["#8B5CF6", "#60A5FA", "#34D399", "#FBBF24", "#F472B6", "#94A3B8"]
+const KNOWLEDGE_COLOR = "#D97706"  // --mod-knowledge (Amber)
+const LINK_COLORS = ["#2563EB", "#059669", "#7C3AED", "#9CA3AF"]
+const TAG_COLORS = ["#D97706", "#2563EB", "#059669", "#F59E0B", "#7C3AED", "#9CA3AF"]
 
 const tooltipStyle = {
   backgroundColor: "var(--card)",

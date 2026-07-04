@@ -42,7 +42,7 @@ const PRIORITY_MAP: Array<{ value: Task['priority']; label: string; color: strin
   { value: 'P1', label: 'P1', color: 'bg-[var(--color-danger)] text-white' },
   { value: 'P2', label: 'P2', color: 'bg-[var(--color-warning)] text-white' },
   { value: 'P3', label: 'P3', color: 'bg-[var(--color-info)] text-white' },
-  { value: 'P4', label: 'P4', color: 'bg-[var(--text-muted)] text-white' },
+  { value: 'P4', label: 'P4', color: 'bg-[var(--color-p4)] text-white' },
 ]
 
 type TabId = 'details' | 'schedule' | 'organize' | 'subtasks' | 'attachments'

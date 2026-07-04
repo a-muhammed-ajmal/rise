@@ -294,16 +294,16 @@ export default async function AnalyticsPage() {
   return (
     <div className="p-4 md:p-6 space-y-10 max-w-6xl">
       {/* Page header */}
-      <div className="animate-rise-in stagger-1">
+      <div className="slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight">Analytics</h1>
         <p className="text-sm text-muted-foreground mt-1">Your RISE data at a glance</p>
       </div>
 
       {/* Finance section */}
-      <section className="space-y-4 animate-rise-in stagger-2">
+      <section className="space-y-4 slide-up stagger-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-mod-finance-soft flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-mod-finance-tint flex items-center justify-center">
               <DollarSign className="w-4 h-4 text-mod-finance" />
             </div>
             <h2 className="text-base font-semibold">Finance</h2>
@@ -316,10 +316,10 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* Wellness section */}
-      <section className="space-y-4 animate-rise-in stagger-3">
+      <section className="space-y-4 slide-up stagger-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-mod-wellness-soft flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-mod-wellness-tint flex items-center justify-center">
               <Heart className="w-4 h-4 text-mod-wellness" />
             </div>
             <h2 className="text-base font-semibold">Wellness</h2>
@@ -332,10 +332,10 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* Goals section */}
-      <section className="space-y-4 animate-rise-in stagger-4">
+      <section className="space-y-4 slide-up stagger-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-mod-goals-soft flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-mod-goals-tint flex items-center justify-center">
               <Target className="w-4 h-4 text-mod-goals" />
             </div>
             <h2 className="text-base font-semibold">Goals</h2>
@@ -348,10 +348,10 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* Productivity section */}
-      <section className="space-y-4 animate-rise-in stagger-5">
+      <section className="space-y-4 slide-up stagger-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-mod-tasks-soft flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-mod-tasks-tint flex items-center justify-center">
               <CheckSquare className="w-4 h-4 text-mod-tasks" />
             </div>
             <h2 className="text-base font-semibold">Productivity</h2>
@@ -364,10 +364,10 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* CRM section */}
-      <section className="space-y-4 animate-rise-in stagger-6">
+      <section className="space-y-4 slide-up stagger-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-mod-crm-soft flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-mod-crm-tint flex items-center justify-center">
               <Users className="w-4 h-4 text-mod-crm" />
             </div>
             <h2 className="text-base font-semibold">CRM</h2>
@@ -380,7 +380,7 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* Knowledge section */}
-      <section className="space-y-4 animate-rise-in stagger-6">
+      <section className="space-y-4 slide-up stagger-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-950/30 flex items-center justify-center">

@@ -76,14 +76,15 @@ The assistant runs 75 tools across every module — split into two tiers:
 
 ## Design System
 
-RISE uses a locked dark-first "cockpit" UI:
+RISE uses a locked light-first orange brand system (full spec in `.claude/skills/frontend-design/`):
 
-- **Surfaces:** 4-level elevation — `#0E0E11` → `#17171C` → `#1F1F27` → `#2A2A35`
-- **AI accent:** `#7C5CFC` (purple) — used only for AI-active states, max 10% of surface
-- **Typography:** Lexend (headings, max weight 600) · IBM Plex Sans (body) · JetBrains Mono (metrics/data)
-- **Module colors:** Tasks `#60a5fa` · Finance `#34d399` · Wellness `#fb7185` · Goals `#a78bfa` · Knowledge `#fbbf24` · CRM `#22d3ee`
+- **Brand:** `#FF6535` orange — CTAs, accents, focus rings; `#D6450F` for orange text on white (AA); `#FFF0EB` tint for chips/badges
+- **Surfaces:** light-first — `#FFFFFF` base · `#F9FAFB` paper · navy `#1A1A2E` for dark sections; opt-in dark mode uses the navy family (`#0B1120` / `#1A1A2E`)
+- **Typography:** Inter only (400–800); page titles 700, headings 600; 11px eyebrow labels in brand orange
+- **Borders:** always visible at rest — `1.5px rgba(26,26,46,0.16)` on cards, orange `rgba(255,101,53,0.50)` on hover; graph-paper background signature (40×40px grid)
+- **Module colors (text + tint pairs):** Tasks `#2563EB` · Finance `#059669` · Wellness `#BE123C` · Goals `#7C3AED` · Knowledge `#D97706` · CRM `#0891B2` — AI inherits the brand orange
 - **Layout:** 5-slot bottom nav on mobile (`[Home][Tasks][AI-FAB][Finance][More]`) · sticky sidebar on desktop (64px collapsed / 224px expanded)
-- **Motion:** Spring-based with `prefers-reduced-motion` support; `.tappable` scale feedback on touch
+- **Motion:** 150–400ms tokens, transform/opacity only, `prefers-reduced-motion` support; `.tappable` scale feedback on touch
 
 ---
 

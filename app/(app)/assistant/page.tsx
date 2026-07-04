@@ -193,7 +193,7 @@ function FileAttachmentView({
       href={url ?? "#"}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2 rounded-lg glass-ai text-xs hover:opacity-80 transition-opacity"
+      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border-[1.5px] border-border shadow-card text-xs hover:border-[rgba(255,101,53,0.50)] transition-colors"
     >
       <FileText className="w-4 h-4 shrink-0 text-muted-foreground" />
       <span className="truncate max-w-[140px]">{att.filename}</span>
@@ -227,8 +227,8 @@ function AudioAttachmentView({
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg glass-ai text-xs">
-        <Music className="w-4 h-4 shrink-0 text-mod-ai" />
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border-[1.5px] border-border shadow-card text-xs">
+        <Music className="w-4 h-4 shrink-0 text-brand-text" />
         {url ? (
           <audio controls className="h-8 flex-1" title={att.filename}>
             <source src={url} type={att.mime_type} />
@@ -242,7 +242,7 @@ function AudioAttachmentView({
           <button
             type="button"
             onClick={() => setShowTranscript((v) => !v)}
-            className="text-xs text-mod-ai hover:underline"
+            className="text-xs text-brand-text hover:underline"
           >
             {showTranscript ? "Hide transcript" : "Show transcript"}
           </button>
@@ -569,7 +569,7 @@ function AssistantContent() {
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full space-y-4 py-12 animate-rise-in">
+          <div className="flex flex-col items-center justify-center h-full space-y-4 py-12 slide-up">
             <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md">
               <Image
                 src="/icon-512.png"
@@ -591,7 +591,7 @@ function AssistantContent() {
                   key={p}
                   type="button"
                   onClick={() => void sendMessage(p)}
-                  className="glass-ai card-interactive tappable text-left text-sm px-3 py-2.5 rounded-xl"
+                  className="bg-card border-[1.5px] border-border shadow-card card-hover tappable text-left text-sm px-3 py-2.5 rounded-xl"
                 >
                   {p}
                 </button>
@@ -616,8 +616,8 @@ function AssistantContent() {
                 >
                   {msg.role === "assistant" && (
                     <div className="flex items-center gap-1.5 mb-1">
-                      <Sparkles className="w-3.5 h-3.5 text-mod-ai" />
-                      <span className="text-xs font-medium text-mod-ai">
+                      <Sparkles className="w-3.5 h-3.5 text-brand-text" />
+                      <span className="text-xs font-medium text-brand-text">
                         RISE
                       </span>
                     </div>
@@ -628,7 +628,7 @@ function AssistantContent() {
                         "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
                         msg.role === "user"
                           ? "bg-primary text-primary-foreground rounded-br-sm"
-                          : "glass-ai text-foreground rounded-bl-sm",
+                          : "bg-card border-[1.5px] border-border shadow-card text-foreground rounded-bl-sm",
                       )}
                     >
                       {msg.content}
@@ -668,7 +668,7 @@ function AssistantContent() {
                   messages.indexOf(m) === messages.length - 1,
               ) && (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Sparkles className="w-3.5 h-3.5 text-mod-ai" />
+                  <Sparkles className="w-3.5 h-3.5 text-brand-text" />
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span className="text-xs">Thinking…</span>
                 </div>

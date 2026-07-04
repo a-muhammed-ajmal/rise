@@ -52,7 +52,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-5 w-full max-w-sm animate-rise-in">
+    <div className="flex flex-col items-center gap-5 w-full max-w-sm slide-up">
       <Image
         src="/icon-512.png"
         alt="RISE logo"
@@ -62,7 +62,7 @@ function LoginForm() {
         priority
       />
 
-      <Card className="w-full glass-surface login-card border-primary/20">
+      <Card className="w-full login-card border-primary/20">
         <CardHeader className="text-center space-y-1 pb-2">
           <CardTitle className="text-h1 font-heading text-primary">
             RISE

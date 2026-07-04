@@ -48,7 +48,7 @@ export function InstallPrompt() {
   return (
     <div
       role="banner"
-      className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass-surface border border-primary/20 rounded-xl p-4 flex items-center gap-3 shadow-lg"
+      className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 bg-card border-[1.5px] border-primary/20 rounded-xl p-4 flex items-center gap-3 shadow-popup"
     >
       <Download className="shrink-0 h-5 w-5 text-primary" />
       <p className="flex-1 text-sm text-foreground">
@@ -60,7 +60,7 @@ export function InstallPrompt() {
       <button
         onClick={handleDismiss}
         aria-label="Dismiss install prompt"
-        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors tap-target"
       >
         <X className="h-4 w-4" />
       </button>

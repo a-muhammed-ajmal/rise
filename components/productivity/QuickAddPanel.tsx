@@ -216,8 +216,8 @@ export function QuickAddPanel({
             onClick={handleSubmit}
             disabled={saving || !title.trim()}
             className={cn(
-              'flex items-center gap-1.5 h-8 px-4 rounded-lg text-sm font-medium transition-colors',
-              'bg-mod-tasks text-white hover:bg-mod-tasks/90',
+              'flex items-center gap-1.5 h-11 px-5 rounded-sm text-sm font-bold transition-all shadow-brand active:scale-95 active:shadow-none',
+              'bg-brand text-white hover:bg-brand-hover',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >

@@ -104,12 +104,11 @@ export default function CRMPage() {
 
   return (
     <div
-      className="p-4 md:p-6 max-w-2xl space-y-4 page-glow"
-      style={{ "--glow-color": "var(--mod-crm)" } as React.CSSProperties}
+      className="p-4 md:p-6 max-w-2xl space-y-4"
     >
-      <div className="flex items-center justify-between animate-rise-in stagger-1">
+      <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-mod-crm-soft flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-mod-crm-tint flex items-center justify-center">
             <Users className="w-4 h-4 text-mod-crm" />
           </div>
           CRM
@@ -117,13 +116,13 @@ export default function CRMPage() {
         <Button
           size="sm"
           onClick={() => { setEditContact(null); setContactFormOpen(true); }}
-          className="gap-1.5 bg-mod-crm hover:bg-mod-crm/90 text-white"
+          className="gap-1.5"
         >
           <Plus className="w-4 h-4" /> Add Contact
         </Button>
       </div>
 
-      <div className="relative animate-rise-in stagger-2">
+      <div className="relative slide-up stagger-2">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Search contacts…"
@@ -134,8 +133,8 @@ export default function CRMPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-12 space-y-2 animate-rise-in stagger-3">
-          <div className="w-16 h-16 rounded-2xl bg-mod-crm-soft flex items-center justify-center mx-auto mb-3">
+        <div className="text-center py-12 space-y-2 slide-up stagger-3">
+          <div className="w-16 h-16 rounded-2xl bg-mod-crm-tint flex items-center justify-center mx-auto mb-3">
             <Users className="w-8 h-8 text-mod-crm" />
           </div>
           <p className="text-muted-foreground text-sm">
@@ -143,15 +142,15 @@ export default function CRMPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2 animate-rise-in stagger-3">
+        <div className="space-y-2 slide-up stagger-3">
           {filtered.map((contact) => (
             <Card
               key={contact.id}
-              className="card-interactive cursor-pointer border-l-4 border-mod-crm"
+              className="card-hover cursor-pointer border-l-4 border-mod-crm"
               onClick={() => setSelected(contact)}
             >
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-mod-crm-soft flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-full bg-mod-crm-tint flex items-center justify-center shrink-0">
                   <span className="text-mod-crm font-semibold">
                     {contact.name[0].toUpperCase()}
                   </span>
@@ -210,7 +209,7 @@ export default function CRMPage() {
       <button
         type="button"
         onClick={() => { setEditContact(null); setContactFormOpen(true); }}
-        className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-crm text-white flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label="Add contact"
       >
         <Plus className="w-6 h-6" />
@@ -489,7 +488,7 @@ function ContactDetail({
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-mod-crm-soft flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-mod-crm-tint flex items-center justify-center">
               <span className="text-mod-crm font-semibold text-sm">{contact.name[0]}</span>
             </div>
             {contact.name}

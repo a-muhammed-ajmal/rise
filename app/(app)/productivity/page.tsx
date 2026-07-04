@@ -378,13 +378,12 @@ export default function ProductivityPage() {
 
   return (
     <div
-      className="p-4 md:p-6 max-w-2xl space-y-4 page-glow"
-      style={{ "--glow-color": "var(--mod-tasks)" } as React.CSSProperties}
+      className="p-4 md:p-6 max-w-2xl space-y-4"
     >
       {/* Header */}
-      <div className="flex items-center justify-between animate-rise-in stagger-1">
+      <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-mod-tasks-soft flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-mod-tasks-tint flex items-center justify-center">
             <Inbox className="w-4 h-4 text-mod-tasks" />
           </div>
           Tasks
@@ -402,7 +401,7 @@ export default function ProductivityPage() {
           <Button
             onClick={() => setNewOpen(true)}
             size="sm"
-            className="gap-1.5 bg-mod-tasks hover:bg-mod-tasks/90 text-white"
+            className="gap-1.5"
           >
             <Plus className="w-4 h-4" />
             Add Task
@@ -411,7 +410,7 @@ export default function ProductivityPage() {
       </div>
 
       {/* Tabs — Today first */}
-      <div className="animate-rise-in stagger-2">
+      <div className="slide-up stagger-2">
         <Tabs value={filter} onValueChange={(v) => { setFilter(v as Filter); setSelectedProject(null); setBulkMode(false); setSelectedIds(new Set()); }}>
           <TabsList className="w-full">
             <TabsTrigger value="today" className="flex-1 gap-1.5">
@@ -432,19 +431,19 @@ export default function ProductivityPage() {
 
       {/* Toolbar strip */}
       {showTaskList && !loading && tasks.length > 0 && (
-        <div className="animate-rise-in stagger-2">{toolbarStrip}</div>
+        <div className="slide-up stagger-2">{toolbarStrip}</div>
       )}
 
       {/* Projects list */}
       {filter === "projects" && !selectedProject && (
-        <div className="space-y-2 animate-rise-in stagger-3">
+        <div className="space-y-2 slide-up stagger-3">
           {projectsLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-5 h-5 animate-spin text-mod-tasks" />
             </div>
           ) : projects.length === 0 ? (
             <div className="text-center py-12 space-y-2">
-              <div className="w-16 h-16 rounded-2xl bg-mod-tasks-soft flex items-center justify-center mx-auto mb-3">
+              <div className="w-16 h-16 rounded-2xl bg-mod-tasks-tint flex items-center justify-center mx-auto mb-3">
                 <FolderOpen className="w-8 h-8 text-mod-tasks" />
               </div>
               <p className="text-muted-foreground text-sm">No projects yet.</p>
@@ -460,7 +459,7 @@ export default function ProductivityPage() {
             projects.map((project) => (
               <Card
                 key={project.id}
-                className="card-interactive cursor-pointer"
+                className="card-hover cursor-pointer"
                 onClick={() => setSelectedProject(project)}
               >
                 <CardContent className="p-4 flex items-center gap-3">
@@ -503,7 +502,7 @@ export default function ProductivityPage() {
 
       {/* Project drill-down header */}
       {filter === "projects" && selectedProject && (
-        <div className="flex items-center gap-2 animate-rise-in">
+        <div className="flex items-center gap-2 slide-up">
           <button
             type="button"
             onClick={() => setSelectedProject(null)}
@@ -519,7 +518,7 @@ export default function ProductivityPage() {
           <Button
             size="sm"
             onClick={() => setNewOpen(true)}
-            className="ml-auto gap-1.5 bg-mod-tasks hover:bg-mod-tasks/90 text-white"
+            className="ml-auto gap-1.5"
           >
             <Plus className="w-4 h-4" /> Add Task
           </Button>
@@ -533,8 +532,8 @@ export default function ProductivityPage() {
             <Loader2 className="w-6 h-6 animate-spin text-mod-tasks" />
           </div>
         ) : tasks.length === 0 ? (
-          <div className="text-center py-16 space-y-2 animate-rise-in">
-            <div className="w-16 h-16 rounded-2xl bg-mod-tasks-soft flex items-center justify-center mx-auto mb-3">
+          <div className="text-center py-16 space-y-2 slide-up">
+            <div className="w-16 h-16 rounded-2xl bg-mod-tasks-tint flex items-center justify-center mx-auto mb-3">
               {filter === "completed" ? (
                 <CheckCircle2 className="w-8 h-8 text-mod-tasks" />
               ) : (
@@ -554,7 +553,7 @@ export default function ProductivityPage() {
             )}
           </div>
         ) : view === "calendar" ? (
-          <div className="animate-rise-in stagger-3">
+          <div className="slide-up stagger-3">
             <TaskCalendar
               tasks={processedTasks}
               onComplete={completeTask}
@@ -566,7 +565,7 @@ export default function ProductivityPage() {
             />
           </div>
         ) : (
-          <div className="animate-rise-in stagger-3 space-y-4">
+          <div className="slide-up stagger-3 space-y-4">
             {/* Today Focus section (starred) */}
             {filter === "today" && starredTodayTasks.length > 0 && (
               <div className="space-y-2">
@@ -644,7 +643,7 @@ export default function ProductivityPage() {
             setQuickAddOpen(true);
           }
         }}
-        className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-tasks text-white flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label="Add task"
       >
         <Plus className="w-6 h-6" />

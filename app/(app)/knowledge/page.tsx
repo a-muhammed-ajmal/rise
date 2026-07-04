@@ -113,12 +113,11 @@ export default function KnowledgePage() {
 
   return (
     <div
-      className="p-4 md:p-6 max-w-2xl space-y-4 page-glow"
-      style={{ "--glow-color": "var(--mod-knowledge)" } as React.CSSProperties}
+      className="p-4 md:p-6 max-w-2xl space-y-4"
     >
-      <div className="flex items-center justify-between animate-rise-in stagger-1">
+      <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-mod-knowledge-soft flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-mod-knowledge-tint flex items-center justify-center">
             <BookOpen className="w-4 h-4 text-mod-knowledge" />
           </div>
           Knowledge
@@ -135,14 +134,14 @@ export default function KnowledgePage() {
           <Button
             size="sm"
             onClick={() => { setEditNote(null); setNoteOpen(true); }}
-            className="gap-1.5 bg-mod-knowledge hover:bg-mod-knowledge/90 text-white"
+            className="gap-1.5"
           >
             <Plus className="w-4 h-4" /> Note
           </Button>
         </div>
       </div>
 
-      <div className="relative animate-rise-in stagger-2">
+      <div className="relative slide-up stagger-2">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Search notes, links…"
@@ -164,10 +163,10 @@ export default function KnowledgePage() {
       </Tabs>
 
       {tab === "notes" && (
-        <div className="space-y-3 animate-rise-in stagger-3">
+        <div className="space-y-3 slide-up stagger-3">
           {filteredNotes.length === 0 ? (
             <div className="text-center py-12 space-y-2">
-              <div className="w-16 h-16 rounded-2xl bg-mod-knowledge-soft flex items-center justify-center mx-auto mb-3">
+              <div className="w-16 h-16 rounded-2xl bg-mod-knowledge-tint flex items-center justify-center mx-auto mb-3">
                 <StickyNote className="w-8 h-8 text-mod-knowledge" />
               </div>
               <p className="text-muted-foreground text-sm">
@@ -176,7 +175,7 @@ export default function KnowledgePage() {
             </div>
           ) : (
             filteredNotes.map((note) => (
-              <Card key={note.id} className="card-interactive group border-l-4 border-mod-knowledge">
+              <Card key={note.id} className="card-hover group border-l-4 border-mod-knowledge">
                 <CardContent className="p-4 space-y-2">
                   <div className="flex justify-between items-start gap-2">
                     <p
@@ -222,10 +221,10 @@ export default function KnowledgePage() {
       )}
 
       {tab === "links" && (
-        <div className="space-y-2 animate-rise-in stagger-3">
+        <div className="space-y-2 slide-up stagger-3">
           {filteredLinks.length === 0 ? (
             <div className="text-center py-12 space-y-2">
-              <div className="w-16 h-16 rounded-2xl bg-mod-knowledge-soft flex items-center justify-center mx-auto mb-3">
+              <div className="w-16 h-16 rounded-2xl bg-mod-knowledge-tint flex items-center justify-center mx-auto mb-3">
                 <LinkIcon className="w-8 h-8 text-mod-knowledge" />
               </div>
               <p className="text-muted-foreground text-sm">
@@ -234,9 +233,9 @@ export default function KnowledgePage() {
             </div>
           ) : (
             filteredLinks.map((link) => (
-              <Card key={link.id} className="card-interactive group">
+              <Card key={link.id} className="card-hover group">
                 <CardContent className="p-4 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded bg-mod-knowledge-soft flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-8 h-8 rounded bg-mod-knowledge-tint flex items-center justify-center shrink-0 mt-0.5">
                     <LinkIcon className="w-4 h-4 text-mod-knowledge" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -291,7 +290,7 @@ export default function KnowledgePage() {
       <button
         type="button"
         onClick={() => { setEditNote(null); setNoteOpen(true); }}
-        className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-knowledge text-white flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label="Add note"
       >
         <Plus className="w-6 h-6" />

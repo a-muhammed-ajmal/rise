@@ -34,14 +34,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 const MODULES = [
-  { href: "/productivity", label: "Productivity", description: "Tasks, projects, kanban",          icon: CheckSquare, iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-soft" },
-  { href: "/finance",      label: "Finance",      description: "Transactions, budgets, wallets",   icon: DollarSign,  iconCls: "text-mod-finance",  bgCls: "bg-mod-finance-soft" },
-  { href: "/wellness",     label: "Wellness",     description: "Habits, streaks, focus timer",     icon: Heart,       iconCls: "text-mod-wellness", bgCls: "bg-mod-wellness-soft" },
-  { href: "/goals",        label: "Goals",        description: "Goals, milestones, journal",       icon: Target,      iconCls: "text-mod-goals",    bgCls: "bg-mod-goals-soft" },
-  { href: "/crm",          label: "CRM",          description: "Contacts, pipeline, interactions", icon: Users,       iconCls: "text-mod-crm",      bgCls: "bg-mod-crm-soft" },
-  { href: "/knowledge",    label: "Knowledge",    description: "Notes, links, documents",          icon: BookOpen,    iconCls: "text-violet-500",   bgCls: "bg-violet-50 dark:bg-violet-950/30" },
-  { href: "/assistant",    label: "AI Assistant", description: "Gemini chat with tool access",     icon: Sparkles,    iconCls: "text-mod-ai",       bgCls: "bg-mod-ai-soft" },
-  { href: "/analytics",    label: "Analytics",    description: "Charts across all modules",        icon: BarChart2,   iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-soft" },
+  { href: "/productivity", label: "Productivity", description: "Tasks, projects, kanban",          icon: CheckSquare, iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-tint" },
+  { href: "/finance",      label: "Finance",      description: "Transactions, budgets, wallets",   icon: DollarSign,  iconCls: "text-mod-finance",  bgCls: "bg-mod-finance-tint" },
+  { href: "/wellness",     label: "Wellness",     description: "Habits, streaks, focus timer",     icon: Heart,       iconCls: "text-mod-wellness", bgCls: "bg-mod-wellness-tint" },
+  { href: "/goals",        label: "Goals",        description: "Goals, milestones, journal",       icon: Target,      iconCls: "text-mod-goals",    bgCls: "bg-mod-goals-tint" },
+  { href: "/crm",          label: "CRM",          description: "Contacts, pipeline, interactions", icon: Users,       iconCls: "text-mod-crm",      bgCls: "bg-mod-crm-tint" },
+  { href: "/knowledge",    label: "Knowledge",    description: "Notes, links, documents",          icon: BookOpen,    iconCls: "text-mod-knowledge", bgCls: "bg-mod-knowledge-tint" },
+  { href: "/assistant",    label: "AI Assistant", description: "Gemini chat with tool access",     icon: Sparkles,    iconCls: "text-brand-text",       bgCls: "bg-brand-tint" },
+  { href: "/analytics",    label: "Analytics",    description: "Charts across all modules",        icon: BarChart2,   iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-tint" },
 ] as const;
 
 export default function SettingsPage() {
@@ -113,7 +113,7 @@ export default function SettingsPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl space-y-6">
-      <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2 animate-rise-in stagger-1">
+      <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2 slide-up stagger-1">
         <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
           <Settings className="w-4 h-4 text-muted-foreground" />
         </div>
@@ -121,7 +121,7 @@ export default function SettingsPage() {
       </h1>
 
       {/* Account */}
-      <Card className="animate-rise-in stagger-2">
+      <Card className="slide-up stagger-2">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <User className="w-4 h-4" /> Account
@@ -150,7 +150,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Preferences */}
-      <Card className="animate-rise-in stagger-3">
+      <Card className="slide-up stagger-3">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Palette className="w-4 h-4" /> Preferences
@@ -193,7 +193,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Data */}
-      <Card className="animate-rise-in stagger-4">
+      <Card className="slide-up stagger-4">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Download className="w-4 h-4" /> Data
@@ -217,7 +217,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Notifications */}
-      <Card className="animate-rise-in stagger-4">
+      <Card className="slide-up stagger-4">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Bell className="w-4 h-4" /> Notifications
@@ -269,7 +269,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* AI Safety */}
-      <Card className="animate-rise-in stagger-4">
+      <Card className="slide-up stagger-4">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Shield className="w-4 h-4" /> AI Safety
@@ -284,7 +284,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Modules */}
-      <Card className="animate-rise-in stagger-5">
+      <Card className="slide-up stagger-4">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Settings className="w-4 h-4" /> Modules
@@ -315,7 +315,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* About */}
-      <Card className="animate-rise-in stagger-5">
+      <Card className="slide-up stagger-4">
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Info className="w-4 h-4" /> About RISE
@@ -344,7 +344,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-center text-muted-foreground animate-rise-in stagger-5 pb-2">
+      <p className="text-xs text-center text-muted-foreground slide-up stagger-4 pb-2">
         RISE v0.1.0 — Personal OS
       </p>
     </div>

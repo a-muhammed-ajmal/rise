@@ -12,9 +12,9 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const INCOME_COLOR = "#34D399"   // --color-success Green — income is positive
-const EXPENSE_COLOR = "#F87171"  // --color-danger Red — expense is negative
-const PIE_COLORS = ["#60A5FA", "#34D399", "#FBBF24", "#F472B6", "#A78BFA", "#94A3B8"]
+const INCOME_COLOR = "#10B981"   // --color-success Green — income is positive
+const EXPENSE_COLOR = "#E11D48"  // --color-danger Crimson — expense is negative
+const PIE_COLORS = ["#2563EB", "#059669", "#F59E0B", "#7C3AED", "#0891B2", "#9CA3AF"]
 
 const tooltipStyle = {
   backgroundColor: "var(--card)",

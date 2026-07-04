@@ -193,10 +193,10 @@ export default function WellnessPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl space-y-4 page-glow [--glow-color:var(--mod-wellness)]">
-      <div className="flex items-center justify-between animate-rise-in stagger-1">
+    <div className="p-4 md:p-6 max-w-2xl space-y-4">
+      <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-mod-wellness-soft flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-mod-wellness-tint flex items-center justify-center">
             <Heart className="w-4 h-4 text-mod-wellness" />
           </div>
           Wellness
@@ -208,7 +208,7 @@ export default function WellnessPage() {
           <Button
             size="sm"
             onClick={() => { setEditHabit(null); setHabitDialogOpen(true); }}
-            className="gap-1.5 bg-mod-wellness hover:bg-mod-wellness/90 text-white"
+            className="gap-1.5"
           >
             <Plus className="w-4 h-4" /> Habit
           </Button>
@@ -216,7 +216,7 @@ export default function WellnessPage() {
       </div>
 
       {todayHabits.length > 0 && (
-        <Card className="animate-rise-in stagger-2 border-t-4 border-mod-wellness">
+        <Card className="slide-up stagger-2 border-t-4 border-mod-wellness">
           <CardContent className="p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="font-medium">Today&apos;s habits</span>
@@ -230,10 +230,10 @@ export default function WellnessPage() {
         </Card>
       )}
 
-      <div className="space-y-2 animate-rise-in stagger-3">
+      <div className="space-y-2 slide-up stagger-3">
         {habits.length === 0 ? (
           <div className="text-center py-12 space-y-2">
-            <div className="w-16 h-16 rounded-2xl bg-mod-wellness-soft flex items-center justify-center mx-auto mb-3">
+            <div className="w-16 h-16 rounded-2xl bg-mod-wellness-tint flex items-center justify-center mx-auto mb-3">
               <Heart className="w-8 h-8 text-mod-wellness" />
             </div>
             <p className="text-muted-foreground text-sm">No habits yet. Add one to get started.</p>
@@ -248,9 +248,9 @@ export default function WellnessPage() {
 
             const cardBorderClass =
               markState === "done"
-                ? "border-[var(--color-success)]/25 bg-[var(--color-success-soft)]"
+                ? "border-[var(--color-success)]/25 bg-[var(--color-success-tint)]"
                 : markState === "notDone"
-                  ? "border-[var(--color-danger)]/25 bg-[var(--color-danger-soft)]"
+                  ? "border-[var(--color-danger)]/25 bg-[var(--color-danger-tint)]"
                   : "";
 
             const cardLeftBorder =
@@ -261,7 +261,7 @@ export default function WellnessPage() {
                   : "border-l-[3px] border-l-mod-wellness";
 
             return (
-              <Card key={habit.id} className={`card-interactive ${cardBorderClass} ${cardLeftBorder}`}>
+              <Card key={habit.id} className={`card-hover ${cardBorderClass} ${cardLeftBorder}`}>
                 <CardContent className="p-4 flex items-center gap-3">
                   <div
                     className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
@@ -270,7 +270,7 @@ export default function WellnessPage() {
                     <div className="flex items-center gap-2">
                       <div
                         className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: habit.color ?? "var(--accent-primary)" }}
+                        style={{ backgroundColor: habit.color ?? "var(--brand)" }}
                       />
                       <span className="text-sm font-medium truncate">{habit.name}</span>
                     </div>
@@ -295,7 +295,7 @@ export default function WellnessPage() {
                         <button
                           type="button"
                           onClick={() => markDone(habit.id)}
-                          className="w-7 h-7 rounded-full border-2 border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-soft)] active:scale-95"
+                          className="w-7 h-7 rounded-full border-2 border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-tint)] active:scale-95"
                           aria-label="Mark done"
                         >
                           <Check className="w-3.5 h-3.5" />
@@ -303,7 +303,7 @@ export default function WellnessPage() {
                         <button
                           type="button"
                           onClick={() => markNotDone(habit.id)}
-                          className="w-7 h-7 rounded-full border-2 border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-soft)] active:scale-95"
+                          className="w-7 h-7 rounded-full border-2 border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-tint)] active:scale-95"
                           aria-label="Mark not done"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -370,7 +370,7 @@ export default function WellnessPage() {
       <button
         type="button"
         onClick={() => { setEditHabit(null); setHabitDialogOpen(true); }}
-        className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-wellness text-white flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label="Add habit"
       >
         <Plus className="w-6 h-6" />
@@ -556,7 +556,7 @@ function HabitDialog({
                       onClick={() => toggleDay(dow)}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         targetDays.includes(dow)
-                          ? "bg-mod-wellness text-white"
+                          ? "bg-brand text-white"
                           : "bg-accent text-accent-foreground"
                       }`}
                     >
@@ -721,7 +721,7 @@ function FocusTimerDialog({
                   key={m}
                   type="button"
                   onClick={() => { setMinutes(m); setSecondsLeft(m * 60); }}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${minutes === m ? "bg-mod-wellness text-white" : "bg-accent"}`}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${minutes === m ? "bg-brand text-white" : "bg-accent"}`}
                 >
                   {m}m
                 </button>

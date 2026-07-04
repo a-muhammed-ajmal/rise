@@ -11,16 +11,16 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const CRM_COLOR = "#F97316"   // --mod-crm Orange
+const CRM_COLOR = "#0891B2"   // --mod-crm (Cyan)
 const STAGE_COLORS: Record<string, string> = {
-  new:         "#94A3B8",
-  qualified:   "#60A5FA",
-  proposal:    "#A78BFA",
-  negotiation: "#FBBF24",
-  won:         "#34D399",
-  lost:        "#F87171",
+  new:         "#9CA3AF",
+  qualified:   "#3B82F6",
+  proposal:    "#F59E0B",
+  negotiation: "#D97706",
+  won:         "#10B981",
+  lost:        "#E11D48",
 }
-const TYPE_COLORS = ["#60A5FA", "#34D399", "#FBBF24", "#F472B6", "#A78BFA"]
+const TYPE_COLORS = ["#0891B2", "#059669", "#F59E0B", "#7C3AED", "#2563EB"]
 
 const tooltipStyle = {
   backgroundColor: "var(--card)",

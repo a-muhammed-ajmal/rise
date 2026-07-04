@@ -41,7 +41,7 @@ export function SWUpdateToast() {
   return (
     <div
       role="status"
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 glass-surface border border-primary/20 rounded-xl px-4 py-3 flex items-center gap-3 shadow-lg"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-card border-[1.5px] border-primary/20 rounded-xl px-4 py-3 flex items-center gap-3 shadow-popup"
     >
       <RefreshCw className="h-4 w-4 text-primary shrink-0" />
       <span className="text-sm text-foreground">Update available</span>

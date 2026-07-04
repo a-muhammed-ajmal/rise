@@ -13,7 +13,7 @@ Living specification for the RISE codebase. Describes what is currently implemen
 | Migrations | 12 (001–012) |
 | DB tables | 22 (21 core + push_subscriptions) |
 | AI tools | 58 AUTO + 17 APPROVAL = 75 total |
-| Last feature shipped | Phase 9 — Payment methods / wallets (2026-07-01) |
+| Last feature shipped | Phase 10 — Light-first orange design system (2026-07-04) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -68,53 +68,57 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 ## Visual Requirements
 
+> Full system: `.claude/skills/frontend-design/` (SKILL.md + AGENT_PROMPT.md + assets/tokens.css). Light-first orange brand; Inter-only type.
+
 ### Typography
 
-- Font families: **Lexend** (headings/display — 500 default, 600 max, 700+ banned), **IBM Plex Sans** (body/UI), **JetBrains Mono** (data/metrics). Loaded via `next/font/google`; CSS vars `--font-lexend`, `--font-jetbrains-mono`.
-- Type scale: fluid utilities `text-step--1` through `text-step-4`, plus RISE spec utilities `text-display` (22–26px, greeting only), `text-h1` (16–18px), `text-h2` (15px), `text-body` (14px), `text-label` (12px), `text-micro` (11px), `text-metric` (20–26px mono). All in `app/globals.css`.
-- Headings h1–h6: `font-family: var(--font-lexend)`, `font-weight: 500` (`--weight-heading-default`). `font-semibold` (600) is the exception ceiling; `font-bold` (700) is banned everywhere.
-- Metric numbers: JetBrains Mono, `font-weight: 500`, `font-variant-numeric: tabular-nums`.
+- **Single typeface: Inter** (400/500/600/700/800), loaded via `next/font/google`; CSS var `--font-inter`. No other font family — `--font-sans`, `--font-heading`, `--font-display`, and `--font-mono` all resolve to Inter.
+- Fixed type scale utilities in `app/globals.css`: `text-display` (24px, greeting), `text-h1` (20px page titles, weight 700), `text-h2` (16px card titles, 600), `text-body` (14px), `text-label` (12px), `text-micro` (11px floor), `text-metric` (24px, tabular-nums). No fluid `clamp()` scaling.
+- Headings: h1 = 700 / −0.02em; h2–h6 = 600 / −0.02em. `font-bold` (700) and `font-extrabold` (800) are permitted per the Inter weight ladder.
+- Eyebrow labels: 11px / 700 / +0.15em uppercase, brand orange (`.eyebrow`).
 
 ### Color system
 
-- **AI accent**: `--accent-primary: #7C5CFC` (purple — AI-active state only, max 10% of UI surface).
-- **Surface elevation (dark mode, 4 levels)**: `--surface-base: #0E0E11` → `--surface-1: #17171C` → `--surface-2: #1F1F27` → `--surface-overlay: #2A2A35`. Never use a single flat dark shade.
-- **Text**: `--text-primary: #E8E8F0`, `--text-secondary: #8E8EA0`, `--text-muted: #52525E`. Never use `#000000` or `#FFFFFF` directly.
-- **Borders**: `--border-subtle: rgba(255,255,255,0.06)`, `--border-active: rgba(124,92,252,0.4)`.
-- Module accent tokens (each has a `-soft` translucent variant; same hex in light and dark):
+- **Brand**: `--brand: #FF6535` (primary CTA, accents, focus), `--brand-hover: #FF8159`, `--brand-text: #D6450F` (orange text on white, AA 4.5:1), `--brand-tint: #FFF0EB` (chips/badges).
+- **Light-first surfaces**: `--surface-base: #FFFFFF`, `--surface-paper: #F9FAFB`, `--surface-dark: #1A1A2E` (navy, inverted sections), `--surface-footer: #0B1120`.
+- **Text**: `--text-strong: #1A1A2E`, `--text-body: navy/70`, `--text-muted: navy/50`.
+- **Borders — always visible at rest**: cards `1.5px rgba(26,26,46,0.16)`, inputs `1.5px rgba(26,26,46,0.18)`, hover/focus `rgba(255,101,53,0.50)` / `--border-focus: #FF6535`. Nothing borderless.
+- **Status**: success `#10B981`, danger `#E11D48`, warning `#F59E0B` (each with a `-tint` background). Priority: P1 `#EF4444`, P2 `#FF6535`, P3 `#3B82F6`, P4 `#9CA3AF`.
+- Module accent tokens (text/icon color + `-tint` background; tints for badges/chips, solid for icons/labels — never button fills):
 
-| Module | Token | Hex |
-| --- | --- | --- |
-| Tasks | `mod-tasks` | `#34D399` |
-| Finance | `mod-finance` | `#60A5FA` |
-| Wellness | `mod-wellness` | `#FBBF24` |
-| Goals | `mod-goals` | `#F472B6` |
-| Knowledge | `mod-knowledge` | `#94A3B8` |
-| CRM | `mod-crm` | `#A78BFA` |
-| AI | `mod-ai` | `#7C5CFC` |
+| Module | Token | Text/icon | Tint |
+| --- | --- | --- | --- |
+| Tasks | `mod-tasks` | `#2563EB` | `#EFF6FF` |
+| Finance | `mod-finance` | `#059669` | `#ECFDF5` |
+| Wellness | `mod-wellness` | `#BE123C` | `#FFF1F2` |
+| Goals | `mod-goals` | `#7C3AED` | `#F5F3FF` |
+| Knowledge | `mod-knowledge` | `#D97706` | `#FFFBEB` |
+| CRM | `mod-crm` | `#0891B2` | `#ECFEFF` |
 
-- Dark mode: `.dark` class on `<html>`, toggled via `lib/hooks/use-theme.tsx`. Preference persisted to `localStorage` key `rise-theme`; falls back to `prefers-color-scheme`.
+- **AI has no module token** — `mod-ai` is retired; AI surfaces inherit `--brand` / `--brand-tint` and use the standard card treatment (no glassmorphism). AI-active state: orange `brand-pulse` glow (`--shadow-brand`).
+- **Graph-paper background** (brand signature): `.graph-bg` navy grid on light, orange grid on dark, 40×40px — applied to the app shell `<main>` and login.
+- Dark mode: opt-in `.dark` class on `<html>`, toggled via `lib/hooks/use-theme.tsx`, persisted to `localStorage` key `rise-theme`; falls back to `prefers-color-scheme`. Navy family (`#0B1120` / `#1A1A2E`) with orange borders — light mode is the default.
 
 ### Animation system
 
-- Entry: `animate-rise-in` — 600ms ease-out fade + 12px Y translate.
-- Stagger delays: `.stagger-1` (0ms) through `.stagger-6` (300ms, 60ms increments).
-- Reduced motion: `@media (prefers-reduced-motion: reduce)` collapses all durations to `0.01ms`.
-- Motion tokens: `--dur-fast` (120ms), `--dur-normal` (220ms), `--dur-slow` (400ms), `--dur-reveal` (600ms).
-- Touch feedback: `.tappable` applies `scale(0.96)` on `:active`; every interactive element must have an `:active` state (hover alone is insufficient on touch).
-- Glassmorphism: `.glass-chrome` for structural chrome (nav, headers); `.glass-ai` for AI bubbles. Never on content cards.
+- Entry: `.slide-up` — 350ms `--ease-out` fade + 16px Y translate. Stagger: `.stagger-1`–`.stagger-4` (0.08s increments).
+- Motion tokens: `--dur-instant` (80ms), `--dur-fast` (150ms), `--dur-normal` (250ms), `--dur-enter` (350ms), `--dur-slow` (400ms). Easing: `--ease-out`, `--ease-spring`, `--ease-smooth`, `--ease-exit`.
+- Animate `transform` and `opacity` only; reduced motion collapses all durations to `0.01ms`.
+- Touch feedback: `.tappable` scales to 0.96 on `:active`; every `:hover` is paired with an `:active` state (hover alone is insufficient on touch).
+- Interactive cards: `.card-hover` — orange top-bar wipe, `translateY(-1px)` lift, orange border on hover.
+- Glass blur is permitted only on structural chrome (bottom nav, topbar); never on content cards or AI bubbles.
 
 ### Layout / responsive
 
-- Breakpoint: `md` (768px). Below → `BottomNav` 5-slot `[Home][Tasks][AI-FAB][Finance][More]` with glassmorphic chrome; center AI FAB routes to `/assistant` and protrudes above the nav bar. Above → `Sidebar` (sticky, 64px collapsed / 224px expanded, all 10 nav items).
+- Breakpoint: `md` (768px), the only breakpoint. Below → `BottomNav` 5-slot `[Home][Tasks][AI-FAB][Finance][More]`; center AI FAB (brand orange, `--shadow-brand`) routes to `/assistant` and protrudes above the nav bar. Above → `Sidebar` (sticky, 64px collapsed / 224px expanded, all 10 nav items).
 - "More" overflow sheet (shadcn `Sheet`, `side="bottom"`) exposes Wellness, Goals, Analytics, Knowledge, CRM, Settings in a 3×2 grid.
-- Cards: `--radius: 1rem` (16px). Interactive cards use `.card-interactive` hover-lift class.
-- Touch targets: minimum 44×44px on every tappable element.
-- Floating actions: `.fab` utility with shadow + spring hover.
+- Radii: buttons 4px, inputs 8px, cards 12px, panels/sheets 16px, pills 9999px.
+- Touch targets: minimum 44×44px on every tappable element; buttons default to 44px height.
+- Floating actions: brand-orange circles with `--shadow-brand`, hover lift, `active:scale-95`.
 
 ### Accessibility
 
-- Focus ring: 2px solid `var(--color-focus)` at 2px offset on `:focus-visible`.
+- Focus ring: 2px solid `var(--border-focus)` at 2px offset on `:focus-visible`.
 - All destructive actions gated behind `<ConfirmDialog>` — never `window.confirm`.
 
 ---
@@ -326,6 +330,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 | 2026-06-30 | Multimodal chat attachments added (migration 008) | `chat-attachments` Supabase Storage bucket created; `ChatAttachment` type defined in `lib/types/database.ts`; image download and injection wired into `/api/ai/chat` for Gemini vision. |
 | 2026-07-01 | `reminder_time` column added to `habits` table (migration 009) | Enables time-based habit reminders. Stored as `"HH:MM:SS"` or `null`. Habit cards and form overhauled; cards now sort by `reminder_time` ascending, nulls last. |
 | 2026-07-01 | `payment_methods` table added (migrations 010, 011) | Wallet/balance tracking for the finance module. `transactions` extended with `payment_method_id`, `from_payment_method_id`, `to_payment_method_id` FK columns and two new types: `transfer` and `adjustment`. |
+| 2026-07-04 | Light-first orange design system replaces the Phase 5 dark-first system app-wide | Dark/purple/Lexend cockpit aesthetic → light/orange/Inter. Inter is the single typeface (`font-bold` 700 and weight 800 now permitted). Brand `#FF6535` with visible-border standard and graph-paper signature. Two resolved decisions: (1) AI elements folded into the standard card treatment — glassmorphism removed, `aiPulse`/`glow-pulse` recolored to an orange `brand-pulse` built on `--shadow-brand`, `mod-ai` retired in favour of `--brand`/`--brand-tint`; (2) module accent tokens kept as light-mode text+tint pairs (`--mod-*` / `--mod-*-tint`): Tasks `#2563EB`/`#EFF6FF`, Finance `#059669`/`#ECFDF5`, Wellness `#BE123C`/`#FFF1F2`, Goals `#7C3AED`/`#F5F3FF`, Knowledge `#D97706`/`#FFFBEB`, CRM `#0891B2`/`#ECFEFF`. Dark mode retained as an opt-in navy-family theme (`#0B1120`/`#1A1A2E`, orange borders) — light is the default. |
 
 ---
 
@@ -357,3 +362,4 @@ Candidate areas (not prioritized):
 | 7 | AI tools expansion to full CRUD + multimodal chat | 2026-06-30 | `lib/ai/tools.ts` (58 AUTO + 17 APPROVAL = 75 tools), `lib/ai/execute-tool.ts` (handlers for all new tools), `supabase/migrations/008_chat_attachments.sql` (chat-attachments bucket), `lib/types/database.ts` (ChatAttachment types), `app/api/ai/chat/route.ts` (image download + Gemini vision injection) |
 | 8 | Habit UX overhaul + reminder_time | 2026-07-01 | `supabase/migrations/009_habit_reminder_time.sql` (adds `reminder_time` column), `lib/types/database.ts` (HabitRow updated), `app/(app)/wellness/page.tsx` (form overhaul, card marking, streak logic, sort by reminder_time) |
 | 9 | Payment methods / wallets | 2026-07-01 | `supabase/migrations/010_payment_methods.sql`, `011_fix_payment_methods.sql`, `lib/types/database.ts` (PaymentMethodRow, TransactionRow with transfer/adjustment types + FK columns), `app/(app)/finance/` (wallet cards, live balance tracking) |
+| 10 | Light-first orange design system | 2026-07-04 | `app/globals.css` (full token rewrite: brand/module/status/priority tokens, navy dark mode, `.card`/`.card-hover`, `brand-pulse`, graph-paper), `app/layout.tsx` (viewport theme colors), `app/(app)/layout.tsx` (graph-bg shell), `components/ui/` (button/card/input/textarea/badge/tabs/dialog/sheet — 4/8/12/16px radii, 1.5px borders, 44px buttons, bold CTAs), `components/layout/` (sidebar/topbar/bottom-nav), all 8 module pages + dashboard + login (slide-up/stagger/card-hover/mod-tint swaps, page-glow and glassmorphism removed), `components/assistant/` (card-style bubbles, orange recording pulse), `components/analytics/` (6 chart palettes), `.claude/skills/frontend-design/` (module token table, AI resolution, tokens.css Inter-only mono) |

@@ -59,13 +59,13 @@ function NavItem({
       href={href}
       className={cn(
         "bottom-nav__item relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[44px] tappable",
-        active ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)]",
+        active ? "text-brand-text" : "text-[var(--text-muted)]",
       )}
     >
       {active && (
         <span
           aria-hidden="true"
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[var(--accent-primary)]"
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-brand"
         />
       )}
       <Icon className={cn("w-5 h-5", active && "scale-110")} />
@@ -114,7 +114,7 @@ export function BottomNav() {
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
-          className="bottom-nav__item flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[44px] tappable text-[var(--text-secondary)]"
+          className="bottom-nav__item flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[44px] tappable text-[var(--text-muted)]"
         >
           <MoreHorizontal className="w-5 h-5" />
           <span>More</span>
@@ -124,7 +124,7 @@ export function BottomNav() {
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="bottom" className="nav-drawer h-auto">
           <SheetHeader className="mb-4">
-            <SheetTitle className="text-[length:var(--text-label)] font-medium text-[var(--text-secondary)]">
+            <SheetTitle className="text-[length:var(--text-label)] font-medium text-[var(--text-muted)]">
               All Modules
             </SheetTitle>
           </SheetHeader>

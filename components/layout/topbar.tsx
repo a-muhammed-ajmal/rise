@@ -33,7 +33,7 @@ export function Topbar({ email }: TopbarProps) {
   const initials = email ? email[0].toUpperCase() : "?";
 
   return (
-    <header className="h-16 border-b border-border bg-card/80 glass-surface flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
+    <header className="h-16 border-b border-border bg-background/90 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
       {/* Mobile logo */}
       <Link href="/" className="flex items-center gap-2 md:hidden group">
         <Image
@@ -54,7 +54,7 @@ export function Topbar({ email }: TopbarProps) {
         <button
           type="button"
           onClick={toggle}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+          className="h-10 w-10 inline-flex items-center justify-center rounded-md border-[1.5px] border-border hover:border-[rgba(255,101,53,0.50)] hover:bg-accent active:scale-95 transition-all"
           aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
           {theme === "dark" ? (

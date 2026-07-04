@@ -15,11 +15,11 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex flex-col w-16 lg:w-56 h-dvh border-r border-border bg-card/80 glass-surface sticky top-0 shrink-0">
+    <aside className="hidden md:flex flex-col w-16 lg:w-56 h-dvh border-r border-sidebar-border bg-sidebar sticky top-0 shrink-0">
       {/* Logo */}
       <div className="h-16 flex items-center justify-center lg:justify-start lg:px-4 border-b border-border">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-mod-ai flex items-center justify-center shrink-0 shadow-sm transition-transform duration-200 group-hover:scale-105">
+          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center shrink-0 shadow-brand transition-transform duration-200 group-hover:scale-105">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <span className="hidden lg:block font-heading font-semibold text-lg tracking-tight">
@@ -42,7 +42,7 @@ export function Sidebar() {
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 w-full",
                       active
-                        ? "bg-primary/10 text-primary shadow-[inset_2px_0_0_var(--accent-primary)]"
+                        ? "bg-brand-tint text-brand-text shadow-[inset_2px_0_0_var(--brand)]"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                     )}
                   />

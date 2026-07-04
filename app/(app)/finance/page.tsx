@@ -356,13 +356,12 @@ export default function FinancePage() {
 
   return (
     <div
-      className="p-4 md:p-6 max-w-2xl space-y-4 page-glow"
-      style={{ "--glow-color": "var(--mod-finance)" } as React.CSSProperties}
+      className="p-4 md:p-6 max-w-2xl space-y-4"
     >
       {/* Header */}
-      <div className="flex items-center justify-between animate-rise-in stagger-1">
+      <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-mod-finance-soft flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-mod-finance-tint flex items-center justify-center">
             <DollarSign className="w-4 h-4 text-mod-finance" />
           </div>
           Finance
@@ -383,7 +382,7 @@ export default function FinancePage() {
           </Button>
           <Button
             size="icon"
-            className="h-8 w-8 bg-mod-finance hover:bg-mod-finance/90 text-white"
+            className="h-8 w-8"
             onClick={() => {
               setEditTxn(null);
               setTxnType("expense");
@@ -398,7 +397,7 @@ export default function FinancePage() {
 
       {/* Wallet balance cards — always visible */}
       {activeWallets.length > 0 && (
-        <div className="animate-rise-in stagger-2">
+        <div className="slide-up stagger-2">
           <div className="flex overflow-x-auto gap-2 pb-1 -mx-1 px-1">
             {activeWallets.map((wallet) => (
               <div
@@ -429,7 +428,7 @@ export default function FinancePage() {
               </div>
             ))}
             {/* Total balance tile */}
-            <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-mod-finance/30 bg-mod-finance-soft min-h-[44px]">
+            <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-mod-finance/30 bg-mod-finance-tint min-h-[44px]">
               <Wallet className="w-3.5 h-3.5 text-mod-finance" />
               <div>
                 <p className="text-xs text-muted-foreground leading-none mb-0.5">
@@ -451,7 +450,7 @@ export default function FinancePage() {
       )}
 
       {/* Monthly summary — centered nav + 3-column stat grid */}
-      <div className="animate-rise-in stagger-3 space-y-2.5">
+      <div className="slide-up stagger-3 space-y-2.5">
         <div className="flex items-center justify-center gap-0.5">
           <Button
             size="icon"
@@ -488,7 +487,7 @@ export default function FinancePage() {
           <div
             className={`flex flex-col items-center gap-1 py-3 rounded-xl border ${
               monthlyNet >= 0
-                ? "bg-mod-finance-soft border-mod-finance/30"
+                ? "bg-mod-finance-tint border-mod-finance/30"
                 : "bg-destructive/10 border-destructive/30"
             }`}
           >
@@ -521,7 +520,7 @@ export default function FinancePage() {
       </div>
 
       {/* Tabs */}
-      <div className="animate-rise-in stagger-4">
+      <div className="slide-up stagger-4">
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="w-full overflow-x-auto flex justify-start whitespace-nowrap h-auto p-1 gap-0.5">
             <TabsTrigger value="overview" className="shrink-0 text-xs px-3 py-1.5">
@@ -551,7 +550,7 @@ export default function FinancePage() {
 
       {/* Overview */}
       {tab === "overview" && (
-        <div className="space-y-3 animate-rise-in stagger-4">
+        <div className="space-y-3 slide-up stagger-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Spending by Category</CardTitle>
@@ -593,7 +592,7 @@ export default function FinancePage() {
 
       {/* Transactions */}
       {tab === "transactions" && (
-        <div className="space-y-1 animate-rise-in stagger-4">
+        <div className="space-y-1 slide-up stagger-4">
           {groupedTxns.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground text-sm">
               No transactions in {format(selectedMonth, "MMMM yyyy")}.
@@ -614,8 +613,8 @@ export default function FinancePage() {
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center ${
                             txn.type === "income"
-                              ? "bg-mod-finance-soft"
-                              : "bg-[var(--color-danger-soft)]"
+                              ? "bg-mod-finance-tint"
+                              : "bg-[var(--color-danger-tint)]"
                           }`}
                         >
                           {txn.type === "income" ? (
@@ -682,11 +681,11 @@ export default function FinancePage() {
 
       {/* Transfers */}
       {tab === "transfers" && (
-        <div className="space-y-3 animate-rise-in stagger-4">
+        <div className="space-y-3 slide-up stagger-4">
           <Button
             size="sm"
             onClick={() => setTransferOpen(true)}
-            className="w-full gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
+            className="w-full gap-1.5"
           >
             <ArrowLeftRight className="w-4 h-4" /> New Transfer
           </Button>
@@ -737,14 +736,14 @@ export default function FinancePage() {
 
       {/* Wallets */}
       {tab === "wallets" && (
-        <div className="space-y-3 animate-rise-in stagger-4">
+        <div className="space-y-3 slide-up stagger-4">
           <Button
             size="sm"
             onClick={() => {
               setEditWallet(null);
               setWalletFormOpen(true);
             }}
-            className="w-full gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
+            className="w-full gap-1.5"
           >
             <Plus className="w-4 h-4" /> Add Wallet
           </Button>
@@ -784,14 +783,14 @@ export default function FinancePage() {
 
       {/* Budgets */}
       {tab === "budgets" && (
-        <div className="space-y-3 animate-rise-in stagger-4">
+        <div className="space-y-3 slide-up stagger-4">
           <Button
             size="sm"
             onClick={() => {
               setEditBudget(null);
               setBudgetOpen(true);
             }}
-            className="w-full gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
+            className="w-full gap-1.5"
           >
             <Plus className="w-4 h-4" /> Add Budget
           </Button>
@@ -863,14 +862,14 @@ export default function FinancePage() {
 
       {/* Debts */}
       {tab === "debts" && (
-        <div className="space-y-2 animate-rise-in stagger-4">
+        <div className="space-y-2 slide-up stagger-4">
           <Button
             size="sm"
             onClick={() => {
               setEditDebt(null);
               setDebtOpen(true);
             }}
-            className="w-full gap-1.5 bg-mod-finance hover:bg-mod-finance/90 text-white"
+            className="w-full gap-1.5"
           >
             <Plus className="w-4 h-4" /> Add Debt / Loan
           </Button>
@@ -953,7 +952,7 @@ export default function FinancePage() {
 
       {/* Categories */}
       {tab === "categories" && (
-        <div className="space-y-4 animate-rise-in stagger-4">
+        <div className="space-y-4 slide-up stagger-4">
           {(["expense", "income"] as const).map((catType) => {
             const typeCats = categories.filter((c) => c.type === catType);
             const atLimit = typeCats.length >= 10;
@@ -1102,7 +1101,7 @@ export default function FinancePage() {
           setTxnType("expense");
           setTxnOpen(true);
         }}
-        className="fab fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-mod-finance text-white flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label="Add expense"
       >
         <Plus className="w-6 h-6" />

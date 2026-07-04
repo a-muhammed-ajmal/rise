@@ -12,9 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { X } from "lucide-react";
 
 const COLOR_SWATCHES = [
-  "#7C5CFC",
+  "#FF6535",
   "#10b981",
   "#ef4444",
   "#3b82f6",
@@ -135,7 +136,7 @@ export function WalletForm({
                   className="w-7 h-7 rounded-full border border-border text-muted-foreground text-xs flex items-center justify-center hover:bg-accent"
                   aria-label="Clear color"
                 >
-                  ✕
+                  <X className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               )}
             </div>

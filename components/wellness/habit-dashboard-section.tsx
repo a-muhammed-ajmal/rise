@@ -84,13 +84,13 @@ export function HabitDashboardSection({ habits, logs }: Props) {
           logVal === true ? "done" : logVal === false ? "notDone" : "none";
         const cardBorderClass =
           markState === "done"
-            ? "border-[var(--color-success)]/25 bg-[var(--color-success-soft)]"
+            ? "border-[var(--color-success)]/25 bg-[var(--color-success-tint)]"
             : markState === "notDone"
-              ? "border-[var(--color-danger)]/25 bg-[var(--color-danger-soft)]"
+              ? "border-[var(--color-danger)]/25 bg-[var(--color-danger-tint)]"
               : "";
 
         return (
-          <Card key={habit.id} className={`card-interactive ${cardBorderClass}`}>
+          <Card key={habit.id} className={`card-hover ${cardBorderClass}`}>
             <CardContent className="p-3 flex items-center gap-3">
               <div
                 className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
@@ -99,7 +99,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                 <div className="flex items-center gap-2">
                   <div
                     className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: habit.color ?? "var(--accent-primary)" }}
+                    style={{ backgroundColor: habit.color ?? "var(--brand)" }}
                   />
                   <span className="text-sm font-medium truncate">{habit.name}</span>
                 </div>
@@ -114,7 +114,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                     <button
                       type="button"
                       onClick={() => markDone(habit.id)}
-                      className="w-7 h-7 rounded-full border-2 border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-soft)] active:scale-95"
+                      className="w-7 h-7 rounded-full border-2 border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-tint)] active:scale-95"
                       aria-label="Mark done"
                     >
                       <Check className="w-3.5 h-3.5" />
@@ -122,7 +122,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                     <button
                       type="button"
                       onClick={() => markNotDone(habit.id)}
-                      className="w-7 h-7 rounded-full border-2 border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-soft)] active:scale-95"
+                      className="w-7 h-7 rounded-full border-2 border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-tint)] active:scale-95"
                       aria-label="Mark not done"
                     >
                       <X className="w-3.5 h-3.5" />

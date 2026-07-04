@@ -37,7 +37,7 @@ function StatusLabel({
   if (status === "error") return null;
   if (category === "audio") {
     return (
-      <span className="text-xs text-mod-ai">Transcribing…</span>
+      <span className="text-xs text-brand-text">Transcribing…</span>
     );
   }
   return (
@@ -63,9 +63,9 @@ export function AttachmentChip({
   return (
     <div
       className={cn(
-        "glass-ai flex flex-col gap-1 px-3 py-2 rounded-xl max-w-[200px] min-h-[44px]",
-        isError && "border border-destructive",
-        !isError && "border border-transparent",
+        "bg-card shadow-card flex flex-col gap-1 px-3 py-2 rounded-xl max-w-[200px] min-h-[44px]",
+        isError && "border-[1.5px] border-destructive",
+        !isError && "border-[1.5px] border-border",
       )}
     >
       <div className="flex items-center gap-2">
@@ -79,7 +79,7 @@ export function AttachmentChip({
               className="w-8 h-8 rounded object-cover"
             />
           ) : category === "audio" ? (
-            <Music className="w-5 h-5 text-mod-ai" />
+            <Music className="w-5 h-5 text-brand-text" />
           ) : (
             <FileText className="w-5 h-5 text-muted-foreground" />
           )}
@@ -114,7 +114,7 @@ export function AttachmentChip({
       {isUploading && (
         <div className="w-full h-1 bg-border rounded-full overflow-hidden">
           <div
-            className="h-full bg-mod-ai rounded-full transition-all duration-300"
+            className="h-full bg-brand rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>

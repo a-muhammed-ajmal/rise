@@ -214,7 +214,7 @@ export function TransactionForm({
               onClick={() => changeType("income")}
               className={
                 type === "income"
-                  ? "bg-mod-finance text-white hover:bg-mod-finance/90"
+                  ? "bg-[var(--color-success)] text-white hover:opacity-90"
                   : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
               }
             >

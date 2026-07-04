@@ -2,12 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* @custom-variant dark (&:is(.dark *)); */
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Inter — single typeface across all roles (TaskFlow design system) */
+  /* Inter — single typeface across all roles */
   --font-sans: var(--font-inter);
   --font-heading: var(--font-inter);
   --font-display: var(--font-inter);
@@ -41,47 +39,43 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.5);
-  --radius-md: calc(var(--radius) * 0.625);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.25);
-  --radius-2xl: calc(var(--radius) * 1.5);
-  --radius-3xl: calc(var(--radius) * 2);
-  --radius-4xl: calc(var(--radius) * 2.5);
+  /* Radii — fixed scale: 4 / 8 / 12 / 16 (buttons / inputs / cards / panels) */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-4xl: 9999px;
 
-  /* Module accent colors — each life area has its own identity */
+  /* Brand palette — orange system */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-text: var(--brand-text);
+  --color-brand-tint: var(--brand-tint);
+
+  /* Module accent colors — text/icon color + tint background per module */
   --color-mod-tasks: var(--mod-tasks);
-  --color-mod-tasks-soft: var(--mod-tasks-soft);
+  --color-mod-tasks-tint: var(--mod-tasks-tint);
   --color-mod-finance: var(--mod-finance);
-  --color-mod-finance-soft: var(--mod-finance-soft);
+  --color-mod-finance-tint: var(--mod-finance-tint);
   --color-mod-wellness: var(--mod-wellness);
-  --color-mod-wellness-soft: var(--mod-wellness-soft);
+  --color-mod-wellness-tint: var(--mod-wellness-tint);
   --color-mod-goals: var(--mod-goals);
-  --color-mod-goals-soft: var(--mod-goals-soft);
+  --color-mod-goals-tint: var(--mod-goals-tint);
   --color-mod-knowledge: var(--mod-knowledge);
-  --color-mod-knowledge-soft: var(--mod-knowledge-soft);
+  --color-mod-knowledge-tint: var(--mod-knowledge-tint);
   --color-mod-crm: var(--mod-crm);
-  --color-mod-crm-soft: var(--mod-crm-soft);
-  --color-mod-ai: var(--mod-ai);
-  --color-mod-ai-soft: var(--mod-ai-soft);
+  --color-mod-crm-tint: var(--mod-crm-tint);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
    LIGHT MODE (default) — RISE OS orange brand
-   Primary: #FF6535 · Text: #1A1A2E · Background: #FFFFFF · Surface: #FFFFFF
+   Brand: #FF6535 · Text: #1A1A2E · Base: #FFFFFF · Paper: #F9FAFB
    ══════════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Fluid type scale (min @360px → max @1240px) ─────────────────────────── */
-  --step--1: clamp(0.83rem, 0.78rem + 0.25vw, 0.94rem);
-  --step-0:  clamp(1.00rem, 0.93rem + 0.36vw, 1.13rem);
-  --step-1:  clamp(1.20rem, 1.07rem + 0.65vw, 1.50rem);
-  --step-2:  clamp(1.44rem, 1.21rem + 1.14vw, 2.00rem);
-  --step-3:  clamp(1.73rem, 1.36rem + 1.85vw, 2.67rem);
-  --step-4:  clamp(2.07rem, 1.49rem + 2.90vw, 3.55rem);
-  --step-5:  clamp(2.49rem, 1.59rem + 4.49vw, 4.74rem);
-
-  /* ── shadcn tokens — RISE OS orange brand ──────────────────────────────────── */
+  /* ── shadcn tokens ──────────────────────────────────────────────────────── */
   --background: #FFFFFF;
   --foreground: #1A1A2E;
   --card: #FFFFFF;
@@ -93,318 +87,234 @@
   --secondary: #F9FAFB;
   --secondary-foreground: #1A1A2E;
   --muted: #F9FAFB;
-  --muted-foreground: #6B7280;
+  --muted-foreground: rgba(26, 26, 46, 0.50);
   --accent: #FFF0EB;
   --accent-foreground: #D6450F;
-  --destructive: #EF4444;
-  --border: #E5E7EB;
-  --input: #E5E7EB;
+  --destructive: #E11D48;
+  --border: rgba(26, 26, 46, 0.16);
+  --input: rgba(26, 26, 46, 0.18);
   --ring: #FF6535;
   /* Chart palette */
   --chart-1: #FF6535;
-  --chart-2: #22C55E;
-  --chart-3: #F59E0B;
-  --chart-4: #3B82F6;
-  --chart-5: #EF4444;
-  --radius: 0.625rem;               /* 10px base radius */
+  --chart-2: #2563EB;
+  --chart-3: #10B981;
+  --chart-4: #F59E0B;
+  --chart-5: #7C3AED;
   --sidebar: #FFFFFF;
   --sidebar-foreground: #1A1A2E;
   --sidebar-primary: #FF6535;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #FFF0EB;
   --sidebar-accent-foreground: #D6450F;
-  --sidebar-border: #E5E7EB;
+  --sidebar-border: rgba(26, 26, 46, 0.13);
   --sidebar-ring: #FF6535;
 
-  /* ── Module colors — light mode ─────────────────────────────────────────── */
-  --mod-tasks: #34D399;                        /* Green — task management    */
-  --mod-tasks-soft: rgba(52, 211, 153, 0.10);
-  --mod-finance: #60A5FA;                      /* Blue — finance             */
-  --mod-finance-soft: rgba(96, 165, 250, 0.10);
-  --mod-wellness: #FBBF24;                     /* Amber — habits/wellness    */
-  --mod-wellness-soft: rgba(251, 191, 36, 0.10);
-  --mod-goals: #F472B6;                        /* Pink — goals               */
-  --mod-goals-soft: rgba(244, 114, 182, 0.10);
-  --mod-knowledge: #94A3B8;                    /* Silver — knowledge base    */
-  --mod-knowledge-soft: rgba(148, 163, 184, 0.10);
-  --mod-crm: #A78BFA;                          /* Lavender — contacts/CRM   */
-  --mod-crm-soft: rgba(167, 139, 250, 0.10);
-  --mod-ai: #7C5CFC;                           /* Purple — AI (= accent)    */
-  --mod-ai-soft: rgba(124, 92, 252, 0.08);
+  /* ── Brand semantic ─────────────────────────────────────────────────────── */
+  --brand:       #FF6535;   /* primary CTA, accents, focus */
+  --brand-hover: #FF8159;   /* hover / gradient end        */
+  --brand-text:  #D6450F;   /* orange text on white — AA   */
+  --brand-tint:  #FFF0EB;   /* chip / badge backgrounds    */
 
-  /* ── RISE OS semantic token layer ──────────────────────────────────────────── */
-  --color-base:           #FFFFFF;
-  --color-surface:        #FFFFFF;
-  --color-surface-alt:    #F9FAFB;
-  --color-primary-light:  #FFF0EB;
-  --color-content:        #1A1A2E;
-  --color-subtle:         #6B7280;
-  --color-muted-text:     #9CA3AF;
-  --color-border-token:   #E5E7EB;
+  /* ── Module accent tokens — text/icon color + tint pair ────────────────── */
+  --mod-tasks: #2563EB;          --mod-tasks-tint: #EFF6FF;
+  --mod-finance: #059669;        --mod-finance-tint: #ECFDF5;
+  --mod-wellness: #BE123C;       --mod-wellness-tint: #FFF1F2;
+  --mod-goals: #7C3AED;          --mod-goals-tint: #F5F3FF;
+  --mod-knowledge: #D97706;      --mod-knowledge-tint: #FFFBEB;
+  --mod-crm: #0891B2;            --mod-crm-tint: #ECFEFF;
 
-  /* ── Spacing scale ──────────────────────────────────────────────────────── */
-  --spacing-xs: 8px;   --spacing-sm: 16px;  --spacing-md: 24px;
-  --spacing-lg: 32px;  --spacing-xl: 40px;  --spacing-2xl: 64px;
-
-  /* ── Radius scale ───────────────────────────────────────────────────────── */
-  --radius-card:  12px;
-  --radius-panel: 16px;
-  --radius-popup: 16px;
-  --radius-input: 8px;
-  --radius-pill:  9999px;
-
-  /* ── RISE OS shadow tokens ──────────────────────────────────────────────── */
-  --shadow-card:       0 1px 3px rgba(26,26,46,0.08);
-  --shadow-card-hover: 0 4px 16px rgba(26,26,46,0.12);
-  --shadow-popup:      0 8px 32px rgba(26,26,46,0.14);
-  --shadow-brand:      0 4px 16px rgba(255,101,53,0.25);
-  /* Legacy aliases */
-  --shadow-sm:  var(--shadow-card);
-  --shadow-md:  var(--shadow-card-hover);
-  --shadow-lg:  var(--shadow-popup);
-  --shadow-glow: 0 0 20px var(--accent-glow);
-  --shadow-1:   var(--shadow-card);
-  --shadow-2:   var(--shadow-card-hover);
-  --shadow-3:   var(--shadow-popup);
-
-  /* ── Priority colors ────────────────────────────────────────────────────── */
-  --color-p1: #EF4444;
-  --color-p2: #FF6535;
-  --color-p3: #3B82F6;
-  --color-p4: #9CA3AF;
-
-  /* ── Motion ─────────────────────────────────────────────────────────────── */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in:  cubic-bezier(0.5, 0, 0.75, 0);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-fast:   120ms;  --dur-1: 120ms;
-  --dur-normal: 220ms;  --dur-2: 220ms;
-  --dur-slow:   400ms;  --dur-3: 400ms;
-  --dur-reveal: 600ms;  --dur-4: 600ms;
-
-  /* ── Font aliases (all Inter) ───────────────────────────────────────────── */
-  --font-sans:    var(--font-inter), "Inter", system-ui, sans-serif;
-  --font-display: var(--font-inter), "Inter", system-ui, sans-serif;
-  --font-mono:    var(--font-inter), "Inter", system-ui, sans-serif;
-
-  /* ── Surface tokens (light mode) ───────────────────────────────────────── */
+  /* ── Surfaces ───────────────────────────────────────────────────────────── */
   --surface-base:    #FFFFFF;
-  --surface-1:       #FFFFFF;
-  --surface-2:       #F9FAFB;
-  --surface-overlay: #FFFFFF;
-  --accent-primary:  #FF6535;
-  --accent-glow:     rgba(255, 101, 53, 0.15);
-  --border-subtle:   rgba(229, 231, 235, 0.8);
-  --border-active:   rgba(255, 101, 53, 0.4);
+  --surface-paper:   #F9FAFB;
+  --surface-card:    #FFFFFF;
+  --surface-dark:    #1A1A2E;
+  --surface-footer:  #0B1120;
+  --surface-overlay: rgba(26, 26, 46, 0.60);
 
-  /* ── Brand tokens ───────────────────────────────────────────────────────── */
-  --brand:       #FF6535;
-  --brand-hover: #FF8159;
-  --brand-text:  #D6450F;
-  --brand-tint:  #FFF0EB;
+  /* ── Text ───────────────────────────────────────────────────────────────── */
+  --text-strong:       #1A1A2E;
+  --text-body:         rgba(26, 26, 46, 0.70);
+  --text-muted:        rgba(26, 26, 46, 0.50);
+  --text-on-dark:      #FFFFFF;
+  --text-on-dark-soft: rgba(255, 255, 255, 0.70);
+  --text-on-brand:     #FFFFFF;
 
-  /* ── Text tokens (light mode) ───────────────────────────────────────────── */
-  --text-primary:   #1A1A2E;
-  --text-secondary: #6B7280;
-  --text-muted:     #9CA3AF;
+  /* ── Borders ────────────────────────────────────────────────────────────── */
+  --border-subtle:  rgba(26, 26, 46, 0.10);
+  --border-line:    #E5E5E5;
+  --border-brand:   rgba(255, 101, 53, 0.30);
+  --border-on-dark: rgba(255, 101, 53, 0.20);
+  --border-focus:   #FF6535;
 
-  /* ── Semantic colors ────────────────────────────────────────────────────── */
-  --color-success:      #22C55E;
+  /* ── Semantic status ────────────────────────────────────────────────────── */
+  --color-success:      #10B981;
   --color-warning:      #F59E0B;
-  --color-danger:       #EF4444;
+  --color-danger:       #E11D48;
   --color-info:         #3B82F6;
-  --color-success-soft: rgba(34, 197, 94, 0.10);
-  --color-warning-soft: rgba(245, 158, 11, 0.10);
-  --color-danger-soft:  rgba(239, 68, 68, 0.10);
-  --color-info-soft:    rgba(59, 130, 246, 0.10);
+  --color-success-tint: #D1FAE5;
+  --color-warning-tint: #FEF3C7;
+  --color-danger-tint:  #FEE2E2;
+  --color-info-tint:    #EFF6FF;
 
-  /* ── RISE spec: type scale ──────────────────────────────────────────────── */
-  --text-display: clamp(1.375rem, 4.2vw, 1.625rem);   /* 22–26px — greeting ONLY */
-  --text-h1: clamp(1rem, 3.2vw, 1.125rem);             /* 16–18px — section headers */
-  --text-h2: 0.9375rem;                                 /* 15px — card titles */
-  --text-body: 0.875rem;                                /* 14px — primary content */
-  --text-label: 0.75rem;                                /* 12px — metadata labels */
-  --text-micro: 0.6875rem;                              /* 11px — floor, never go below */
-  --text-metric: clamp(1.25rem, 3.8vw, 1.625rem);      /* 20–26px — mono metric numbers */
+  /* ── Priority tokens ────────────────────────────────────────────────────── */
+  --color-p1: #EF4444;  --color-p1-tint: #FEF2F2;
+  --color-p2: #FF6535;  --color-p2-tint: #FFF0EB;
+  --color-p3: #3B82F6;  --color-p3-tint: #EFF6FF;
+  --color-p4: #9CA3AF;  --color-p4-tint: #F9FAFB;
 
-  /* ── Heading weight tokens (TaskFlow: bold for h1, semibold for h2+) ───── */
-  --weight-heading-default:   700;
-  --weight-heading-emphasis:  600;
+  /* ── Typography — Inter only ────────────────────────────────────────────── */
+  --font-sans:    var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Fixed type scale (no fluid clamp) */
+  --text-display: 1.5rem;      /* 24px — dashboard greeting        */
+  --text-h1:      1.25rem;     /* 20px — page titles, weight 700   */
+  --text-h2:      1rem;        /* 16px — card titles, weight 600   */
+  --text-body:    0.875rem;    /* 14px — primary content           */
+  --text-label:   0.75rem;     /* 12px — metadata labels           */
+  --text-micro:   0.6875rem;   /* 11px — floor, never go below     */
+  --text-metric:  1.5rem;      /* 24px — metric numbers, tabular   */
+  --text-eyebrow: 0.6875rem;   /* 11px — uppercase section labels  */
 
   /* ── 8pt spacing grid ───────────────────────────────────────────────────── */
   --space-1: 4px;   --space-2: 8px;   --space-3: 12px;
   --space-4: 16px;  --space-5: 20px;  --space-6: 24px;
   --space-8: 32px;  --space-10: 40px; --space-12: 48px;
+  --space-16: 64px; --space-20: 80px; --space-24: 96px;
 
-  /* ── Motion aliases ─────────────────────────────────────────────────────── */
-  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* ── Radii ──────────────────────────────────────────────────────────────── */
+  --radius-input: 8px;
+  --radius-card:  12px;
+  --radius-panel: 16px;
+  --radius-popup: 16px;
+  --radius-pill:  9999px;
+
+  /* ── Shadows ────────────────────────────────────────────────────────────── */
+  --shadow-card:  0 1px 3px rgba(26, 26, 46, 0.08);
+  --shadow-hover: 0 4px 16px rgba(26, 26, 46, 0.12);
+  --shadow-popup: 0 8px 32px rgba(26, 26, 46, 0.14);
+  --shadow-brand: 0 4px 16px rgba(255, 101, 53, 0.25);
+  --glow-focus:   0 0 0 3px rgba(255, 101, 53, 0.13);
+
+  /* ── Motion ─────────────────────────────────────────────────────────────── */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);  /* entrances / confirmations */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);       /* state changes             */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);      /* brand slide               */
+  --ease-in:     cubic-bezier(0.5, 0, 0.75, 0);
+  --ease-exit:   cubic-bezier(0.4, 0, 1, 1);
   --dur-instant: 80ms;
-  --dur-enter: 350ms;
-
-  /* ── Module accent tokens (aliases → canonical --mod-* series) ─────────── */
-  --module-tasks:    var(--mod-tasks);
-  --module-finance:  var(--mod-finance);
-  --module-habits:   var(--mod-wellness);
-  --module-journal:  var(--mod-goals);
-  --module-contacts: var(--mod-crm);
-  --module-notes:    var(--mod-knowledge);
-  --module-ai:       var(--mod-ai);
+  --dur-fast:    150ms;
+  --dur-normal:  250ms;
+  --dur-slow:    400ms;
+  --dur-enter:   350ms;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   DARK MODE — deep dark with RISE OS orange brand primary
-   Background: #0D0A1A · Surface: #1A1229 · Primary: #FF8159 · Text: #E8E8F0
+   DARK MODE (opt-in via .dark on <html>) — navy family, orange brand
+   Background: #0B1120 · Surface: #1A1A2E · Brand: #FF6535 / #FF8159
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .dark {
-  --background: oklch(0.090 0.035 290);     /* #0D0A1A — deepest dark             */
-  --foreground: oklch(0.930 0.025 290);     /* #E2D9F3 — light text               */
-  --card: oklch(0.130 0.040 290);           /* #1A1229 — card surface             */
-  --card-foreground: oklch(0.930 0.025 290);
-  --popover: oklch(0.170 0.050 290);        /* #231535 — elevated dropdown        */
-  --popover-foreground: oklch(0.930 0.025 290);
-  --primary: #FF8159;                        /* Orange lightened for dark backgrounds */
+  --background: #0B1120;
+  --foreground: #FFFFFF;
+  --card: #1A1A2E;
+  --card-foreground: #FFFFFF;
+  --popover: #222238;
+  --popover-foreground: #FFFFFF;
+  --primary: #FF6535;
   --primary-foreground: #FFFFFF;
-  --secondary: oklch(0.170 0.050 290);
-  --secondary-foreground: oklch(0.930 0.025 290);
-  --muted: oklch(0.170 0.050 290);
-  --muted-foreground: oklch(0.680 0.050 290);
-  --accent: oklch(0.170 0.050 290);
-  --accent-foreground: oklch(0.930 0.025 290);
-  --destructive: #EF4444;
-  --border: oklch(0.250 0.020 30 / 40%);
-  --input: oklch(0.250 0.020 30 / 20%);
+  --secondary: rgba(255, 255, 255, 0.06);
+  --secondary-foreground: #FFFFFF;
+  --muted: rgba(255, 255, 255, 0.06);
+  --muted-foreground: rgba(255, 255, 255, 0.55);
+  --accent: rgba(255, 101, 53, 0.15);
+  --accent-foreground: #FF8159;
+  --destructive: #FB7185;
+  --border: rgba(255, 101, 53, 0.20);
+  --input: rgba(255, 101, 53, 0.24);
   --ring: #FF8159;
-  /* Chart palette — dark */
+  /* Chart palette — dark (lightened for contrast) */
   --chart-1: #FF8159;
-  --chart-2: #34D399;
-  --chart-3: #FBBF24;
-  --chart-4: #60A5FA;
-  --chart-5: #F87171;
-  --sidebar: oklch(0.130 0.040 290);
-  --sidebar-foreground: oklch(0.930 0.025 290);
-  --sidebar-primary: #FF8159;
+  --chart-2: #60A5FA;
+  --chart-3: #34D399;
+  --chart-4: #FBBF24;
+  --chart-5: #A78BFA;
+  --sidebar: #1A1A2E;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #FF6535;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: oklch(0.170 0.050 290);
-  --sidebar-accent-foreground: oklch(0.930 0.025 290);
-  --sidebar-border: oklch(0.250 0.020 30 / 40%);
+  --sidebar-accent: rgba(255, 101, 53, 0.15);
+  --sidebar-accent-foreground: #FF8159;
+  --sidebar-border: rgba(255, 255, 255, 0.10);
   --sidebar-ring: #FF8159;
 
-  /* ── Module colors — dark mode ──────────────────────────────────────────── */
-  --mod-tasks: #34D399;
-  --mod-tasks-soft: rgba(52, 211, 153, 0.12);
-  --mod-finance: #60A5FA;
-  --mod-finance-soft: rgba(96, 165, 250, 0.12);
-  --mod-wellness: #FBBF24;
-  --mod-wellness-soft: rgba(251, 191, 36, 0.12);
-  --mod-goals: #F472B6;
-  --mod-goals-soft: rgba(244, 114, 182, 0.12);
-  --mod-knowledge: #94A3B8;
-  --mod-knowledge-soft: rgba(148, 163, 184, 0.12);
-  --mod-crm: #A78BFA;
-  --mod-crm-soft: rgba(167, 139, 250, 0.12);
-  --mod-ai: #7C5CFC;
-  --mod-ai-soft: rgba(124, 92, 252, 0.12);
-
-  /* ── Surface tokens (dark) ──────────────────────────────────────────────── */
-  --surface-base:    #0E0E11;
-  --surface-1:       #17171C;
-  --surface-2:       #1F1F27;
-  --surface-overlay: #2A2A35;
-  --accent-primary:  #FF8159;
-  --accent-glow:     rgba(255, 101, 53, 0.15);
-  --border-subtle:   rgba(255,255,255,0.06);
-  --border-active:   rgba(255, 101, 53, 0.4);
-
-  /* ── Brand tokens (dark) ────────────────────────────────────────────────── */
-  --brand:       #FF8159;
-  --brand-hover: #FF6535;
+  /* ── Brand (dark) ───────────────────────────────────────────────────────── */
+  --brand:       #FF6535;
+  --brand-hover: #FF8159;
   --brand-text:  #FF8159;
-  --brand-tint:  rgba(255, 101, 53, 0.12);
+  --brand-tint:  rgba(255, 101, 53, 0.15);
 
-  /* ── Text tokens (dark) ─────────────────────────────────────────────────── */
-  --text-primary:   #E8E8F0;
-  --text-secondary: #8E8EA0;
-  --text-muted:     #72727F;
+  /* ── Module accents (dark) — lightened for navy surfaces ───────────────── */
+  --mod-tasks: #60A5FA;          --mod-tasks-tint: rgba(96, 165, 250, 0.15);
+  --mod-finance: #34D399;        --mod-finance-tint: rgba(52, 211, 153, 0.15);
+  --mod-wellness: #FB7185;       --mod-wellness-tint: rgba(251, 113, 133, 0.15);
+  --mod-goals: #A78BFA;          --mod-goals-tint: rgba(167, 139, 250, 0.15);
+  --mod-knowledge: #FBBF24;      --mod-knowledge-tint: rgba(251, 191, 36, 0.15);
+  --mod-crm: #22D3EE;            --mod-crm-tint: rgba(34, 211, 238, 0.15);
 
-  /* ── Semantic colors (dark) ─────────────────────────────────────────────── */
-  --color-success:      #22C55E;
-  --color-warning:      #F59E0B;
-  --color-danger:       #EF4444;
+  /* ── Surfaces (dark) ────────────────────────────────────────────────────── */
+  --surface-base:    #0B1120;
+  --surface-paper:   #161629;
+  --surface-card:    #1A1A2E;
+  --surface-dark:    #0B1120;
+  --surface-footer:  #0B1120;
+  --surface-overlay: rgba(0, 0, 0, 0.60);
+
+  /* ── Text (dark) ────────────────────────────────────────────────────────── */
+  --text-strong:       #FFFFFF;
+  --text-body:         rgba(255, 255, 255, 0.70);
+  --text-muted:        rgba(255, 255, 255, 0.50);
+  --text-on-dark:      #FFFFFF;
+  --text-on-dark-soft: rgba(255, 255, 255, 0.70);
+  --text-on-brand:     #FFFFFF;
+
+  /* ── Borders (dark) ─────────────────────────────────────────────────────── */
+  --border-subtle:  rgba(255, 255, 255, 0.10);
+  --border-line:    rgba(255, 255, 255, 0.12);
+  --border-brand:   rgba(255, 101, 53, 0.40);
+  --border-on-dark: rgba(255, 101, 53, 0.20);
+  --border-focus:   #FF8159;
+
+  /* ── Semantic status (dark) ─────────────────────────────────────────────── */
+  --color-success:      #34D399;
+  --color-warning:      #FBBF24;
+  --color-danger:       #FB7185;
   --color-info:         #60A5FA;
-  --color-success-soft: rgba(34, 197, 94, 0.12);
-  --color-warning-soft: rgba(245, 158, 11, 0.12);
-  --color-danger-soft:  rgba(239, 68, 68, 0.12);
-  --color-info-soft:    rgba(59, 130, 246, 0.12);
+  --color-success-tint: rgba(52, 211, 153, 0.15);
+  --color-warning-tint: rgba(251, 191, 36, 0.15);
+  --color-danger-tint:  rgba(251, 113, 133, 0.15);
+  --color-info-tint:    rgba(96, 165, 250, 0.15);
 
-  /* ── Elevation — dark mode ──────────────────────────────────────────────── */
-  --shadow-card:       0 1px 3px rgba(0,0,0,0.35);
-  --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.40);
-  --shadow-popup:      0 8px 32px rgba(0,0,0,0.50);
-  --shadow-brand:      0 4px 16px rgba(255,101,53,0.30);
-  --shadow-sm:  var(--shadow-card);
-  --shadow-md:  var(--shadow-card-hover);
-  --shadow-lg:  var(--shadow-popup);
-  --shadow-glow: 0 0 30px rgba(255, 101, 53, 0.25);
-  --shadow-1:   var(--shadow-card);
-  --shadow-2:   var(--shadow-card-hover);
-  --shadow-3:   var(--shadow-popup);
+  /* ── Priority (dark) ────────────────────────────────────────────────────── */
+  --color-p1: #F87171;  --color-p1-tint: rgba(248, 113, 113, 0.15);
+  --color-p2: #FF8159;  --color-p2-tint: rgba(255, 129, 89, 0.15);
+  --color-p3: #60A5FA;  --color-p3-tint: rgba(96, 165, 250, 0.15);
+  --color-p4: #9CA3AF;  --color-p4-tint: rgba(156, 163, 175, 0.15);
 
-  /* ── Semantic layer aliases ─────────────────────────────────────────────── */
-  --color-background:    #0D0A1A;
-  --color-surface:       #1A1229;
-  --color-muted-text:    #9B9BAA;
-  --color-base:          #0E0E11;
-  --color-surface-alt:   #1F1F27;
-  --color-primary-light: rgba(255,101,53,0.15);
-  --color-content:       #E8E8F0;
-  --color-subtle:        #8E8EA0;
-  --color-border-token:  rgba(255,255,255,0.08);
-
-  /* ── Priority colors (dark) ─────────────────────────────────────────────── */
-  --color-p1: #F87171;
-  --color-p2: #FF8159;
-  --color-p3: #60A5FA;
-  --color-p4: #6B7280;
+  /* ── Shadows (dark) ─────────────────────────────────────────────────────── */
+  --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.40);
+  --shadow-popup: 0 8px 32px rgba(0, 0, 0, 0.50);
+  --shadow-brand: 0 4px 16px rgba(255, 101, 53, 0.30);
+  --glow-focus:   0 0 0 3px rgba(255, 101, 53, 0.20);
 }
 
 /* ─── Animations ─────────────────────────────────────────────────────────── */
 
-@keyframes rise-in {
-  from { opacity: 0; transform: translateY(12px); }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes rise-scale {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.4; }
-  50%      { opacity: 0.7; }
-}
-
-@keyframes shimmer {
-  from { background-position: -200% 0; }
-  to   { background-position: 200% 0; }
-}
-
-@keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes skeletonPulse {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-@keyframes aiPulse {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
 
 @keyframes fadeIn {
@@ -412,20 +322,33 @@
   to   { opacity: 1; }
 }
 
+@keyframes skeletonPulse {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @keyframes checkmark {
   to { stroke-dashoffset: 0; }
 }
 
-.animate-rise-in {
-  animation: rise-in var(--dur-reveal) var(--ease-out) both;
+/* Brand pulse — orange glow breathing (AI-active, recording states) */
+@keyframes brand-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 101, 53, 0.10); }
+  50%      { box-shadow: var(--shadow-brand); }
 }
 
-.stagger-1 { animation-delay: 0ms; }
-.stagger-2 { animation-delay: 60ms; }
-.stagger-3 { animation-delay: 120ms; }
-.stagger-4 { animation-delay: 180ms; }
-.stagger-5 { animation-delay: 240ms; }
-.stagger-6 { animation-delay: 300ms; }
+.slide-up {
+  animation: slideUp var(--dur-enter) var(--ease-out) both;
+}
+
+.fade-in {
+  animation: fadeIn var(--dur-normal) var(--ease-smooth) both;
+}
+
+.stagger-1 { animation-delay: 0.08s; }
+.stagger-2 { animation-delay: 0.16s; }
+.stagger-3 { animation-delay: 0.24s; }
+.stagger-4 { animation-delay: 0.32s; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -436,91 +359,62 @@
   }
 }
 
-/* ─── Glassmorphism shells ────────────────────────────────────────────────── */
+/* ─── Card system ────────────────────────────────────────────────────────── */
 
-.glass-surface {
-  -webkit-backdrop-filter: blur(12px) saturate(1.5);
-  backdrop-filter: blur(12px) saturate(1.5);
+/* Canonical card recipe — standalone containers */
+.card {
+  background: var(--surface-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color var(--dur-fast) var(--ease-smooth),
+    box-shadow   var(--dur-fast) var(--ease-smooth),
+    transform    var(--dur-fast) var(--ease-smooth);
 }
 
-.glass-chrome {
-  background: rgba(255, 255, 255, 0.88);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid var(--border);
+/* Interactive-card treatment — apply alongside <Card> or any bordered box.
+   Orange top-bar wipes in from the left on hover; lift + orange border. */
+.card-hover {
+  position: relative;
+  transition:
+    border-color var(--dur-fast) var(--ease-smooth),
+    box-shadow   var(--dur-fast) var(--ease-smooth),
+    transform    var(--dur-fast) var(--ease-smooth);
 }
-
-.dark .glass-chrome {
-  background: rgba(14, 14, 17, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.card-hover::before,
+.card:hover::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, var(--brand), var(--brand-hover));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-normal) var(--ease-out);
+  z-index: 1;
+}
+@media (hover: hover) {
+  .card:hover,
+  .card-hover:hover {
+    border-color: rgba(255, 101, 53, 0.50);
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-1px);
+  }
+  .card:hover::before,
+  .card-hover:hover::before { transform: scaleX(1); }
+}
+.card:active,
+.card-hover:active {
+  border-color: rgba(255, 101, 53, 0.50);
+  transform: scale(0.995);
 }
 
 .login-card {
-  box-shadow: 0 0 60px rgba(255, 101, 53, 0.22), 0 22px 50px rgba(26, 26, 46, 0.12);
-}
-
-.glass-ai {
-  background: rgba(124, 92, 252, 0.08);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(124, 92, 252, 0.2);
-  border-radius: 20px;
-}
-
-/* ─── Module page glow ─────────────────────────────────────────────────────── */
-
-.page-glow {
-  position: relative;
-}
-.page-glow::before {
-  content: "";
-  position: absolute;
-  top: -60px;
-  right: -40px;
-  width: 300px;
-  height: 300px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--glow-color, transparent) 0%, transparent 70%);
-  opacity: 0.08;
-  pointer-events: none;
-  z-index: 0;
-}
-.dark .page-glow::before {
-  opacity: 0.07;
-}
-
-/* ─── FAB ─────────────────────────────────────────────────────────────────── */
-
-.fab {
-  box-shadow: var(--shadow-card-hover), var(--shadow-glow);
-  transition: transform var(--dur-normal) var(--ease-out),
-              box-shadow var(--dur-normal) var(--ease-out);
-}
-.fab:active {
-  transform: scale(0.93);
-}
-@media (hover: hover) {
-  .fab:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-popup), var(--shadow-glow);
-  }
-}
-
-/* ─── Card hover lift ─────────────────────────────────────────────────────── */
-
-.card-interactive {
-  transition: transform var(--dur-normal) var(--ease-out),
-              box-shadow var(--dur-normal) var(--ease-out),
-              border-color var(--dur-normal) var(--ease-out);
-}
-@media (hover: hover) {
-  .card-interactive:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-card-hover);
-  }
-}
-.card-interactive:active {
-  transform: scale(0.98);
+  box-shadow: 0 0 40px rgba(255, 101, 53, 0.15), 0 12px 32px rgba(26, 26, 46, 0.10);
 }
 
 @layer base {
@@ -535,7 +429,7 @@
   html {
     font-family: var(--font-inter), var(--font-sans);
   }
-  /* Inter — TaskFlow typography: bold for page titles, semibold for headings */
+  /* Inter typography: bold page titles, semibold headings */
   h1 {
     font-family: var(--font-inter), system-ui, sans-serif;
     font-weight: 700;
@@ -551,28 +445,12 @@
     text-wrap: balance;
   }
   :focus-visible {
-    outline: 2px solid var(--color-primary, var(--ring));
+    outline: 2px solid var(--border-focus);
     outline-offset: 2px;
   }
 }
 
-/* ─── Brand glow utilities ───────────────────────────────────────────────── */
-
-@utility rise-title-glow {
-  text-shadow: 0 0 48px rgba(255, 101, 53, 0.65);
-  letter-spacing: -0.04em;
-}
-
-/* ─── Fluid type scale utilities ─────────────────────────────────────────── */
-
-@utility text-step--1 { font-size: var(--step--1); }
-@utility text-step-0  { font-size: var(--step-0);  }
-@utility text-step-1  { font-size: var(--step-1);  }
-@utility text-step-2  { font-size: var(--step-2);  }
-@utility text-step-3  { font-size: var(--step-3);  line-height: 1.1; letter-spacing: -0.03em; }
-@utility text-step-4  { font-size: var(--step-4);  line-height: 1.05; letter-spacing: -0.04em; }
-
-/* ─── RISE spec type scale utilities ─────────────────────────────────────── */
+/* ─── Type scale utilities ───────────────────────────────────────────────── */
 
 @utility text-display { font-size: var(--text-display); line-height: 1.2; letter-spacing: -0.02em; }
 @utility text-h1      { font-size: var(--text-h1); line-height: 1.2; letter-spacing: -0.02em; }
@@ -580,7 +458,7 @@
 @utility text-body    { font-size: var(--text-body); line-height: 1.5; }
 @utility text-label   { font-size: var(--text-label); line-height: 1.3; }
 @utility text-micro   { font-size: var(--text-micro); line-height: 1.3; }
-@utility text-metric  { font-size: var(--text-metric); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+@utility text-metric  { font-size: var(--text-metric); line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 
 /* ─── Scrollbar theming ─────────────────────────────────────────────────── */
 
@@ -633,8 +511,6 @@
   transform: scale(0.96);
 }
 
-/* ─── TaskFlow utilities ──────────────────────────────────────────────────── */
-
 .tap-target {
   min-width: 44px;
   min-height: 44px;
@@ -651,47 +527,41 @@
   display: none;
 }
 
-.shadow-card       { box-shadow: var(--shadow-card); }
-.shadow-card-hover { box-shadow: var(--shadow-card-hover); }
-.shadow-popup      { box-shadow: var(--shadow-popup); }
+.shadow-card  { box-shadow: var(--shadow-card); }
+.shadow-hover { box-shadow: var(--shadow-hover); }
+.shadow-popup { box-shadow: var(--shadow-popup); }
+.shadow-brand { box-shadow: var(--shadow-brand); }
 
-/* ─── Brand graph-paper background textures ──────────────────────────────── */
+/* ─── Brand signature: graph-paper background ────────────────────────────── */
 
 .graph-bg {
   background-image:
-    linear-gradient(rgba(26,26,46,0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26,26,46,0.045) 1px, transparent 1px);
+    linear-gradient(rgba(26, 26, 46, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 26, 46, 0.08) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
-.graph-bg-dark {
+.graph-bg-dark,
+.dark .graph-bg {
   background-image:
-    linear-gradient(rgba(255,101,53,0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,101,53,0.07) 1px, transparent 1px);
+    linear-gradient(rgba(255, 101, 53, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 101, 53, 0.07) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
 /* ─── Eyebrow label ──────────────────────────────────────────────────────── */
 
 .eyebrow {
-  font-size: 0.6875rem;
+  font-size: var(--text-eyebrow);
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--brand, var(--primary));
+  color: var(--brand-text);
 }
 
 .task-title-complete {
   text-decoration: line-through;
-  color: var(--color-muted-text, var(--muted-foreground));
-}
-
-.slide-up {
-  animation: slideUpFade 0.2s ease-out both;
-}
-
-.fade-in {
-  animation: fadeIn 0.2s ease-out both;
+  color: var(--text-muted);
 }
 
 .checkmark-path {
@@ -705,24 +575,23 @@
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--surface-1, var(--card)) 25%,
-    var(--surface-2, var(--secondary)) 50%,
-    var(--surface-1, var(--card)) 75%
+    var(--surface-paper) 25%,
+    var(--border-line) 50%,
+    var(--surface-paper) 75%
   );
   background-size: 200% 100%;
   animation: skeletonPulse 1.4s ease-in-out infinite;
-  border-radius: 8px;
+  border-radius: var(--radius-input);
 }
 
-/* ─── AI compose state ──────────────────────────────────────────────────── */
+/* ─── AI compose state — brand pulse while the assistant responds ────────── */
 
 .ai-input-active {
-  background: linear-gradient(135deg, #7C5CFC, #60A5FA, #34D399, #7C5CFC);
-  background-size: 300% 300%;
-  animation: aiPulse 3s ease infinite;
+  border-color: var(--border-brand);
+  animation: brand-pulse 1.8s var(--ease-smooth) infinite;
 }
 
-/* ─── Bottom nav ─────────────────────────────────────────────────────────── */
+/* ─── Bottom nav (mobile chrome — glass permitted on structural chrome) ──── */
 
 .bottom-nav {
   height: calc(56px + env(safe-area-inset-bottom));
@@ -730,12 +599,12 @@
   background: rgba(255, 255, 255, 0.90);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .dark .bottom-nav {
-  background: rgba(14, 14, 17, 0.88);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  background: rgba(11, 17, 32, 0.88);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .bottom-nav__item {
@@ -744,61 +613,75 @@
 
 .bottom-nav__fab {
   margin-bottom: 20px;
-  background: var(--accent-primary);
-  box-shadow: 0 0 20px var(--accent-glow), 0 4px 16px var(--border-active);
+  background: var(--brand);
+  border: 1.5px solid rgba(255, 101, 53, 0.20);
+  box-shadow: var(--shadow-brand);
+  transition:
+    background var(--dur-fast) var(--ease-smooth),
+    box-shadow var(--dur-fast) var(--ease-smooth);
+}
+.bottom-nav__fab:active {
+  background: var(--brand-hover);
 }
 
 .bottom-nav__fab--active {
-  box-shadow:
-    0 0 32px var(--accent-glow),
-    0 4px 20px var(--border-active),
-    0 0 0 3px var(--accent-glow);
+  background: var(--brand-hover);
+  box-shadow: var(--shadow-brand), var(--glow-focus);
 }
 
 .nav-drawer {
-  background: var(--surface-overlay, var(--popover));
+  background: var(--popover);
   padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
 }
 
 .nav-drawer__item {
   font-size: var(--text-label);
   font-weight: 600;
-  background: var(--surface-2, var(--secondary));
-  color: var(--text-secondary);
+  background: var(--surface-paper);
+  border: 1.5px solid var(--border);
+  color: var(--text-body);
+  transition:
+    border-color var(--dur-fast) var(--ease-smooth),
+    background var(--dur-fast) var(--ease-smooth);
+}
+.nav-drawer__item:hover,
+.nav-drawer__item:active {
+  border-color: rgba(255, 101, 53, 0.50);
 }
 
 .nav-drawer__item--active {
-  background: var(--accent-primary);
-  color: #ffffff;
-  box-shadow: 0 0 16px var(--accent-glow);
+  background: var(--brand);
+  border-color: rgba(255, 101, 53, 0.20);
+  color: var(--text-on-brand);
+  box-shadow: var(--shadow-brand);
 }
 
 /* ─── Priority badge utilities ────────────────────────────────────────────── */
 
-.badge-urgent  { background: var(--color-danger-soft);  color: var(--color-danger); }
-.badge-high    { background: var(--color-warning-soft); color: var(--color-warning); }
-.badge-medium  { background: var(--color-info-soft);    color: var(--color-info); }
-.badge-low     { background: var(--surface-2, var(--secondary)); color: var(--text-muted, var(--muted-foreground)); }
+.badge-urgent  { background: var(--color-p1-tint);  color: var(--color-p1); }
+.badge-high    { background: var(--color-p2-tint);  color: var(--brand-text); }
+.badge-medium  { background: var(--color-p3-tint);  color: var(--color-p3); }
+.badge-low     { background: var(--color-p4-tint);  color: var(--text-muted); }
 
-.priority-dot-urgent  { background: var(--color-danger); }
-.priority-dot-high    { background: var(--color-warning); }
-.priority-dot-medium  { background: var(--color-info); }
-.priority-dot-low     { background: var(--text-muted, var(--muted-foreground)); }
+.priority-dot-urgent  { background: var(--color-p1); }
+.priority-dot-high    { background: var(--color-p2); }
+.priority-dot-medium  { background: var(--color-p3); }
+.priority-dot-low     { background: var(--color-p4); }
 
 /* ─── CRM pipeline stage badge utilities ──────────────────────────────────── */
 
-.stage-new         { background: var(--surface-2, var(--secondary)); color: var(--text-secondary, var(--muted-foreground)); }
-.stage-qualified   { background: var(--color-info-soft);    color: var(--color-info); }
-.stage-proposal    { background: var(--color-warning-soft); color: var(--color-warning); }
-.stage-negotiation { background: rgba(245,158,11,0.18);     color: var(--color-warning); }
-.stage-won         { background: var(--color-success-soft); color: var(--color-success); }
-.stage-lost        { background: var(--color-danger-soft);  color: var(--color-danger); }
+.stage-new         { background: var(--surface-paper);       color: var(--text-body); }
+.stage-qualified   { background: var(--color-info-tint);     color: var(--color-info); }
+.stage-proposal    { background: var(--color-warning-tint);  color: var(--color-warning); }
+.stage-negotiation { background: rgba(245, 158, 11, 0.22);   color: var(--color-warning); }
+.stage-won         { background: var(--color-success-tint);  color: var(--color-success); }
+.stage-lost        { background: var(--color-danger-tint);   color: var(--color-danger); }
 
 /* ─── Assistant tool result badge utilities ──────────────────────────────── */
 
-.tool-result-success  { background: var(--color-success-soft); color: var(--color-success); }
-.tool-result-failed   { background: var(--color-danger-soft);  color: var(--color-danger); }
+.tool-result-success  { background: var(--color-success-tint); color: var(--color-success); }
+.tool-result-failed   { background: var(--color-danger-tint);  color: var(--color-danger); }
 .tool-approval-banner {
-  background: var(--color-warning-soft);
+  background: var(--color-warning-tint);
   border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
 }

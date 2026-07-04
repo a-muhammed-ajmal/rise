@@ -103,6 +103,25 @@ export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; b
 | `on_hold`     | `#F59E0B` | `--color-warning`    |
 | `done`        | `#10B981` | `--color-success`    |
 
+### Module Accent Tokens
+
+Each RISE module keeps its own identity as a **text/icon color + tint background pair**. Tints are for badges, chips, and icon containers; the solid color is for icons and labels only — never for button fills or CTAs (CTAs are always brand orange).
+
+| Module    | Token / tint                            | Text/icon | Tint bg   |
+|-----------|------------------------------------------|-----------|-----------|
+| Tasks     | `--mod-tasks` / `--mod-tasks-tint`       | `#2563EB` | `#EFF6FF` |
+| Finance   | `--mod-finance` / `--mod-finance-tint`   | `#059669` | `#ECFDF5` |
+| Wellness  | `--mod-wellness` / `--mod-wellness-tint` | `#BE123C` | `#FFF1F2` |
+| Goals     | `--mod-goals` / `--mod-goals-tint`       | `#7C3AED` | `#F5F3FF` |
+| Knowledge | `--mod-knowledge` / `--mod-knowledge-tint` | `#D97706` | `#FFFBEB` |
+| CRM       | `--mod-crm` / `--mod-crm-tint`           | `#0891B2` | `#ECFEFF` |
+
+**AI has no module token.** `mod-ai` is retired — AI surfaces inherit `--brand` and `--brand-tint` directly. AI chat bubbles, chips, and notices use the standard card treatment (white, `1.5px` visible border, `--shadow-card`) — no glassmorphism. The AI-active pulse is the orange `brand-pulse` keyframe built on `--shadow-brand`.
+
+### Dark Mode
+
+Dark mode is an opt-in theme (`.dark` on `<html>`, toggled in Settings, persisted to `localStorage['rise-theme']`). It uses the **navy family** — background `#0B1120`, surfaces `#1A1A2E` — never black, with orange borders (`rgba(255,101,53,0.20)`) and lightened module accents. Light mode is the default.
+
 ---
 
 ## Borders & Radii
@@ -221,6 +240,10 @@ background-size: 40px 40px;
 | `.graph-bg`           | Light section graph-paper texture                     |
 | `.graph-bg-dark`      | Dark section orange graph-paper texture               |
 | `.stagger-1`–`.stagger-4` | Animation delay helpers (0.08s increments)       |
+| `.card`               | Canonical card recipe (bg, 1.5px border, radius, shadow, hover wipe) |
+| `.card-hover`         | Interactive-card hover treatment for `<Card>`: orange top wipe, lift, orange border |
+| `.tappable`           | `:active` scale(0.96) touch feedback                  |
+| `.ai-input-active`    | Orange `brand-pulse` glow while the assistant streams |
 
 Global focus ring — never remove:
 ```css

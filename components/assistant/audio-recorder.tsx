@@ -104,12 +104,12 @@ export function AudioRecorder({ onRecordingComplete, onCancel }: AudioRecorderPr
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 glass-ai rounded-xl">
-      {/* Animated recording indicator */}
+    <div className="flex items-center gap-3 px-4 py-2 bg-card border-[1.5px] border-border shadow-card rounded-xl">
+      {/* Animated recording indicator — brand pulse */}
       <span
         className={cn(
-          "inline-block w-3 h-3 rounded-full bg-destructive shrink-0",
-          "animate-[glow-pulse_1.5s_ease-in-out_infinite]",
+          "inline-block w-3 h-3 rounded-full bg-brand shrink-0",
+          "animate-[brand-pulse_1.5s_ease-in-out_infinite]",
         )}
         aria-hidden
       />
