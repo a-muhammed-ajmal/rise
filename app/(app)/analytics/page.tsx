@@ -383,8 +383,8 @@ export default async function AnalyticsPage() {
       <section className="space-y-4 slide-up stagger-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-950/30 flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-violet-500" />
+            <div className="w-7 h-7 rounded-lg bg-mod-knowledge-tint flex items-center justify-center">
+              <BookOpen className="w-4 h-4 text-mod-knowledge" />
             </div>
             <h2 className="text-base font-semibold">Knowledge</h2>
           </div>

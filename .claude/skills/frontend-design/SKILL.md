@@ -120,7 +120,13 @@ Each RISE module keeps its own identity as a **text/icon color + tint background
 
 ### Dark Mode
 
-Dark mode is an opt-in theme (`.dark` on `<html>`, toggled in Settings, persisted to `localStorage['rise-theme']`). It uses the **navy family** — background `#0B1120`, surfaces `#1A1A2E` — never black, with orange borders (`rgba(255,101,53,0.20)`) and lightened module accents. Light mode is the default.
+Dark mode is an opt-in theme (`.dark` on `<html>`, toggled in Settings, persisted to `localStorage['rise-theme']`). Light mode is the default. Rules:
+
+- **Navy family, never black**: base `#0B1120` → paper `#151527` → card `#1A1A2E` → popover `#232338`. Elevation comes from lighter surfaces, not shadows.
+- **Off-white text, never pure `#FFFFFF`** (glare): `--text-strong: #E9EAF2`, body/muted as alphas of it.
+- **Neutral hairline borders at rest** (`rgba(255,255,255,0.12)`); orange appears only on hover / focus / active emphasis — same semantics as light mode's navy-rest / orange-hover.
+- **Desaturated / lightened accents**: `--brand-text` lightens to `#FF8159`; module accents shift to their 400-series (`#60A5FA`, `#34D399`, `#FB7185`, `#A78BFA`, `#FBBF24`, `#22D3EE`) with 15%-alpha tints; destructive is `#F43F5E`. Brand fills stay `#FF6535` with white text.
+- Graph paper flips to the orange grid automatically (`.dark .graph-bg`).
 
 ---
 

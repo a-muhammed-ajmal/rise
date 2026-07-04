@@ -217,22 +217,22 @@
 
 .dark {
   --background: #0B1120;
-  --foreground: #FFFFFF;
+  --foreground: #E9EAF2;
   --card: #1A1A2E;
-  --card-foreground: #FFFFFF;
-  --popover: #222238;
-  --popover-foreground: #FFFFFF;
+  --card-foreground: #E9EAF2;
+  --popover: #232338;
+  --popover-foreground: #E9EAF2;
   --primary: #FF6535;
   --primary-foreground: #FFFFFF;
   --secondary: rgba(255, 255, 255, 0.06);
-  --secondary-foreground: #FFFFFF;
+  --secondary-foreground: #E9EAF2;
   --muted: rgba(255, 255, 255, 0.06);
-  --muted-foreground: rgba(255, 255, 255, 0.55);
+  --muted-foreground: rgba(233, 234, 242, 0.55);
   --accent: rgba(255, 101, 53, 0.15);
   --accent-foreground: #FF8159;
-  --destructive: #FB7185;
-  --border: rgba(255, 101, 53, 0.20);
-  --input: rgba(255, 101, 53, 0.24);
+  --destructive: #F43F5E;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.16);
   --ring: #FF8159;
   /* Chart palette — dark (lightened for contrast) */
   --chart-1: #FF8159;
@@ -241,7 +241,7 @@
   --chart-4: #FBBF24;
   --chart-5: #A78BFA;
   --sidebar: #1A1A2E;
-  --sidebar-foreground: #FFFFFF;
+  --sidebar-foreground: #E9EAF2;
   --sidebar-primary: #FF6535;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: rgba(255, 101, 53, 0.15);
@@ -263,23 +263,24 @@
   --mod-knowledge: #FBBF24;      --mod-knowledge-tint: rgba(251, 191, 36, 0.15);
   --mod-crm: #22D3EE;            --mod-crm-tint: rgba(34, 211, 238, 0.15);
 
-  /* ── Surfaces (dark) ────────────────────────────────────────────────────── */
+  /* ── Surfaces (dark) — elevation via lighter navy, not shadows ──────────── */
   --surface-base:    #0B1120;
-  --surface-paper:   #161629;
+  --surface-paper:   #151527;
   --surface-card:    #1A1A2E;
   --surface-dark:    #0B1120;
   --surface-footer:  #0B1120;
   --surface-overlay: rgba(0, 0, 0, 0.60);
 
-  /* ── Text (dark) ────────────────────────────────────────────────────────── */
-  --text-strong:       #FFFFFF;
-  --text-body:         rgba(255, 255, 255, 0.70);
-  --text-muted:        rgba(255, 255, 255, 0.50);
-  --text-on-dark:      #FFFFFF;
-  --text-on-dark-soft: rgba(255, 255, 255, 0.70);
+  /* ── Text (dark) — off-white, never pure #FFFFFF (glare) ────────────────── */
+  --text-strong:       #E9EAF2;
+  --text-body:         rgba(233, 234, 242, 0.72);
+  --text-muted:        rgba(233, 234, 242, 0.52);
+  --text-on-dark:      #E9EAF2;
+  --text-on-dark-soft: rgba(233, 234, 242, 0.70);
   --text-on-brand:     #FFFFFF;
 
-  /* ── Borders (dark) ─────────────────────────────────────────────────────── */
+  /* ── Borders (dark) — neutral hairlines at rest; orange only on
+        hover / focus / active emphasis ──────────────────────────────────── */
   --border-subtle:  rgba(255, 255, 255, 0.10);
   --border-line:    rgba(255, 255, 255, 0.12);
   --border-brand:   rgba(255, 101, 53, 0.40);
