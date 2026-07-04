@@ -1,5 +1,5 @@
 # RISE OS — Frontend Design System
-> Orange brand palette · Inter-only typography · All files in one document
+> Orange brand · Inter-only type · Graph-paper texture · All 9 files combined
 
 ---
 
@@ -8,6 +8,7 @@
 | File | Purpose |
 |------|---------|
 | `SKILL.md` | Master design rules & token reference |
+| `AGENT_PROMPT.md` | Drop-in prompt for any AI agent |
 | `assets/tokens.css` | CSS custom properties — single source of truth |
 | `assets/demo.html` | Live component showcase |
 | `references/accessibility.md` | Accessibility standards |
@@ -15,6 +16,409 @@
 | `references/components.md` | Component architecture patterns |
 | `references/mobile.md` | Mobile-first optimization |
 | `references/performance.md` | Performance targets |
+
+---
+
+## AGENT_PROMPT.md
+
+# RISE OS — Agent Implementation Prompt
+
+Copy this prompt verbatim into any AI agent (Claude, GPT-4, Cursor, etc.) that needs to build UI for RISE OS. It defines every visual and implementation decision — do not deviate.
+
+---
+
+## Prompt
+
+You are building UI for **RISE OS**, a productivity operating system for founder-led SMEs. Follow every rule below exactly. These are not suggestions — they are binding.
+
+---
+
+### 1. Typography — Inter Only
+
+**One font family: Inter.** No other font is permitted.
+
+```css
+font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+```
+
+Load via Google Fonts:
+```html
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+```
+
+| Use case          | Size  | Weight | Letter-spacing |
+|-------------------|-------|--------|----------------|
+| Hero display      | 48px  | 800    | −0.02em        |
+| Section heading   | 36px  | 700    | −0.02em        |
+| Page title        | 20px  | 700    | −0.02em        |
+| Card title        | 16px  | 600    | 0              |
+| Body / task       | 14px  | 500    | 0              |
+| Caption / meta    | 12px  | 400    | 0              |
+| Eyebrow label     | 11px  | 700    | +0.15em + uppercase |
+
+---
+
+### 2. Color Tokens
+
+Never hardcode hex in components. Use these tokens:
+
+```css
+:root {
+  --brand:           #FF6535;   /* primary CTA, accents */
+  --brand-hover:     #FF8159;   /* hover / gradient end */
+  --brand-text:      #D6450F;   /* orange text on white — AA 4.5:1 */
+  --brand-tint:      #FFF0EB;   /* chip/badge backgrounds */
+  --surface-base:    #FFFFFF;
+  --surface-paper:   #F9FAFB;
+  --surface-card:    #FFFFFF;
+  --surface-dark:    #1A1A2E;
+  --surface-footer:  #0B1120;
+  --text-strong:     #1A1A2E;
+  --text-body:       rgba(26,26,46,0.70);
+  --text-muted:      rgba(26,26,46,0.50);
+  --text-on-dark:    #FFFFFF;
+  --text-on-brand:   #FFFFFF;   /* white text ON orange fill */
+  --color-success:   #10B981;
+  --color-danger:    #E11D48;
+  --color-warning:   #F59E0B;
+  --border-focus:    #FF6535;
+}
+```
+
+**Priority colors — always read from this map, never inline:**
+```js
+const PRIORITY_CONFIG = {
+  P1: { color: '#EF4444', bgColor: '#FEF2F2', label: 'P1 Urgent'  },
+  P2: { color: '#FF6535', bgColor: '#FFF0EB', label: 'P2 High'    },
+  P3: { color: '#3B82F6', bgColor: '#EFF6FF', label: 'P3 Medium'  },
+  P4: { color: '#9CA3AF', bgColor: '#F9FAFB', label: 'P4 Low'     },
+};
+```
+
+---
+
+### 3. Graph-paper Background — Required Everywhere
+
+Every light section gets a navy grid. Every dark section gets an orange grid. This is the brand signature — do not omit it.
+
+```css
+/* Light sections */
+background-image:
+  linear-gradient(rgba(26,26,46,0.08) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(26,26,46,0.08) 1px, transparent 1px);
+background-size: 40px 40px;
+
+/* Dark / navy sections */
+background-image:
+  linear-gradient(rgba(255,101,53,0.07) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,101,53,0.07) 1px, transparent 1px);
+background-size: 40px 40px;
+```
+
+---
+
+### 4. Border Standard — Always Visible
+
+**Every interactive or container element must have a visible border at rest.** Nothing borderless.
+
+| Element             | Resting border                        | Hover / focus border              |
+|---------------------|---------------------------------------|-----------------------------------|
+| Card                | `1.5px solid rgba(26,26,46,0.16)`     | `rgba(255,101,53,0.50)`           |
+| Input / Select      | `1.5px solid rgba(26,26,46,0.18)`     | `var(--brand)` + glow ring        |
+| Button (secondary)  | `1.5px solid rgba(26,26,46,0.18)`     | `rgba(255,101,53,0.50)`           |
+| Option button       | `1.5px solid rgba(26,26,46,0.16)`     | `rgba(255,101,53,0.50)`           |
+| Task card           | `1.5px solid rgba(26,26,46,0.16)`     | `rgba(255,101,53,0.50)`           |
+| Checkbox            | `2px solid rgba(26,26,46,0.22)`       | `var(--brand)` + glow ring        |
+| Chip / badge        | `1px solid rgba(26,26,46,0.10)`       | `rgba(255,101,53,0.35)`           |
+| Progress track      | `1px solid rgba(26,26,46,0.14)`       | —                                 |
+| Kanban column       | `1.5px solid rgba(26,26,46,0.14)`     | —                                 |
+| Icon button         | `1.5px solid rgba(26,26,46,0.16)`     | `var(--brand)` + tint fill        |
+| Divider             | `1px solid rgba(26,26,46,0.13)`       | —                                 |
+
+Focus ring — mandatory on all focusable elements:
+```css
+*:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+```
+
+---
+
+### 5. Buttons
+
+```css
+/* Primary — orange, white text */
+.btn-primary {
+  background: #FF6535;
+  color: #FFFFFF;           /* white — NOT navy */
+  border: 1.5px solid rgba(255,101,53,0.20);
+  border-radius: 4px;
+  font-weight: 700;
+  min-height: 44px;
+  padding: 0 20px;
+  box-shadow: 0 4px 16px rgba(255,101,53,0.25);
+}
+.btn-primary:hover {
+  background: #FF8159;
+  box-shadow: 0 0 0 3px rgba(255,101,53,0.14), 0 3px 12px rgba(255,101,53,0.2);
+}
+.btn-primary:active { transform: scale(0.95); box-shadow: none; }
+
+/* Secondary — outline */
+.btn-secondary {
+  background: transparent;
+  color: #1A1A2E;
+  border: 1.5px solid rgba(26,26,46,0.18);
+  border-radius: 4px;
+  font-weight: 700;
+  min-height: 44px;
+  padding: 0 20px;
+}
+.btn-secondary:hover { border-color: rgba(255,101,53,0.50); }
+```
+
+---
+
+### 6. Cards
+
+```css
+.card {
+  background: #FFFFFF;
+  border: 1.5px solid rgba(26,26,46,0.16);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow:
+    0 1px 3px rgba(26,26,46,0.07),
+    0 2px 8px rgba(26,26,46,0.05),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 180ms cubic-bezier(0.16,1,0.3,1);
+}
+
+/* Top orange wipe on hover */
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, #FF6535, #FF8159);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 240ms cubic-bezier(0.16,1,0.3,1);
+}
+.card:hover { border-color: rgba(255,101,53,0.50); transform: translateY(-1px); }
+.card:hover::before { transform: scaleX(1); }
+.card:active { transform: scale(0.995); }
+```
+
+---
+
+### 7. Icons
+
+Use **Lucide icons** (outline, 2px stroke, rounded). Never use emoji for UI icons.
+
+Load Lucide:
+```html
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>
+```
+
+Use in HTML:
+```html
+<i data-lucide="zap" style="width:18px;height:18px;stroke:var(--brand);stroke-width:2;"></i>
+```
+
+Icon container (for feature cards, list items):
+```css
+.icon-wrap {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--brand-tint);
+  border: 1.5px solid rgba(255,101,53,0.22);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(255,101,53,0.10), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+```
+
+Common icon → Lucide name mapping:
+| Purpose       | Lucide name    |
+|---------------|----------------|
+| Lightning/fast| `zap`          |
+| Target/goal   | `crosshair`    |
+| Grid/layout   | `grid`         |
+| Settings      | `settings`     |
+| Close / X     | `x`            |
+| Check         | `check`        |
+| Arrow right   | `arrow-right`  |
+| Plus          | `plus`         |
+| User          | `user`         |
+| Calendar      | `calendar`     |
+| Filter        | `sliders`      |
+| Search        | `search`       |
+
+---
+
+### 8. Mobile Active States (Touch Feedback)
+
+Hover doesn't fire on touch. Always pair every `:hover` rule with an `:active` rule so mobile users get feedback:
+
+```css
+.card:hover, .card:active    { border-color: rgba(255,101,53,0.50); }
+.card:active                 { transform: scale(0.995); }
+
+.task-card:hover, .task-card:active { border-color: rgba(255,101,53,0.50); }
+.task-card:active            { transform: scale(0.975); }
+
+.option-btn:hover, .option-btn:active { border-color: rgba(255,101,53,0.50); }
+.option-btn:active           { transform: scale(0.99); }
+
+.check-row:hover, .check-row:active  { background: rgba(255,101,53,0.04); }
+
+.btn:active                  { transform: scale(0.95) !important; box-shadow: none !important; }
+.icon-btn:active             { background: var(--brand-tint) !important; }
+```
+
+Minimum tap target: **44×44px** on all interactive elements.
+
+---
+
+### 9. Shadows
+
+```css
+--shadow-card:  0 1px 3px rgba(26,26,46,0.07), 0 2px 8px rgba(26,26,46,0.05), inset 0 1px 0 rgba(255,255,255,0.9);
+--shadow-hover: 0 4px 16px rgba(26,26,46,0.10);
+--shadow-popup: 0 24px 64px rgba(26,26,46,0.18), 0 8px 24px rgba(26,26,46,0.10);
+--shadow-brand: 0 4px 16px rgba(255,101,53,0.25);
+--glow-focus:   0 0 0 3px rgba(255,101,53,0.13);
+```
+
+---
+
+### 10. Motion
+
+```css
+--ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+--ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+--dur-fast:   150ms;
+--dur-normal: 250ms;
+--dur-enter:  350ms;
+```
+
+Animate `transform` and `opacity` only — never layout properties (width, height, top, left).
+
+Always respect `prefers-reduced-motion`:
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+---
+
+### 11. Spacing
+
+8pt grid — use multiples of 8:
+`4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64 · 80 · 96px`
+
+Uniform gaps:
+- Section gap: `56px`
+- Grid gap: `16px`
+- Card padding: `20px`
+- Stack gap (form fields, list items): `16px`
+- Inline gap (chips, buttons): `8–12px`
+
+---
+
+### 12. Layout
+
+- Content rail: `max-width: 960px; margin-inline: auto; padding-inline: 32px`
+- One breakpoint: `768px` (mobile vs desktop)
+- Bottom nav: `md:hidden`, fixed, glass blur
+- Sidebar: `hidden md:flex`, fixed left rail
+- No `sm`, `lg`, `xl` breakpoints
+
+---
+
+### 13. Anti-patterns — Never Do
+
+- `color: #FF6535` on white background for text → use `#D6450F` (`--brand-text`)
+- White text on orange button → ✓ correct; navy text on orange → ✗ wrong
+- Emoji for UI icons → use Lucide SVG
+- Hover-only interactive feedback → always add `:active` for mobile
+- Transparent border at rest → always visible border (`rgba(26,26,46,0.16)`)
+- Hardcoded hex in JSX/HTML → use CSS token variable
+- Any font other than Inter → forbidden
+- Graph paper missing from a section background → always include it
+- Aggressive glow / heavy drop shadows → keep diffuse and subtle
+
+---
+
+### 14. Quick Component Recipes
+
+**Input with label:**
+```html
+<div style="display:flex;flex-direction:column;gap:4px;">
+  <label style="font-size:11px;font-weight:600;color:rgba(26,26,46,0.50);letter-spacing:0.05em;text-transform:uppercase;">
+    Field Label
+  </label>
+  <input style="font-family:Inter,sans-serif;font-size:14px;font-weight:500;color:#1A1A2E;background:#fff;border:1.5px solid rgba(26,26,46,0.18);border-radius:8px;padding:10px 12px;outline:none;transition:border-color 180ms,box-shadow 180ms;" placeholder="Placeholder…">
+</div>
+```
+
+**Chip:**
+```html
+<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:9999px;border:1px solid rgba(26,26,46,0.10);background:#FFF0EB;color:#D6450F;font-size:11px;font-weight:600;">
+  <span style="width:6px;height:6px;border-radius:50%;background:#FF6535;"></span>
+  P2 High
+</span>
+```
+
+**Icon button:**
+```html
+<button style="width:34px;height:34px;border-radius:8px;border:1.5px solid rgba(26,26,46,0.16);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(26,26,46,0.50);transition:all 160ms;" aria-label="Settings">
+  <i data-lucide="settings" style="width:14px;height:14px;"></i>
+</button>
+```
+
+**Eyebrow:**
+```html
+<span style="font-family:Inter,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#FF6535;">
+  Section Label
+</span>
+```
+
+---
+
+### 15. File Reference
+
+All tokens, utilities, and component patterns are in:
+
+```
+.claude/skills/frontend-design/
+├── SKILL.md                        ← Master rules
+├── AGENT_PROMPT.md                 ← This file
+├── DESIGN_SYSTEM.md                ← All files combined
+├── assets/
+│   ├── tokens.css                  ← CSS custom properties
+│   └── demo.html                   ← Live component showcase
+└── references/
+    ├── accessibility.md
+    ├── aesthetics.md
+    ├── components.md
+    ├── mobile.md
+    └── performance.md
+```
+
+Link tokens in any HTML page:
+```html
+<link rel="stylesheet" href=".claude/skills/frontend-design/assets/tokens.css">
+```
+
 
 ---
 
@@ -800,8 +1204,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .graph-bg {
   background-image:
-    linear-gradient(rgba(26, 26, 46, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26, 26, 46, 0.045) 1px, transparent 1px);
+    linear-gradient(rgba(26, 26, 46, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 26, 46, 0.08) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
@@ -928,8 +1332,8 @@ h1, h2, h3, h4, h5, h6 {
       gap: 56px;
       background-color: var(--surface-base);
       background-image:
-        linear-gradient(rgba(26,26,46,0.045) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(26,26,46,0.045) 1px, transparent 1px);
+        linear-gradient(rgba(26,26,46,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(26,26,46,0.08) 1px, transparent 1px);
       background-size: 40px 40px;
     }
 
@@ -955,10 +1359,13 @@ h1, h2, h3, h4, h5, h6 {
       position: relative;
       overflow: hidden;
       background: var(--surface-card);
-      border: 1.5px solid rgba(26,26,46,0.10);
+      border: 1.5px solid rgba(26,26,46,0.16);
       border-radius: var(--radius-card);
       padding: 20px;
-      box-shadow: 0 1px 3px rgba(26,26,46,0.05), 0 0 0 0 rgba(255,101,53,0);
+      box-shadow:
+        0 1px 3px rgba(26,26,46,0.07),
+        0 2px 8px rgba(26,26,46,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.9);
       transition:
         border-color 200ms ease,
         box-shadow   200ms ease,
@@ -978,10 +1385,10 @@ h1, h2, h3, h4, h5, h6 {
       z-index: 2;
     }
     .card:hover {
-      border-color: rgba(255,101,53,0.28);
+      border-color: rgba(255,101,53,0.50);
       box-shadow:
-        0 0 0 3px rgba(255,101,53,0.06),
-        0 4px 16px rgba(26,26,46,0.08);
+        0 0 0 3px rgba(255,101,53,0.08),
+        0 6px 20px rgba(26,26,46,0.10);
       transform: translateY(-1px);
     }
     .card:hover::before { transform: scaleX(1); }
@@ -989,7 +1396,7 @@ h1, h2, h3, h4, h5, h6 {
     /* ── Divider ─────────────────────────────────────────────── */
     .divider {
       width: 100%; height: 1px;
-      background: rgba(26,26,46,0.08);
+      background: rgba(26,26,46,0.13);
       margin: 16px 0;
     }
 
@@ -1011,7 +1418,7 @@ h1, h2, h3, h4, h5, h6 {
       font-weight: var(--fw-medium);
       color: var(--text-strong);
       background: var(--surface-card);
-      border: 1.5px solid rgba(26,26,46,0.12);
+      border: 1.5px solid rgba(26,26,46,0.18);
       border-radius: var(--radius-input);
       padding: 10px 12px;
       width: 100%;
@@ -1024,7 +1431,7 @@ h1, h2, h3, h4, h5, h6 {
       -webkit-appearance: none;
     }
     .input:hover:not(:focus), .select:hover:not(:focus) {
-      border-color: rgba(255,101,53,0.30);
+      border-color: rgba(255,101,53,0.50);
     }
     .input:focus, .select:focus {
       border-color: var(--brand);
@@ -1056,18 +1463,18 @@ h1, h2, h3, h4, h5, h6 {
       gap: 12px;
       padding: 8px 10px;
       border-radius: 8px;
-      border: 1px solid transparent;
+      border: 1px solid rgba(26,26,46,0.10);
       cursor: pointer;
       transition: background 150ms ease, border-color 150ms ease;
     }
     .check-row:hover {
       background: rgba(255,101,53,0.03);
-      border-color: rgba(255,101,53,0.12);
+      border-color: rgba(255,101,53,0.35);
     }
     .check-box {
       width: 19px; height: 19px;
       border-radius: 5px;
-      border: 2px solid var(--border-line);
+      border: 2px solid rgba(26,26,46,0.22);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       transition:
@@ -1100,7 +1507,7 @@ h1, h2, h3, h4, h5, h6 {
       display: flex; align-items: center;
       gap: 12px;
       padding: 12px 16px;
-      border: 1.5px solid rgba(26,26,46,0.10);
+      border: 1.5px solid rgba(26,26,46,0.16);
       border-radius: var(--radius-card);
       background: var(--surface-card);
       cursor: pointer;
@@ -1112,8 +1519,8 @@ h1, h2, h3, h4, h5, h6 {
         box-shadow   180ms ease;
     }
     .option-btn:hover {
-      border-color: rgba(255,101,53,0.30);
-      background: rgba(255,101,53,0.02);
+      border-color: rgba(255,101,53,0.50);
+      background: rgba(255,101,53,0.025);
     }
     .option-btn.selected {
       border-color: var(--brand);
@@ -1123,7 +1530,7 @@ h1, h2, h3, h4, h5, h6 {
     .option-dot {
       width: 17px; height: 17px;
       border-radius: var(--radius-full);
-      border: 2px solid var(--border-line);
+      border: 2px solid rgba(26,26,46,0.22);
       flex-shrink: 0;
       transition:
         border-color 180ms ease,
@@ -1146,20 +1553,22 @@ h1, h2, h3, h4, h5, h6 {
       gap: 5px;
       padding: 3px 10px;
       border-radius: var(--radius-full);
+      border: 1px solid rgba(26,26,46,0.10);
       font-size: 11px; font-weight: var(--fw-semibold);
       letter-spacing: 0.02em;
       transition: transform 150ms ease, box-shadow 150ms ease;
     }
+    .chip:hover { border-color: rgba(255,101,53,0.35); }
     .chip:hover { transform: translateY(-1px); }
     .chip-dot { width: 6px; height: 6px; border-radius: var(--radius-full); flex-shrink: 0; }
 
     /* ── Progress bar — animated shimmer fill ────────────────── */
     .progress-track {
       height: 8px;
-      background: var(--color-paper);
+      background: rgba(26,26,46,0.05);
       border-radius: var(--radius-full);
       overflow: hidden;
-      border: 1px solid rgba(26,26,46,0.08);
+      border: 1px solid rgba(26,26,46,0.14);
     }
     .progress-fill {
       height: 100%;
@@ -1218,19 +1627,19 @@ h1, h2, h3, h4, h5, h6 {
     .modal-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: var(--space-5) var(--space-5) var(--space-4);
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid rgba(26,26,46,0.14);
     }
     .modal-body { padding: var(--space-5); }
     .modal-footer {
       display: flex; justify-content: flex-end; gap: var(--space-3);
       padding: var(--space-4) var(--space-5);
-      border-top: 1px solid var(--border-subtle);
+      border-top: 1px solid rgba(26,26,46,0.14);
       background: var(--surface-paper);
     }
     .icon-btn {
       width: 34px; height: 34px;
       border-radius: var(--radius-input);
-      border: 1.5px solid var(--border-subtle);
+      border: 1.5px solid rgba(26,26,46,0.16);
       background: transparent; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       font-size: 14px; color: var(--text-muted);
@@ -1329,7 +1738,7 @@ h1, h2, h3, h4, h5, h6 {
     /* ── Kanban ──────────────────────────────────────────────── */
     .kanban-col {
       background: var(--surface-paper);
-      border: 1.5px solid rgba(26,26,46,0.09);
+      border: 1.5px solid rgba(26,26,46,0.14);
       border-radius: var(--radius-card);
       padding: 12px;
       display: flex; flex-direction: column; gap: 8px;
@@ -1339,12 +1748,12 @@ h1, h2, h3, h4, h5, h6 {
       letter-spacing: var(--tracking-wide);
       text-transform: uppercase; color: var(--text-muted);
       padding: 0 var(--space-1) var(--space-2);
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid rgba(26,26,46,0.14);
       display: flex; align-items: center; justify-content: space-between;
     }
     .task-card {
       background: var(--surface-card);
-      border: 1.5px solid rgba(26,26,46,0.09);
+      border: 1.5px solid rgba(26,26,46,0.16);
       border-radius: 8px;
       padding: 12px;
       cursor: pointer;
@@ -1365,8 +1774,8 @@ h1, h2, h3, h4, h5, h6 {
       transition: transform 220ms var(--ease-out);
     }
     .task-card:hover {
-      border-color: rgba(255,101,53,0.28);
-      box-shadow: 0 0 0 3px rgba(255,101,53,0.06), 0 3px 10px rgba(26,26,46,0.07);
+      border-color: rgba(255,101,53,0.50);
+      box-shadow: 0 0 0 3px rgba(255,101,53,0.07), 0 3px 10px rgba(26,26,46,0.08);
       transform: translateY(-1px);
     }
     .task-card:hover::before { transform: scaleY(1); }
@@ -1378,7 +1787,7 @@ h1, h2, h3, h4, h5, h6 {
     .swatch { display: flex; flex-direction: column; align-items: center; gap: 5px; }
     .swatch-dot {
       width: 40px; height: 40px; border-radius: var(--radius-full);
-      border: 1px solid var(--border-subtle);
+      border: 1.5px solid rgba(26,26,46,0.15);
       transition: transform 150ms var(--ease-spring), box-shadow 150ms ease;
     }
     .swatch-dot:hover { transform: scale(1.15); box-shadow: 0 4px 12px rgba(26,26,46,0.15); }
@@ -1388,7 +1797,7 @@ h1, h2, h3, h4, h5, h6 {
     .type-row {
       display: flex; align-items: baseline; gap: var(--space-4);
       padding: var(--space-3) 0;
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid rgba(26,26,46,0.12);
       transition: background 150ms ease;
     }
     .type-row:last-child { border-bottom: none; }
@@ -1420,12 +1829,42 @@ h1, h2, h3, h4, h5, h6 {
       box-shadow: 0 0 0 3px rgba(255,101,53,0.14), 0 3px 12px rgba(255,101,53,0.2);
     }
     .btn--secondary {
-      border-color: rgba(26,26,46,0.12);
+      border-color: rgba(26,26,46,0.18);
     }
     .btn--secondary:hover {
-      border-color: rgba(255,101,53,0.30);
+      border-color: rgba(255,101,53,0.50);
       box-shadow: 0 0 0 3px rgba(255,101,53,0.07);
     }
+
+    /* ── Mobile :active states (touch feedback) ─────────────── */
+    .card:active        { transform: scale(0.995); box-shadow: 0 1px 3px rgba(26,26,46,0.07); }
+    .task-card:active   { transform: scale(0.975); border-color: rgba(255,101,53,0.45) !important; }
+    .check-row:active   { background: rgba(255,101,53,0.07) !important; border-color: rgba(255,101,53,0.35) !important; }
+    .option-btn:active  { border-color: rgba(255,101,53,0.55) !important; background: rgba(255,101,53,0.06) !important; transform: scale(0.99); }
+    .btn:active         { transform: scale(0.95) !important; box-shadow: none !important; }
+    .swatch-dot:active  { transform: scale(1.12); }
+    .icon-btn:active    { background: var(--brand-tint) !important; border-color: var(--brand) !important; }
+
+    /* ── Premium icon container ──────────────────────────────── */
+    .icon-wrap {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: var(--brand-tint);
+      border: 1.5px solid rgba(255,101,53,0.22);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(255,101,53,0.10), inset 0 1px 0 rgba(255,255,255,0.6);
+      flex-shrink: 0;
+    }
+
+    /* ── Premium progress track ──────────────────────────────── */
+    .progress-wrap {
+      display: flex; justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .progress-label { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--text-strong); }
+    .progress-pct   { font-size: var(--text-sm); font-weight: var(--fw-bold); }
   </style>
 </head>
 <body>
@@ -1717,32 +2156,32 @@ h1, h2, h3, h4, h5, h6 {
     <div class="card">
       <div class="stack" style="gap:var(--space-5);">
         <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);">
-            <span style="font-size:var(--text-sm);font-weight:var(--fw-semibold);">Strategic Clarity</span>
-            <span style="font-size:var(--text-sm);font-weight:var(--fw-bold);color:var(--brand);">72%</span>
+          <div class="progress-wrap">
+            <span class="progress-label">Strategic Clarity</span>
+            <span class="progress-pct" style="color:var(--brand);">72%</span>
           </div>
           <div class="progress-track"><div class="progress-fill" style="width:72%;"></div></div>
         </div>
         <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);">
-            <span style="font-size:var(--text-sm);font-weight:var(--fw-semibold);">Financial Visibility</span>
-            <span style="font-size:var(--text-sm);font-weight:var(--fw-bold);color:#059669;">88%</span>
+          <div class="progress-wrap">
+            <span class="progress-label">Financial Visibility</span>
+            <span class="progress-pct" style="color:#059669;">88%</span>
           </div>
-          <div class="progress-track"><div class="progress-fill" style="width:88%;background:var(--color-success);"></div></div>
+          <div class="progress-track"><div class="progress-fill" style="width:88%;background:linear-gradient(90deg,#10B981,#34D399,#10B981);background-size:300% 100%;"></div></div>
         </div>
         <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);">
-            <span style="font-size:var(--text-sm);font-weight:var(--fw-semibold);">Operations & Execution</span>
-            <span style="font-size:var(--text-sm);font-weight:var(--fw-bold);color:#D97706;">45%</span>
+          <div class="progress-wrap">
+            <span class="progress-label">Operations & Execution</span>
+            <span class="progress-pct" style="color:#D97706;">45%</span>
           </div>
-          <div class="progress-track"><div class="progress-fill" style="width:45%;background:var(--color-warning);"></div></div>
+          <div class="progress-track"><div class="progress-fill" style="width:45%;background:linear-gradient(90deg,#F59E0B,#FCD34D,#F59E0B);background-size:300% 100%;"></div></div>
         </div>
         <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-2);">
-            <span style="font-size:var(--text-sm);font-weight:var(--fw-semibold);">People & Leadership</span>
-            <span style="font-size:var(--text-sm);font-weight:var(--fw-bold);color:#3B82F6;">61%</span>
+          <div class="progress-wrap">
+            <span class="progress-label">People & Leadership</span>
+            <span class="progress-pct" style="color:#3B82F6;">61%</span>
           </div>
-          <div class="progress-track"><div class="progress-fill" style="width:61%;background:#3B82F6;"></div></div>
+          <div class="progress-track"><div class="progress-fill" style="width:61%;background:linear-gradient(90deg,#3B82F6,#60A5FA,#3B82F6);background-size:300% 100%;"></div></div>
         </div>
       </div>
     </div>
@@ -1823,7 +2262,7 @@ h1, h2, h3, h4, h5, h6 {
         <div class="tooltip" style="left:50%;transform:translateX(-50%) translateY(4px);">Open settings panel</div>
       </div>
       <div class="tooltip-wrap">
-        <div class="icon-btn" title="">⚙</div>
+        <div class="icon-btn" title=""><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></div>
         <div class="tooltip" style="left:50%;transform:translateX(-50%) translateY(4px);">Configure</div>
       </div>
       <div class="tooltip-wrap">
@@ -1841,17 +2280,17 @@ h1, h2, h3, h4, h5, h6 {
     </div>
     <div class="demo-grid">
       <div class="card">
-        <div style="font-size:22px;margin-bottom:var(--space-3);">⚡</div>
+        <div class="icon-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
         <div style="font-size:var(--text-base);font-weight:var(--fw-bold);margin-bottom:var(--space-2);">Smart Defaults</div>
         <p style="font-size:var(--text-sm);color:var(--text-body);line-height:var(--leading-relaxed);">Orange top-bar wipes in from the left on hover. Border turns orange. Shadow lifts.</p>
       </div>
       <div class="card">
-        <div style="font-size:22px;margin-bottom:var(--space-3);">🎯</div>
+        <div class="icon-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg></div>
         <div style="font-size:var(--text-base);font-weight:var(--fw-bold);margin-bottom:var(--space-2);">Engineered Growth</div>
         <p style="font-size:var(--text-sm);color:var(--text-body);line-height:var(--leading-relaxed);">Every interaction is intentional. 150ms transitions, ease-out easing, 1px border shifts.</p>
       </div>
       <div class="card">
-        <div style="font-size:22px;margin-bottom:var(--space-3);">📐</div>
+        <div class="icon-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></div>
         <div style="font-size:var(--text-base);font-weight:var(--fw-bold);margin-bottom:var(--space-2);">Graph-paper Texture</div>
         <p style="font-size:var(--text-sm);color:var(--text-body);line-height:var(--leading-relaxed);">Blueprint aesthetic on every surface. Navy grid on light, orange grid on dark.</p>
       </div>
@@ -1885,7 +2324,7 @@ h1, h2, h3, h4, h5, h6 {
           <div class="eyebrow" style="margin-bottom:var(--space-1);">Popup Card</div>
           <h2 id="modalTitle" style="font-size:var(--text-xl);font-weight:var(--fw-bold);color:var(--text-strong);">Create New Task</h2>
         </div>
-        <button class="icon-btn" onclick="closeModal()" aria-label="Close">✕</button>
+        <button class="icon-btn" onclick="closeModal()" aria-label="Close"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
       </div>
       <div class="modal-body">
         <div class="stack" style="gap:var(--space-4);">

@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckSquare, Heart, DollarSign, Target, Sparkles } from "lucide-react";
+import { CheckSquare, Heart, DollarSign, Target, Sparkles, Users, Phone, Mail } from "lucide-react";
 import Link from "next/link";
 import { formatAED } from "@/lib/format";
 import { HabitDashboardSection } from "@/components/wellness/habit-dashboard-section";
@@ -19,6 +19,7 @@ export default async function HomePage() {
     { data: habitLogs },
     { data: activeGoals },
     { data: recentTransactions },
+    { data: followUps },
   ] = await Promise.all([
     supabase
       .from("tasks")
@@ -55,6 +56,13 @@ export default async function HomePage() {
       .select("*")
       .eq("date", today)
       .order("created_at", { ascending: false })
+      .limit(3),
+    supabase
+      .from("contacts")
+      .select("id, name, email, phone, company, stage, last_contacted_at")
+      .neq("type", "personal")
+      .or(`last_contacted_at.is.null,last_contacted_at.lte.${format(new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")}`)
+      .order("last_contacted_at", { ascending: true, nullsFirst: true })
       .limit(3),
   ]);
 
@@ -298,6 +306,68 @@ export default async function HomePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* CRM contacts needing attention */}
+      {followUps && followUps.length > 0 && (
+        <Card className="animate-rise-in stagger-6 border-t-4 border-t-mod-crm">
+          <CardHeader className="pb-3 flex-row items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-mod-crm-soft flex items-center justify-center">
+                <Users className="w-3.5 h-3.5 text-mod-crm" />
+              </div>
+              Touch Base
+            </CardTitle>
+            <Link
+              href="/crm"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              View all
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {followUps.map((contact) => (
+              <div key={contact.id} className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-full bg-mod-crm-soft flex items-center justify-center shrink-0">
+                    <span className="text-mod-crm text-xs font-semibold">
+                      {contact.name[0]?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{contact.name}</p>
+                    {contact.company && (
+                      <p className="text-xs text-muted-foreground truncate">{contact.company}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {contact.email && (
+                    <a
+                      href={`mailto:${contact.email}`}
+                      aria-label={`Email ${contact.name}`}
+                      className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
+                    >
+                      <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                    </a>
+                  )}
+                  {contact.phone && (
+                    <a
+                      href={`tel:${contact.phone}`}
+                      aria-label={`Call ${contact.name}`}
+                      className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5" aria-hidden="true" />
+                    </a>
+                  )}
+                  <Badge variant="secondary" className="text-xs capitalize">
+                    {contact.stage}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Today's finance */}
       {recentTransactions && recentTransactions.length > 0 && (

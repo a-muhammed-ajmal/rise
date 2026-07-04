@@ -17,10 +17,32 @@ import {
   LogOut,
   Bell,
   BellOff,
+  CheckSquare,
+  Heart,
+  DollarSign,
+  Target,
+  Users,
+  BookOpen,
+  Sparkles,
+  BarChart2,
+  Info,
 } from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { usePushSubscription } from "@/lib/hooks/use-push-subscription";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+
+const MODULES = [
+  { href: "/productivity", label: "Productivity", description: "Tasks, projects, kanban",          icon: CheckSquare, iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-soft" },
+  { href: "/finance",      label: "Finance",      description: "Transactions, budgets, wallets",   icon: DollarSign,  iconCls: "text-mod-finance",  bgCls: "bg-mod-finance-soft" },
+  { href: "/wellness",     label: "Wellness",     description: "Habits, streaks, focus timer",     icon: Heart,       iconCls: "text-mod-wellness", bgCls: "bg-mod-wellness-soft" },
+  { href: "/goals",        label: "Goals",        description: "Goals, milestones, journal",       icon: Target,      iconCls: "text-mod-goals",    bgCls: "bg-mod-goals-soft" },
+  { href: "/crm",          label: "CRM",          description: "Contacts, pipeline, interactions", icon: Users,       iconCls: "text-mod-crm",      bgCls: "bg-mod-crm-soft" },
+  { href: "/knowledge",    label: "Knowledge",    description: "Notes, links, documents",          icon: BookOpen,    iconCls: "text-violet-500",   bgCls: "bg-violet-50 dark:bg-violet-950/30" },
+  { href: "/assistant",    label: "AI Assistant", description: "Gemini chat with tool access",     icon: Sparkles,    iconCls: "text-mod-ai",       bgCls: "bg-mod-ai-soft" },
+  { href: "/analytics",    label: "Analytics",    description: "Charts across all modules",        icon: BarChart2,   iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-soft" },
+] as const;
 
 export default function SettingsPage() {
   const { theme, toggle } = useTheme();
@@ -261,7 +283,68 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-center text-muted-foreground animate-rise-in stagger-4">
+      {/* Modules */}
+      <Card className="animate-rise-in stagger-5">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Settings className="w-4 h-4" /> Modules
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-2">
+            {MODULES.map((mod) => {
+              const Icon = mod.icon;
+              return (
+                <Link
+                  key={mod.href}
+                  href={mod.href}
+                  className="flex items-start gap-2.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-accent/50 transition-colors group"
+                >
+                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", mod.bgCls)}>
+                    <Icon className={cn("w-3.5 h-3.5", mod.iconCls)} aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium leading-tight group-hover:text-primary transition-colors">{mod.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{mod.description}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* About */}
+      <Card className="animate-rise-in stagger-5">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Info className="w-4 h-4" /> About RISE
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Version</span>
+            <Badge variant="secondary">v0.1.0</Badge>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">AI Model</span>
+            <span className="text-sm font-medium">Gemini 2.5 Flash</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Database</span>
+            <span className="text-sm font-medium">Supabase Postgres</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Hosting</span>
+            <span className="text-sm font-medium">Vercel</span>
+          </div>
+          <p className="text-xs text-muted-foreground pt-1 border-t border-border">
+            RISE is a single-user personal operating system. Your data is private, stored in your own Supabase project, and never shared.
+          </p>
+        </CardContent>
+      </Card>
+
+      <p className="text-xs text-center text-muted-foreground animate-rise-in stagger-5 pb-2">
         RISE v0.1.0 — Personal OS
       </p>
     </div>

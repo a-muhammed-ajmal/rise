@@ -7,8 +7,8 @@ export default function AnalyticsLoading() {
         <div className="h-4 w-48 rounded bg-muted animate-pulse" />
       </div>
 
-      {/* Section skeletons — 4 sections */}
-      {[1, 2, 3, 4].map((i) => (
+      {/* Section skeletons — 6 sections */}
+      {[1, 2, 3, 4, 5, 6].map((i) => (
         <div key={i} className="space-y-4">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-muted animate-pulse" />

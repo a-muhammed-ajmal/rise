@@ -1,12 +1,14 @@
 import { createClient } from "@/lib/supabase/server"
 import { format, subDays, subMonths, startOfMonth, endOfMonth, parseISO } from "date-fns"
-import { DollarSign, Heart, Target, CheckSquare } from "lucide-react"
+import { DollarSign, Heart, Target, CheckSquare, Users, BookOpen } from "lucide-react"
 import Link from "next/link"
 import { FinanceCharts } from "@/components/analytics/finance-charts"
 import { WellnessCharts } from "@/components/analytics/wellness-charts"
 import { GoalsCharts } from "@/components/analytics/goals-charts"
 import { TasksCharts } from "@/components/analytics/tasks-charts"
-import type { Transaction, Budget, Habit, HabitLog, JournalEntry, FocusSession, Goal, Task } from "@/lib/types/database"
+import { CrmCharts } from "@/components/analytics/crm-charts"
+import { KnowledgeCharts } from "@/components/analytics/knowledge-charts"
+import type { Transaction, Budget, Habit, HabitLog, JournalEntry, FocusSession, Goal, Task, Contact, Interaction, Note } from "@/lib/types/database"
 
 // ── Aggregation helpers ───────────────────────────────────────────────────────
 
@@ -116,6 +118,79 @@ function buildCompletedPerDay(tasks: Task[], today: Date) {
   }))
 }
 
+function buildCrmByStage(contacts: Contact[]) {
+  const stageOrder = ["new", "qualified", "proposal", "negotiation", "won", "lost"]
+  const map = new Map<string, { count: number; value: number }>()
+  for (const stage of stageOrder) map.set(stage, { count: 0, value: 0 })
+  for (const c of contacts) {
+    const entry = map.get(c.stage) ?? { count: 0, value: 0 }
+    entry.count += 1
+    entry.value += c.deal_value ?? 0
+    map.set(c.stage, entry)
+  }
+  return stageOrder
+    .filter((s) => (map.get(s)?.count ?? 0) > 0)
+    .map((stage) => ({ stage, ...(map.get(stage) ?? { count: 0, value: 0 }) }))
+}
+
+function buildCrmByType(contacts: Contact[]) {
+  const map = new Map<string, number>()
+  for (const c of contacts) map.set(c.type, (map.get(c.type) ?? 0) + 1)
+  return Array.from(map.entries()).map(([type, count]) => ({ type, count }))
+}
+
+function buildInteractionActivity(interactions: Pick<Interaction, "date">[], today: Date) {
+  const map = new Map<string, number>()
+  for (let i = 5; i >= 0; i--) {
+    map.set(format(subMonths(today, i), "yyyy-MM"), 0)
+  }
+  for (const i of interactions) {
+    const key = i.date.slice(0, 7)
+    if (map.has(key)) map.set(key, (map.get(key) ?? 0) + 1)
+  }
+  return Array.from(map.entries()).map(([month, interactions]) => ({
+    month: format(parseISO(month + "-01"), "MMM yy"),
+    interactions,
+  }))
+}
+
+function buildNotesPerDay(notes: Pick<Note, "created_at">[], today: Date) {
+  const map = new Map<string, number>()
+  for (let i = 13; i >= 0; i--) {
+    map.set(format(subDays(today, i), "yyyy-MM-dd"), 0)
+  }
+  for (const n of notes) {
+    const day = n.created_at.slice(0, 10)
+    if (map.has(day)) map.set(day, (map.get(day) ?? 0) + 1)
+  }
+  return Array.from(map.entries()).map(([d, count]) => ({
+    date: format(parseISO(d), "dd/MM"),
+    count,
+  }))
+}
+
+function buildNotesByLinkedType(notes: Pick<Note, "linked_to_type">[]) {
+  const map = new Map<string, number>()
+  for (const n of notes) {
+    const key = n.linked_to_type ?? "standalone"
+    map.set(key, (map.get(key) ?? 0) + 1)
+  }
+  return Array.from(map.entries()).map(([type, count]) => ({ type, count }))
+}
+
+function buildTopTags(notes: Pick<Note, "tags">[]) {
+  const map = new Map<string, number>()
+  for (const n of notes) {
+    for (const tag of n.tags ?? []) {
+      map.set(tag, (map.get(tag) ?? 0) + 1)
+    }
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([tag, count]) => ({ tag, count }))
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default async function AnalyticsPage() {
@@ -137,6 +212,11 @@ export default async function AnalyticsPage() {
     { data: focusSessions },
     { data: goals },
     { data: tasks },
+    { data: contacts },
+    { data: interactions },
+    { data: notes },
+    { data: links },
+    { data: documents },
   ] = await Promise.all([
     supabase.from("transactions").select("type,amount,category,date").gte("date", sixMonthsAgo).order("date"),
     supabase.from("budgets").select("category,amount").eq("period", "monthly").gte("period_start", monthStart).lte("period_end", monthEnd),
@@ -146,6 +226,11 @@ export default async function AnalyticsPage() {
     supabase.from("focus_sessions").select("duration_minutes,started_at").gte("started_at", fourteenDaysAgo + "T00:00:00"),
     supabase.from("goals").select("title,status,category,progress"),
     supabase.from("tasks").select("status,priority,completed_at"),
+    supabase.from("contacts").select("type,stage,deal_value"),
+    supabase.from("interactions").select("date").gte("date", sixMonthsAgo),
+    supabase.from("notes").select("created_at,linked_to_type,tags").gte("created_at", fourteenDaysAgo + "T00:00:00"),
+    supabase.from("links").select("id"),
+    supabase.from("documents").select("id"),
   ])
 
   // Finance aggregations
@@ -187,6 +272,24 @@ export default async function AnalyticsPage() {
     count: taskList.filter((t) => t.priority === p).length,
   }))
   const completedPerDay = buildCompletedPerDay(taskList, today)
+
+  // CRM aggregations
+  const contactList = (contacts ?? []) as Contact[]
+  const crmByStage = buildCrmByStage(contactList)
+  const crmByType = buildCrmByType(contactList)
+  const interactionActivity = buildInteractionActivity(
+    (interactions ?? []) as Pick<Interaction, "date">[],
+    today,
+  )
+
+  // Knowledge aggregations
+  const noteList = (notes ?? []) as Pick<Note, "created_at" | "linked_to_type" | "tags">[]
+  const notesPerDay = buildNotesPerDay(noteList, today)
+  const notesByLinkedType = buildNotesByLinkedType(noteList)
+  const topTags = buildTopTags(noteList)
+  const totalNotesCount = noteList.length
+  const totalLinksCount = links?.length ?? 0
+  const totalDocsCount = documents?.length ?? 0
 
   return (
     <div className="p-4 md:p-6 space-y-10 max-w-6xl">
@@ -258,6 +361,45 @@ export default async function AnalyticsPage() {
           </Link>
         </div>
         <TasksCharts byStatus={taskByStatus} byPriority={taskByPriority} completedPerDay={completedPerDay} />
+      </section>
+
+      {/* CRM section */}
+      <section className="space-y-4 animate-rise-in stagger-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-mod-crm-soft flex items-center justify-center">
+              <Users className="w-4 h-4 text-mod-crm" />
+            </div>
+            <h2 className="text-base font-semibold">CRM</h2>
+          </div>
+          <Link href="/crm" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            View module →
+          </Link>
+        </div>
+        <CrmCharts byStage={crmByStage} byType={crmByType} recentActivity={interactionActivity} />
+      </section>
+
+      {/* Knowledge section */}
+      <section className="space-y-4 animate-rise-in stagger-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-950/30 flex items-center justify-center">
+              <BookOpen className="w-4 h-4 text-violet-500" />
+            </div>
+            <h2 className="text-base font-semibold">Knowledge</h2>
+          </div>
+          <Link href="/knowledge" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            View module →
+          </Link>
+        </div>
+        <KnowledgeCharts
+          notesPerDay={notesPerDay}
+          byLinkedType={notesByLinkedType}
+          topTags={topTags}
+          totalNotes={totalNotesCount}
+          totalLinks={totalLinksCount}
+          totalDocs={totalDocsCount}
+        />
       </section>
     </div>
   )
