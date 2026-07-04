@@ -6,8 +6,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0D0A1A",
-  "theme_color": "#6366f1",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FF6535",
   "orientation": "portrait-primary",
   "lang": "en",
   "categories": ["productivity", "lifestyle"],
@@ -25,13 +25,13 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-192.png",
+      "src": "/icon-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

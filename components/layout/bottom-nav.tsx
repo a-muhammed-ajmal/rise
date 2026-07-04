@@ -13,9 +13,9 @@ import {
   BookOpen,
   Users,
   Settings,
-  Sparkles,
   MoreHorizontal,
 } from "lucide-react";
+import { RiseLogo } from "@/components/brand/rise-logo";
 import { useState } from "react";
 import {
   Sheet,
@@ -105,7 +105,7 @@ export function BottomNav() {
               aiActive && "bottom-nav__fab--active",
             )}
           >
-            <Sparkles className="w-[22px] h-[22px] text-white" />
+            <RiseLogo mono className="w-6 h-6 bee-float" />
           </Link>
         </div>
 

@@ -34,7 +34,6 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Plus,
   Inbox,
-  CalendarDays,
   List,
   Loader2,
   FolderOpen,
@@ -192,7 +191,10 @@ export default function ProductivityPage() {
     () => filter === "today" ? tasks.filter((t) => t.is_starred).slice(0, 3) : [],
     [tasks, filter]
   );
-  const starredIds = new Set(starredTodayTasks.map((t) => t.id));
+  const starredIds = useMemo(
+    () => new Set(starredTodayTasks.map((t) => t.id)),
+    [starredTodayTasks]
+  );
   const regularTodayTasks = useMemo(
     () => filter === "today" ? processedTasks.filter((t) => !starredIds.has(t.id)) : processedTasks,
     [processedTasks, starredIds, filter]
@@ -208,7 +210,11 @@ export default function ProductivityPage() {
   function toggleSelectTask(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }

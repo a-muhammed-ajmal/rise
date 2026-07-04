@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Sparkles } from "lucide-react";
+import { RiseLogo } from "@/components/brand/rise-logo";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -19,8 +19,8 @@ export function Sidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center justify-center lg:justify-start lg:px-4 border-b border-border">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center shrink-0 shadow-brand transition-transform duration-200 group-hover:scale-105">
-            <Sparkles className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-lg bg-white border-[1.5px] border-border flex items-center justify-center shrink-0 shadow-card transition-transform duration-200 group-hover:scale-105">
+            <RiseLogo keepColor className="w-5 h-5" />
           </div>
           <span className="hidden lg:block font-heading font-semibold text-lg tracking-tight">
             RISE

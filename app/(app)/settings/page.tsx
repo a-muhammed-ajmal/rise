@@ -23,10 +23,10 @@ import {
   Target,
   Users,
   BookOpen,
-  Sparkles,
   BarChart2,
   Info,
 } from "lucide-react";
+import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { usePushSubscription } from "@/lib/hooks/use-push-subscription";
@@ -40,7 +40,7 @@ const MODULES = [
   { href: "/goals",        label: "Goals",        description: "Goals, milestones, journal",       icon: Target,      iconCls: "text-mod-goals",    bgCls: "bg-mod-goals-tint" },
   { href: "/crm",          label: "CRM",          description: "Contacts, pipeline, interactions", icon: Users,       iconCls: "text-mod-crm",      bgCls: "bg-mod-crm-tint" },
   { href: "/knowledge",    label: "Knowledge",    description: "Notes, links, documents",          icon: BookOpen,    iconCls: "text-mod-knowledge", bgCls: "bg-mod-knowledge-tint" },
-  { href: "/assistant",    label: "AI Assistant", description: "Gemini chat with tool access",     icon: Sparkles,    iconCls: "text-brand-text",       bgCls: "bg-brand-tint" },
+  { href: "/assistant",    label: "AI Assistant", description: "Gemini chat with tool access",     icon: RiseLogo,    iconCls: "",                      bgCls: "bg-brand-tint" },
   { href: "/analytics",    label: "Analytics",    description: "Charts across all modules",        icon: BarChart2,   iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-tint" },
 ] as const;
 

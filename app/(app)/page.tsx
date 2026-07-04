@@ -3,7 +3,8 @@ import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckSquare, Heart, DollarSign, Target, Sparkles, Users, Phone, Mail } from "lucide-react";
+import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail } from "lucide-react";
+import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
 import { formatAED } from "@/lib/format";
 import { HabitDashboardSection } from "@/components/wellness/habit-dashboard-section";
@@ -279,7 +280,7 @@ export default async function HomePage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-brand-tint flex items-center justify-center">
-                <Sparkles className="w-3.5 h-3.5 text-brand-text" />
+                <RiseLogo className="w-4 h-4" />
               </div>
               AI Assistant
             </CardTitle>

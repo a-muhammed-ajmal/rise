@@ -12,7 +12,6 @@ import { AudioRecorder } from "@/components/assistant/audio-recorder";
 import type { AttachmentStatus } from "@/components/assistant/attachment-chip";
 import type { ChatAttachment } from "@/lib/types/database";
 import {
-  Sparkles,
   Send,
   AlertTriangle,
   CheckCircle,
@@ -23,6 +22,7 @@ import {
   FileText,
   Music,
 } from "lucide-react";
+import { RiseLogo } from "@/components/brand/rise-logo";
 import { cn } from "@/lib/utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -570,7 +570,7 @@ function AssistantContent() {
       <ScrollArea className="flex-1 p-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full space-y-4 py-12 slide-up">
-            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md bee-float">
               <Image
                 src="/icon-512.png"
                 alt="RISE"
@@ -616,7 +616,7 @@ function AssistantContent() {
                 >
                   {msg.role === "assistant" && (
                     <div className="flex items-center gap-1.5 mb-1">
-                      <Sparkles className="w-3.5 h-3.5 text-brand-text" />
+                      <RiseLogo className="w-4 h-4" />
                       <span className="text-xs font-medium text-brand-text">
                         RISE
                       </span>
@@ -668,7 +668,7 @@ function AssistantContent() {
                   messages.indexOf(m) === messages.length - 1,
               ) && (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Sparkles className="w-3.5 h-3.5 text-brand-text" />
+                  <RiseLogo className="w-4 h-4" />
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span className="text-xs">Thinking…</span>
                 </div>
@@ -764,6 +764,7 @@ function AssistantContent() {
             ref={fileInputRef}
             type="file"
             className="hidden"
+            aria-label="Attach files"
             accept={ACCEPTED_TYPES}
             multiple
             onChange={(e) => {

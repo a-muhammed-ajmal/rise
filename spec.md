@@ -13,7 +13,7 @@ Living specification for the RISE codebase. Describes what is currently implemen
 | Migrations | 12 (001–012) |
 | DB tables | 22 (21 core + push_subscriptions) |
 | AI tools | 58 AUTO + 17 APPROVAL = 75 total |
-| Last feature shipped | Phase 10 — Light-first orange design system (2026-07-04) |
+| Last feature shipped | Phase 11 — RISE bee logo rollout + icon pipeline (2026-07-04) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -129,7 +129,7 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 | --- | --- |
 | Test coverage | ≥ 85% line on `lib/**` excluding `lib/types/` (current: 49.38% — below target; `execute-tool.ts` expansion and new `use-payment-methods.ts` at 0% drove the drop) |
 | Build | `next build` exits 0; 0 TypeScript errors |
-| Lint | ESLint exits 0; 0 errors. (5 pre-existing warnings in `productivity/page.tsx`, `api/ai/chat/route.ts`, `task-calendar.tsx` — tracked for next cleanup pass, not introduced by design work) |
+| Lint | ESLint exits 0; 0 errors, 0 warnings (previously-tracked warnings cleared 2026-07-04) |
 | SSE first chunk | < 3 s under normal Gemini API latency |
 | Supabase queries | < 500 ms per module-load query (indexed columns only; no full-table scans) |
 | PWA offline | `/offline` serves from cache within 200 ms |
@@ -363,3 +363,4 @@ Candidate areas (not prioritized):
 | 8 | Habit UX overhaul + reminder_time | 2026-07-01 | `supabase/migrations/009_habit_reminder_time.sql` (adds `reminder_time` column), `lib/types/database.ts` (HabitRow updated), `app/(app)/wellness/page.tsx` (form overhaul, card marking, streak logic, sort by reminder_time) |
 | 9 | Payment methods / wallets | 2026-07-01 | `supabase/migrations/010_payment_methods.sql`, `011_fix_payment_methods.sql`, `lib/types/database.ts` (PaymentMethodRow, TransactionRow with transfer/adjustment types + FK columns), `app/(app)/finance/` (wallet cards, live balance tracking) |
 | 10 | Light-first orange design system | 2026-07-04 | `app/globals.css` (full token rewrite: brand/module/status/priority tokens, navy dark mode, `.card`/`.card-hover`, `brand-pulse`, graph-paper), `app/layout.tsx` (viewport theme colors), `app/(app)/layout.tsx` (graph-bg shell), `components/ui/` (button/card/input/textarea/badge/tabs/dialog/sheet — 4/8/12/16px radii, 1.5px borders, 44px buttons, bold CTAs), `components/layout/` (sidebar/topbar/bottom-nav), all 8 module pages + dashboard + login (slide-up/stagger/card-hover/mod-tint swaps, page-glow and glassmorphism removed), `components/assistant/` (card-style bubbles, orange recording pulse), `components/analytics/` (6 chart palettes), `.claude/skills/frontend-design/` (module token table, AI resolution, tokens.css Inter-only mono) |
+| 11 | RISE bee logo rollout + icon pipeline | 2026-07-04 | `scripts/generate-icons.mjs` (sharp pipeline from `public/rise-ai.png` master), `public/` (icon-192/512, maskable pair, apple-touch-icon, rise-logo transparent mark), `app/icon.png` (favicon), `public/manifest.webmanifest` (orange theme, maskable entries), `public/sw.js` (rise-v4, fixed icon paths), `components/brand/rise-logo.tsx` (RiseLogo with mono/keepColor variants), sidebar/bottom-nav/nav-items/assistant/dashboard/settings (Sparkles → bee), `app/globals.css` (bee-float), lint warnings cleared |

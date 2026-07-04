@@ -6,10 +6,10 @@ import {
   Heart,
   BookOpen,
   Users,
-  Sparkles,
   Settings,
   BarChart2,
 } from 'lucide-react'
+import { RiseLogo } from '@/components/brand/rise-logo'
 
 export const navItems = [
   { href: '/',            label: 'Home',        icon: LayoutDashboard, mobile: true  },
@@ -20,6 +20,6 @@ export const navItems = [
   { href: '/analytics',   label: 'Analytics',   icon: BarChart2,       mobile: false },
   { href: '/knowledge',   label: 'Knowledge',   icon: BookOpen,        mobile: false },
   { href: '/crm',         label: 'CRM',         icon: Users,           mobile: false },
-  { href: '/assistant',   label: 'AI Assistant',icon: Sparkles,        mobile: false },
+  { href: '/assistant',   label: 'AI Assistant',icon: RiseLogo,        mobile: false },
   { href: '/settings',    label: 'Settings',    icon: Settings,        mobile: false },
 ] as const

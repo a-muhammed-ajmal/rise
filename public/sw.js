@@ -1,10 +1,10 @@
-const CACHE_NAME = "rise-v3";
+const CACHE_NAME = "rise-v4";
 const OFFLINE_URL = "/offline";
 const STATIC_SHELL = [
   OFFLINE_URL,
   "/manifest.webmanifest",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
+  "/icon-192.png",
+  "/icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -42,8 +42,8 @@ self.addEventListener("push", (event) => {
   const title = data.title ?? "RISE";
   const options = {
     body: data.body ?? "",
-    icon: data.icon ?? "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    icon: data.icon ?? "/icon-192.png",
+    badge: "/icon-192.png",
     data: { url: data.url ?? "/" },
   };
   event.waitUntil(self.registration.showNotification(title, options));
