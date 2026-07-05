@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 
-type StatAccent = "tasks" | "wellness" | "goals" | "finance"
+type StatAccent = "tasks" | "wellness" | "goals" | "finance" | "danger"
 
 // Tailwind can't compile dynamic class names — accents must be static strings
 const ACCENT: Record<StatAccent, { border: string; icon: string }> = {
@@ -13,6 +13,7 @@ const ACCENT: Record<StatAccent, { border: string; icon: string }> = {
   wellness: { border: "border-t-mod-wellness", icon: "text-mod-wellness" },
   goals: { border: "border-t-mod-goals", icon: "text-mod-goals" },
   finance: { border: "border-t-mod-finance", icon: "text-mod-finance" },
+  danger: { border: "border-t-destructive", icon: "text-destructive" },
 }
 
 type StatCardProps = {

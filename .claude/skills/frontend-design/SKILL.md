@@ -226,6 +226,15 @@ background-size: 40px 40px;
 - **FAB** — `md:hidden`, `fixed bottom-20 right-4`, mobile only
 - Single breakpoint: `md` at 768px — no `sm`, `lg`, `xl`
 - Sections alternate `--surface-base` / `--surface-paper` ↔ `--surface-dark`
+- **Dashboard stat cards** — maximum **3 per line on mobile**, never 4-up (4 across reads congested). If more than 3 stats exist, the row scrolls horizontally with snap instead of shrinking the cards:
+
+  ```html
+  <div class="grid grid-flow-col auto-cols-[calc((100%-1rem)/3)] gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory md:grid-flow-row md:grid-cols-3 md:auto-cols-auto md:gap-3 md:overflow-visible">
+    <!-- each card: snap-start -->
+  </div>
+  ```
+
+  Card anatomy stays compact: micro label → value (`text-lg` mobile / `text-metric` desktop, mono) → one context line or thin progress bar. No large icon chips inside stat cards.
 
 ---
 

@@ -10,16 +10,6 @@ export function formatAED(amount: number): string {
   }).format(amount)
 }
 
-// Compact AED for tight spaces (dashboard stat tiles) — whole dirhams only
-export function formatAEDCompact(amount: number): string {
-  return new Intl.NumberFormat('en-AE', {
-    style: 'currency',
-    currency: 'AED',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
-
 // DD/MM/YYYY — per spec date format
 export function formatDate(dateStr: string): string {
   return format(parseISO(dateStr), 'dd/MM/yyyy')

@@ -3,11 +3,10 @@ import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, Star } from "lucide-react";
+import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, Star, AlertTriangle } from "lucide-react";
 import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
-import { formatAED, formatAEDCompact } from "@/lib/format";
-import { sumExpenses } from "@/lib/finance";
+import { formatAED } from "@/lib/format";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { HabitDashboardSection } from "@/components/wellness/habit-dashboard-section";
 
@@ -27,8 +26,6 @@ export default async function HomePage() {
     { count: completedTodayCount },
     { count: pendingTodayCount },
     { count: overdueCount },
-    { count: activeGoalsCount },
-    { data: todayExpenses },
   ] = await Promise.all([
     supabase
       .from("tasks")
@@ -100,17 +97,6 @@ export default async function HomePage() {
       .select("*", { count: "exact", head: true })
       .neq("status", "done")
       .lt("due_date", today),
-    // Exact active goals count (the goals list above is capped at 3)
-    supabase
-      .from("goals")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "active"),
-    // All of today's expenses for the spend total
-    supabase
-      .from("transactions")
-      .select("amount, type")
-      .eq("date", today)
-      .eq("type", "expense"),
   ]);
 
   const dueHabits = todayHabits ?? [];
@@ -119,8 +105,6 @@ export default async function HomePage() {
   ).length;
 
   const todayTotal = (completedTodayCount ?? 0) + (pendingTodayCount ?? 0);
-  const spentToday = sumExpenses(todayExpenses ?? []);
-  const expenseCount = todayExpenses?.length ?? 0;
 
   const greeting = (() => {
     const hour = new Date().getHours();
@@ -139,20 +123,16 @@ export default async function HomePage() {
         <h1 className="text-display mt-1">{greeting}</h1>
       </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-4 gap-2 md:gap-3 slide-up stagger-2">
+      {/* Quick stats — max 3 per line on mobile; extra cards scroll horizontally */}
+      <div className="grid grid-flow-col auto-cols-[calc((100%-1rem)/3)] gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory md:grid-flow-row md:grid-cols-3 md:auto-cols-auto md:gap-3 md:overflow-visible slide-up stagger-2">
         <StatCard
           href="/productivity"
           label="Tasks"
           icon={CheckSquare}
           accent="tasks"
           value={String(pendingTodayCount ?? 0)}
-          context={
-            (overdueCount ?? 0) > 0
-              ? `${overdueCount} overdue`
-              : `${completedTodayCount ?? 0} of ${todayTotal} done`
-          }
-          contextTone={(overdueCount ?? 0) > 0 ? "danger" : "muted"}
+          context={`${completedTodayCount ?? 0} of ${todayTotal} done`}
+          className="snap-start"
         />
         <StatCard
           href="/wellness"
@@ -161,22 +141,17 @@ export default async function HomePage() {
           accent="wellness"
           value={`${completedCount}/${dueHabits.length}`}
           progress={dueHabits.length > 0 ? (completedCount / dueHabits.length) * 100 : 0}
+          className="snap-start"
         />
         <StatCard
-          href="/goals"
-          label="Goals"
-          icon={Target}
-          accent="goals"
-          value={String(activeGoalsCount ?? 0)}
-          context={activeGoals?.[0] ? `Top: ${activeGoals[0].progress}%` : undefined}
-        />
-        <StatCard
-          href="/finance"
-          label="Spent"
-          icon={DollarSign}
-          accent="finance"
-          value={formatAEDCompact(spentToday)}
-          context={`${expenseCount} expense${expenseCount === 1 ? "" : "s"}`}
+          href="/productivity"
+          label="Overdue"
+          icon={AlertTriangle}
+          accent="danger"
+          value={String(overdueCount ?? 0)}
+          context={(overdueCount ?? 0) > 0 ? "needs attention" : "all clear"}
+          contextTone={(overdueCount ?? 0) > 0 ? "danger" : "muted"}
+          className="snap-start"
         />
       </div>
 
