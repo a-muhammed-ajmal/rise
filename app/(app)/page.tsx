@@ -6,7 +6,9 @@ import { Progress } from "@/components/ui/progress";
 import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, Star } from "lucide-react";
 import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
-import { formatAED } from "@/lib/format";
+import { formatAED, formatAEDCompact } from "@/lib/format";
+import { sumExpenses } from "@/lib/finance";
+import { StatCard } from "@/components/dashboard/stat-card";
 import { HabitDashboardSection } from "@/components/wellness/habit-dashboard-section";
 
 export default async function HomePage() {
@@ -24,6 +26,9 @@ export default async function HomePage() {
     { data: starredFocusTasks },
     { count: completedTodayCount },
     { count: pendingTodayCount },
+    { count: overdueCount },
+    { count: activeGoalsCount },
+    { data: todayExpenses },
   ] = await Promise.all([
     supabase
       .from("tasks")
@@ -89,12 +94,33 @@ export default async function HomePage() {
       .select("*", { count: "exact", head: true })
       .eq("due_date", today)
       .neq("status", "done"),
+    // Exact overdue count (the overdue list above is capped at 3)
+    supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .neq("status", "done")
+      .lt("due_date", today),
+    // Exact active goals count (the goals list above is capped at 3)
+    supabase
+      .from("goals")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active"),
+    // All of today's expenses for the spend total
+    supabase
+      .from("transactions")
+      .select("amount, type")
+      .eq("date", today)
+      .eq("type", "expense"),
   ]);
 
   const dueHabits = todayHabits ?? [];
   const completedCount = dueHabits.filter((h) =>
     habitLogs?.some((l) => l.habit_id === h.id && l.completed === true),
   ).length;
+
+  const todayTotal = (completedTodayCount ?? 0) + (pendingTodayCount ?? 0);
+  const spentToday = sumExpenses(todayExpenses ?? []);
+  const expenseCount = todayExpenses?.length ?? 0;
 
   const greeting = (() => {
     const hour = new Date().getHours();
@@ -114,66 +140,44 @@ export default async function HomePage() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid [grid-template-columns:repeat(2,minmax(0,1fr))] md:grid-cols-4 gap-3 slide-up stagger-2">
-        <Link href="/productivity">
-          <Card className="card-hover cursor-pointer border-t-4 border-mod-tasks hover:border-mod-tasks/80">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mod-tasks-tint flex items-center justify-center shrink-0">
-                <CheckSquare className="w-5 h-5 text-mod-tasks" />
-              </div>
-              <div>
-                <p className="text-metric font-mono font-medium">{todayTasks?.length ?? 0}</p>
-                <p className="text-xs text-muted-foreground truncate">Tasks today</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/wellness">
-          <Card className="card-hover cursor-pointer border-t-4 border-mod-wellness hover:border-mod-wellness/80">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mod-wellness-tint flex items-center justify-center shrink-0">
-                <Heart className="w-5 h-5 text-mod-wellness" />
-              </div>
-              <div>
-                <p className="text-metric font-mono font-medium">
-                  {completedCount}/{dueHabits.length}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">Habits done</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/goals">
-          <Card className="card-hover cursor-pointer border-t-4 border-mod-goals hover:border-mod-goals/80">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mod-goals-tint flex items-center justify-center shrink-0">
-                <Target className="w-5 h-5 text-mod-goals" />
-              </div>
-              <div>
-                <p className="text-metric font-mono font-medium">{activeGoals?.length ?? 0}</p>
-                <p className="text-xs text-muted-foreground truncate">Active goals</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/finance">
-          <Card className="card-hover cursor-pointer border-t-4 border-mod-finance hover:border-mod-finance/80">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-mod-finance-tint flex items-center justify-center shrink-0">
-                <DollarSign className="w-5 h-5 text-mod-finance" />
-              </div>
-              <div>
-                <p className="text-metric font-mono font-medium">
-                  {recentTransactions?.length ?? 0}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">Txns today</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+      <div className="grid grid-cols-4 gap-2 md:gap-3 slide-up stagger-2">
+        <StatCard
+          href="/productivity"
+          label="Tasks"
+          icon={CheckSquare}
+          accent="tasks"
+          value={String(pendingTodayCount ?? 0)}
+          context={
+            (overdueCount ?? 0) > 0
+              ? `${overdueCount} overdue`
+              : `${completedTodayCount ?? 0} of ${todayTotal} done`
+          }
+          contextTone={(overdueCount ?? 0) > 0 ? "danger" : "muted"}
+        />
+        <StatCard
+          href="/wellness"
+          label="Habits"
+          icon={Heart}
+          accent="wellness"
+          value={`${completedCount}/${dueHabits.length}`}
+          progress={dueHabits.length > 0 ? (completedCount / dueHabits.length) * 100 : 0}
+        />
+        <StatCard
+          href="/goals"
+          label="Goals"
+          icon={Target}
+          accent="goals"
+          value={String(activeGoalsCount ?? 0)}
+          context={activeGoals?.[0] ? `Top: ${activeGoals[0].progress}%` : undefined}
+        />
+        <StatCard
+          href="/finance"
+          label="Spent"
+          icon={DollarSign}
+          accent="finance"
+          value={formatAEDCompact(spentToday)}
+          context={`${expenseCount} expense${expenseCount === 1 ? "" : "s"}`}
+        />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">

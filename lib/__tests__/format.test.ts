@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   formatAED,
+  formatAEDCompact,
   formatDate,
   formatTime,
   formatDateTime,
@@ -34,6 +35,30 @@ describe("formatAED", () => {
   it("formats negative amounts", () => {
     const result = formatAED(-250.75);
     expect(result).toContain("250.75");
+  });
+});
+
+describe("formatAEDCompact", () => {
+  it("formats without decimals", () => {
+    const result = formatAEDCompact(145);
+    expect(result).toContain("145");
+    expect(result).toContain("AED");
+    expect(result).not.toContain(".");
+  });
+
+  it("formats zero", () => {
+    const result = formatAEDCompact(0);
+    expect(result).toContain("0");
+    expect(result).toContain("AED");
+  });
+
+  it("rounds to the nearest whole dirham", () => {
+    expect(formatAEDCompact(1249.5)).toContain("1,250");
+    expect(formatAEDCompact(1249.4)).toContain("1,249");
+  });
+
+  it("groups thousands", () => {
+    expect(formatAEDCompact(12450)).toContain("12,450");
   });
 });
 
