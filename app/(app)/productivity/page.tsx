@@ -838,9 +838,9 @@ export default function ProductivityPage() {
           if (!v) setEditProject(null);
         }}
         initial={editProject}
-        onSaved={async (name, color, description) => {
+        onSaved={async (name, color, description, status) => {
           if (editProject) {
-            await updateProject(editProject.id, { name, color, description });
+            await updateProject(editProject.id, { name, color, description, status });
             toast.success("Project updated");
           }
         }}

@@ -121,8 +121,11 @@ export function TaskCard({
           </div>
         )}
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
+        {/* Content — click opens detail popup */}
+        <div
+          className="flex-1 min-w-0 cursor-pointer"
+          onClick={() => onOpenDetail?.(task)}
+        >
           <p className={cn(
             'text-sm font-medium leading-snug',
             isCompleted && 'line-through text-muted-foreground'
@@ -181,7 +184,7 @@ export function TaskCard({
             {hasSubtasks && (
               <button
                 type="button"
-                onClick={() => setSubtasksExpanded((v) => !v)}
+                onClick={(e) => { e.stopPropagation(); setSubtasksExpanded((v) => !v) }}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Check className="w-3 h-3" />

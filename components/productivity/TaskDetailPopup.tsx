@@ -33,7 +33,7 @@ import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DateTimePicker } from './DateTimePicker'
 import {
-  PRIORITY_MAP, PRIORITY_PILL, STATUS_CONFIG, repeatLabel,
+  PRIORITY_MAP, PRIORITY_PILL, repeatLabel,
 } from './task-constants'
 import { formatRelativeDate, formatDateTime, display12h } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -57,7 +57,6 @@ export function TaskDetailPopup({ task, onClose }: TaskDetailPopupProps) {
   // ── Editable local state ────────────────────────────────────────────────────
   const [title, setTitle]           = useState(liveTask.title)
   const [description, setDescription] = useState(liveTask.description ?? '')
-  const [status, setStatus]         = useState<Task['status']>(liveTask.status)
   const [priority, setPriority]     = useState<Task['priority']>(liveTask.priority)
   const [projectId, setProjectId]   = useState(liveTask.project_id ?? '')
   const [dueDate, setDueDate]       = useState(liveTask.due_date ?? '')
@@ -97,12 +96,6 @@ export function TaskDetailPopup({ task, onClose }: TaskDetailPopupProps) {
   function handleDescriptionBlur() {
     const d = description.trim() || null
     if (d !== liveTask.description) updateTask(task.id, { description: d })
-  }
-
-  function handleStatusChange(s: Task['status'] | null) {
-    if (!s) return
-    setStatus(s)
-    updateTask(task.id, { status: s })
   }
 
   function handlePriorityChange(p: Task['priority'] | null) {
@@ -196,7 +189,6 @@ export function TaskDetailPopup({ task, onClose }: TaskDetailPopupProps) {
   function handleReopen() {
     reopenTask(task.id)
     setCompleting(false)
-    setStatus('todo')
   }
 
   function handleCopyLink() {
@@ -307,42 +299,24 @@ export function TaskDetailPopup({ task, onClose }: TaskDetailPopupProps) {
               )}
             </div>
 
-            {/* Status + Priority */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Status</Label>
-                <Select value={status} onValueChange={(v) => handleStatusChange(v as Task['status'])}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_CONFIG.map((s) => (
-                      <SelectItem key={s.value} value={s.value} className="text-xs">
-                        <span className={cn('font-medium', s.dotColor)}>{s.label}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Priority</Label>
-                <Select value={priority} onValueChange={(v) => handlePriorityChange(v as Task['priority'])}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORITY_MAP.map((p) => (
-                      <SelectItem key={p.value} value={p.value} className="text-xs">
-                        <span className={cn('text-xs font-semibold px-1 rounded mr-1', PRIORITY_PILL[p.value])}>
-                          {p.label}
-                        </span>
-                        {p.description}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Priority */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Priority</Label>
+              <Select value={priority} onValueChange={(v) => handlePriorityChange(v as Task['priority'])}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRIORITY_MAP.map((p) => (
+                    <SelectItem key={p.value} value={p.value} className="text-xs">
+                      <span className={cn('text-xs font-semibold px-1 rounded mr-1', PRIORITY_PILL[p.value])}>
+                        {p.label}
+                      </span>
+                      {p.description}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Project */}
