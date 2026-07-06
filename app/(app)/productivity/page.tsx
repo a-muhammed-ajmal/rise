@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
@@ -329,17 +330,19 @@ export default function ProductivityPage() {
           Sort
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-          {(Object.entries(SORT_LABELS) as [SortBy, string][]).map(([val, label]) => (
-            <DropdownMenuItem
-              key={val}
-              onClick={() => setSortBy(val)}
-              className={sortBy === val ? "font-semibold" : ""}
-            >
-              {label}
-              {sortBy === val && <span className="ml-auto text-primary">✓</span>}
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+            {(Object.entries(SORT_LABELS) as [SortBy, string][]).map(([val, label]) => (
+              <DropdownMenuItem
+                key={val}
+                onClick={() => setSortBy(val)}
+                className={sortBy === val ? "font-semibold" : ""}
+              >
+                {label}
+                {sortBy === val && <span className="ml-auto text-primary">✓</span>}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -350,17 +353,19 @@ export default function ProductivityPage() {
           Group
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuLabel>Group by</DropdownMenuLabel>
-          {(Object.entries(GROUP_LABELS) as [GroupBy, string][]).map(([val, label]) => (
-            <DropdownMenuItem
-              key={val}
-              onClick={() => setGroupBy(val)}
-              className={groupBy === val ? "font-semibold" : ""}
-            >
-              {label}
-              {groupBy === val && <span className="ml-auto text-primary">✓</span>}
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Group by</DropdownMenuLabel>
+            {(Object.entries(GROUP_LABELS) as [GroupBy, string][]).map(([val, label]) => (
+              <DropdownMenuItem
+                key={val}
+                onClick={() => setGroupBy(val)}
+                className={groupBy === val ? "font-semibold" : ""}
+              >
+                {label}
+                {groupBy === val && <span className="ml-auto text-primary">✓</span>}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
