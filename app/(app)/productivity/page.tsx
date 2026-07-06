@@ -513,7 +513,7 @@ export default function ProductivityPage() {
                   className="card-hover cursor-pointer"
                   onClick={() => setSelectedProject(project)}
                 >
-                  <CardContent className="p-4 space-y-2">
+                  <CardContent className="p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <div

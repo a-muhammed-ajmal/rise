@@ -217,7 +217,7 @@ export default function WellnessPage() {
 
       {todayHabits.length > 0 && (
         <Card className="slide-up stagger-2 border-t-4 border-mod-wellness">
-          <CardContent className="p-4 space-y-2">
+          <CardContent className="p-3 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="font-medium">Today&apos;s habits</span>
               <span className="text-muted-foreground">{completedToday}/{todayHabits.length}</span>
@@ -262,7 +262,7 @@ export default function WellnessPage() {
 
             return (
               <Card key={habit.id} className={`card-hover ${cardBorderClass} ${cardLeftBorder}`}>
-                <CardContent className="p-4 flex items-center gap-3">
+                <CardContent className="p-3 flex items-center gap-3">
                   <div
                     className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
                     onClick={() => { if (habit.description) setViewHabit(habit); }}

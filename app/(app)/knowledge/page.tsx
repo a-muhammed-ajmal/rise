@@ -176,7 +176,7 @@ export default function KnowledgePage() {
           ) : (
             filteredNotes.map((note) => (
               <Card key={note.id} className="card-hover group border-l-4 border-mod-knowledge">
-                <CardContent className="p-4 space-y-2">
+                <CardContent className="p-3 space-y-2">
                   <div className="flex justify-between items-start gap-2">
                     <p
                       className="font-medium text-sm cursor-pointer flex-1 truncate"
@@ -234,7 +234,7 @@ export default function KnowledgePage() {
           ) : (
             filteredLinks.map((link) => (
               <Card key={link.id} className="card-hover group">
-                <CardContent className="p-4 flex items-start gap-3">
+                <CardContent className="p-3 flex items-start gap-3">
                   <div className="w-8 h-8 rounded bg-mod-knowledge-tint flex items-center justify-center shrink-0 mt-0.5">
                     <LinkIcon className="w-4 h-4 text-mod-knowledge" />
                   </div>

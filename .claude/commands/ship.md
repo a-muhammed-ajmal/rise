@@ -48,12 +48,20 @@ Find the Testing Standard bullet under Objectives.
 Update the test count and coverage % to match step 2.
 Do not change anything else.
 
-### 6. Commit
+### 6. Update README.md
+Find the Project Stats table at the bottom of README.md.
+Update only the "Test count" row with the value from step 2.
+If the work done since the last ship added, removed, or renamed a module,
+an AI tool, a DB table, or a migration — update the relevant row(s).
+Do not rewrite prose or touch any other row.
+If nothing has changed: leave the file untouched.
+
+### 7. Commit
 Run: git add -A
 Run: git commit -m "chore: ship — [count] tests, [coverage]% — [YYYY-MM-DD]"
 Use actual values. Use today's date.
 
-### 7. Push
+### 8. Push
 Run: git push https://github.com/a-muhammed-ajmal/rise main
 User Email ID: ajmalconsults@gmail.com
 On any other failure: stop. Report the exact error and what the
@@ -67,6 +75,7 @@ Output only this at the end:
   Build:      PASS / FAIL
   SPEC.md:    updated / unchanged
   CLAUDE.md:  updated / unchanged
+  README.md:  updated / unchanged
   Commit:     [hash] [message]
   Push:       SUCCESS / FAILED
 

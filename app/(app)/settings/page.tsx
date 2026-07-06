@@ -472,7 +472,7 @@ export default function SettingsPage() {
                 </Button>
               </div>
               {subscribed && (
-                <div className="rounded-md border p-3 space-y-1">
+                <div className="rounded-md border p-2.5 space-y-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active reminders</p>
                   <p className="text-sm">✅ Habit nudges</p>
                   <p className="text-sm">✅ CRM follow-ups</p>
@@ -514,7 +514,7 @@ export default function SettingsPage() {
                 <Link
                   key={mod.href}
                   href={mod.href}
-                  className="flex items-start gap-2.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-accent/50 transition-colors group"
+                  className="flex items-start gap-2.5 p-2.5 rounded-xl border border-border hover:border-primary/30 hover:bg-accent/50 transition-colors group"
                 >
                   <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", mod.bgCls)}>
                     <Icon className={cn("w-3.5 h-3.5", mod.iconCls)} aria-hidden="true" />

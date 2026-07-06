@@ -47,7 +47,7 @@ export function StatCard({
       <Card
         size="sm"
         className={cn(
-          "card-hover h-full cursor-pointer border-t-4 py-2.5 md:py-3",
+          "card-hover h-full cursor-pointer border-t-4 py-2 md:py-2.5",
           ACCENT[accent].border,
         )}
       >

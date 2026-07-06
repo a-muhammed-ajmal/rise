@@ -149,7 +149,7 @@ export default function CRMPage() {
               className="card-hover cursor-pointer border-l-4 border-mod-crm"
               onClick={() => setSelected(contact)}
             >
-              <CardContent className="p-4 flex items-center gap-3">
+              <CardContent className="p-3 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-mod-crm-tint flex items-center justify-center shrink-0">
                   <span className="text-mod-crm font-semibold">
                     {contact.name[0].toUpperCase()}
@@ -602,7 +602,7 @@ function ContactDetail({
               <p className="text-sm text-muted-foreground">No interactions logged.</p>
             ) : (
               interactions.map((i) => (
-                <div key={i.id} className="p-3 rounded-lg border border-border space-y-1 group relative">
+                <div key={i.id} className="p-2.5 rounded-lg border border-border space-y-1 group relative">
                   <div className="flex justify-between items-center">
                     <Badge variant="outline" className="text-xs">{i.type}</Badge>
                     <div className="flex items-center gap-1">

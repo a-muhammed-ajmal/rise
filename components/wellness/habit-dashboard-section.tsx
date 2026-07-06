@@ -91,7 +91,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
 
         return (
           <Card key={habit.id} className={`card-hover ${cardBorderClass}`}>
-            <CardContent className="p-3 flex items-center gap-3">
+            <CardContent className="p-2.5 flex items-center gap-3">
               <div
                 className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
                 onClick={() => { if (habit.description) setViewHabit(habit); }}

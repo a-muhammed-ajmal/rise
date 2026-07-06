@@ -160,7 +160,7 @@ export default function GoalsPage() {
           ) : (
             active.map((goal) => (
               <Card key={goal.id} className="card-hover border-t-4 border-mod-goals">
-                <CardContent className="p-4 space-y-3">
+                <CardContent className="p-3 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div
                       className="flex-1 min-w-0 cursor-pointer"
@@ -215,7 +215,7 @@ export default function GoalsPage() {
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Completed</p>
               {completed.map((goal) => (
                 <Card key={goal.id} className="opacity-60">
-                  <CardContent className="p-3 flex items-center justify-between">
+                  <CardContent className="p-2.5 flex items-center justify-between">
                     <p className="text-sm line-through">{goal.title}</p>
                     <div className="flex items-center gap-2">
                       <Badge className="text-xs">✓ Done</Badge>
@@ -243,7 +243,7 @@ export default function GoalsPage() {
               className="border-dashed card-hover cursor-pointer"
               onClick={() => { setEditJournal(null); setJournalOpen(true); }}
             >
-              <CardContent className="p-6 text-center space-y-2">
+              <CardContent className="p-4 text-center space-y-2">
                 <div className="text-3xl">✍️</div>
                 <p className="text-sm text-muted-foreground">No journal entry for today. Write one?</p>
               </CardContent>
@@ -269,7 +269,7 @@ export default function GoalsPage() {
 
           {entries.filter((e) => e.date !== todayISO()).map((entry) => (
             <Card key={entry.id} className="group relative">
-              <CardContent className="p-4 space-y-2">
+              <CardContent className="p-3 space-y-2">
                 <div className="flex justify-between items-center">
                   <p className="text-xs font-medium text-muted-foreground">{formatDate(entry.date)}</p>
                   <div className="flex items-center gap-1">

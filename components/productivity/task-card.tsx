@@ -74,7 +74,7 @@ export function TaskCard({
     <>
       <div
         className={cn(
-          'flex items-start gap-3 p-3 rounded-lg border transition-colors group',
+          'flex items-start gap-3 p-2.5 rounded-lg border transition-colors group',
           view === 'grid' ? 'flex-col min-h-[120px]' : '',
           isCompleted
             ? 'border-border/50 bg-muted/30 opacity-60'

@@ -402,7 +402,7 @@ export default function FinancePage() {
             {activeWallets.map((wallet) => (
               <div
                 key={wallet.id}
-                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card min-h-[44px]"
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card min-h-[40px]"
               >
                 <div
                   className="w-2 h-2 rounded-full"
@@ -428,7 +428,7 @@ export default function FinancePage() {
               </div>
             ))}
             {/* Total balance tile */}
-            <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-mod-finance/30 bg-mod-finance-tint min-h-[44px]">
+            <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-mod-finance/30 bg-mod-finance-tint min-h-[40px]">
               <Wallet className="w-3.5 h-3.5 text-mod-finance" />
               <div>
                 <p className="text-xs text-muted-foreground leading-none mb-0.5">
@@ -476,7 +476,7 @@ export default function FinancePage() {
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <div className="flex flex-col items-center gap-1 py-3 rounded-xl bg-card border border-border">
+          <div className="flex flex-col items-center gap-1 py-2 rounded-xl bg-card border border-border">
             <TrendingUp className="w-3.5 h-3.5 text-mod-finance" />
             <p className="text-[10px] text-muted-foreground leading-none">Income</p>
             <p className="text-xs font-mono font-semibold text-mod-finance leading-none">
@@ -485,7 +485,7 @@ export default function FinancePage() {
           </div>
 
           <div
-            className={`flex flex-col items-center gap-1 py-3 rounded-xl border ${
+            className={`flex flex-col items-center gap-1 py-2 rounded-xl border ${
               monthlyNet >= 0
                 ? "bg-mod-finance-tint border-mod-finance/30"
                 : "bg-destructive/10 border-destructive/30"
@@ -509,7 +509,7 @@ export default function FinancePage() {
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-1 py-3 rounded-xl bg-card border border-border">
+          <div className="flex flex-col items-center gap-1 py-2 rounded-xl bg-card border border-border">
             <TrendingDown className="w-3.5 h-3.5 text-destructive" />
             <p className="text-[10px] text-muted-foreground leading-none">Spent</p>
             <p className="text-xs font-mono font-semibold text-destructive leading-none">
@@ -607,7 +607,7 @@ export default function FinancePage() {
                   {txns.map((txn) => (
                     <div
                       key={txn.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
+                      className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -706,7 +706,7 @@ export default function FinancePage() {
               return (
                 <div
                   key={txn.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted">
@@ -804,7 +804,7 @@ export default function FinancePage() {
               const pct = Math.min((spent / budget.amount) * 100, 100);
               return (
                 <Card key={budget.id}>
-                  <CardContent className="p-4 space-y-2">
+                  <CardContent className="p-3 space-y-2">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex justify-between">
@@ -881,7 +881,7 @@ export default function FinancePage() {
             debts.map((debt) => (
               <div
                 key={debt.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
+                className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{debt.creditor}</p>

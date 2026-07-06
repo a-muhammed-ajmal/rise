@@ -158,7 +158,7 @@ export default async function HomePage() {
       <div className="grid md:grid-cols-2 gap-4">
         {/* Today's tasks */}
         <Card className="slide-up stagger-3 border-t-4 border-t-mod-tasks">
-          <CardHeader className="pb-3 flex-row items-center justify-between">
+          <CardHeader className="pb-2 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-tasks-tint flex items-center justify-center">
                 <CheckSquare className="w-3.5 h-3.5 text-mod-tasks" />
@@ -245,7 +245,7 @@ export default async function HomePage() {
 
         {/* Today's habits */}
         <Card className="slide-up stagger-4 border-t-4 border-t-mod-wellness">
-          <CardHeader className="pb-3 flex-row items-center justify-between">
+          <CardHeader className="pb-2 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-wellness-tint flex items-center justify-center">
                 <Heart className="w-3.5 h-3.5 text-mod-wellness" />
@@ -281,7 +281,7 @@ export default async function HomePage() {
 
         {/* Active goals */}
         <Card className="slide-up stagger-4 border-t-4 border-t-mod-goals">
-          <CardHeader className="pb-3 flex-row items-center justify-between">
+          <CardHeader className="pb-2 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-goals-tint flex items-center justify-center">
                 <Target className="w-3.5 h-3.5 text-mod-goals" />
@@ -320,7 +320,7 @@ export default async function HomePage() {
 
         {/* AI Assistant CTA */}
         <Card className="slide-up stagger-4 border-t-4 border-t-brand border-brand/30 bg-brand-tint/40 shadow-brand">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-brand-tint flex items-center justify-center">
                 <RiseLogo className="w-4 h-4" />
@@ -354,7 +354,7 @@ export default async function HomePage() {
       {/* CRM contacts needing attention */}
       {followUps && followUps.length > 0 && (
         <Card className="slide-up stagger-4 border-t-4 border-t-mod-crm">
-          <CardHeader className="pb-3 flex-row items-center justify-between">
+          <CardHeader className="pb-2 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-crm-tint flex items-center justify-center">
                 <Users className="w-3.5 h-3.5 text-mod-crm" />
@@ -416,7 +416,7 @@ export default async function HomePage() {
       {/* Today's finance */}
       {recentTransactions && recentTransactions.length > 0 && (
         <Card className="slide-up stagger-4 border-t-4 border-t-mod-finance">
-          <CardHeader className="pb-3 flex-row items-center justify-between">
+          <CardHeader className="pb-2 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-finance-tint flex items-center justify-center">
                 <DollarSign className="w-3.5 h-3.5 text-mod-finance" />
