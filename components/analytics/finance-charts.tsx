@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   AreaChart, Area,
   BarChart, Bar,
@@ -12,8 +13,8 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const INCOME_COLOR = "#10B981"   // --color-success Green — income is positive
-const EXPENSE_COLOR = "#E11D48"  // --color-danger Crimson — expense is negative
+const INCOME_COLOR = "#10B981"
+const EXPENSE_COLOR = "#E11D48"
 const PIE_COLORS = ["#2563EB", "#059669", "#F59E0B", "#7C3AED", "#0891B2", "#9CA3AF"]
 
 const tooltipStyle = {
@@ -24,23 +25,51 @@ const tooltipStyle = {
   color: "var(--foreground)",
 }
 
+type FlowEntry = { label: string; income: number; expense: number }
+
 export interface FinanceChartsProps {
   monthlyFlow: { month: string; income: number; expense: number }[]
+  dailyFlow: { date: string; income: number; expense: number }[]
   categorySpend: { category: string; amount: number }[]
   budgetActual: { category: string; budget: number; actual: number }[]
 }
 
-export function FinanceCharts({ monthlyFlow, categorySpend, budgetActual }: FinanceChartsProps) {
+export function FinanceCharts({ monthlyFlow, dailyFlow, categorySpend, budgetActual }: FinanceChartsProps) {
+  const [flowView, setFlowView] = useState<"monthly" | "daily">("monthly")
+
+  const flowData: FlowEntry[] = flowView === "monthly"
+    ? monthlyFlow.map((d) => ({ label: d.month, income: d.income, expense: d.expense }))
+    : dailyFlow.map((d) => ({ label: d.date, income: d.income, expense: d.expense }))
+  const flowLabel = flowView === "monthly" ? "Income vs Expenses — Last 6 Months" : "Income vs Expenses — Last 30 Days"
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* Income vs Expense trend */}
       <Card className="md:col-span-2">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Income vs Expenses — Last 6 Months</CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">{flowLabel}</CardTitle>
+            <div className="flex rounded-md border border-border overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => setFlowView("monthly")}
+                className={`px-2.5 py-1 transition-colors ${flowView === "monthly" ? "bg-primary text-primary-foreground" : "hover:bg-accent text-muted-foreground"}`}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlowView("daily")}
+                className={`px-2.5 py-1 transition-colors ${flowView === "daily" ? "bg-primary text-primary-foreground" : "hover:bg-accent text-muted-foreground"}`}
+              >
+                Daily
+              </button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={monthlyFlow} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <AreaChart data={flowData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={INCOME_COLOR} stopOpacity={0.25} />
@@ -52,9 +81,23 @@ export function FinanceCharts({ monthlyFlow, categorySpend, budgetActual }: Fina
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `${Math.round(v / 1000)}k`} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => [`AED ${Number(value ?? 0).toLocaleString()}`, undefined]} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                interval={flowView === "daily" ? 4 : 0}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={(value: unknown) => [`AED ${Number(value ?? 0).toLocaleString()}`, undefined]}
+              />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
               <Area type="monotone" dataKey="income" name="Income" stroke={INCOME_COLOR} fill="url(#incomeGrad)" strokeWidth={2} dot={false} />
               <Area type="monotone" dataKey="expense" name="Expense" stroke={EXPENSE_COLOR} fill="url(#expenseGrad)" strokeWidth={2} dot={false} />
@@ -109,7 +152,7 @@ export function FinanceCharts({ monthlyFlow, categorySpend, budgetActual }: Fina
               <BarChart data={budgetActual} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="category" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `${v}`} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => [`AED ${Number(value ?? 0).toLocaleString()}`, undefined]} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="budget" name="Budget" fill="#A78BFA" radius={[4, 4, 0, 0]} />

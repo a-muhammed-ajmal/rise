@@ -405,7 +405,7 @@ export default function ProductivityPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl space-y-4">
+    <div className="p-3 md:p-5 max-w-2xl space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
@@ -454,8 +454,8 @@ export default function ProductivityPage() {
         </Tabs>
       </div>
 
-      {/* Toolbar strip */}
-      {showTaskList && !loading && tasks.length > 0 && (
+      {/* Toolbar strip — always visible when task list is shown */}
+      {showTaskList && !loading && (
         <div className="slide-up stagger-2">{toolbarStrip}</div>
       )}
 

@@ -1,6 +1,6 @@
 # RISE — Personal AI OS
 
-> A single-user personal operating system that replaces Todoist, a finance app, a habit tracker, a journal, a CRM, and a knowledge base — unified in one dark-first web app, powered by an AI assistant that can actually *do* things.
+> A single-user personal operating system that replaces Todoist, a finance app, a habit tracker, a journal, a CRM, and a knowledge base — unified in one web app, powered by an AI assistant that can actually *do* things.
 
 **Live:** [rise.muhammedajmal.com](https://rise.muhammedajmal.com) · [rise-aid-plug.vercel.app](https://rise-aid-plug.vercel.app)
 
@@ -10,7 +10,7 @@
 
 RISE is a personal productivity OS built for a single user. Instead of juggling five apps, everything lives in one place — tasks, money, habits, goals, relationships, notes — and a Gemini-powered AI assistant can read all of it and take real actions on your behalf.
 
-The AI isn't just a chatbot. It can create a task, log an expense, mark a habit done, update a goal, search your notes, and more — with a two-tier safety system: low-risk actions execute automatically; destructive ones pause and ask for explicit approval before running.
+The AI isn't just a chatbot. It can create a task, log an expense, mark a habit done, update a goal, search your notes, generate a daily digest, and more — with a two-tier safety system: low-risk actions execute automatically; destructive ones pause and ask for explicit approval before running.
 
 ---
 
@@ -19,14 +19,14 @@ The AI isn't just a chatbot. It can create a task, log an expense, mark a habit 
 | Module | What it does |
 | --- | --- |
 | **Dashboard** | Daily overview — tasks due, habits to log, goal progress, and recent transactions at a glance |
-| **Productivity** | Tasks with status, priority, due dates, subtasks, tags, attachments, and Projects (color-coded grouping) |
+| **Productivity** | Tasks with priority, due dates, subtasks, tags, attachments, and Projects (color-coded grouping). Filter tabs (Today / All / Done / Projects), sort, group, and list / grid / calendar views |
 | **Finance** | AED income/expense/transfer ledger with category budgets, debt tracking, and live wallet balances |
 | **Wellness** | Habit tracker with daily/weekly schedules, reminder times, streak logic, and 30-day progress view |
 | **Goals** | Goal cards with % progress slider, milestone tracking, and journal entries with mood/energy ratings |
 | **CRM** | Contacts with pipeline stages, deal values, interaction logs (call/email/meeting), and follow-up tracking |
 | **Knowledge** | Rich-text notes (Tiptap), document metadata, and links — all searchable by the AI |
 | **AI Assistant** | Gemini 2.5 Flash chat with SSE streaming, pgvector memory, file/image uploads, and 75 executable tools |
-| **Analytics** | Recharts dashboards aggregating cross-module data |
+| **Analytics** | Recharts dashboards aggregating cross-module data — finance has Monthly / Daily view toggle |
 
 ---
 
@@ -55,6 +55,18 @@ The assistant runs 75 tools across every module — split into two tiers:
 
 ---
 
+## AI Daily Digest
+
+At **11:59 PM Dubai time** every day, a Vercel cron job fires `POST /api/ai/daily-digest`. The route:
+
+1. Fetches the day's completed tasks, habit logs, transactions, pending tasks, and active goals via the Supabase service-role client
+2. Calls Gemini 2.5 Flash to generate a structured markdown digest (wins, finance, goals pulse, upcoming tasks, one insight)
+3. Saves the result as a note tagged `daily-digest` in the Knowledge module
+
+To enable: set `CRON_SECRET` in Vercel environment variables. The digest note appears in Knowledge the next morning.
+
+---
+
 ## Stack
 
 | Layer | Technology |
@@ -69,7 +81,7 @@ The assistant runs 75 tools across every module — split into two tiers:
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (265 tests) |
+| Testing | Vitest 4 + Testing Library (268 tests) |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -164,6 +176,9 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY=
 
 # Auth gate
 ALLOWED_USER_EMAIL=    # only this email can log in
+
+# Cron security (optional but recommended)
+CRON_SECRET=           # random secret; set in Vercel env vars too
 ```
 
 Apply migrations 001–011 in your Supabase SQL editor (in order), then:
@@ -171,6 +186,16 @@ Apply migrations 001–011 in your Supabase SQL editor (in order), then:
 ```bash
 npm run dev   # Turbopack dev server → http://localhost:3000
 ```
+
+### Supabase Storage Buckets
+
+Create these buckets in **Supabase Dashboard → Storage**:
+
+| Bucket | Visibility | Purpose |
+| --- | --- | --- |
+| `task-attachments` | Public | File attachments on tasks |
+| `chat-attachments` | Public | File/image uploads in AI chat |
+| `avatars` | Public | User profile photos |
 
 ### Commands
 
@@ -193,7 +218,8 @@ npm run test:coverage  # Coverage report for lib/**
 - **Realtime** — `use-tasks.ts` and `use-projects.ts` subscribe to Supabase Realtime channels for live UI updates; channels are cleaned up on unmount.
 - **PWA** — installable; service worker uses stale-while-revalidate for assets, network-only for `/api/**`, and `/offline` fallback for navigation. Push notifications delivered hourly via Supabase Edge Function.
 - **Security** — HMAC-signed approval tokens with 5-minute expiry prevent replay attacks on destructive tool calls. All server secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`) are never exposed to client components.
-- **Locale** — AED currency throughout (`Intl.NumberFormat('en-AE', { currency: 'AED' })`), DD/MM/YYYY dates, 12-hour time — all via `lib/format.ts`.
+- **Locale** — AED currency throughout (`Intl.NumberFormat('en-AE', { currency: 'AED' })`), DD/MM/YYYY dates, 12-hour time — all via `lib/format.ts`. Timezone and format preferences stored in Supabase user_metadata and configurable in Settings.
+- **Profile** — Display name and avatar photo stored in Supabase auth `user_metadata` (`full_name`, `avatar_url`). Google OAuth photo is used by default; custom photos can be uploaded to the `avatars` storage bucket.
 
 ---
 
@@ -203,14 +229,16 @@ Deployed on Vercel. Push to `main` triggers a production deploy.
 
 Set environment variables via the Vercel dashboard or `vercel env pull`. Supabase migrations must be applied manually in the SQL editor — never auto-migrated in CI.
 
+The Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the daily digest endpoint automatically on Pro/Enterprise plans. On Hobby, set up an external cron (e.g. cron-job.org) to hit `POST /api/ai/daily-digest` with `Authorization: Bearer <CRON_SECRET>`.
+
 ---
 
 ## Project Stats
 
 | Metric | Value |
 | --- | --- |
-| Test count | 265 passing |
+| Test count | 268 passing |
 | DB tables | 21 (RLS on all) |
 | AI tools | 75 (58 AUTO + 17 APPROVAL) |
 | Migrations | 11 (001–011) |
-| Last phase | Phase 9 — Payment methods / wallets (2026-07-01) |
+| Last phase | Phase 10 — UX polish, profile, daily digest, analytics daily view |

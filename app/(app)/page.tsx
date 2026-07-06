@@ -116,7 +116,7 @@ export default async function HomePage() {
   const dayName = format(new Date(), "EEEE, dd MMMM yyyy");
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-4xl">
+    <div className="p-3 md:p-5 space-y-5 max-w-4xl">
       {/* Header */}
       <div className="slide-up stagger-1">
         <p className="text-micro text-muted-foreground tracking-wide uppercase">{dayName}</p>

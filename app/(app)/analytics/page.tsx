@@ -32,6 +32,25 @@ function buildMonthlyFlow(txns: Transaction[], today: Date) {
   }))
 }
 
+function buildDailyFlow(txns: Transaction[], today: Date) {
+  const map = new Map<string, { income: number; expense: number }>()
+  for (let i = 29; i >= 0; i--) {
+    map.set(format(subDays(today, i), "yyyy-MM-dd"), { income: 0, expense: 0 })
+  }
+  for (const t of txns) {
+    const entry = map.get(t.date)
+    if (entry) {
+      if (t.type === "income") entry.income += t.amount
+      else entry.expense += t.amount
+    }
+  }
+  return Array.from(map.entries()).map(([date, v]) => ({
+    date: format(parseISO(date), "dd/MM"),
+    income: Math.round(v.income),
+    expense: Math.round(v.expense),
+  }))
+}
+
 function buildCategorySpend(txns: Transaction[]) {
   const map = new Map<string, number>()
   for (const t of txns.filter((t) => t.type === "expense")) {
@@ -236,6 +255,7 @@ export default async function AnalyticsPage() {
   // Finance aggregations
   const txns = transactions ?? []
   const monthlyFlow = buildMonthlyFlow(txns as Transaction[], today)
+  const dailyFlow = buildDailyFlow(txns as Transaction[], today)
   const categorySpend = buildCategorySpend(txns as Transaction[])
   const budgetActual = buildBudgetActual(
     (budgets ?? []) as Pick<Budget, "category" | "amount">[],
@@ -292,7 +312,7 @@ export default async function AnalyticsPage() {
   const totalDocsCount = documents?.length ?? 0
 
   return (
-    <div className="p-4 md:p-6 space-y-10 max-w-6xl">
+    <div className="p-3 md:p-5 space-y-8 max-w-6xl">
       {/* Page header */}
       <div className="slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight">Analytics</h1>
@@ -312,7 +332,7 @@ export default async function AnalyticsPage() {
             View module →
           </Link>
         </div>
-        <FinanceCharts monthlyFlow={monthlyFlow} categorySpend={categorySpend} budgetActual={budgetActual} />
+        <FinanceCharts monthlyFlow={monthlyFlow} dailyFlow={dailyFlow} categorySpend={categorySpend} budgetActual={budgetActual} />
       </section>
 
       {/* Wellness section */}

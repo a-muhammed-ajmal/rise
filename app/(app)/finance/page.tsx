@@ -356,7 +356,7 @@ export default function FinancePage() {
 
   return (
     <div
-      className="p-4 md:p-6 max-w-2xl space-y-4"
+      className="p-3 md:p-5 max-w-2xl space-y-3"
     >
       {/* Header */}
       <div className="flex items-center justify-between slide-up stagger-1">
