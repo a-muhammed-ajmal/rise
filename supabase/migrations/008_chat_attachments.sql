@@ -8,29 +8,54 @@
 -- Then paste this file into Dashboard → SQL Editor → Run.
 -- ──────────────────────────────────────────────────────────────────────────
 
--- INSERT: authenticated users can only upload to their own user_id/ prefix
-CREATE POLICY "chat_attachments_insert_own"
+-- Enable RLS on core storage tables
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
+
+-- BUCKET SELECT: Authenticated users must be able to resolve the bucket
+DROP POLICY IF EXISTS chat_attachments_bucket_select ON storage.buckets;
+CREATE POLICY chat_attachments_bucket_select
+  ON storage.buckets FOR SELECT
+  TO authenticated
+  USING (name = 'chat-attachments');
+
+-- INSERT: Authenticated users can only upload to their own user_id/ prefix
+DROP POLICY IF EXISTS chat_attachments_insert_own ON storage.objects;
+CREATE POLICY chat_attachments_insert_own
   ON storage.objects FOR INSERT
   TO authenticated
   WITH CHECK (
     bucket_id = 'chat-attachments'
-    AND (storage.foldername(name))[1] = (select auth.uid())::text
+    AND owner = auth.uid()
+    AND split_part(name, '/', 1) = auth.uid()::text
   );
 
--- SELECT: authenticated users can read only their own uploads
-CREATE POLICY "chat_attachments_select_own"
+-- SELECT: Authenticated users can read only their own uploads
+DROP POLICY IF EXISTS chat_attachments_select_own ON storage.objects;
+CREATE POLICY chat_attachments_select_own
   ON storage.objects FOR SELECT
   TO authenticated
   USING (
     bucket_id = 'chat-attachments'
-    AND (storage.foldername(name))[1] = (select auth.uid())::text
+    AND split_part(name, '/', 1) = auth.uid()::text
   );
 
--- DELETE: authenticated users can remove only their own uploads
-CREATE POLICY "chat_attachments_delete_own"
+-- UPDATE: Authenticated users can update/overwrite their own uploads
+DROP POLICY IF EXISTS chat_attachments_update_own ON storage.objects;
+CREATE POLICY chat_attachments_update_own
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'chat-attachments'
+    AND split_part(name, '/', 1) = auth.uid()::text
+  );
+
+-- DELETE: Authenticated users can remove only their own uploads
+DROP POLICY IF EXISTS chat_attachments_delete_own ON storage.objects;
+CREATE POLICY chat_attachments_delete_own
   ON storage.objects FOR DELETE
   TO authenticated
   USING (
     bucket_id = 'chat-attachments'
-    AND (storage.foldername(name))[1] = (select auth.uid())::text
+    AND split_part(name, '/', 1) = auth.uid()::text
   );

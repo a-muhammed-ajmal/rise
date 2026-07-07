@@ -39,6 +39,7 @@ export async function storeMemory(
   userId: string,
   content: string,
   metadata: MemoryMetadata,
+  memoryType: "conversation" | "user_fact" | "insight" | "summary" = "conversation",
 ): Promise<void> {
   const supabase = await createClient();
   const embedding = await embedText(content);
@@ -47,14 +48,30 @@ export async function storeMemory(
     user_id: userId,
     content,
     metadata: metadata as unknown as Json,
+    memory_type: memoryType,
     embedding: embedding ?? null,
   });
+}
+
+// Always-loaded personal facts — retrieved by type, not by similarity
+export async function retrieveUserFacts(
+  userId: string,
+): Promise<{ content: string; metadata: Json }[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ai_memory")
+    .select("content, metadata")
+    .eq("user_id", userId)
+    .eq("memory_type", "user_fact")
+    .order("created_at", { ascending: false })
+    .limit(30);
+  return data ?? [];
 }
 
 export async function retrieveMemories(
   userId: string,
   queryText: string,
-  count: number = 10,
+  count: number = 8,
 ): Promise<{ content: string; metadata: Json; similarity: number }[]> {
   const supabase = await createClient();
   const queryEmbedding = await embedText(queryText);
@@ -66,7 +83,12 @@ export async function retrieveMemories(
       match_count: count,
       match_threshold: 0.7,
     });
-    if (data?.length) return data;
+    if (data?.length) {
+      // Filter out user_fact type — those are loaded separately via retrieveUserFacts
+      const filtered = (data as { content: string; metadata: Json; similarity: number; memory_type?: string }[])
+        .filter((m) => m.memory_type !== "user_fact");
+      if (filtered.length) return filtered;
+    }
   }
 
   // Keyword fallback when embeddings are unavailable or returned no results
@@ -74,6 +96,7 @@ export async function retrieveMemories(
     .from("ai_memory")
     .select("content, metadata")
     .eq("user_id", userId)
+    .neq("memory_type", "user_fact")
     .ilike("content", `%${queryText.slice(0, 100)}%`)
     .order("created_at", { ascending: false })
     .limit(count);
@@ -97,11 +120,12 @@ export async function compactMessages(
     .map((m) => `${m.role}: ${m.content.slice(0, 200)}`)
     .join("\n");
 
-  await storeMemory(userId, `Conversation summary:\n${summaryText}`, {
-    role: "assistant",
-    summary: true,
-    turn_count: oldMessages.length,
-  });
+  await storeMemory(
+    userId,
+    `Conversation summary:\n${summaryText}`,
+    { role: "assistant", summary: true, turn_count: oldMessages.length },
+    "summary",
+  );
 }
 
 export function formatMemoriesForPrompt(
@@ -111,4 +135,13 @@ export function formatMemoriesForPrompt(
 
   const lines = memories.map((m) => `- ${m.content.slice(0, 300)}`);
   return `\nRelevant memories from past conversations:\n${lines.join("\n")}`;
+}
+
+export function formatUserFactsForPrompt(
+  facts: { content: string }[],
+): string {
+  if (!facts.length) return "";
+
+  const lines = facts.map((f) => `- ${f.content.slice(0, 200)}`);
+  return `\nThings you know about this user:\n${lines.join("\n")}`;
 }

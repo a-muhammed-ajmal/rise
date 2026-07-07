@@ -283,8 +283,20 @@ type AiMemoryRow = {
   user_id: string;
   content: string;
   metadata: Json;
+  memory_type: string;
   embedding: number[] | null;
   created_at: string;
+};
+type UserProfileRow = {
+  id: string;
+  user_id: string;
+  display_name: string | null;
+  occupation: string | null;
+  location: string | null;
+  bio: string | null;
+  facts: Json;
+  created_at: string;
+  updated_at: string;
 };
 type PushSubscriptionRow = {
   id: string;
@@ -409,6 +421,11 @@ export interface Database {
         Insertable<PushSubscriptionRow>,
         Partial<Insertable<PushSubscriptionRow>>
       >;
+      user_profile: T<
+        UserProfileRow,
+        Insertable<UserProfileRow>,
+        Partial<Insertable<UserProfileRow>>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -455,6 +472,7 @@ export type Document = DocumentRow;
 export type Link = LinkRow;
 export type AiConversation = AiConversationRow;
 export type AiMemory = AiMemoryRow;
+export type UserProfile = UserProfileRow;
 export type PushSubscription = PushSubscriptionRow;
 
 // ─── Chat attachment types ─────────────────────────────────────────────────

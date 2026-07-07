@@ -756,6 +756,32 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
     },
   },
 
+  // ─── PERSONAL MEMORY ──────────────────────────────────────────────────────────
+  {
+    name: 'remember_user_fact',
+    description: 'Save something personal the user told you about themselves — their name, job, location, family, preferences, working style, or any detail worth remembering for future conversations. Call this proactively whenever you learn a personal fact.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        key: { type: Type.STRING, description: 'Short fact key e.g. "name", "occupation", "location", "wake_time", "prefers_morning_tasks"' },
+        value: { type: Type.STRING, description: 'The fact value e.g. "Muhammed Ajmal", "freelance designer", "Dubai, UAE"' },
+      },
+      required: ['key', 'value'],
+    },
+  },
+  {
+    name: 'recall_memories',
+    description: 'Search your memory of past conversations. Use when the user references something they told you previously, or asks what you remember about a topic.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: { type: Type.STRING, description: 'What to search for in past conversations' },
+        limit: { type: Type.NUMBER, description: 'Max results to return, default 10' },
+      },
+      required: ['query'],
+    },
+  },
+
   // ─── ANALYTICS & SEARCH ───────────────────────────────────────────────────────
   {
     name: 'get_daily_briefing',

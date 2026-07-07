@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 268 passing |
-| Line coverage | 46.77% on `lib/**` |
-| Migrations | 12 (001–012) |
-| DB tables | 22 (21 core + push_subscriptions) |
-| AI tools | 58 AUTO + 17 APPROVAL = 75 total |
-| Last feature shipped | Phase 11 — RISE bee logo rollout + icon pipeline (2026-07-04) |
+| Test count | 270 passing |
+| Line coverage | 45.83% on `lib/**` |
+| Migrations | 14 (001–014) |
+| DB tables | 23 (22 core + push_subscriptions) |
+| AI tools | 60 AUTO + 17 APPROVAL = 77 total |
+| Last feature shipped | Phase 12 — Persistent chat history, real memory, user profile, remember/recall tools (2026-07-08) |
 
 _Update this table each time a phase completes or metrics change._
 

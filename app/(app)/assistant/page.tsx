@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -21,6 +21,7 @@ import {
   Mic,
   FileText,
   Music,
+  SquarePen,
 } from "lucide-react";
 import { RiseLogo } from "@/components/brand/rise-logo";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,9 @@ const TOOL_LABELS: Record<string, string> = {
 const ACCEPTED_TYPES =
   ".jpg,.jpeg,.png,.webp,.heic,.pdf,.doc,.docx,.csv,.xlsx";
 
+// How many messages to send in full to the API (older ones rely on memory retrieval)
+const API_HISTORY_LIMIT = 40;
+
 // ─── Attachment helpers ──────────────────────────────────────────────────────
 
 function formatBytes(bytes: number): string {
@@ -117,7 +121,6 @@ function MessageAttachments({ attachments }: { attachments: ChatAttachment[] }) 
             />
           );
         }
-        // file
         return (
           <FileAttachmentView
             key={att.id}
@@ -262,8 +265,11 @@ function AudioAttachmentView({
 function AssistantContent() {
   const searchParams = useSearchParams();
   const initialQ = searchParams.get("q");
+  const supabase = createClient();
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [input, setInput] = useState(initialQ ?? "");
   const [loading, setLoading] = useState(false);
   const [pendingApproval, setPendingApproval] =
@@ -277,18 +283,95 @@ function AssistantContent() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto-send if query param provided
+  // ── Load or create the conversation on mount ───────────────────────────────
+
   useEffect(() => {
-    if (initialQ) {
+    async function loadConversation() {
+      setHistoryLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setHistoryLoading(false); return; }
+
+      const { data } = await supabase
+        .from("ai_conversations")
+        .select("id, messages")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setConversationId(data.id);
+        const stored = data.messages as Message[] | null;
+        if (Array.isArray(stored) && stored.length > 0) {
+          setMessages(stored);
+        }
+      }
+      setHistoryLoading(false);
+    }
+    void loadConversation();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-send if query param provided (only after history loaded)
+  useEffect(() => {
+    if (!historyLoading && initialQ) {
       void sendMessage(initialQ);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyLoading]);
+
+  // ── Persist messages to Supabase (debounced 800ms) ────────────────────────
+
+  const persistMessages = useCallback(async (msgs: Message[], convId: string | null) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    if (convId) {
+      await supabase
+        .from("ai_conversations")
+        .update({ messages: msgs as unknown as import("@/lib/types/database").Json })
+        .eq("id", convId)
+        .eq("user_id", user.id);
+    } else {
+      const { data } = await supabase
+        .from("ai_conversations")
+        .insert({
+          user_id: user.id,
+          messages: msgs as unknown as import("@/lib/types/database").Json,
+        })
+        .select("id")
+        .single();
+      if (data) setConversationId(data.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function scheduleSave(msgs: Message[], convId: string | null) {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void persistMessages(msgs, convId);
+    }, 800);
+  }
+
+  // ── New Chat ───────────────────────────────────────────────────────────────
+
+  async function startNewChat() {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    setMessages([]);
+    setConversationId(null);
+    setPendingApproval(null);
+    setPendingAttachments([]);
+    setInput("");
+  }
 
   // ── File upload ────────────────────────────────────────────────────────────
 
@@ -355,7 +438,6 @@ function AssistantContent() {
 
     setPendingAttachments((prev) => [...prev, ...newPending]);
 
-    // Start uploads
     for (const pending of newPending) {
       void uploadFile(pending.file, pending.id);
     }
@@ -405,7 +487,8 @@ function AssistantContent() {
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
 
-    const apiMessages: MessageParam[] = newMessages.map((m) => ({
+    // Send only last N messages to keep payload bounded
+    const apiMessages: MessageParam[] = newMessages.slice(-API_HISTORY_LIMIT).map((m) => ({
       role: m.role,
       content: m.content,
       attachments: m.attachments,
@@ -514,6 +597,12 @@ function AssistantContent() {
     }
 
     setLoading(false);
+
+    // Persist final state after response completes
+    setMessages((finalMsgs) => {
+      scheduleSave(finalMsgs, conversationId);
+      return finalMsgs;
+    });
   }
 
   async function handleApprove() {
@@ -531,21 +620,25 @@ function AssistantContent() {
         }),
       });
       const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: data.result.message,
-          toolResults: [
-            {
-              tool: pendingApproval.tool.name,
-              message: data.result.message,
-              success: data.result.success,
-            },
-          ],
-        },
-      ]);
+      setMessages((prev) => {
+        const updated = [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant" as const,
+            content: data.result.message,
+            toolResults: [
+              {
+                tool: pendingApproval.tool.name,
+                message: data.result.message,
+                success: data.result.success,
+              },
+            ],
+          },
+        ];
+        scheduleSave(updated, conversationId);
+        return updated;
+      });
     } catch {
       // ignore
     }
@@ -568,7 +661,11 @@ function AssistantContent() {
     <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] max-w-2xl mx-auto">
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
-        {messages.length === 0 ? (
+        {historyLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full space-y-4 py-12 slide-up">
             <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md bee-float">
               <Image
@@ -600,6 +697,18 @@ function AssistantContent() {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
+            {/* New Chat button — shown inline above messages when history exists */}
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => void startNewChat()}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted"
+              >
+                <SquarePen className="w-3.5 h-3.5" />
+                New chat
+              </button>
+            </div>
+
             {messages.map((msg) => (
               <div
                 key={msg.id}

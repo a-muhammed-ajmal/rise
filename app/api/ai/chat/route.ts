@@ -4,9 +4,11 @@ import { ALL_TOOLS, APPROVAL_TOOL_NAMES } from "@/lib/ai/tools";
 import { executeTool } from "@/lib/ai/execute-tool";
 import {
   retrieveMemories,
+  retrieveUserFacts,
   storeMemory,
   compactMessages,
   formatMemoriesForPrompt,
+  formatUserFactsForPrompt,
 } from "@/lib/ai/memory";
 import type { ChatAttachment } from "@/lib/types/database";
 import { format } from "date-fns";
@@ -101,13 +103,15 @@ function verifyApprovalToken(
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are RISE, an AI personal assistant integrated into the user's personal operating system.
-You have access to their tasks, goals, finances (AED), habits, contacts, and notes.
+const SYSTEM_PROMPT = `You are RISE, the personal AI assistant of {NAME}.
+You have full access to their tasks, goals, finances (AED), habits, contacts, notes, and journal.
 
 Today's date: {TODAY}
 
+{PROFILE}
 Key rules:
 - Be concise and action-oriented. Avoid filler.
+- Address the user by name when it feels natural.
 - Always use AED for money amounts in UAE Dirham format.
 - Use DD/MM/YYYY for dates when displaying to the user.
 - When creating tasks from natural language, extract the due date intelligently (e.g. "tomorrow" → correct date).
@@ -115,38 +119,80 @@ Key rules:
 - When updating or deleting by name (e.g. "delete my dentist contact"), always call the relevant list_* or search_data tool first to resolve the name to an id. Never guess an id.
 - After using tools, report back clearly: what was created/updated/found.
 - If the user asks "what should I do today?" — call get_daily_briefing first, then summarize.
+- When the user tells you something personal (name, job, location, preferences, family, habits) — call remember_user_fact() to save it for future conversations.
+- When the user references something from a past conversation, call recall_memories() to look it up before answering.
 
 {CONTEXT}`;
+
+type BuildContextResult = {
+  context: string;
+  profileContext: string;
+  userName: string;
+};
 
 async function buildContext(
   userId: string,
   latestUserMessage: string,
-): Promise<string> {
+): Promise<BuildContextResult> {
   const supabase = await createClient();
   const today = format(new Date(), "yyyy-MM-dd");
   const dow = new Date().getDay();
 
-  const [{ data: tasks }, { data: habits }, { data: goals }, memories] =
-    await Promise.all([
-      supabase
-        .from("tasks")
-        .select("title, priority, due_date, status")
-        .neq("status", "done")
-        .or(`due_date.eq.${today},status.eq.inbox`)
-        .limit(10),
-      supabase
-        .from("habits")
-        .select("id, name")
-        .eq("active", true)
-        .contains("target_days", [dow]),
-      supabase
-        .from("goals")
-        .select("title, progress")
-        .eq("status", "active")
-        .limit(5),
-      retrieveMemories(userId, latestUserMessage, 10),
-    ]);
+  const [
+    { data: tasks },
+    { data: habits },
+    { data: goals },
+    { data: profile },
+    memories,
+    userFacts,
+  ] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("title, priority, due_date, status")
+      .neq("status", "done")
+      .or(`due_date.eq.${today},status.eq.inbox`)
+      .limit(10),
+    supabase
+      .from("habits")
+      .select("id, name")
+      .eq("active", true)
+      .contains("target_days", [dow]),
+    supabase
+      .from("goals")
+      .select("title, progress")
+      .eq("status", "active")
+      .limit(5),
+    supabase
+      .from("user_profile")
+      .select("display_name, occupation, location, bio, facts")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    retrieveMemories(userId, latestUserMessage, 8),
+    retrieveUserFacts(userId),
+  ]);
 
+  // ── Profile context ──────────────────────────────────────────────────────
+  const userName = profile?.display_name ?? "the user";
+  const profileLines: string[] = [];
+  if (profile?.occupation) profileLines.push(`Occupation: ${profile.occupation}`);
+  if (profile?.location) profileLines.push(`Location: ${profile.location}`);
+  if (profile?.bio) profileLines.push(`About: ${profile.bio}`);
+  const facts = profile?.facts as Record<string, string> | null;
+  if (facts && Object.keys(facts).length > 0) {
+    const factLines = Object.entries(facts)
+      .slice(0, 20)
+      .map(([k, v]) => `  • ${k}: ${v}`)
+      .join("\n");
+    profileLines.push(`Known facts:\n${factLines}`);
+  }
+  const userFactContext = formatUserFactsForPrompt(userFacts);
+  if (userFactContext) profileLines.push(userFactContext);
+
+  const profileContext = profileLines.length
+    ? `About ${userName}:\n${profileLines.join("\n")}\n`
+    : "";
+
+  // ── Live data context ────────────────────────────────────────────────────
   const lines: string[] = [];
   if (tasks?.length)
     lines.push(
@@ -164,7 +210,8 @@ async function buildContext(
   const parts: string[] = [];
   if (lines.length) parts.push(`\nCurrent context:\n${lines.join("\n")}`);
   if (memoryContext) parts.push(memoryContext);
-  return parts.join("\n");
+
+  return { context: parts.join("\n"), profileContext, userName };
 }
 
 // ─── Gemini parts builder ─────────────────────────────────────────────────────
@@ -278,12 +325,13 @@ export async function POST(request: Request) {
     .map((m) => ({ role: m.role, content: m.content }));
   compactMessages(user.id, plainMessages).catch(() => {});
 
-  const context = await buildContext(user.id, latestText);
+  const { context, profileContext, userName } = await buildContext(user.id, latestText);
   const today = format(new Date(), "dd/MM/yyyy");
-  const systemPrompt = SYSTEM_PROMPT.replace("{TODAY}", today).replace(
-    "{CONTEXT}",
-    context,
-  );
+  const systemPrompt = SYSTEM_PROMPT
+    .replace("{TODAY}", today)
+    .replace("{NAME}", userName)
+    .replace("{PROFILE}", profileContext)
+    .replace("{CONTEXT}", context);
 
   // Separate conversation history from the last user message
   const history = messages.slice(0, -1);
