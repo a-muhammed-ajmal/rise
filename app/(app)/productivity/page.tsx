@@ -293,8 +293,13 @@ export default function ProductivityPage() {
   }
 
   function openUnified(tab: "task" | "project") {
-    setUnifiedInitialTab(tab);
-    setUnifiedOpen(true);
+    if (tab === "task") {
+      setPrefillTask(null);
+      setNewOpen(true);
+    } else {
+      setUnifiedInitialTab(tab);
+      setUnifiedOpen(true);
+    }
   }
 
   // ── Toolbar strip ───────────────────────────────────────────────────────────
