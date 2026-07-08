@@ -11,5 +11,14 @@
     "editor.fontSize": 16,
     "editor.fontFamily": "Segoe UI",
     "editor.wordWrap": "on",
-    "claudeCode.allowDangerouslySkipPermissions": true
+    "claudeCode.allowDangerouslySkipPermissions": true,
+    "terminal.integrated.fontSize": 16,
+    "terminal.integrated.fontWeight": "normal",
+    "terminal.integrated.fontFamily": "Consolas, 'Cascadia Mono', monospace",
+    "terminal.integrated.accessibleViewFocusOnCommandExecution": false,
+    "terminal.integrated.allowInUntrustedWorkspace": true,
+    "terminal.integrated.allowMnemonics": true,
+    "terminal.integrated.copyOnSelection": true,
+    "terminal.integrated.cursorBlinking": true,
+    "accessibility.accessibleView.closeOnKeyPress": false
 }
