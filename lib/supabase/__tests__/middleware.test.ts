@@ -5,7 +5,7 @@ vi.mock("@supabase/ssr", () => ({
 }));
 
 import { updateSession } from "../middleware";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { NextRequest } from "next/server";
 
 function makeRequest(pathname: string): NextRequest {
@@ -13,7 +13,10 @@ function makeRequest(pathname: string): NextRequest {
   return new NextRequest(url);
 }
 
-function setupMockAuth(user: { id: string; email?: string } | null, opts?: { signOut?: () => Promise<void> }) {
+function setupMockAuth(
+  user: { id: string; email?: string } | null,
+  opts?: { signOut?: () => Promise<void> },
+) {
   const mockSupabase = {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user } }),
@@ -85,17 +88,38 @@ describe("updateSession", () => {
 
   it("invokes setAll cookie handler when cookies are set", async () => {
     setupMockAuth({ id: "user-123" });
-    let capturedSetAll: ((cookies: { name: string; value: string; options?: object }[]) => void) | null = null;
+    let capturedSetAll: SetAllCookies | null | undefined = null;
     vi.mocked(createServerClient).mockImplementationOnce((_url, _key, opts) => {
       capturedSetAll = opts.cookies.setAll;
       return {
-        auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+        auth: {
+          getUser: vi
+            .fn()
+            .mockResolvedValue({ data: { user: { id: "user-123" } } }),
+        },
       } as never;
     });
     await updateSession(makeRequest("/productivity"));
     expect(capturedSetAll).not.toBeNull();
     // Calling setAll should not throw
-    expect(() => capturedSetAll!([{ name: "sb-token", value: "abc", options: {} }])).not.toThrow();
+    expect(() =>
+      capturedSetAll!([{ name: "sb-token", value: "abc", options: {} }], {}),
+    ).not.toThrow();
+  });
+
+  it("passes through cookieless requests to /api/mcp without touching Supabase", async () => {
+    setupMockAuth(null);
+    const response = await updateSession(makeRequest("/api/mcp"));
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.status).toBe(200);
+    expect(createServerClient).not.toHaveBeenCalled();
+  });
+
+  it("still redirects unauthenticated requests on other /api paths", async () => {
+    setupMockAuth(null);
+    const response = await updateSession(makeRequest("/api/push/subscribe"));
+    expect(response.headers.get("location")).toContain("/login");
+    expect(response.status).toBe(307);
   });
 
   it("creates Supabase client with correct env vars", async () => {

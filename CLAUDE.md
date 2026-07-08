@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 270 tests, 45.83% — below target due to execute-tool.ts expansion, use-payment-methods.ts and use-categories.ts at 0% coverage; recovery is next priority.
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 298 tests, 48.47% — below target due to execute-tool.ts expansion, use-payment-methods.ts and use-categories.ts at 0% coverage; recovery is next priority.
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -66,6 +66,7 @@ app/
     analytics/              Cross-modular reporting graphics powered by Recharts
     settings/               User localization preferences and application controls
   api/ai/chat/              Server-Sent Events (SSE) chat connection routes for the AI agent
+  api/[transport]/          Remote MCP endpoint (/api/mcp) — bearer-token auth, exposes AUTO_TOOLS to Claude clients
   api/push/                 Web Push subscription management (subscribe, unsubscribe, vapid-public-key)
   auth/callback/            OAuth verification interchange and session validation routes
 
@@ -81,6 +82,8 @@ lib/
     tools.ts                System parameters for AUTO_TOOLS and APPROVAL_TOOLS arrays
     execute-tool.ts         Core tool executors bridging Gemini function calls to database functions
     memory.ts               Voyage AI (1024-dim pgvector) tracking logic with keyword fallback
+    mcp.ts                  MCP tool registry (AUTO_TOOLS only), bearer-token auth guard, service-role ToolContext
+    mcp-schema.ts           Gemini FunctionDeclaration → JSON Schema converter for MCP tools/list
     upload-helpers.ts       File upload parsing and text/audio extraction for chat attachments
   hooks/
     use-tasks.ts            Task CRUD with Supabase Realtime subscription

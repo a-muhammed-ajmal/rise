@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Json } from "@/lib/types/database";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, Json } from "@/lib/types/database";
 
 const VOYAGE_API_URL = "https://api.voyageai.com/v1/embeddings";
 const VOYAGE_MODEL = "voyage-3";
@@ -39,9 +40,11 @@ export async function storeMemory(
   userId: string,
   content: string,
   metadata: MemoryMetadata,
-  memoryType: "conversation" | "user_fact" | "insight" | "summary" = "conversation",
+  memoryType:
+    "conversation" | "user_fact" | "insight" | "summary" = "conversation",
+  client?: SupabaseClient<Database>,
 ): Promise<void> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const embedding = await embedText(content);
 
   await supabase.from("ai_memory").insert({
@@ -56,8 +59,9 @@ export async function storeMemory(
 // Always-loaded personal facts — retrieved by type, not by similarity
 export async function retrieveUserFacts(
   userId: string,
+  client?: SupabaseClient<Database>,
 ): Promise<{ content: string; metadata: Json }[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("ai_memory")
     .select("content, metadata")
@@ -72,8 +76,9 @@ export async function retrieveMemories(
   userId: string,
   queryText: string,
   count: number = 8,
+  client?: SupabaseClient<Database>,
 ): Promise<{ content: string; metadata: Json; similarity: number }[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const queryEmbedding = await embedText(queryText);
 
   if (queryEmbedding) {
@@ -85,8 +90,14 @@ export async function retrieveMemories(
     });
     if (data?.length) {
       // Filter out user_fact type — those are loaded separately via retrieveUserFacts
-      const filtered = (data as { content: string; metadata: Json; similarity: number; memory_type?: string }[])
-        .filter((m) => m.memory_type !== "user_fact");
+      const filtered = (
+        data as {
+          content: string;
+          metadata: Json;
+          similarity: number;
+          memory_type?: string;
+        }[]
+      ).filter((m) => m.memory_type !== "user_fact");
       if (filtered.length) return filtered;
     }
   }
@@ -137,9 +148,7 @@ export function formatMemoriesForPrompt(
   return `\nRelevant memories from past conversations:\n${lines.join("\n")}`;
 }
 
-export function formatUserFactsForPrompt(
-  facts: { content: string }[],
-): string {
+export function formatUserFactsForPrompt(facts: { content: string }[]): string {
   if (!facts.length) return "";
 
   const lines = facts.map((f) => `- ${f.content.slice(0, 200)}`);

@@ -237,7 +237,7 @@ The Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the daily digest endp
 
 | Metric | Value |
 | --- | --- |
-| Test count | 270 passing |
+| Test count | 298 passing |
 | DB tables | 23 (RLS on all) |
 | AI tools | 77 (60 AUTO + 17 APPROVAL) |
 | Migrations | 14 (001–014) |

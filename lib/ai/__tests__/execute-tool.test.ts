@@ -188,7 +188,9 @@ describe("executeTool", () => {
         .mockResolvedValue({ data: { title: "Done task" }, error: null });
       setupMockSupabase({ queries: { tasks: query } });
 
-      const result = await executeTool("complete_task", { task_id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" });
+      const result = await executeTool("complete_task", {
+        task_id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      });
       expect(result.success).toBe(true);
       expect(result.message).toContain("Done task");
       expect(query.update).toHaveBeenCalledWith(
@@ -317,7 +319,10 @@ describe("executeTool", () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain("Morning run");
-      const insertArg = query.insert.mock.calls[0][0] as Record<string, unknown>;
+      const insertArg = query.insert.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
       expect(insertArg.reminder_time).toBe("07:00");
     });
 
@@ -335,7 +340,10 @@ describe("executeTool", () => {
 
       const result = await executeTool("create_habit", { name: "Read" });
       expect(result.success).toBe(true);
-      const insertArg = query.insert.mock.calls[0][0] as Record<string, unknown>;
+      const insertArg = query.insert.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
       expect(insertArg.reminder_time).toBeNull();
     });
   });
@@ -658,5 +666,40 @@ describe("executeTool", () => {
       const result = await executeTool("get_analytics", {});
       expect(result.success).toBe(true);
     });
+  });
+});
+
+describe("executeTool with injected ToolContext", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("uses the injected client and userId without creating a cookie client", async () => {
+    const tasksQuery = createMockQuery([
+      { id: "t1", title: "A", priority: "P1", due_date: null, status: "todo" },
+    ]);
+    // No auth property — proves the ctx path never calls auth.getUser()
+    const injectedSupabase = { from: vi.fn(() => tasksQuery) };
+    const result = await executeTool(
+      "list_tasks",
+      {},
+      { supabase: injectedSupabase as never, userId: "user-999" },
+    );
+    expect(result.success).toBe(true);
+    expect(injectedSupabase.from).toHaveBeenCalledWith("tasks");
+    expect(createClient).not.toHaveBeenCalled();
+  });
+
+  it("scopes writes to the injected userId", async () => {
+    const tasksQuery = createMockQuery({ title: "Done task" });
+    const injectedSupabase = { from: vi.fn(() => tasksQuery) };
+    const result = await executeTool(
+      "complete_task",
+      { task_id: "123e4567-e89b-12d3-a456-426614174000" },
+      { supabase: injectedSupabase as never, userId: "user-999" },
+    );
+    expect(result.success).toBe(true);
+    expect(tasksQuery.eq).toHaveBeenCalledWith("user_id", "user-999");
+    expect(createClient).not.toHaveBeenCalled();
   });
 });
