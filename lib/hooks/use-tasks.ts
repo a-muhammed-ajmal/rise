@@ -74,7 +74,7 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       title: data.title ?? '',
       description: data.description ?? null,
       status: data.status ?? 'todo',
-      priority: data.priority ?? 'P3',
+      priority: data.priority ?? 'P4',
       due_date: data.due_date ?? null,
       due_time: data.due_time ?? null,
       project_id: data.project_id ?? null,

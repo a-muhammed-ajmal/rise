@@ -34,7 +34,7 @@ interface TaskCalendarProps {
   onDelete: (id: string) => void
   onDuplicate?: (id: string) => void
   onStar?: (id: string) => void
-  projects?: Array<{ id: string; name: string; color: string }>
+  onOpenDetail: (task: Task) => void
 }
 
 export function TaskCalendar({
@@ -44,7 +44,7 @@ export function TaskCalendar({
   onDelete,
   onDuplicate,
   onStar,
-  projects = [],
+  onOpenDetail,
 }: TaskCalendarProps) {
   const [viewDate, setViewDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
@@ -177,7 +177,7 @@ export function TaskCalendar({
                 onDelete={onDelete}
                 onDuplicate={onDuplicate}
                 onStar={onStar}
-                projects={projects}
+                onOpenDetail={onOpenDetail}
               />
             ))
           )}
@@ -199,7 +199,7 @@ export function TaskCalendar({
               onDelete={onDelete}
               onDuplicate={onDuplicate}
               onStar={onStar}
-              projects={projects}
+              onOpenDetail={onOpenDetail}
             />
           ))}
         </div>

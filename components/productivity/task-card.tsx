@@ -18,7 +18,6 @@ import {
 import type { Task } from '@/lib/types/database'
 import { formatRelativeDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { TaskForm } from './task-form'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
 import { PRIORITY_PILL, PRIORITY_DOT, repeatLabel, getLabelColor } from './task-constants'
@@ -30,15 +29,13 @@ interface TaskCardProps {
   onDelete: (id: string) => void
   onDuplicate?: (id: string) => void
   onStar?: (id: string) => void
-  onOpenDetail?: (task: Task) => void
+  onOpenDetail: (task: Task) => void
   // Bulk selection
   bulkMode?: boolean
   selected?: boolean
   onToggleSelect?: (id: string) => void
   // View variant
   view?: 'list' | 'grid'
-  // Projects for edit form
-  projects?: Array<{ id: string; name: string; color: string }>
 }
 
 export function TaskCard({
@@ -53,9 +50,7 @@ export function TaskCard({
   selected = false,
   onToggleSelect,
   view = 'list',
-  projects = [],
 }: TaskCardProps) {
-  const [editOpen, setEditOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [subtasksExpanded, setSubtasksExpanded] = useState(false)
 
@@ -121,10 +116,10 @@ export function TaskCard({
           </div>
         )}
 
-        {/* Content — click opens detail popup */}
+        {/* Content — click opens the shared task popup */}
         <div
           className="flex-1 min-w-0 cursor-pointer"
-          onClick={() => onOpenDetail?.(task)}
+          onClick={() => onOpenDetail(task)}
         >
           <p className={cn(
             'text-sm font-medium leading-snug',
@@ -267,7 +262,7 @@ export function TaskCard({
                 <MoreVertical className="w-4 h-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onOpenDetail ? onOpenDetail(task) : setEditOpen(true)}>
+                <DropdownMenuItem onClick={() => onOpenDetail(task)}>
                   <Pencil className="w-4 h-4 mr-2" /> Edit
                 </DropdownMenuItem>
                 {!isCompleted && (
@@ -318,19 +313,6 @@ export function TaskCard({
           )}
         </div>
       </div>
-
-      <TaskForm
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        initial={task}
-        title="Edit Task"
-        projects={projects}
-        onSubmit={async (data) => {
-          await onUpdate(task.id, data)
-          toast.success('Task updated')
-          setEditOpen(false)
-        }}
-      />
 
       <ConfirmDialog
         open={confirmDelete}

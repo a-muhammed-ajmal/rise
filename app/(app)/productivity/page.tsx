@@ -4,12 +4,10 @@ import { useState, useMemo, useEffect } from "react";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { TaskCard } from "@/components/productivity/task-card";
-import { TaskForm } from "@/components/productivity/task-form";
+import { TaskPopup } from "@/components/productivity/task-popup";
 import { TaskToolbar } from "@/components/productivity/task-toolbar";
 import { TaskCalendar } from "@/components/productivity/task-calendar";
-import { QuickAddPanel } from "@/components/productivity/QuickAddPanel";
-import { TaskDetailPopup } from "@/components/productivity/TaskDetailPopup";
-import { UnifiedAddDialog } from "@/components/productivity/unified-add-dialog";
+import { AddProjectDialog } from "@/components/productivity/add-project-dialog";
 import { ProjectForm } from "@/components/productivity/project-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -149,15 +147,11 @@ export default function ProductivityPage() {
   const [sortBy, setSortBy] = useState<SortBy>("priority");
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
 
-  // Unified add dialog
-  const [unifiedOpen, setUnifiedOpen] = useState(false);
-  const [unifiedInitialTab, setUnifiedInitialTab] = useState<"task" | "project">("task");
+  // New project dialog
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
 
-  // Full task form (opened via "More options →" or pre-existing edit flow)
-  const [newOpen, setNewOpen] = useState(false);
-  const [prefillTask, setPrefillTask] = useState<Partial<Task> | null>(null);
-
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  // Single shared task popup — creatingTask = create mode, detailTaskId = edit/detail mode
+  const [creatingTask, setCreatingTask] = useState(false);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
@@ -285,21 +279,18 @@ export default function ProductivityPage() {
       onDuplicate: duplicateTask,
       onStar: starTask,
       onOpenDetail: (t: Task) => setDetailTaskId(t.id),
-      projects,
       bulkMode,
       selected: selectedIds.has(task.id),
       onToggleSelect: toggleSelectTask,
     };
   }
 
-  function openUnified(tab: "task" | "project") {
-    if (tab === "task") {
-      setPrefillTask(null);
-      setNewOpen(true);
-    } else {
-      setUnifiedInitialTab(tab);
-      setUnifiedOpen(true);
-    }
+  function openNewTask() {
+    setCreatingTask(true);
+  }
+
+  function openNewProject() {
+    setAddProjectOpen(true);
   }
 
   // ── Toolbar strip ───────────────────────────────────────────────────────────
@@ -426,7 +417,7 @@ export default function ProductivityPage() {
         </h1>
         <Button
           onClick={() =>
-            openUnified(filter === "projects" && !selectedProject ? "project" : "task")
+            filter === "projects" && !selectedProject ? openNewProject() : openNewTask()
           }
           size="sm"
           className="gap-1.5"
@@ -574,7 +565,7 @@ export default function ProductivityPage() {
               {/* Dashed "Add Project" card */}
               <button
                 type="button"
-                onClick={() => openUnified("project")}
+                onClick={() => openNewProject()}
                 className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl
                            border-2 border-dashed border-border/60
                            hover:border-[var(--mod-tasks)] hover:bg-[var(--mod-tasks-tint)]/30
@@ -610,7 +601,7 @@ export default function ProductivityPage() {
             />
             <span className="text-sm font-medium">{selectedProject.name}</span>
           </div>
-          <Button size="sm" onClick={() => openUnified("task")} className="ml-auto gap-1.5">
+          <Button size="sm" onClick={() => openNewTask()} className="ml-auto gap-1.5">
             <Plus className="w-4 h-4" /> Add Task
           </Button>
         </div>
@@ -638,7 +629,7 @@ export default function ProductivityPage() {
                "No active tasks."}
             </p>
             {filter !== "completed" && (
-              <Button variant="ghost" size="sm" onClick={() => openUnified("task")}>
+              <Button variant="ghost" size="sm" onClick={() => openNewTask()}>
                 + Add a task
               </Button>
             )}
@@ -652,7 +643,7 @@ export default function ProductivityPage() {
               onDelete={deleteTask}
               onDuplicate={duplicateTask}
               onStar={starTask}
-              projects={projects}
+              onOpenDetail={(t) => setDetailTaskId(t.id)}
             />
           </div>
         ) : (
@@ -747,9 +738,9 @@ export default function ProductivityPage() {
         type="button"
         onClick={() => {
           if (filter === "projects" && !selectedProject) {
-            openUnified("project");
+            openNewProject();
           } else {
-            setQuickAddOpen(true);
+            openNewTask();
           }
         }}
         className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
@@ -767,71 +758,33 @@ export default function ProductivityPage() {
         onClearSelection={() => { setSelectedIds(new Set()); setBulkMode(false); }}
       />
 
-      {/* QuickAddPanel — mobile FAB */}
-      <QuickAddPanel
-        open={quickAddOpen}
-        onOpenChange={setQuickAddOpen}
-        onClose={() => setQuickAddOpen(false)}
-        onOpenFull={(id) => {
-          setQuickAddOpen(false);
-          setDetailTaskId(id);
-        }}
-        defaultProjectId={selectedProject?.id}
-        defaultStatus="todo"
-      />
-
-      {/* TaskDetailPopup */}
-      {detailTask && (
-        <TaskDetailPopup
+      {/* Single shared task popup — create mode when creatingTask, edit/detail mode when detailTask is set */}
+      {(detailTask || creatingTask) && (
+        <TaskPopup
           task={detailTask}
-          onClose={() => setDetailTaskId(null)}
+          projects={projects}
+          defaultProjectId={selectedProject?.id ?? null}
+          onClose={() => {
+            setDetailTaskId(null);
+            setCreatingTask(false);
+          }}
+          onCreate={async (data) => {
+            await createTask({
+              ...data,
+              project_id: data.project_id ?? selectedProject?.id ?? null,
+            });
+            toast.success("Task added");
+          }}
         />
       )}
 
-      {/* Unified Add Dialog */}
-      <UnifiedAddDialog
-        open={unifiedOpen}
-        onOpenChange={(v) => {
-          setUnifiedOpen(v);
-          if (!v) setPrefillTask(null);
-        }}
-        initialTab={unifiedInitialTab}
-        projects={projects}
-        defaultProjectId={selectedProject?.id ?? null}
-        onTaskCreate={async (data) => {
-          await createTask({
-            ...data,
-            project_id: data.project_id ?? selectedProject?.id ?? null,
-          });
-          toast.success("Task added");
-        }}
-        onOpenFull={(partial) => {
-          setUnifiedOpen(false);
-          setPrefillTask(partial);
-          setNewOpen(true);
-        }}
+      {/* Add Project Dialog */}
+      <AddProjectDialog
+        open={addProjectOpen}
+        onOpenChange={setAddProjectOpen}
         onProjectCreate={async (name, color, description) => {
           await createProject(name, color, description);
           toast.success("Project created");
-        }}
-      />
-
-      {/* Full TaskForm — opened via "More options →" */}
-      <TaskForm
-        open={newOpen}
-        onOpenChange={(v) => {
-          setNewOpen(v);
-          if (!v) setPrefillTask(null);
-        }}
-        initial={prefillTask ?? undefined}
-        projects={projects}
-        defaultProjectId={selectedProject?.id ?? null}
-        onSubmit={async (data) => {
-          await createTask({
-            ...data,
-            project_id: data.project_id ?? selectedProject?.id ?? null,
-          });
-          toast.success("Task added");
         }}
       />
 

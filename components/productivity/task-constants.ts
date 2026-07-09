@@ -1,15 +1,10 @@
 import type { Task } from '@/lib/types/database'
 
-export const PRIORITY_MAP: Array<{
-  value: Task['priority']
-  label: string
-  color: string
-  description: string
-}> = [
-  { value: 'P1', label: 'P1', color: 'bg-[var(--color-danger)] text-white',   description: 'Urgent — must do now' },
-  { value: 'P2', label: 'P2', color: 'bg-[var(--color-warning)] text-white',  description: 'High importance' },
-  { value: 'P3', label: 'P3', color: 'bg-[var(--color-info)] text-white',     description: 'Medium — normal priority' },
-  { value: 'P4', label: 'P4', color: 'bg-[var(--text-muted)] text-white',     description: 'Low / someday' },
+export const PRIORITY_MAP: Array<{ value: Task['priority'] }> = [
+  { value: 'P1' },
+  { value: 'P2' },
+  { value: 'P3' },
+  { value: 'P4' },
 ]
 
 export const PRIORITY_PILL: Record<Task['priority'], string> = {
