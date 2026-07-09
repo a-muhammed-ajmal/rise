@@ -314,21 +314,84 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
 
   return (
     <>
-      <Dialog open onOpenChange={(v) => { if (!v) onClose() }}>
-        <DialogContent className="sm:max-w-lg max-h-[92vh] flex flex-col overflow-hidden p-0">
+      <Dialog open onOpenChange={(v) => {
+        if (!v) {
+          if (isCreate && title.trim()) {
+            onCreate({
+              title: title.trim(),
+              description: description.trim() || null,
+              priority,
+              status: 'todo',
+              due_date: dueDate || null,
+              due_time: dueTime || null,
+              recurrence: repeat === 'none' ? null : repeat,
+              reminder: reminderAt ? new Date(reminderAt).toISOString() : null,
+              estimated_time: estimatedMinutes ? parseInt(estimatedMinutes, 10) : null,
+              project_id: projectId || null,
+              labels,
+              subtasks,
+              attachments,
+            }).catch(() => toast.error('Failed to add task'))
+          }
+          onClose()
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg max-h-[92vh] flex flex-col overflow-hidden p-0" showCloseButton={false}>
           <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0">
 
-            {/* Header — popup heading at same level as close button */}
+            {/* Header — title with star + more menu at right (no X button) */}
             <DialogHeader className="shrink-0 px-4 py-3 border-b">
-              <DialogTitle className="text-sm pr-10">
-                {isCreate ? 'Add new task' : 'Update the task'}
-              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <DialogTitle className="text-sm flex-1">
+                  {isCreate ? 'Add new task' : 'Update the task'}
+                </DialogTitle>
+                {!isCreate && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => toggleFocus(liveTask.id)}
+                      className={cn(
+                        'tap-target shrink-0 transition-colors',
+                        liveTask.is_focus
+                          ? 'text-[var(--color-warning)]'
+                          : 'text-muted-foreground/30 hover:text-[var(--color-warning)]'
+                      )}
+                      aria-label={liveTask.is_focus ? 'Remove from focus' : 'Add to focus'}
+                    >
+                      <Star className={cn('w-4 h-4', liveTask.is_focus && 'fill-[var(--color-warning)]')} />
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="tap-target shrink-0 rounded-md hover:bg-accent transition-colors">
+                        <MoreVertical className="w-4 h-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => {
+                          duplicateTask(liveTask.id)
+                          toast.success('Task duplicated')
+                        }}>
+                          <Copy className="w-4 h-4 mr-2" /> Duplicate Task
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleCopyLink}>
+                          <LinkIcon className="w-4 h-4 mr-2" /> Copy Link
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setConfirmDelete(true)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" /> Delete Task
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+              </div>
             </DialogHeader>
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto space-y-4 px-4 py-3">
 
-              {/* Task title + actions */}
+              {/* Task title */}
               <div className="flex items-start gap-2">
                 {!isCreate && (
                   <button
@@ -357,46 +420,6 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                   className="flex-1 resize-none text-base font-medium border-0 p-0 shadow-none focus-visible:ring-0 min-h-[1.5rem] overflow-hidden"
                   rows={1}
                 />
-                {!isCreate && (
-                  <button
-                    type="button"
-                    onClick={() => toggleFocus(liveTask.id)}
-                    className={cn(
-                      'tap-target -m-2.5 shrink-0 transition-colors',
-                      liveTask.is_focus
-                        ? 'text-[var(--color-warning)]'
-                        : 'text-muted-foreground/30 hover:text-[var(--color-warning)]'
-                    )}
-                    aria-label={liveTask.is_focus ? 'Remove from focus' : 'Add to focus'}
-                  >
-                    <Star className={cn('w-4 h-4', liveTask.is_focus && 'fill-[var(--color-warning)]')} />
-                  </button>
-                )}
-                {!isCreate && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="tap-target -m-2.5 shrink-0 rounded-md hover:bg-accent transition-colors">
-                      <MoreVertical className="w-4 h-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        duplicateTask(liveTask.id)
-                        toast.success('Task duplicated')
-                      }}>
-                        <Copy className="w-4 h-4 mr-2" /> Duplicate Task
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleCopyLink}>
-                        <LinkIcon className="w-4 h-4 mr-2" /> Copy Link
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => setConfirmDelete(true)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" /> Delete Task
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
               </div>
 
               {/* Description */}
