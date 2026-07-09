@@ -1,18 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
-import { format } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, Star, AlertTriangle } from "lucide-react";
 import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
-import { formatAED } from "@/lib/format";
+import { formatAED, todayISO, todayDOW, currentHourDubai } from "@/lib/format";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { HabitDashboardSection } from "@/components/wellness/habit-dashboard-section";
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = todayISO();
 
   const [
     { data: todayTasks },
@@ -45,7 +45,7 @@ export default async function HomePage() {
       .from("habits")
       .select("*")
       .eq("active", true)
-      .contains("target_days", [new Date().getDay()])
+      .contains("target_days", [todayDOW()])
       .order("reminder_time", { ascending: true, nullsFirst: false }),
     supabase
       .from("habit_logs")
@@ -67,7 +67,7 @@ export default async function HomePage() {
       .from("contacts")
       .select("id, name, email, phone, company, stage, last_contacted_at")
       .neq("type", "personal")
-      .or(`last_contacted_at.is.null,last_contacted_at.lte.${format(new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")}`)
+      .or(`last_contacted_at.is.null,last_contacted_at.lte.${format(subDays(parseISO(today), 14), "yyyy-MM-dd")}`)
       .order("last_contacted_at", { ascending: true, nullsFirst: true })
       .limit(3),
     // Starred focus tasks for today
@@ -107,13 +107,13 @@ export default async function HomePage() {
   const todayTotal = (completedTodayCount ?? 0) + (pendingTodayCount ?? 0);
 
   const greeting = (() => {
-    const hour = new Date().getHours();
+    const hour = currentHourDubai();
     if (hour < 12) return "Good morning";
     if (hour < 17) return "Good afternoon";
     return "Good evening";
   })();
 
-  const dayName = format(new Date(), "EEEE, dd MMMM yyyy");
+  const dayName = format(parseISO(today), "EEEE, dd MMMM yyyy");
 
   return (
     <div className="p-3 md:p-5 space-y-5 max-w-4xl">

@@ -11,7 +11,8 @@ import {
   formatUserFactsForPrompt,
 } from "@/lib/ai/memory";
 import type { ChatAttachment } from "@/lib/types/database";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { todayISO, todayDOW } from "@/lib/format";
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
 
@@ -135,8 +136,8 @@ async function buildContext(
   latestUserMessage: string,
 ): Promise<BuildContextResult> {
   const supabase = await createClient();
-  const today = format(new Date(), "yyyy-MM-dd");
-  const dow = new Date().getDay();
+  const today = todayISO();
+  const dow = todayDOW();
 
   const [
     { data: tasks },
@@ -326,7 +327,7 @@ export async function POST(request: Request) {
   compactMessages(user.id, plainMessages).catch(() => {});
 
   const { context, profileContext, userName } = await buildContext(user.id, latestText);
-  const today = format(new Date(), "dd/MM/yyyy");
+  const today = format(parseISO(todayISO()), "dd/MM/yyyy");
   const systemPrompt = SYSTEM_PROMPT
     .replace("{TODAY}", today)
     .replace("{NAME}", userName)

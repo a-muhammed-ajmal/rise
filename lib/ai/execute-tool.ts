@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { format, startOfMonth } from "date-fns";
+import { format, parseISO, startOfMonth } from "date-fns";
+import { todayISO, todayDOW } from "@/lib/format";
 import { z } from "zod";
 import {
   storeMemory,
@@ -512,7 +513,7 @@ export async function executeTool(
     userId = user.id;
   }
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = todayISO();
 
   switch (toolName) {
     case "create_task": {
@@ -716,7 +717,7 @@ export async function executeTool(
     }
 
     case "get_daily_briefing": {
-      const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
+      const monthStart = format(startOfMonth(parseISO(today)), "yyyy-MM-dd");
       const [
         { data: todayTasks },
         { data: overdue },
@@ -746,7 +747,7 @@ export async function executeTool(
           .select("name, icon")
           .eq("user_id", userId)
           .eq("active", true)
-          .contains("target_days", [new Date().getDay()]),
+          .contains("target_days", [todayDOW()]),
         supabase
           .from("habit_logs")
           .select("habit_id")

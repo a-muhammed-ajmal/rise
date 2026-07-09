@@ -33,9 +33,34 @@ export function formatRelativeDate(dateStr: string): string {
   return format(date, 'dd/MM/yyyy')
 }
 
-// Today as YYYY-MM-DD (Supabase/PostgreSQL date format)
+// Today as YYYY-MM-DD in Asia/Dubai timezone (UTC+4, no DST)
 export function todayISO(): string {
-  return format(new Date(), 'yyyy-MM-dd')
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'Asia/Dubai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const y = parts.find(p => p.type === 'year')!.value
+  const m = parts.find(p => p.type === 'month')!.value
+  const d = parts.find(p => p.type === 'day')!.value
+  return `${y}-${m}-${d}`
+}
+
+// Day of week (0=Sun…6=Sat) in Asia/Dubai timezone
+export function todayDOW(): number {
+  const [y, mo, d] = todayISO().split('-').map(Number)
+  return new Date(Date.UTC(y, mo - 1, d)).getUTCDay()
+}
+
+// Current hour (0–23) in Asia/Dubai timezone
+export function currentHourDubai(): number {
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'Asia/Dubai',
+    hour: 'numeric',
+    hourCycle: 'h23',
+  }).formatToParts(new Date())
+  return parseInt(parts.find(p => p.type === 'hour')!.value, 10)
 }
 
 // Convert YYYY-MM-DD → Date object

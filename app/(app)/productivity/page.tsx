@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { todayISO } from "@/lib/format";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { TaskCard } from "@/components/productivity/task-card";
@@ -211,7 +212,7 @@ export default function ProductivityPage() {
   useEffect(() => {
     if (filter !== "today") return;
     const supabase = createClient();
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayISO();
     supabase
       .from("tasks")
       .select("*", { count: "exact", head: true })

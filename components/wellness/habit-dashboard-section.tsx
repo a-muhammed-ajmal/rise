@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, X, Undo2, ChevronDown } from "lucide-react";
 import type { Habit } from "@/lib/types/database";
+import { todayISO } from "@/lib/format";
 import { AffirmationDialog } from "@/components/wellness/affirmation-dialog";
 
 const DAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -22,7 +23,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
   );
   const [expanded, setExpanded] = useState(false);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const pending = habits.filter((h) => !logMap.has(h.id));
 
   async function markDone(habitId: string) {

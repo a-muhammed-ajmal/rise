@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Habit, HabitLog } from "@/lib/types/database";
-import { todayISO } from "@/lib/format";
+import { todayISO, todayDOW } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -49,7 +49,7 @@ import {
   Undo2,
   Clock,
 } from "lucide-react";
-import { subDays, format } from "date-fns";
+import { subDays, format, parseISO } from "date-fns";
 import { toast } from "sonner";
 
 const DAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -89,11 +89,11 @@ export default function WellnessPage() {
   const [deleteHabitId, setDeleteHabitId] = useState<string | null>(null);
   const [viewHabit, setViewHabit] = useState<Habit | null>(null);
   const today = todayISO();
-  const todayDow = new Date().getDay();
+  const todayDow = todayDOW();
 
   const fetchData = useCallback(async () => {
     const supabase = createClient();
-    const last30 = format(subDays(new Date(), 30), "yyyy-MM-dd");
+    const last30 = format(subDays(parseISO(today), 30), "yyyy-MM-dd");
     const [{ data: hs }, { data: ls }] = await Promise.all([
       supabase.from("habits").select("*").eq("active", true).order("reminder_time", { ascending: true, nullsFirst: false }),
       supabase.from("habit_logs").select("*").gte("logged_date", last30),
@@ -101,7 +101,7 @@ export default function WellnessPage() {
     setHabits(hs ?? []);
     setLogs(ls ?? []);
     setLoading(false);
-  }, []);
+  }, [today]);
 
   useEffect(() => {
     fetchData();
