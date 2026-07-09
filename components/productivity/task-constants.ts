@@ -21,6 +21,13 @@ export const PRIORITY_DOT: Record<Task['priority'], string> = {
   P4: 'priority-dot-low',
 }
 
+export const PRIORITY_CONFIG: Record<Task['priority'], { label: string; color: string; bgColor: string; textClass: string }> = {
+  P1: { label: 'P1', color: '#EF4444', bgColor: '#FEF2F2', textClass: 'text-[var(--color-p1)]' },
+  P2: { label: 'P2', color: '#FF6535', bgColor: '#FFF0EB', textClass: 'text-[var(--color-p2)]' },
+  P3: { label: 'P3', color: '#3B82F6', bgColor: '#EFF6FF', textClass: 'text-[var(--color-p3)]' },
+  P4: { label: 'P4', color: '#9CA3AF', bgColor: '#F9FAFB', textClass: 'text-[var(--color-p4)]' },
+}
+
 export const STATUS_CONFIG: Array<{
   value: Task['status']
   label: string

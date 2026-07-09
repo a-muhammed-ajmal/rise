@@ -3,13 +3,14 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Check, Trash2, Copy, MoreVertical, Link as LinkIcon,
-  CalendarDays, Clock, Bell, Repeat2, Plus, X, Star,
+  Clock, Bell, Repeat2, Plus, X, Star,
   MessageSquare, ChevronDown, Paperclip, Flag, Tag, Pencil,
 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
 import {
@@ -32,7 +33,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DateTimePicker } from './DateTimePicker'
-import { PRIORITY_MAP, PRIORITY_DOT, repeatLabel } from './task-constants'
+import { PRIORITY_MAP, PRIORITY_CONFIG, repeatLabel } from './task-constants'
 import { formatRelativeDate, formatDateTime, display12h } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -317,11 +318,18 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
         <DialogContent className="sm:max-w-lg max-h-[92vh] flex flex-col overflow-hidden p-0">
           <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0">
 
-            {/* Header */}
-            <DialogHeader className="shrink-0 px-4 pt-4 pb-3 border-b">
-              <div className="flex items-start gap-3 pr-6">
+            {/* Header — popup heading at same level as close button */}
+            <DialogHeader className="shrink-0 px-4 py-3 border-b">
+              <DialogTitle className="text-sm pr-10">
+                {isCreate ? 'Add new task' : 'Update the task'}
+              </DialogTitle>
+            </DialogHeader>
 
-                {/* Circle complete / reopen — edit mode only */}
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto space-y-4 px-4 py-3">
+
+              {/* Task title + actions */}
+              <div className="flex items-start gap-2">
                 {!isCreate && (
                   <button
                     type="button"
@@ -339,8 +347,6 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                     </span>
                   </button>
                 )}
-
-                {/* Title textarea */}
                 <Textarea
                   ref={titleRef}
                   value={title}
@@ -351,8 +357,6 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                   className="flex-1 resize-none text-base font-medium border-0 p-0 shadow-none focus-visible:ring-0 min-h-[1.5rem] overflow-hidden"
                   rows={1}
                 />
-
-                {/* Focus toggle — edit mode only */}
                 {!isCreate && (
                   <button
                     type="button"
@@ -368,8 +372,6 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                     <Star className={cn('w-4 h-4', liveTask.is_focus && 'fill-[var(--color-warning)]')} />
                   </button>
                 )}
-
-                {/* More menu — edit mode only */}
                 {!isCreate && (
                   <DropdownMenu>
                     <DropdownMenuTrigger className="tap-target -m-2.5 shrink-0 rounded-md hover:bg-accent transition-colors">
@@ -396,10 +398,6 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                   </DropdownMenu>
                 )}
               </div>
-            </DialogHeader>
-
-            {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto space-y-4 px-4 py-3">
 
               {/* Description */}
               <div className="space-y-1.5">
@@ -420,56 +418,65 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                 )}
               </div>
 
-              {/* Priority + Due (clock) — the one row every entry point shares */}
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  <Flag className="w-3.5 h-3.5 inline mr-1" />
-                  Priority &amp; Due
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Select value={priority} onValueChange={(v) => handlePriorityChange(v as Task['priority'])}>
-                    <SelectTrigger className="h-9 flex-1 text-xs" aria-label="Priority">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="start" alignItemWithTrigger={false}>
-                      {PRIORITY_MAP.map((p) => (
-                        <SelectItem key={p.value} value={p.value} className="text-xs">
-                          <span className={cn('w-2 h-2 rounded-full shrink-0', PRIORITY_DOT[p.value])} />
-                          {p.value}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {/* Priority + Time — 30 / 70 single row, no label above */}
+              <div className="grid grid-cols-[3fr_7fr] gap-2">
+                {/* Priority 30% */}
+                <Select value={priority} onValueChange={(v) => handlePriorityChange(v as Task['priority'])}>
+                  <SelectTrigger className="h-9 text-xs w-full" aria-label="Priority">
+                    <div className="flex items-center gap-1.5">
+                      <Flag
+                        className={cn('w-3.5 h-3.5 shrink-0', PRIORITY_CONFIG[priority].textClass)}
+                        aria-hidden="true"
+                      />
+                      <span>{priority}</span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent align="start" alignItemWithTrigger={false}>
+                    {PRIORITY_MAP.map((p) => (
+                      <SelectItem key={p.value} value={p.value} className="text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <Flag
+                            className={cn('w-3.5 h-3.5 shrink-0', PRIORITY_CONFIG[p.value].textClass)}
+                            aria-hidden="true"
+                          />
+                          <span>{p.value}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
+                {/* Time 70% */}
+                <div className="relative">
                   <button
                     type="button"
                     onClick={() => setShowDatePicker((v) => !v)}
                     className={cn(
-                      'relative shrink-0 h-9 w-9 flex items-center justify-center rounded-lg border transition-colors',
-                      'before:absolute before:inset-[-4px] before:content-[""]',
+                      'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       dueDate
-                        ? 'border-brand/50 text-brand bg-brand-tint'
+                        ? 'border-brand/50 text-brand bg-brand-tint pr-8'
                         : 'border-border text-muted-foreground hover:border-ring'
                     )}
-                    aria-label={dueDate ? `Change due date and time: ${dueSummary}` : 'Set due date and time'}
+                    aria-label={dueDate ? `Change time: ${dueSummary}` : 'Set time'}
                   >
-                    <Clock className="w-4 h-4" />
+                    <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                      {dueDate
+                        ? `${formatRelativeDate(dueDate)}${dueTime ? ` · ${display12h(dueTime)}` : ''}`
+                        : 'Set time'}
+                    </span>
                   </button>
-                </div>
-                {dueSummary && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground pl-0.5">
-                    <CalendarDays className="w-3 h-3 shrink-0" aria-hidden="true" />
-                    {dueSummary}
+                  {dueDate && (
                     <button
                       type="button"
-                      onClick={() => handleDateChange({})}
-                      className="tap-target relative -m-2.5 ml-1 text-muted-foreground hover:text-destructive transition-colors"
-                      aria-label="Clear due date"
+                      onClick={(e) => { e.stopPropagation(); handleDateChange({}) }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive transition-colors"
+                      aria-label="Clear time"
                     >
                       <X className="w-3 h-3" />
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* Repeat */}
