@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Check, Trash2, Copy, MoreVertical, Link as LinkIcon,
   CalendarDays, Clock, Bell, Repeat2, Plus, X, Star,
-  MessageSquare, ChevronDown, Paperclip, Flag, Tag,
+  MessageSquare, ChevronDown, Paperclip, Flag, Tag, Pencil,
 } from 'lucide-react'
 import {
   Dialog,
@@ -405,6 +405,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
               <div className="space-y-1.5">
                 <Textarea
                   placeholder="Add notes…"
+                  icon={<Pencil aria-hidden="true" />}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   onBlur={handleDescriptionBlur}

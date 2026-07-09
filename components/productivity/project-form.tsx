@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Pencil } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -76,6 +77,7 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
             <Input
               id="pf-name"
               placeholder="Project name"
+              icon={<Pencil aria-hidden="true" />}
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Pencil } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,7 @@ export function AddProjectDialog({ open, onOpenChange, onProjectCreate }: AddPro
             <Input
               id="ap-name"
               placeholder="Project name"
+              icon={<Pencil aria-hidden="true" />}
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               autoFocus
