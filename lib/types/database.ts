@@ -15,6 +15,7 @@ type ProjectRow = {
   description: string | null;
   status: "active" | "completed" | "archived";
   color: string;
+  goal_id: string | null;
   created_at: string;
   updated_at: string;
 };
