@@ -66,7 +66,7 @@ These rules are enforced by the `frontend-design` skill and must be followed for
 ## Security & Architectural Guardrails
 
 - **Database Schemas:** Do not alter contents inside `supabase/migrations/`. Schema evolutions are append-only and executed via the Supabase Dashboard SQL Command Editor interface.
-- **Credential Protection:** Secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `VAPID_PRIVATE_KEY`, `APPROVAL_HMAC_SECRET`, and `SUPABASE_SERVICE_ROLE_KEY`) are server-only dependencies. Never expose or reference them inside Client Components.
+- **Credential Protection:** Secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `VAPID_PRIVATE_KEY`, `APPROVAL_HMAC_SECRET`, `MCP_OAUTH_CLIENT_SECRET`, and `SUPABASE_SERVICE_ROLE_KEY`) are server-only dependencies. Never expose or reference them inside Client Components.
 - **Agent Interferences:** Destructive AI tool actions must generate an intermediate client approval state (`ConfirmDialog`) before triggering engine executors in `execute-tool.ts`.
 
 ## AI Tool System
@@ -86,7 +86,7 @@ The tool system has two tiers defined in `lib/ai/tools.ts`:
 
 **Tool schema format:** Uses `@google/genai` `FunctionDeclaration` with `Type.STRING` / `Type.OBJECT` / `Type.NUMBER` enum values. Not OpenAI function call format, not Anthropic tool format.
 
-**MCP endpoint** (`/api/mcp`): Exposes only `AUTO_TOOLS`. `APPROVAL_TOOLS` are never reachable via MCP.
+**MCP endpoint** (`/api/mcp`): Exposes only `AUTO_TOOLS`. `APPROVAL_TOOLS` are never reachable via MCP. Auth accepts the static `MCP_ACCESS_TOKEN` (Claude Code) **or** OAuth 2.1 (claude.ai web / Desktop). OAuth is a self-hosted authorization server: helpers in `lib/ai/mcp-oauth.ts`, endpoints at `app/api/oauth/{authorize,token}/` + discovery at `app/.well-known/oauth-*`, tokens/codes stored **hashed** in `oauth_tokens` / `oauth_authorization_codes` (migration `015`, service-role-only RLS). The route wraps the handler in `mcp-handler`'s `withMcpAuth` and validates both token types via `verifyMcpToken`; OAuth tokens are audience-bound (RFC 8707). Pre-registered confidential client via `MCP_OAUTH_CLIENT_ID` / `MCP_OAUTH_CLIENT_SECRET`.
 
 **Non-obvious behaviors in `execute-tool.ts`:**
 
@@ -154,7 +154,9 @@ app/
     analytics/              Cross-modular reporting graphics powered by Recharts
     settings/               User localization preferences and application controls
   api/ai/chat/              SSE chat route — approval gate (HMAC token), tool dispatch, Gemini streaming
-  api/[transport]/          Remote MCP endpoint (/api/mcp) — bearer-token auth, exposes AUTO_TOOLS only
+  api/[transport]/          Remote MCP endpoint (/api/mcp) — static-token OR OAuth 2.1 auth, exposes AUTO_TOOLS only
+  api/oauth/                OAuth 2.1 authorization server (authorize + token) for the claude.ai web / Desktop connector
+  .well-known/oauth-*/      OAuth discovery metadata (RFC 9728 protected-resource, RFC 8414 authorization-server)
   api/push/                 Web Push subscription management (subscribe, unsubscribe, vapid-public-key)
   auth/callback/            OAuth verification interchange and session validation routes
 

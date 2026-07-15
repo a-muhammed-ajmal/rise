@@ -3,9 +3,18 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/types/database";
 
 export async function updateSession(request: NextRequest) {
-  // MCP endpoint is cookieless — it enforces its own bearer-token auth
-  // and resolves the ALLOWED_USER_EMAIL user itself (lib/ai/mcp.ts)
-  if (request.nextUrl.pathname.startsWith("/api/mcp")) {
+  // MCP + OAuth endpoints are hit by Claude without an app session and enforce
+  // their own auth:
+  //   /api/mcp              — static bearer or OAuth access token (lib/ai/mcp.ts)
+  //   /.well-known/oauth-*  — public OAuth discovery metadata (RFC 9728 / 8414)
+  //   /api/oauth/token      — OAuth token endpoint (client secret + PKCE)
+  //   /api/oauth/authorize  — runs its own Supabase session check + returnTo
+  const authFreePath = request.nextUrl.pathname;
+  if (
+    authFreePath.startsWith("/api/mcp") ||
+    authFreePath.startsWith("/.well-known/oauth-") ||
+    authFreePath.startsWith("/api/oauth/")
+  ) {
     return NextResponse.next({ request });
   }
 

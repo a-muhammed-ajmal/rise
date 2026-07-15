@@ -6,7 +6,9 @@ import type { Database } from '@/lib/types/database'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const rawNext = searchParams.get('next') ?? '/'
+  // Only allow same-origin relative paths — prevents open redirect via ?next=.
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/'
   const errorParam = searchParams.get('error')
 
   if (errorParam) {

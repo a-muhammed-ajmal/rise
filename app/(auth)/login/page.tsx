@@ -32,11 +32,23 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
+    // Preserve an OAuth-connector return path (the MCP /api/oauth/authorize page)
+    // across the Google round-trip. Restricted to that endpoint so this can never
+    // become an open redirect.
+    const nextParam = searchParams.get("next");
+    const safeNext =
+      nextParam && nextParam.startsWith("/api/oauth/authorize")
+        ? nextParam
+        : null;
+    const callbackUrl = `${window.location.origin}/auth/callback${
+      safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""
+    }`;
+
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl,
         queryParams: {
           access_type: "offline",
           prompt: "select_account",

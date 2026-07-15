@@ -307,6 +307,32 @@ type PushSubscriptionRow = {
   reminder_types: ("habit_nudge" | "crm_followup")[];
   created_at: string;
 };
+type OAuthAuthorizationCodeRow = {
+  id: string;
+  code_hash: string;
+  user_id: string;
+  client_id: string;
+  redirect_uri: string;
+  code_challenge: string;
+  code_challenge_method: string;
+  scope: string;
+  resource: string;
+  expires_at: string;
+  created_at: string;
+};
+type OAuthTokenRow = {
+  id: string;
+  access_token_hash: string;
+  refresh_token_hash: string | null;
+  user_id: string;
+  client_id: string;
+  scope: string;
+  resource: string;
+  access_expires_at: string;
+  refresh_expires_at: string | null;
+  revoked: boolean;
+  created_at: string;
+};
 
 // ─── Helper to build Insert / Update from Row ─────────────────────────────────
 
@@ -425,6 +451,16 @@ export interface Database {
         UserProfileRow,
         Insertable<UserProfileRow>,
         Partial<Insertable<UserProfileRow>>
+      >;
+      oauth_authorization_codes: T<
+        OAuthAuthorizationCodeRow,
+        Insertable<OAuthAuthorizationCodeRow>,
+        Partial<Insertable<OAuthAuthorizationCodeRow>>
+      >;
+      oauth_tokens: T<
+        OAuthTokenRow,
+        Insertable<OAuthTokenRow>,
+        Partial<Insertable<OAuthTokenRow>>
       >;
     };
     Views: Record<string, never>;
