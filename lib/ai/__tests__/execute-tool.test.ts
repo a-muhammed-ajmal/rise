@@ -146,6 +146,25 @@ describe("executeTool", () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe("Something went wrong. Please try again.");
     });
+
+    it("accepts the aligned P1 priority and blocked status", async () => {
+      const query = createMockQuery();
+      query.single = vi
+        .fn()
+        .mockResolvedValue({ data: { id: "t1", title: "Edge task" }, error: null });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("create_task", {
+        title: "Edge task",
+        priority: "P1",
+        status: "blocked",
+      });
+
+      expect(result.success).toBe(true);
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ priority: "P1", status: "blocked" }),
+      );
+    });
   });
 
   describe("list_tasks", () => {

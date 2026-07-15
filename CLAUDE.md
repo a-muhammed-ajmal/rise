@@ -18,7 +18,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 ## Tech Stack & Core Constraints
 
 - **Core Architecture:** Next.js 16.2.9 (App Router) · TypeScript Strict · Tailwind CSS v4 · shadcn/ui (`@base-ui/react`) · Supabase (Postgres + pgvector + RLS) · Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) · Vitest + Testing Library · Vercel.
-- **AI SDKs:** `@google/genai` drives the chat assistant. `@anthropic-ai/sdk` is also present — used exclusively for the MCP server endpoint. Never swap them.
+- **AI SDKs:** `@google/genai` drives the chat assistant (SSE streaming + function calling) — do not swap it for another provider's SDK. The MCP server endpoint (`/api/mcp`) uses `mcp-handler` + `@modelcontextprotocol/sdk`. `@anthropic-ai/sdk` is present in `package.json` but currently dormant (imported nowhere).
 - **State Management:** Zustand v5 with `persist` middleware. Not React context, not useState for cross-component state.
 - **Middleware Infrastructure:** Routing rules live exclusively within `proxy.ts` (Next.js 16 naming — equivalent to `middleware.ts` in older versions). It calls `updateSession()` from `lib/supabase/middleware.ts`, which is where the `ALLOWED_USER_EMAIL` restriction and token refresh logic actually live.
 - **Component Paradigm:** Prioritize React Server Components (RSC) for initial page layouts and base data extraction. Restrict `'use client'` tags to low-level leaf components requiring stateful client operations or interface triggers.
@@ -197,5 +197,6 @@ public/sw.js                Service worker script managing stale-while-revalidat
 .claude/
   skills/                   frontend-design, db-schema, git-commit, security-audit
   commands/                 /verify, /review, /add-tool, /new-module
-  settings.json             MCP server and permission configuration
+  settings.json             Permissions, hooks, and model configuration
+.mcp.json                   Registers the Supabase MCP for Claude Code; the RISE MCP connector is added client-side in Claude, not committed here
 ```

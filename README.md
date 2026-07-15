@@ -139,6 +139,59 @@ Destructive tool calls halt streaming and emit `approval_required`. The client s
 
 ---
 
+## Connect to Claude (MCP Connector)
+
+RISE ships a **remote MCP server** at `POST /api/mcp` so Claude can read and act on your
+RISE data directly. It exposes only the **60 `AUTO_TOOLS`** — the 17 destructive
+`APPROVAL_TOOLS` are never reachable over MCP. Auth is a single static **bearer token**
+(`MCP_ACCESS_TOKEN`); the endpoint returns `401` for any request without it.
+
+- **Endpoint:** `https://rise.muhammedajmal.com/api/mcp`
+- **Header Claude must send:** `Authorization: Bearer <MCP_ACCESS_TOKEN>`
+
+Set `MCP_ACCESS_TOKEN` (a long random string, e.g. `openssl rand -hex 32`) in your Vercel
+env vars, then give Claude the **same** value.
+
+### Claude Code (CLI) — recommended; supports the bearer token directly
+
+```bash
+claude mcp add --transport http rise \
+  https://rise.muhammedajmal.com/api/mcp \
+  --header "Authorization: Bearer <MCP_ACCESS_TOKEN>" \
+  --scope user
+```
+
+`--scope user` makes it available across all your projects while keeping the token out of
+version control. (Avoid `--scope project`, which would write the token into a committed
+`.mcp.json`.) The equivalent `~/.claude.json` entry:
+
+```json
+{
+  "mcpServers": {
+    "rise": {
+      "type": "http",
+      "url": "https://rise.muhammedajmal.com/api/mcp",
+      "headers": { "Authorization": "Bearer <MCP_ACCESS_TOKEN>" }
+    }
+  }
+}
+```
+
+### Claude.ai (web) & Claude Desktop — require OAuth
+
+Claude.ai custom connectors (**Customize → Connectors → + → Add custom connector →** paste
+the `/api/mcp` URL) authenticate via **OAuth 2.0**, not a static bearer token — the web UI
+has no field for a custom `Authorization` header. RISE's endpoint is bearer-only, so it
+**cannot be added to Claude.ai web as-is**. Options:
+
+1. **Use Claude Code** (above) — works today with the bearer token.
+2. **Add OAuth 2.0 to `/api/mcp`** (a scoped future enhancement) to unlock the web/desktop connector.
+
+> **Keep `MCP_ACCESS_TOKEN` secret** — anyone holding it can act on your RISE data as you.
+> To rotate: change it in Vercel, then update your Claude connector config with the new value.
+
+---
+
 ## Local Development
 
 ### Prerequisites
@@ -179,6 +232,9 @@ ALLOWED_USER_EMAIL=    # only this email can log in
 
 # Cron security (optional but recommended)
 CRON_SECRET=           # random secret; set in Vercel env vars too
+
+# MCP connector (Claude)
+MCP_ACCESS_TOKEN=      # bearer token Claude sends to /api/mcp; same value in Claude's connector config
 ```
 
 Apply migrations 001–011 in your Supabase SQL editor (in order), then:

@@ -93,3 +93,50 @@ describe("APPROVAL_TOOL_NAMES", () => {
     expect(APPROVAL_TOOL_NAMES.size).toBe(APPROVAL_TOOLS.length);
   });
 });
+
+// Canonical task enums — mirror lib/types/database.ts (TaskPriority, TaskStatus),
+// the source of truth the Zod validators in execute-tool.ts enforce. These guard
+// the tool-declaration ↔ validator drift that previously let the assistant send
+// values (low/medium/high/urgent, inbox) that execution then rejected.
+const TASK_PRIORITIES = ["P1", "P2", "P3", "P4"];
+const TASK_STATUSES = ["todo", "in_progress", "blocked", "on_hold", "done"];
+
+function toolByName(name: string) {
+  const tool = AUTO_TOOLS.find((t) => t.name === name);
+  if (!tool) throw new Error(`AUTO_TOOLS is missing "${name}"`);
+  return tool;
+}
+
+function enumOf(name: string, prop: string): string[] | undefined {
+  return toolByName(name).parameters?.properties?.[prop]?.enum;
+}
+
+describe("task tools advertise validator-aligned enums", () => {
+  it("create_task advertises DB-valid priority and status", () => {
+    expect(enumOf("create_task", "priority")).toEqual(TASK_PRIORITIES);
+    expect(enumOf("create_task", "status")).toEqual(TASK_STATUSES);
+  });
+
+  it("update_task advertises DB-valid priority and status", () => {
+    expect(enumOf("update_task", "priority")).toEqual(TASK_PRIORITIES);
+    expect(enumOf("update_task", "status")).toEqual(TASK_STATUSES);
+  });
+
+  it("list_tasks advertises only the real filter views", () => {
+    expect(enumOf("list_tasks", "filter")).toEqual(["all", "today"]);
+  });
+
+  it("create_task does not advertise fields its handler ignores", () => {
+    // The handler hardcodes labels:[] and never reads project_id, so advertising
+    // them misled the assistant into passing values that were silently dropped.
+    const props = toolByName("create_task").parameters?.properties ?? {};
+    expect(props).not.toHaveProperty("project_id");
+    expect(props).not.toHaveProperty("tags");
+  });
+
+  it("update_task advertises labels (matching the validator), not tags", () => {
+    const props = toolByName("update_task").parameters?.properties ?? {};
+    expect(props).toHaveProperty("labels");
+    expect(props).not.toHaveProperty("tags");
+  });
+});
