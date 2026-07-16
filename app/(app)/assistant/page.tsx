@@ -575,7 +575,7 @@ function AssistantContent() {
               {
                 id: assistantId,
                 role: "assistant",
-                content: "Sorry, something went wrong. Please try again.",
+                content: event.message ?? "Sorry, something went wrong. Please try again.",
               },
             ]);
           }

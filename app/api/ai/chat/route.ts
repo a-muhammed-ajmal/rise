@@ -16,7 +16,7 @@ import { todayISO, todayDOW } from "@/lib/format";
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
 
-const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
 
 // ─── Request body schema ──────────────────────────────────────────────────────
 
@@ -372,11 +372,15 @@ export async function POST(request: Request) {
   const readable = new ReadableStream({
     async start(controller) {
       try {
+        if (!process.env.GEMINI_API_KEY) {
+          throw new Error("GEMINI_API_KEY is not configured");
+        }
         const model = genai.chats.create({
           model: "gemini-2.5-flash",
           config: {
             systemInstruction: systemPrompt,
             tools: [{ functionDeclarations: ALL_TOOLS }],
+            thinkingConfig: { thinkingBudget: 0 },
           },
           history: await toGeminiHistory(history),
         });
@@ -542,9 +546,10 @@ export async function POST(request: Request) {
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err) {
-        console.error("[ai/chat] streaming error:", err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error("[ai/chat] streaming error:", errMsg);
         controller.enqueue(
-          sseChunk({ type: "error", message: "Something went wrong. Please try again." }),
+          sseChunk({ type: "error", message: `AI error: ${errMsg}` }),
         );
         controller.close();
       }

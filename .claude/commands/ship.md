@@ -44,8 +44,8 @@ extract_lines_coverage() {
   local output="$1"
   local val=""
 
-  # Pattern: "Lines: NUM%"
-  val=$(echo "$output" | grep -E 'Lines:' | grep -Eo '[0-9]+\.?[0-9]*' | head -n1)
+  # Pattern: "Lines: NUM%" or v8/istanbul "Lines        : NUM%" (padded colon)
+  val=$(echo "$output" | grep -E 'Lines[[:space:]]*:' | grep -Eo '[0-9]+\.?[0-9]*' | head -n1)
   if [ -n "$val" ]; then
     echo "$val"
     return 0
@@ -134,6 +134,10 @@ TEST_OUTPUT=$(npm run test:coverage | tee /tmp/test_coverage_output.txt)
 TEST_COUNT=""
 if [ -z "$TEST_COUNT" ]; then
   TEST_COUNT=$(echo "$TEST_OUTPUT" | grep -Eo 'Tests:\s*[0-9]+\s*passed' | grep -Eo '[0-9]+' | head -n1) || true
+fi
+# Vitest 4.x summary line: "Tests  318 passed (318)" (no colon, padded spaces)
+if [ -z "$TEST_COUNT" ]; then
+  TEST_COUNT=$(echo "$TEST_OUTPUT" | grep -Eo 'Tests[[:space:]]+[0-9]+[[:space:]]+passed' | grep -Eo '[0-9]+' | head -n1) || true
 fi
 if [ -z "$TEST_COUNT" ]; then
   TEST_COUNT=$(echo "$TEST_OUTPUT" | grep -Eo 'test count:\s*[0-9]+' | grep -Eo '[0-9]+' | head -n1) || true
