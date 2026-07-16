@@ -36,6 +36,8 @@ interface TaskCardProps {
   onToggleSelect?: (id: string) => void
   // View variant
   view?: 'list' | 'grid'
+  // Hide the ⋮ actions menu (e.g. dashboard preview where the popup owns all actions)
+  showMenu?: boolean
 }
 
 export function TaskCard({
@@ -50,6 +52,7 @@ export function TaskCard({
   selected = false,
   onToggleSelect,
   view = 'list',
+  showMenu = true,
 }: TaskCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [subtasksExpanded, setSubtasksExpanded] = useState(false)
@@ -256,7 +259,7 @@ export function TaskCard({
           )}
 
           {/* More menu */}
-          {!bulkMode && (
+          {!bulkMode && showMenu && (
             <DropdownMenu>
               <DropdownMenuTrigger className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center rounded-md hover:bg-accent">
                 <MoreVertical className="w-4 h-4" />

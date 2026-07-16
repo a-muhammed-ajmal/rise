@@ -3,44 +3,39 @@ import { format, parseISO, subDays } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, Star, AlertTriangle } from "lucide-react";
+import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, AlertTriangle, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
-import { formatAED, todayISO, todayDOW, currentHourDubai } from "@/lib/format";
+import { formatAED, formatDate, todayISO, todayDOW, currentHourDubai } from "@/lib/format";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { TasksDashboardSection } from "@/components/dashboard/tasks-dashboard-section";
 import { HabitDashboardSection } from "@/components/wellness/habit-dashboard-section";
+
+const STAGE_COLORS: Record<string, string> = {
+  new: "stage-new",
+  qualified: "stage-qualified",
+  proposal: "stage-proposal",
+  negotiation: "stage-negotiation",
+  won: "stage-won",
+  lost: "stage-lost",
+};
 
 export default async function HomePage() {
   const supabase = await createClient();
   const today = todayISO();
 
+  const last30 = format(subDays(parseISO(today), 30), "yyyy-MM-dd");
+
   const [
-    { data: todayTasks },
-    { data: overdueTasks },
     { data: todayHabits },
     { data: habitLogs },
     { data: activeGoals },
     { data: recentTransactions },
     { data: followUps },
-    { data: starredFocusTasks },
     { count: completedTodayCount },
     { count: pendingTodayCount },
     { count: overdueCount },
   ] = await Promise.all([
-    supabase
-      .from("tasks")
-      .select("*")
-      .neq("status", "done")
-      .eq("due_date", today)
-      .order("priority", { ascending: false })
-      .limit(5),
-    supabase
-      .from("tasks")
-      .select("*")
-      .neq("status", "done")
-      .lt("due_date", today)
-      .order("due_date", { ascending: true })
-      .limit(3),
     supabase
       .from("habits")
       .select("*")
@@ -49,8 +44,8 @@ export default async function HomePage() {
       .order("reminder_time", { ascending: true, nullsFirst: false }),
     supabase
       .from("habit_logs")
-      .select("habit_id, completed")
-      .eq("logged_date", today),
+      .select("habit_id, completed, logged_date")
+      .gte("logged_date", last30),
     supabase
       .from("goals")
       .select("*")
@@ -70,15 +65,6 @@ export default async function HomePage() {
       .or(`last_contacted_at.is.null,last_contacted_at.lte.${format(subDays(parseISO(today), 14), "yyyy-MM-dd")}`)
       .order("last_contacted_at", { ascending: true, nullsFirst: true })
       .limit(3),
-    // Starred focus tasks for today
-    supabase
-      .from("tasks")
-      .select("id, title, priority")
-      .eq("is_starred", true)
-      .eq("due_date", today)
-      .neq("status", "done")
-      .order("priority", { ascending: true })
-      .limit(3),
     // Completed today count
     supabase
       .from("tasks")
@@ -91,7 +77,7 @@ export default async function HomePage() {
       .select("*", { count: "exact", head: true })
       .eq("due_date", today)
       .neq("status", "done"),
-    // Exact overdue count (the overdue list above is capped at 3)
+    // Exact overdue count
     supabase
       .from("tasks")
       .select("*", { count: "exact", head: true })
@@ -100,8 +86,9 @@ export default async function HomePage() {
   ]);
 
   const dueHabits = todayHabits ?? [];
+  const todayHabitLogs = (habitLogs ?? []).filter((l) => l.logged_date === today);
   const completedCount = dueHabits.filter((h) =>
-    habitLogs?.some((l) => l.habit_id === h.id && l.completed === true),
+    todayHabitLogs.some((l) => l.habit_id === h.id && l.completed === true),
   ).length;
 
   const todayTotal = (completedTodayCount ?? 0) + (pendingTodayCount ?? 0);
@@ -157,91 +144,7 @@ export default async function HomePage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Today's tasks */}
-        <Card className="slide-up stagger-3 border-t-4 border-t-mod-tasks">
-          <CardHeader className="pb-2 flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-mod-tasks-tint flex items-center justify-center">
-                <CheckSquare className="w-3.5 h-3.5 text-mod-tasks" />
-              </div>
-              Today&apos;s Tasks
-            </CardTitle>
-            <Link
-              href="/productivity"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              View all
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {/* Completion progress */}
-            {((completedTodayCount ?? 0) + (pendingTodayCount ?? 0)) > 0 && (
-              <div className="mb-3 space-y-1">
-                <Progress
-                  value={
-                    ((completedTodayCount ?? 0) /
-                      ((completedTodayCount ?? 0) + (pendingTodayCount ?? 0))) *
-                    100
-                  }
-                  className="h-1.5"
-                />
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  {completedTodayCount ?? 0}/
-                  {(completedTodayCount ?? 0) + (pendingTodayCount ?? 0)} done today
-                </p>
-              </div>
-            )}
-
-            {/* Focus: starred tasks */}
-            {starredFocusTasks && starredFocusTasks.length > 0 && (
-              <div className="space-y-1 mb-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--color-warning)]">
-                  Focus
-                </p>
-                {starredFocusTasks.map((task) => (
-                  <div key={task.id} className="flex items-center gap-2 py-0.5">
-                    <Star
-                      className="w-3 h-3 fill-[var(--color-warning)] text-[var(--color-warning)] shrink-0"
-                      aria-hidden="true"
-                    />
-                    <p className="text-sm truncate flex-1">{task.title}</p>
-                  </div>
-                ))}
-                {(todayTasks?.length ?? 0) > 0 && (
-                  <div className="h-px bg-border my-1" aria-hidden="true" />
-                )}
-              </div>
-            )}
-
-            {/* Overdue indicator */}
-            {overdueTasks && overdueTasks.length > 0 && (
-              <div className="text-xs text-destructive font-medium mb-1">
-                {overdueTasks.length} overdue
-              </div>
-            )}
-
-            {/* Regular today tasks */}
-            {todayTasks && todayTasks.length > 0 ? (
-              todayTasks.map((task) => (
-                <div key={task.id} className="flex items-start gap-2 py-1">
-                  <div className="w-4 h-4 rounded border border-mod-tasks/40 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm truncate">{task.title}</p>
-                    <Badge
-                      variant={task.priority === "P1" ? "destructive" : "secondary"}
-                      className="text-xs mt-0.5"
-                    >
-                      {task.priority}
-                    </Badge>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No tasks due today.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <TasksDashboardSection />
 
         {/* Today's habits */}
         <Card className="slide-up stagger-4 border-t-4 border-t-mod-wellness">
@@ -295,19 +198,33 @@ export default async function HomePage() {
               View all
             </Link>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2">
             {activeGoals && activeGoals.length > 0 ? (
               activeGoals.map((goal) => (
-                <div key={goal.id} className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm truncate flex-1 mr-2">
-                      {goal.title}
-                    </span>
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      {goal.progress}%
-                    </span>
+                <div
+                  key={goal.id}
+                  className="rounded-lg border border-border bg-card p-3 space-y-2 card-hover"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-sm min-w-0 truncate">{goal.title}</p>
+                    {goal.category && (
+                      <Badge variant="secondary" className="text-xs shrink-0 capitalize">
+                        {goal.category}
+                      </Badge>
+                    )}
                   </div>
-                  <Progress value={goal.progress} className="h-1.5" />
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Progress</span>
+                      <span>{goal.progress}%</span>
+                    </div>
+                    <Progress value={goal.progress} className="h-2" />
+                  </div>
+                  {goal.target_date && (
+                    <p className="text-xs text-muted-foreground">
+                      Target: {formatDate(goal.target_date)}
+                    </p>
+                  )}
                 </div>
               ))
             ) : (
@@ -370,42 +287,50 @@ export default async function HomePage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {followUps.map((contact) => (
-              <div key={contact.id} className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full bg-mod-crm-tint flex items-center justify-center shrink-0">
-                    <span className="text-mod-crm text-xs font-semibold">
-                      {contact.name[0]?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{contact.name}</p>
-                    {contact.company && (
-                      <p className="text-xs text-muted-foreground truncate">{contact.company}</p>
-                    )}
-                  </div>
+              <div
+                key={contact.id}
+                className="rounded-lg border border-border bg-card p-3 flex items-center gap-3 border-l-4 border-l-mod-crm card-hover"
+              >
+                <div className="w-10 h-10 rounded-full bg-mod-crm-tint flex items-center justify-center shrink-0">
+                  <span className="text-mod-crm font-semibold">
+                    {contact.name[0]?.toUpperCase()}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {contact.email && (
-                    <a
-                      href={`mailto:${contact.email}`}
-                      aria-label={`Email ${contact.name}`}
-                      className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
-                    >
-                      <Mail className="w-3.5 h-3.5" aria-hidden="true" />
-                    </a>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{contact.name}</p>
+                  {contact.company && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {contact.company}
+                    </p>
                   )}
-                  {contact.phone && (
-                    <a
-                      href={`tel:${contact.phone}`}
-                      aria-label={`Call ${contact.name}`}
-                      className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
-                    >
-                      <Phone className="w-3.5 h-3.5" aria-hidden="true" />
-                    </a>
-                  )}
-                  <Badge variant="secondary" className="text-xs capitalize">
+                </div>
+                <div className="shrink-0 flex flex-col items-end gap-1.5">
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs capitalize ${STAGE_COLORS[contact.stage] ?? ""}`}
+                  >
                     {contact.stage}
                   </Badge>
+                  <div className="flex gap-1">
+                    {contact.email && (
+                      <a
+                        href={`mailto:${contact.email}`}
+                        aria-label={`Email ${contact.name}`}
+                        className="h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
+                      >
+                        <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                      </a>
+                    )}
+                    {contact.phone && (
+                      <a
+                        href={`tel:${contact.phone}`}
+                        aria-label={`Call ${contact.name}`}
+                        className="h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
+                      >
+                        <Phone className="w-3.5 h-3.5" aria-hidden="true" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -434,22 +359,29 @@ export default async function HomePage() {
             {recentTransactions.map((txn) => (
               <div
                 key={txn.id}
-                className="flex items-center justify-between py-1"
+                className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card"
               >
-                <div>
-                  <p className="text-sm">{txn.description ?? txn.category}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {txn.category}
-                  </p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-mod-finance-tint shrink-0">
+                    {txn.type === "income" ? (
+                      <ArrowUpRight className="w-4 h-4 text-mod-finance" aria-hidden="true" />
+                    ) : (
+                      <ArrowDownLeft className="w-4 h-4 text-destructive" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {txn.description ?? txn.category}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{txn.category}</p>
+                  </div>
                 </div>
                 <span
-                  className={`text-sm font-medium font-mono ${
-                    txn.type === "income"
-                      ? "text-mod-finance"
-                      : "text-destructive"
+                  className={`text-sm font-semibold font-mono shrink-0 ${
+                    txn.type === "income" ? "text-mod-finance" : "text-destructive"
                   }`}
                 >
-                  {txn.type === "income" ? "+" : "-"}
+                  {txn.type === "income" ? "+" : "−"}
                   {formatAED(txn.amount)}
                 </span>
               </div>

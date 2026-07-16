@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, X, Undo2, ChevronDown } from "lucide-react";
-import type { Habit } from "@/lib/types/database";
+import { Badge } from "@/components/ui/badge";
+import { Check, X, Undo2, ChevronDown, Flame } from "lucide-react";
+import { subDays, format } from "date-fns";
+import type { Habit, HabitLog } from "@/lib/types/database";
 import { todayISO } from "@/lib/format";
 import { AffirmationDialog } from "@/components/wellness/affirmation-dialog";
 
@@ -13,18 +15,21 @@ const VISIBLE_COUNT = 5;
 
 interface Props {
   habits: Habit[];
-  logs: { habit_id: string; completed: boolean }[];
+  logs: Pick<HabitLog, "habit_id" | "completed" | "logged_date">[];
 }
 
 export function HabitDashboardSection({ habits, logs }: Props) {
   const [viewHabit, setViewHabit] = useState<Habit | null>(null);
+  const today = todayISO();
   const [logMap, setLogMap] = useState<Map<string, boolean>>(
-    () => new Map(logs.map((l) => [l.habit_id, l.completed])),
+    () =>
+      new Map(
+        logs
+          .filter((l) => l.logged_date === today)
+          .map((l) => [l.habit_id, l.completed]),
+      ),
   );
   const [expanded, setExpanded] = useState(false);
-
-  const today = todayISO();
-  const pending = habits.filter((h) => !logMap.has(h.id));
 
   async function markDone(habitId: string) {
     const supabase = createClient();
@@ -67,14 +72,33 @@ export function HabitDashboardSection({ habits, logs }: Props) {
     return habit.target_days.map((d) => DAYS_LONG[d]).join(", ");
   }
 
-  const visible = expanded ? pending : pending.slice(0, VISIBLE_COUNT);
-  const remaining = pending.length - VISIBLE_COUNT;
+  // Streak counts consecutive completed scheduled days backward from yesterday.
+  // Non-scheduled days are skipped; a scheduled day with no log or completed=false
+  // ends the streak. Mirrors the wellness page implementation.
+  function getStreak(habit: Habit): number {
+    const habitLogs = new Map(
+      logs.filter((l) => l.habit_id === habit.id).map((l) => [l.logged_date, l.completed]),
+    );
+    let streak = 0;
+    let d = subDays(new Date(), 1);
+    const created = new Date(habit.created_at);
+    while (d >= created) {
+      const dow = d.getDay();
+      if (habit.target_days.includes(dow)) {
+        const completed = habitLogs.get(format(d, "yyyy-MM-dd"));
+        if (completed === true) streak++;
+        else break;
+      }
+      d = subDays(d, 1);
+    }
+    return streak;
+  }
+
+  const visible = expanded ? habits : habits.slice(0, VISIBLE_COUNT);
+  const remaining = habits.length - VISIBLE_COUNT;
 
   if (!habits.length) {
     return <p className="text-sm text-muted-foreground">No habits due today.</p>;
-  }
-  if (!pending.length) {
-    return <p className="text-sm text-muted-foreground">All habits logged for today!</p>;
   }
 
   return (
@@ -83,6 +107,8 @@ export function HabitDashboardSection({ habits, logs }: Props) {
         const logVal = logMap.get(habit.id);
         const markState =
           logVal === true ? "done" : logVal === false ? "notDone" : "none";
+        const streak = getStreak(habit);
+
         const cardBorderClass =
           markState === "done"
             ? "border-[var(--color-success)]/25 bg-[var(--color-success-tint)]"
@@ -90,9 +116,16 @@ export function HabitDashboardSection({ habits, logs }: Props) {
               ? "border-[var(--color-danger)]/25 bg-[var(--color-danger-tint)]"
               : "";
 
+        const cardLeftBorder =
+          markState === "done"
+            ? "border-l-[3px] border-l-[var(--color-success)]"
+            : markState === "notDone"
+              ? "border-l-[3px] border-l-[var(--color-danger)]"
+              : "border-l-[3px] border-l-mod-wellness";
+
         return (
-          <Card key={habit.id} className={`card-hover ${cardBorderClass}`}>
-            <CardContent className="p-2.5 flex items-center gap-3">
+          <Card key={habit.id} className={`card-hover ${cardBorderClass} ${cardLeftBorder}`}>
+            <CardContent className="p-3 flex items-center gap-3">
               <div
                 className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
                 onClick={() => { if (habit.description) setViewHabit(habit); }}
@@ -110,6 +143,13 @@ export function HabitDashboardSection({ habits, logs }: Props) {
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
+                {streak > 0 && (
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    <Flame className="w-3 h-3 text-[var(--color-warning)]" />
+                    {streak}
+                  </Badge>
+                )}
+
                 {markState === "none" ? (
                   <>
                     <button
@@ -164,7 +204,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
         );
       })}
 
-      {pending.length > VISIBLE_COUNT && (
+      {habits.length > VISIBLE_COUNT && (
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
