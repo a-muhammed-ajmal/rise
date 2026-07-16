@@ -267,8 +267,14 @@ else
     CLAUDE_LINE="- Testing Standard: run ${TEST_COUNT} tests with ${LINE_COVERAGE}% coverage"
     replace_between_anchors "$CLAUDE_FILE" '<!--CLAUDE_TESTING_STANDARD-->' "$CLAUDE_LINE"
     CLAUDE_UPDATED="updated"
+  # Fallback: no anchor, but the Objectives block carries a live
+  # "Current: <N> tests, <X>%" metric — keep it in sync directly.
+  elif grep -qE 'Current: [0-9]+ tests, [0-9]+\.?[0-9]*%' "$CLAUDE_FILE"; then
+    sed -E "s/Current: [0-9]+ tests, [0-9]+\.?[0-9]*%/Current: ${TEST_COUNT} tests, ${LINE_COVERAGE}%/" \
+      "$CLAUDE_FILE" > "$CLAUDE_FILE.tmp" && mv "$CLAUDE_FILE.tmp" "$CLAUDE_FILE"
+    CLAUDE_UPDATED="updated"
   else
-    echo "CLAUDE.md does not contain <!--CLAUDE_TESTING_STANDARD--> anchor. Skipping update."
+    echo "CLAUDE.md has no <!--CLAUDE_TESTING_STANDARD--> anchor or 'Current: N tests, X%' line. Skipping update."
   fi
 fi
 
@@ -289,8 +295,14 @@ else
   if grep -q '<!--README_TEST_COUNT-->' "$README_FILE"; then
     replace_between_anchors "$README_FILE" '<!--README_TEST_COUNT-->' "$TEST_COUNT"
     README_UPDATED="updated"
+  # Fallback: no anchor, but the metrics table has a "| Test count | N passing |"
+  # row — keep it in sync directly.
+  elif grep -qE '\| Test count \| [0-9]+ passing \|' "$README_FILE"; then
+    sed -E "s/\| Test count \| [0-9]+ passing \|/| Test count | ${TEST_COUNT} passing |/" \
+      "$README_FILE" > "$README_FILE.tmp" && mv "$README_FILE.tmp" "$README_FILE"
+    README_UPDATED="updated"
   else
-    echo "README.md does not contain <!--README_TEST_COUNT--> anchor. Skipping test count update."
+    echo "README.md has no <!--README_TEST_COUNT--> anchor or '| Test count | N passing |' row. Skipping test count update."
   fi
 
   # Structural rows are NOT auto-incremented (that would require guessing
