@@ -253,6 +253,27 @@ describe("executeTool", () => {
         }),
       );
     });
+
+    it("returns badInput for a non-positive amount", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("log_expense", {
+        amount: 0,
+        category: "Food",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { transactions: query } });
+      const result = await executeTool("log_expense", {
+        amount: 50,
+        category: "Food",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
   });
 
   describe("log_income", () => {
@@ -273,6 +294,24 @@ describe("executeTool", () => {
       expect(result.success).toBe(true);
       expect(result.message).toContain("AED 5000");
       expect(result.message).toContain("Salary");
+    });
+
+    it("returns badInput for a missing category", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("log_income", { amount: 100 });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { transactions: query } });
+      const result = await executeTool("log_income", {
+        amount: 100,
+        category: "Salary",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
     });
   });
 
@@ -2190,6 +2229,463 @@ describe("executeTool", () => {
         "task_id",
         "d23e4567-e89b-12d3-a456-426614174012",
       );
+    });
+  });
+
+  // ─── PAYMENT METHODS ────────────────────────────────────────────────────────
+
+  describe("list_payment_methods", () => {
+    it("lists active payment methods for the user", async () => {
+      const query = createMockQuery([
+        { id: "pm-1", name: "Cash", balance: 100 },
+      ]);
+      setupMockSupabase({ queries: { payment_methods: query } });
+
+      const result = await executeTool("list_payment_methods", {});
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("1 payment methods");
+      expect(query.eq).toHaveBeenCalledWith("is_active", true);
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { payment_methods: query } });
+      const result = await executeTool("list_payment_methods", {});
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  // ─── TRANSACTIONS ───────────────────────────────────────────────────────────
+
+  describe("list_transactions", () => {
+    it("lists transactions for the user", async () => {
+      const query = createMockQuery([{ id: "t1", type: "expense", amount: 20 }]);
+      setupMockSupabase({ queries: { transactions: query } });
+
+      const result = await executeTool("list_transactions", {});
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("1 transactions");
+    });
+
+    it("filters by type and start_date", async () => {
+      const query = createMockQuery([]);
+      setupMockSupabase({ queries: { transactions: query } });
+
+      await executeTool("list_transactions", {
+        type: "expense",
+        start_date: "2026-06-01",
+      });
+      expect(query.eq).toHaveBeenCalledWith("type", "expense");
+      expect(query.gte).toHaveBeenCalledWith("date", "2026-06-01");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { transactions: query } });
+      const result = await executeTool("list_transactions", {});
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("update_transaction", () => {
+    const transactionId = "e23e4567-e89b-12d3-a456-426614174013";
+
+    it("updates a transaction that exists", async () => {
+      const query = createMockQuery({ id: transactionId }, null);
+      setupMockSupabase({ queries: { transactions: query } });
+
+      const result = await executeTool("update_transaction", {
+        transaction_id: transactionId,
+        summary: "Lunch",
+        amount: 75,
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toBe("Transaction updated.");
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 75 }),
+      );
+      expect(query.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ summary: expect.anything() }),
+      );
+    });
+
+    it("returns badInput for missing summary", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("update_transaction", {
+        transaction_id: transactionId,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns not found when transaction does not belong to user", async () => {
+      const query = createMockQuery(null, null);
+      setupMockSupabase({ queries: { transactions: query } });
+      const result = await executeTool("update_transaction", {
+        transaction_id: transactionId,
+        summary: "Lunch",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Transaction not found");
+    });
+
+    it("returns error on Supabase update failure", async () => {
+      const query = createMockQuery({ id: transactionId }, { message: "boom" });
+      setupMockSupabase({ queries: { transactions: query } });
+      const result = await executeTool("update_transaction", {
+        transaction_id: transactionId,
+        summary: "Lunch",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  describe("delete_transaction", () => {
+    const transactionId = "e23e4567-e89b-12d3-a456-426614174013";
+
+    it("deletes a transaction that exists", async () => {
+      const query = createMockQuery(
+        { id: transactionId, category: "Food", amount: 20 },
+        null,
+      );
+      setupMockSupabase({ queries: { transactions: query } });
+
+      const result = await executeTool("delete_transaction", {
+        transaction_id: transactionId,
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toBe("Transaction deleted.");
+    });
+
+    it("returns not found when transaction does not belong to user", async () => {
+      const query = createMockQuery(null, null);
+      setupMockSupabase({ queries: { transactions: query } });
+      const result = await executeTool("delete_transaction", {
+        transaction_id: transactionId,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Transaction not found");
+    });
+
+    it("returns error on Supabase delete failure", async () => {
+      const query = createMockQuery(
+        { id: transactionId, category: "Food", amount: 20 },
+        { message: "boom" },
+      );
+      setupMockSupabase({ queries: { transactions: query } });
+      const result = await executeTool("delete_transaction", {
+        transaction_id: transactionId,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  // ─── BUDGETS ────────────────────────────────────────────────────────────────
+
+  describe("list_budgets", () => {
+    it("lists budgets for the user", async () => {
+      const query = createMockQuery([{ id: "b1", category: "Food" }]);
+      setupMockSupabase({ queries: { budgets: query } });
+
+      const result = await executeTool("list_budgets", {});
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("1 budgets");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { budgets: query } });
+      const result = await executeTool("list_budgets", {});
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("create_budget", () => {
+    it("creates a budget", async () => {
+      const query = createMockQuery({ id: "b1", category: "Food" });
+      setupMockSupabase({ queries: { budgets: query } });
+
+      const result = await executeTool("create_budget", {
+        category: "Food",
+        amount: 2000,
+        period_start: "2026-06-01",
+        period_end: "2026-06-30",
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Food");
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ period: "monthly" }),
+      );
+    });
+
+    it("returns badInput for missing period_end", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("create_budget", {
+        category: "Food",
+        amount: 2000,
+        period_start: "2026-06-01",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { budgets: query } });
+      const result = await executeTool("create_budget", {
+        category: "Food",
+        amount: 2000,
+        period_start: "2026-06-01",
+        period_end: "2026-06-30",
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("update_budget", () => {
+    const budgetId = "f23e4567-e89b-12d3-a456-426614174014";
+
+    it("updates a budget", async () => {
+      const query = createMockQuery(null, null);
+      setupMockSupabase({ queries: { budgets: query } });
+
+      const result = await executeTool("update_budget", {
+        id: budgetId,
+        amount: 2500,
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toBe("Budget updated.");
+    });
+
+    it("returns badInput for invalid id", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("update_budget", { id: "not-a-uuid" });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { budgets: query } });
+      const result = await executeTool("update_budget", { id: budgetId });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("delete_budget", () => {
+    const budgetId = "f23e4567-e89b-12d3-a456-426614174014";
+
+    it("deletes a budget that exists", async () => {
+      const query = createMockQuery({ id: budgetId, category: "Food" }, null);
+      setupMockSupabase({ queries: { budgets: query } });
+
+      const result = await executeTool("delete_budget", {
+        budget_id: budgetId,
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Food");
+    });
+
+    it("returns not found when budget does not belong to user", async () => {
+      const query = createMockQuery(null, null);
+      setupMockSupabase({ queries: { budgets: query } });
+      const result = await executeTool("delete_budget", {
+        budget_id: budgetId,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Budget not found");
+    });
+
+    it("returns error on Supabase delete failure", async () => {
+      const query = createMockQuery(
+        { id: budgetId, category: "Food" },
+        { message: "boom" },
+      );
+      setupMockSupabase({ queries: { budgets: query } });
+      const result = await executeTool("delete_budget", {
+        budget_id: budgetId,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  // ─── DEBTS ──────────────────────────────────────────────────────────────────
+
+  describe("list_debts", () => {
+    it("lists debt records for the user", async () => {
+      const query = createMockQuery([{ id: "d1", creditor: "Bank" }]);
+      setupMockSupabase({ queries: { debts: query } });
+
+      const result = await executeTool("list_debts", {});
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("1 debt records");
+    });
+
+    it("filters by i_owe", async () => {
+      const query = createMockQuery([]);
+      setupMockSupabase({ queries: { debts: query } });
+      await executeTool("list_debts", { filter: "i_owe" });
+      expect(query.eq).toHaveBeenCalledWith("type", "i_owe");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { debts: query } });
+      const result = await executeTool("list_debts", {});
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("create_debt", () => {
+    it("records a debt someone owes them", async () => {
+      const query = createMockQuery({ id: "d1" });
+      setupMockSupabase({ queries: { debts: query } });
+
+      const result = await executeTool("create_debt", {
+        creditor: "John",
+        type: "they_owe",
+        amount: 300,
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("owed by John");
+    });
+
+    it("records a debt they owe someone", async () => {
+      const query = createMockQuery({ id: "d2" });
+      setupMockSupabase({ queries: { debts: query } });
+
+      const result = await executeTool("create_debt", {
+        creditor: "Bank",
+        type: "i_owe",
+        amount: 500,
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("owed to Bank");
+    });
+
+    it("returns badInput for missing creditor", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("create_debt", {
+        type: "i_owe",
+        amount: 100,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { debts: query } });
+      const result = await executeTool("create_debt", {
+        creditor: "John",
+        type: "i_owe",
+        amount: 100,
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("update_debt", () => {
+    const debtId = "023e4567-e89b-12d3-a456-426614174015";
+
+    it("updates a debt without marking it paid", async () => {
+      const query = createMockQuery({ id: debtId, creditor: "Bank" }, null);
+      setupMockSupabase({ queries: { debts: query } });
+
+      const result = await executeTool("update_debt", {
+        debt_id: debtId,
+        summary: "Loan",
+        amount: 400,
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toBe("Debt updated.");
+      expect(query.update).toHaveBeenCalledWith(
+        expect.not.objectContaining({ paid_at: expect.anything() }),
+      );
+    });
+
+    it("marks a debt as paid", async () => {
+      const query = createMockQuery({ id: debtId, creditor: "Bank" }, null);
+      setupMockSupabase({ queries: { debts: query } });
+
+      const result = await executeTool("update_debt", {
+        debt_id: debtId,
+        summary: "Loan",
+        mark_paid: true,
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Marked debt to Bank as paid");
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ paid_at: expect.any(String) }),
+      );
+    });
+
+    it("returns badInput for missing summary", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("update_debt", { debt_id: debtId });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns not found when debt does not belong to user", async () => {
+      const query = createMockQuery(null, null);
+      setupMockSupabase({ queries: { debts: query } });
+      const result = await executeTool("update_debt", {
+        debt_id: debtId,
+        summary: "Loan",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Debt not found");
+    });
+
+    it("returns error on Supabase update failure", async () => {
+      const query = createMockQuery(
+        { id: debtId, creditor: "Bank" },
+        { message: "boom" },
+      );
+      setupMockSupabase({ queries: { debts: query } });
+      const result = await executeTool("update_debt", {
+        debt_id: debtId,
+        summary: "Loan",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  describe("delete_debt", () => {
+    const debtId = "023e4567-e89b-12d3-a456-426614174015";
+
+    it("deletes a debt that exists", async () => {
+      const query = createMockQuery({ id: debtId, creditor: "Bank" }, null);
+      setupMockSupabase({ queries: { debts: query } });
+
+      const result = await executeTool("delete_debt", { debt_id: debtId });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Bank");
+    });
+
+    it("returns not found when debt does not belong to user", async () => {
+      const query = createMockQuery(null, null);
+      setupMockSupabase({ queries: { debts: query } });
+      const result = await executeTool("delete_debt", { debt_id: debtId });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Debt not found");
+    });
+
+    it("returns error on Supabase delete failure", async () => {
+      const query = createMockQuery(
+        { id: debtId, creditor: "Bank" },
+        { message: "boom" },
+      );
+      setupMockSupabase({ queries: { debts: query } });
+      const result = await executeTool("delete_debt", { debt_id: debtId });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
     });
   });
 });
