@@ -16,7 +16,7 @@ import {
   Star, Repeat2, Bell, Paperclip, Clock, Tag, ChevronDown,
 } from 'lucide-react'
 import type { Task } from '@/lib/types/database'
-import { formatRelativeDate } from '@/lib/format'
+import { formatRelativeDate, display12h, todayISO } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
@@ -59,7 +59,7 @@ export function TaskCard({
 
   const isOverdue =
     task.due_date &&
-    task.due_date < new Date().toISOString().split('T')[0] &&
+    task.due_date < todayISO() &&
     task.status !== 'done'
 
   const doneSubtasks = task.subtasks?.filter((s) => s.done).length ?? 0
@@ -94,6 +94,7 @@ export function TaskCard({
                 ? 'bg-primary border-primary'
                 : 'border-muted-foreground/40 hover:border-primary'
             )}
+            aria-label={selected ? 'Deselect task' : 'Select task'}
           >
             {selected && <Check className="w-3 h-3 text-primary-foreground" />}
           </button>
@@ -121,8 +122,16 @@ export function TaskCard({
 
         {/* Content — click opens the shared task popup */}
         <div
+          role="button"
+          tabIndex={0}
           className="flex-1 min-w-0 cursor-pointer"
           onClick={() => onOpenDetail(task)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onOpenDetail(task)
+            }
+          }}
         >
           <p className={cn(
             'text-sm font-medium leading-snug',
@@ -154,10 +163,11 @@ export function TaskCard({
               )}>
                 <Calendar className="w-3 h-3" />
                 {formatRelativeDate(task.due_date)}
+                {isOverdue && <span>· Overdue</span>}
                 {task.due_time && (
                   <span className="flex items-center gap-0.5">
                     <Clock className="w-3 h-3" />
-                    {task.due_time.slice(0, 5)}
+                    {display12h(task.due_time)}
                   </span>
                 )}
               </span>
@@ -261,7 +271,10 @@ export function TaskCard({
           {/* More menu */}
           {!bulkMode && showMenu && (
             <DropdownMenu>
-              <DropdownMenuTrigger className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center rounded-md hover:bg-accent">
+              <DropdownMenuTrigger
+                aria-label="More actions"
+                className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center rounded-md hover:bg-accent"
+              >
                 <MoreVertical className="w-4 h-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -281,7 +294,7 @@ export function TaskCard({
                 {onStar && (
                   <DropdownMenuItem onClick={() => onStar(task.id)}>
                     <Star className="w-4 h-4 mr-2" />
-                    {task.is_starred ? 'Unstar' : 'Star / Pin'}
+                    {task.is_starred ? 'Unstar' : 'Star'}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSub>
