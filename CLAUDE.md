@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 318 tests, 52.27% — below target due to execute-tool.ts expansion, use-payment-methods.ts and use-categories.ts at 0% coverage; recovery is next priority.
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 490 tests, 81.96% — use-categories.ts and the non-finance execute-tool.ts handlers are now covered; remaining gap is use-payment-methods.ts (0%, deliberately deferred — touches wallet balances) and the finance switch-cases in execute-tool.ts (transactions/budgets/debts).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints

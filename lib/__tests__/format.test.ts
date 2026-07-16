@@ -6,7 +6,10 @@ import {
   formatDateTime,
   formatRelativeDate,
   todayISO,
+  todayDOW,
+  currentHourDubai,
   parseDate,
+  display12h,
 } from "../format";
 
 describe("formatAED", () => {
@@ -137,5 +140,65 @@ describe("parseDate", () => {
   it("parses ISO datetime string", () => {
     const date = parseDate("2026-06-23T14:30:00Z");
     expect(date).toBeInstanceOf(Date);
+  });
+});
+
+describe("todayDOW", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns the day of week for today in Asia/Dubai", () => {
+    // 2026-06-23 is a Tuesday
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-23T15:30:00Z"));
+    expect(todayDOW()).toBe(2);
+  });
+
+  it("rolls over correctly near the Dubai midnight boundary", () => {
+    // 2026-06-23T21:00:00Z is 2026-06-24T01:00 in Dubai (UTC+4) — Wednesday
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-23T21:00:00Z"));
+    expect(todayDOW()).toBe(3);
+  });
+});
+
+describe("currentHourDubai", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns the current hour in Asia/Dubai (UTC+4)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-23T10:00:00Z"));
+    expect(currentHourDubai()).toBe(14);
+  });
+
+  it("wraps past midnight correctly", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-23T21:00:00Z"));
+    expect(currentHourDubai()).toBe(1);
+  });
+});
+
+describe("display12h", () => {
+  it("formats a morning time", () => {
+    expect(display12h("09:05")).toBe("9:05 AM");
+  });
+
+  it("formats an afternoon time", () => {
+    expect(display12h("14:30")).toBe("2:30 PM");
+  });
+
+  it("formats midnight as 12 AM", () => {
+    expect(display12h("00:00")).toBe("12:00 AM");
+  });
+
+  it("formats noon as 12 PM", () => {
+    expect(display12h("12:00")).toBe("12:00 PM");
+  });
+
+  it("ignores a trailing seconds component", () => {
+    expect(display12h("14:30:00")).toBe("2:30 PM");
   });
 });

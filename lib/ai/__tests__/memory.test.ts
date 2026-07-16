@@ -11,8 +11,10 @@ import {
   embedText,
   storeMemory,
   retrieveMemories,
+  retrieveUserFacts,
   compactMessages,
   formatMemoriesForPrompt,
+  formatUserFactsForPrompt,
 } from "../memory";
 import { createClient } from "@/lib/supabase/server";
 
@@ -274,5 +276,71 @@ describe("formatMemoriesForPrompt", () => {
     ]);
     expect(result).not.toContain("A".repeat(500));
     expect(result).toContain("A".repeat(300));
+  });
+});
+
+describe("retrieveUserFacts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns user facts ordered by most recent", async () => {
+    const facts = [{ content: "Likes pizza", metadata: { role: "user" } }];
+    const query = createMockQuery(facts);
+    setupMockSupabase({ queries: { ai_memory: query } });
+
+    const result = await retrieveUserFacts("user-1");
+
+    expect(result).toEqual(facts);
+    expect(query.eq).toHaveBeenCalledWith("memory_type", "user_fact");
+    expect(query.order).toHaveBeenCalledWith("created_at", {
+      ascending: false,
+    });
+  });
+
+  it("returns an empty array when there is no data", async () => {
+    const query = createMockQuery(null);
+    setupMockSupabase({ queries: { ai_memory: query } });
+
+    const result = await retrieveUserFacts("user-1");
+    expect(result).toEqual([]);
+  });
+
+  it("uses an injected client instead of creating a cookie client", async () => {
+    const facts = [{ content: "Works in Dubai", metadata: {} }];
+    const query = createMockQuery(facts);
+    const injectedClient = { from: vi.fn(() => query) };
+
+    const result = await retrieveUserFacts(
+      "user-1",
+      injectedClient as never,
+    );
+
+    expect(result).toEqual(facts);
+    expect(injectedClient.from).toHaveBeenCalledWith("ai_memory");
+    expect(createClient).not.toHaveBeenCalled();
+  });
+});
+
+describe("formatUserFactsForPrompt", () => {
+  it("returns empty string for no facts", () => {
+    expect(formatUserFactsForPrompt([])).toBe("");
+  });
+
+  it("formats facts as bullet points", () => {
+    const result = formatUserFactsForPrompt([
+      { content: "Likes pizza" },
+      { content: "Works in Dubai" },
+    ]);
+    expect(result).toContain("Things you know about this user");
+    expect(result).toContain("- Likes pizza");
+    expect(result).toContain("- Works in Dubai");
+  });
+
+  it("truncates long content to 200 chars", () => {
+    const longContent = "B".repeat(400);
+    const result = formatUserFactsForPrompt([{ content: longContent }]);
+    expect(result).not.toContain("B".repeat(400));
+    expect(result).toContain("B".repeat(200));
   });
 });
