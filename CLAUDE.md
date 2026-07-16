@@ -93,6 +93,7 @@ The tool system has two tiers defined in `lib/ai/tools.ts`:
 - `log_habit`: Uses fuzzy `ilike` name match, not ID lookup. First result wins — can silently log the wrong habit if names are similar.
 - `create_journal_entry`: Upserts on `(user_id, date)` — one entry per day. Calling it twice on the same date updates, never duplicates.
 - `remember_user_fact`: Writes to both `user_profile.facts` (JSONB column, drives profile context) AND `ai_memory` vector store via `storeMemory()` (drives semantic `recall_memories()`).
+- `recall_memories`: Merges `user_profile.facts` (all entries returned with `similarity: 1`, highest priority) and semantic `ai_memory` vector results — profile facts always rank first regardless of actual relevance.
 
 **`executeTool` contract:** Always returns `{ success: boolean; message: string; data?: unknown }`. Every handler calls `getUser()` and returns early if no user. Every query filters by `user_id`.
 
@@ -180,17 +181,18 @@ lib/
     use-projects.ts         Project CRUD with Supabase Realtime subscription
     use-push-subscription.ts Push notification subscription management
     use-payment-methods.ts  Wallet balance state and CRUD operations (currently 0% test coverage)
+    use-categories.ts       Finance category state and CRUD (currently 0% test coverage)
     use-theme.tsx           Dark/light mode toggle; persists to localStorage
   supabase/
     client.ts               Client-side client initializations for browser interactions
     server.ts               Server-side isolated client handlers
     middleware.ts           Session lifecycle handlers, ALLOWED_USER_EMAIL enforcement, token refresh
   types/
-    database.ts             Single Source of Truth — 21 Supabase tables with Row/Insert/Update types
+    database.ts             Single Source of Truth — 25 Supabase tables with Row/Insert/Update types
   format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h)
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities
 
-supabase/migrations/        001 through 011 (append-only; execute via Supabase SQL editor)
+supabase/migrations/        001 through 016 (append-only; execute via Supabase SQL editor)
 supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
 proxy.ts                    Next.js 16 middleware entry point — calls lib/supabase/middleware.ts

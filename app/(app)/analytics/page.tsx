@@ -6,6 +6,7 @@ import { FinanceCharts } from "@/components/analytics/finance-charts"
 import { WellnessCharts } from "@/components/analytics/wellness-charts"
 import { GoalsCharts } from "@/components/analytics/goals-charts"
 import { TasksCharts } from "@/components/analytics/tasks-charts"
+import type { TaskStatus } from "@/components/analytics/tasks-charts"
 import { CrmCharts } from "@/components/analytics/crm-charts"
 import { KnowledgeCharts } from "@/components/analytics/knowledge-charts"
 import type { Transaction, Budget, Habit, HabitLog, JournalEntry, FocusSession, Goal, Task, Contact, Interaction, Note } from "@/lib/types/database"
@@ -115,8 +116,11 @@ function buildGoalByCategory(goals: Goal[]) {
 }
 
 function buildTaskByStatus(tasks: Task[]) {
-  const map = new Map<string, number>()
-  for (const t of tasks) map.set(t.status, (map.get(t.status) ?? 0) + 1)
+  const map = new Map<TaskStatus, number>()
+  for (const t of tasks) {
+    const s = t.status as TaskStatus
+    map.set(s, (map.get(s) ?? 0) + 1)
+  }
   return Array.from(map.entries()).map(([status, count]) => ({ status, count }))
 }
 

@@ -25,33 +25,41 @@ The AI isn't just a chatbot. It can create a task, log an expense, mark a habit 
 | **Goals** | Goal cards with % progress slider, milestone tracking, and journal entries with mood/energy ratings |
 | **CRM** | Contacts with pipeline stages, deal values, interaction logs (call/email/meeting), and follow-up tracking |
 | **Knowledge** | Rich-text notes (Tiptap), document metadata, and links — all searchable by the AI |
-| **AI Assistant** | Gemini 2.5 Flash chat with SSE streaming, pgvector memory, file/image uploads, and 75 executable tools |
+| **AI Assistant** | Gemini 2.5 Flash chat with SSE streaming, pgvector memory, file/image uploads, and 77 executable tools |
 | **Analytics** | Recharts dashboards aggregating cross-module data — finance has Monthly / Daily view toggle |
 
 ---
 
 ## AI Tool System
 
-The assistant runs 75 tools across every module — split into two tiers:
+The assistant runs 77 tools across every module — split into two tiers:
 
-**AUTO_TOOLS (58)** — execute immediately without user confirmation:
+**AUTO_TOOLS (60)** — execute immediately without user confirmation:
 
 | Group | Tools |
 | --- | --- |
 | Tasks | `create_task` · `list_tasks` · `update_task` · `complete_task` |
 | Projects | `list_projects` · `create_project` · `update_project` |
-| Goals & Milestones | `create_goal` · `update_goal` · `complete_goal` · `create_milestone` · `complete_milestone` |
-| Habits | `create_habit` · `log_habit` · `list_habits` · `update_habit` · `delete_habit_log` |
+| Goals | `list_goals` · `create_goal` · `update_goal` · `complete_goal` |
+| Milestones | `list_milestones` · `create_milestone` · `update_milestone` · `complete_milestone` |
+| Habits | `create_habit` · `list_habits` · `log_habit` · `update_habit` · `delete_habit_log` |
 | Finance | `log_expense` · `log_income` · `list_transactions` · `list_payment_methods` |
-| Budgets & Debts | `create_budget` · `update_budget` · `create_debt` · `list_debts` |
-| CRM | `add_contact` · `update_contact` · `create_interaction` · `list_interactions` |
-| Knowledge | `add_note` · `update_note` · `create_document` · `create_link` |
-| Goals / Journal | `create_journal_entry` · `create_review` · `create_focus_session` |
+| Budgets | `list_budgets` · `create_budget` · `update_budget` |
+| Debts | `list_debts` · `create_debt` |
+| Contacts | `list_contacts` · `add_contact` · `update_contact` |
+| Interactions | `list_interactions` · `create_interaction` · `update_interaction` |
+| Notes | `add_note` · `list_notes` · `update_note` |
+| Documents | `list_documents` · `create_document` · `update_document` |
+| Links | `list_links` · `create_link` · `update_link` · `delete_link` |
+| Journal | `list_journal_entries` · `create_journal_entry` · `update_journal_entry` |
+| Reviews | `list_reviews` · `create_review` · `update_review` |
+| Focus Sessions | `list_focus_sessions` · `create_focus_session` · `update_focus_session` · `delete_focus_session` |
+| Memory | `remember_user_fact` · `recall_memories` |
 | Analytics | `get_daily_briefing` · `get_analytics` · `search_data` |
 
 **APPROVAL_TOOLS (17)** — stream pauses, a confirmation banner appears, user approves before execution:
 
-`delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_habit` · `update_transaction` · `delete_transaction` · `delete_budget` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review` + 2 more
+`delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `update_transaction` · `delete_transaction` · `delete_budget` · `update_debt` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review`
 
 ---
 
@@ -76,12 +84,12 @@ To enable: set `CRON_SECRET` in Vercel environment variables. The digest note ap
 | Styling | Tailwind CSS v4 + shadcn/ui (`@base-ui/react`) + Lucide icons |
 | AI | Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) |
 | Embeddings | Voyage AI `voyage-3` (1024-dim pgvector) — keyword ILIKE fallback when key absent |
-| Database | Supabase — Postgres + pgvector + Row Level Security (21 tables) |
+| Database | Supabase — Postgres + pgvector + Row Level Security (25 tables) |
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (268 tests) |
+| Testing | Vitest 4 + Testing Library (318 tests) |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -102,16 +110,17 @@ RISE uses a locked light-first orange brand system (full spec in `.claude/skills
 
 ## Database Schema
 
-21 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–011:
+25 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–016:
 
 ```text
 projects · tasks · goals · milestones · reviews · journal_entries
-payment_methods · transactions · budgets · debts
+payment_methods · transactions · budgets · debts · categories
 habits · habit_logs · focus_sessions
 contacts · interactions
 notes · documents · links
 ai_conversations · ai_memory (pgvector 1024-dim)
-push_subscriptions
+push_subscriptions · user_profile
+oauth_authorization_codes · oauth_tokens
 ```
 
 ---
@@ -250,7 +259,7 @@ MCP_OAUTH_CLIENT_ID=       # OAuth client for claude.ai web / Desktop (any id)
 MCP_OAUTH_CLIENT_SECRET=   # OAuth client secret (long random string)
 ```
 
-Apply migrations 001–011 in your Supabase SQL editor (in order), then:
+Apply migrations 001–016 in your Supabase SQL editor (in order), then:
 
 ```bash
 npm run dev   # Turbopack dev server → http://localhost:3000

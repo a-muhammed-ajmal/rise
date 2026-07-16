@@ -10,8 +10,8 @@ Living specification for the RISE codebase. Describes what is currently implemen
 | --- | --- |
 | Test count | 318 passing |
 | Line coverage | 52.27% on `lib/**` |
-| Migrations | 14 (001–014) |
-| DB tables | 23 (22 core + push_subscriptions) |
+| Migrations | 16 (001–016) |
+| DB tables | 25 (across 16 migrations) |
 | AI tools | 60 AUTO + 17 APPROVAL = 77 total |
 | Last feature shipped | Phase 12 — Persistent chat history, real memory, user profile, remember/recall tools (2026-07-08) |
 
@@ -161,7 +161,7 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 
 ### AI tool set
 
-**AUTO_TOOLS** (execute immediately, 58 total):
+**AUTO_TOOLS** (execute immediately, 60 total):
 
 | Group | Tools |
 | --- | --- |
@@ -182,13 +182,14 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 | Reviews (3) | `list_reviews` · `create_review` · `update_review` |
 | Focus sessions (4) | `list_focus_sessions` · `create_focus_session` · `update_focus_session` · `delete_focus_session` |
 | Analytics & Search (3) | `get_daily_briefing` · `get_analytics` · `search_data` |
+| Personal Memory (2) | `remember_user_fact` · `recall_memories` |
 
 **APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes, 17 total):
 `delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `update_transaction` · `delete_transaction` · `delete_budget` · `update_debt` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review`
 
 > Tool schemas use Google GenAI's `FunctionDeclaration` format (`Type.OBJECT`, `Type.STRING`, etc.) from `@google/genai` — not the Anthropic `input_schema` format.
 
-### Data model (21 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–011)
+### Data model (25 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–016)
 
 ```text
 projects            id, name, description, status(active|completed|archived), color
@@ -219,6 +220,12 @@ links               id, url, title, description, tags
 ai_conversations    id, messages(Json)
 ai_memory           id, content, metadata(Json), embedding(float[1024])
 push_subscriptions  id, user_id, endpoint, p256dh, auth, reminder_types(text[]), created_at
+categories          id, name, type(income|expense), color, icon
+user_profile        id, user_id(unique), facts(JSONB), created_at, updated_at
+oauth_authorization_codes  id, client_id, code_hash, user_id, redirect_uri,
+                           code_challenge, expires_at, used_at
+oauth_tokens        id, client_id, access_token_hash, refresh_token_hash,
+                    user_id, audience, expires_at, revoked_at
 ```
 
 pgvector function: `match_memories(query_embedding, match_user_id, match_count?, match_threshold?)` — default `match_threshold: 0.7`. Returns `{ id, content, metadata, similarity }[]`.
@@ -299,7 +306,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 - All 8 module pages (productivity, finance, wellness, goals, CRM, knowledge, analytics, assistant) render without runtime errors.
 - AI assistant streams text and executes approved tool calls end-to-end.
 - `npm run build` exits 0 (0 TypeScript errors, 0 lint warnings).
-- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 265 tests, 49.38% (below target — see Performance Targets note).
+- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 318 tests, 52.27% (below target — see Performance Targets note).
 - Pushing `main` produces a working Vercel production deployment.
 
 ---
