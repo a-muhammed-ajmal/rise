@@ -237,15 +237,25 @@ else
   if grep -q '<!--SPEC_TEST_COUNT-->' "$SPEC_FILE"; then
     replace_between_anchors "$SPEC_FILE" '<!--SPEC_TEST_COUNT-->' "$TEST_COUNT"
     SPEC_UPDATED="updated"
+  # Fallback: the Metrics table row "| Test count | N passing |".
+  elif grep -qE '\| Test count \| [0-9]+ passing \|' "$SPEC_FILE"; then
+    sed -E "s/(\| Test count \| )[0-9]+( passing \|)/\1${TEST_COUNT}\2/" \
+      "$SPEC_FILE" > "$SPEC_FILE.tmp" && mv "$SPEC_FILE.tmp" "$SPEC_FILE"
+    SPEC_UPDATED="updated"
   else
-    echo "SPEC.md does not contain <!--SPEC_TEST_COUNT--> anchor. Skipping test count update."
+    echo "SPEC.md has no test-count anchor or '| Test count | N passing |' row. Skipping."
   fi
 
   if grep -q '<!--SPEC_LINE_COVERAGE-->' "$SPEC_FILE"; then
     replace_between_anchors "$SPEC_FILE" '<!--SPEC_LINE_COVERAGE-->' "$LINE_COVERAGE"
     SPEC_UPDATED="updated"
+  # Fallback: the Metrics table row "| Line coverage | X% on `lib/**` |".
+  elif grep -qE '\| Line coverage \| [0-9]+\.?[0-9]*% on' "$SPEC_FILE"; then
+    sed -E "s/(\| Line coverage \| )[0-9]+\.?[0-9]*(% on)/\1${LINE_COVERAGE}\2/" \
+      "$SPEC_FILE" > "$SPEC_FILE.tmp" && mv "$SPEC_FILE.tmp" "$SPEC_FILE"
+    SPEC_UPDATED="updated"
   else
-    echo "SPEC.md does not contain <!--SPEC_LINE_COVERAGE--> anchor. Skipping coverage update."
+    echo "SPEC.md has no coverage anchor or '| Line coverage | X% on' row. Skipping."
   fi
 fi
 
@@ -305,30 +315,46 @@ else
     echo "README.md has no <!--README_TEST_COUNT--> anchor or '| Test count | N passing |' row. Skipping test count update."
   fi
 
-  # Structural rows are NOT auto-incremented (that would require guessing
-  # the new count). We only flag them for a manual decision.
+  # ── Structural rows: derive from the source of truth and self-heal drift ──
+  # These used to be manual (and drifted — e.g. Migrations stuck at an old
+  # count). Every value below is computed directly from the repo, so the rows
+  # can never fall out of sync with the code that ships.
+
+  # AI tools: count top-level `name:` entries in each declaration array.
+  AUTO_COUNT=$(awk '/^export const AUTO_TOOLS/{a=1;next} /^export const APPROVAL_TOOLS/{a=0} a && /^    name: /{c++} END{print c+0}' lib/ai/tools.ts)
+  APPROVAL_COUNT=$(awk '/^export const APPROVAL_TOOLS/{a=1;next} /^export const ALL_TOOLS/{a=0} a && /^    name: /{c++} END{print c+0}' lib/ai/tools.ts)
+  TOOL_TOTAL=$((AUTO_COUNT + APPROVAL_COUNT))
+
+  # DB tables: unique CREATE TABLE names across migrations.
+  TABLE_COUNT=$(grep -rhioE 'CREATE TABLE (IF NOT EXISTS )?"?(public\.)?[a-z_]+' supabase/migrations/*.sql 2>/dev/null | sed -E 's/.*[ ."]([a-z_]+)$/\1/' | sort -u | wc -l | tr -d ' ')
+
+  # Migrations: file count + highest zero-padded number (e.g. "016").
+  MIG_COUNT=$(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l | tr -d ' ')
+  MIG_LAST=$(ls -1 supabase/migrations/*.sql 2>/dev/null | sed -E 's#.*/([0-9]+)_.*#\1#' | sort -n | tail -1)
+
+  if [ "${TOOL_TOTAL:-0}" -gt 0 ] && grep -qE '\| AI tools \| [0-9]+ \([0-9]+ AUTO \+ [0-9]+ APPROVAL\)' "$README_FILE"; then
+    sed -E "s/(\| AI tools \| )[0-9]+ \([0-9]+ AUTO \+ [0-9]+ APPROVAL\)/\1${TOOL_TOTAL} (${AUTO_COUNT} AUTO + ${APPROVAL_COUNT} APPROVAL)/" \
+      "$README_FILE" > "$README_FILE.tmp" && mv "$README_FILE.tmp" "$README_FILE"
+    README_UPDATED="updated"
+  fi
+
+  if [ "${TABLE_COUNT:-0}" -gt 0 ] && grep -qE '\| DB tables \| [0-9]+ \(RLS on all\)' "$README_FILE"; then
+    sed -E "s/(\| DB tables \| )[0-9]+( \(RLS on all\))/\1${TABLE_COUNT}\2/" \
+      "$README_FILE" > "$README_FILE.tmp" && mv "$README_FILE.tmp" "$README_FILE"
+    README_UPDATED="updated"
+  fi
+
+  # Preserves the existing separator (en-dash) via the [^0-9]+ capture group.
+  if [ -n "$MIG_LAST" ] && grep -qE '\| Migrations \| [0-9]+ \(001' "$README_FILE"; then
+    sed -E "s/(\| Migrations \| )[0-9]+( \(001)([^0-9]+)[0-9]+(\).*)/\1${MIG_COUNT}\2\3${MIG_LAST}\4/" \
+      "$README_FILE" > "$README_FILE.tmp" && mv "$README_FILE.tmp" "$README_FILE"
+    README_UPDATED="updated"
+  fi
+
+  # "Last phase" is a human-authored narrative label, not a derivable count —
+  # never auto-edited; flag for a manual look when modules change.
   if [ "$HAS_MODULE_CHANGE" = true ]; then
-    if grep -q '<!--README_MODULES-->' "$README_FILE"; then
-      echo "NOTE: Module changes detected. README.md <!--README_MODULES--> row should be updated manually."
-    else
-      echo "NOTE: Module changes detected but README.md has no <!--README_MODULES--> anchor."
-    fi
-  fi
-
-  if [ "$HAS_AI_TOOL_CHANGE" = true ]; then
-    if grep -q '<!--README_AI_TOOLS-->' "$README_FILE"; then
-      echo "NOTE: AI tool changes detected. README.md <!--README_AI_TOOLS--> row should be updated manually."
-    else
-      echo "NOTE: AI tool changes detected but README.md has no <!--README_AI_TOOLS--> anchor."
-    fi
-  fi
-
-  if [ "$HAS_DB_MIGRATION_CHANGE" = true ] || [ "$HAS_DB_TABLE_CHANGE" = true ]; then
-    if grep -q '<!--README_MIGRATIONS-->' "$README_FILE"; then
-      echo "NOTE: DB migration/table changes detected. README.md <!--README_MIGRATIONS--> and/or <!--README_DB_TABLES--> rows should be updated manually."
-    else
-      echo "NOTE: DB changes detected but README.md has no migration/table anchors."
-    fi
+    echo "NOTE: Module changes detected. Review the README.md 'Last phase' row manually."
   fi
 fi
 

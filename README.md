@@ -309,5 +309,5 @@ The Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the daily digest endp
 | Test count | 318 passing |
 | DB tables | 25 (RLS on all) |
 | AI tools | 77 (60 AUTO + 17 APPROVAL) |
-| Migrations | 15 (001–015) |
+| Migrations | 16 (001–016) |
 | Last phase | Phase 12 — Persistent chat history, real memory, user profile, remember/recall tools |
