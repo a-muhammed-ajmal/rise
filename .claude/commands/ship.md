@@ -26,6 +26,7 @@ SPEC_UPDATED="unchanged"
 CLAUDE_UPDATED="unchanged"
 README_UPDATED="unchanged"
 COMMIT_HASH=""
+COMMIT_MSG=""
 PUSH_STATUS="FAILED"
 
 TEST_COUNT=""
@@ -36,6 +37,37 @@ HAS_MODULE_CHANGE=false
 HAS_AI_TOOL_CHANGE=false
 HAS_DB_MIGRATION_CHANGE=false
 HAS_DB_TABLE_CHANGE=false
+
+# -------------------------------------------------
+# Final report — printed via an EXIT trap so it ALWAYS renders, whether the
+# run finishes cleanly or aborts early (set -e / an `exit 1` guard). Without
+# the trap, any failed step would skip the report entirely.
+# -------------------------------------------------
+print_report() {
+  local code=$?
+  echo ""
+  echo "================================================================"
+  echo "Report"
+  echo "================================================================"
+  echo ""
+  echo "  Lint:           $LINT_STATUS"
+  echo "  Tests:          ${TEST_COUNT:-?} passing, ${LINE_COVERAGE:-?}% — $TEST_STATUS"
+  echo "  Build:          $BUILD_STATUS"
+  echo "  SPEC.md:        $SPEC_UPDATED"
+  echo "  CLAUDE.md:      $CLAUDE_UPDATED"
+  echo "  README.md:      $README_UPDATED"
+  echo "  Commit:         ${COMMIT_HASH:-<none>} ${COMMIT_MSG}"
+  echo "  Push:           $PUSH_STATUS"
+  echo ""
+  echo "  USER ACTION REQUIRED:"
+  if [ "$PUSH_STATUS" = "SUCCESS" ]; then
+    echo "    None."
+  else
+    echo "    Ship stopped early (exit $code) — see the messages above."
+  fi
+  echo ""
+}
+trap print_report EXIT
 
 # -------------------------------------------------
 # Helper: Extract "Lines" coverage from Jest/Vitest style output
@@ -392,23 +424,5 @@ else
   exit 1
 fi
 
-# -------------------------------------------------
-# Report
-# -------------------------------------------------
-echo ""
-echo "================================================================"
-echo "Report"
-echo "================================================================"
-echo ""
-echo "  Lint:           $LINT_STATUS"
-echo "  Tests:          $TEST_COUNT passing, $LINE_COVERAGE% — $TEST_STATUS"
-echo "  Build:          $BUILD_STATUS"
-echo "  SPEC.md:        $SPEC_UPDATED"
-echo "  CLAUDE.md:      $CLAUDE_UPDATED"
-echo "  README.md:      $README_UPDATED"
-echo "  Commit:         $COMMIT_HASH $COMMIT_MSG"
-echo "  Push:           $PUSH_STATUS"
-echo ""
-echo "  USER ACTION REQUIRED:"
-echo "    None."
-echo ""
+# Report prints automatically via the print_report EXIT trap (defined near the
+# top) — so it renders on success AND on any early failure. Nothing to echo here.
