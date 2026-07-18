@@ -19,6 +19,13 @@ type ProjectRow = {
   created_at: string;
   updated_at: string;
 };
+type TaskLabelRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string;
+  created_at: string;
+};
 export type Subtask = {
   id: string;
   title: string;
@@ -54,6 +61,16 @@ export type LinkedTask = {
   relationship: "blocks" | "blocked_by" | "related";
 };
 
+export type Reminder = {
+  id: string;
+  /** relative → fires `offset_minutes` before the due time; absolute → fires at `at`. */
+  type: "relative" | "absolute";
+  /** For relative reminders: minutes before the due date/time. */
+  offset_minutes?: number;
+  /** For absolute reminders: ISO timestamp of the exact moment. */
+  at?: string;
+};
+
 /** iCal RRULE string, e.g. "FREQ=DAILY" */
 export type RecurrenceRule = string;
 
@@ -62,6 +79,8 @@ type TaskRow = {
   user_id: string;
   title: string;
   description: string | null;
+  /** Tiptap JSON for rich notes; `description` mirrors its plain text. */
+  description_rich: Json | null;
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
@@ -77,6 +96,7 @@ type TaskRow = {
   activity: ActivityEntry[];
   recurrence: RecurrenceRule | null;
   reminder: string | null;
+  reminders: Reminder[];
   estimated_time: number | null;
   location: string | null;
   linked_tasks: LinkedTask[];
@@ -368,6 +388,11 @@ export interface Database {
         Partial<Insertable<ProjectRow>>
       >;
       tasks: T<TaskRow, Insertable<TaskRow>, Partial<Insertable<TaskRow>>>;
+      task_labels: T<
+        TaskLabelRow,
+        Insertable<TaskLabelRow>,
+        Partial<Insertable<TaskLabelRow>>
+      >;
       goals: T<GoalRow, Insertable<GoalRow>, Partial<Insertable<GoalRow>>>;
       milestones: T<
         MilestoneRow,
@@ -490,6 +515,7 @@ export interface Database {
 export type Project = ProjectRow;
 /** Task with the derived is_completed field (computed from completed_at in the hook) */
 export type Task = TaskRow & { is_completed: boolean };
+export type TaskLabel = TaskLabelRow;
 export type Goal = GoalRow;
 export type Milestone = MilestoneRow;
 export type Review = ReviewRow;

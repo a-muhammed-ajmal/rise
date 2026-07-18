@@ -5,9 +5,9 @@ import {
   format, parseISO, startOfMonth, endOfMonth,
   startOfWeek, endOfWeek, eachDayOfInterval,
   isSameDay, isSameMonth, isToday,
-  addMonths, subMonths,
+  addMonths, subMonths, addDays, nextMonday,
 } from 'date-fns'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DateTimePickerProps {
@@ -279,6 +279,46 @@ export function DateTimePicker({ value, onChange, onClose }: DateTimePickerProps
                 )
               })}
             </div>
+
+            {/* Quick shortcuts */}
+            <div className="flex items-center gap-1.5 mt-3">
+              {[
+                { label: 'Today', date: today },
+                { label: 'Tomorrow', date: addDays(today, 1) },
+                { label: 'Next Mon', date: nextMonday(today) },
+              ].map((s) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  onClick={() => { setLocalDate(format(s.date, 'yyyy-MM-dd')); setViewDate(s.date) }}
+                  className="flex-1 h-8 rounded-lg border border-border text-xs text-muted-foreground hover:border-ring transition-colors"
+                >
+                  {s.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => { onChange({}); onClose() }}
+                aria-label="Clear date"
+                className="w-8 h-8 rounded-lg border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* No-time toggle — store the date only */}
+            <button
+              type="button"
+              onClick={() => setTimeSet((v) => !v)}
+              className={cn(
+                'w-full mt-2 h-8 rounded-lg border text-xs transition-colors',
+                timeSet
+                  ? 'border-border text-muted-foreground hover:border-ring'
+                  : 'border-brand/50 text-brand bg-brand-tint'
+              )}
+            >
+              {timeSet ? 'Remove time (date only)' : 'No time · date only'}
+            </button>
           </>
         ) : (
           /* Analog clock face — tap or drag a number to set hour, then minute */

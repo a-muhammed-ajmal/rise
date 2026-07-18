@@ -84,12 +84,12 @@ To enable: set `CRON_SECRET` in Vercel environment variables. The digest note ap
 | Styling | Tailwind CSS v4 + shadcn/ui (`@base-ui/react`) + Lucide icons |
 | AI | Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) |
 | Embeddings | Voyage AI `voyage-3` (1024-dim pgvector) — keyword ILIKE fallback when key absent |
-| Database | Supabase — Postgres + pgvector + Row Level Security (25 tables) |
+| Database | Supabase — Postgres + pgvector + Row Level Security (26 tables) |
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (559 tests) |
+| Testing | Vitest 4 + Testing Library (601 tests) |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -110,7 +110,7 @@ RISE uses a locked light-first orange brand system (full spec in `.claude/skills
 
 ## Database Schema
 
-25 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–016:
+26 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–017:
 
 ```text
 projects · tasks · goals · milestones · reviews · journal_entries
@@ -121,6 +121,7 @@ notes · documents · links
 ai_conversations · ai_memory (pgvector 1024-dim)
 push_subscriptions · user_profile
 oauth_authorization_codes · oauth_tokens
+task_labels
 ```
 
 ---
@@ -259,7 +260,7 @@ MCP_OAUTH_CLIENT_ID=       # OAuth client for claude.ai web / Desktop (any id)
 MCP_OAUTH_CLIENT_SECRET=   # OAuth client secret (long random string)
 ```
 
-Apply migrations 001–016 in your Supabase SQL editor (in order), then:
+Apply migrations 001–017 in your Supabase SQL editor (in order), then:
 
 ```bash
 npm run dev   # Turbopack dev server → http://localhost:3000
@@ -315,8 +316,8 @@ The Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the daily digest endp
 
 | Metric | Value |
 | --- | --- |
-| Test count | 559 passing |
-| DB tables | 25 (RLS on all) |
+| Test count | 601 passing |
+| DB tables | 26 (RLS on all) |
 | AI tools | 77 (60 AUTO + 17 APPROVAL) |
-| Migrations | 16 (001–016) |
-| Last phase | Phase 12 — Persistent chat history, real memory, user profile, remember/recall tools |
+| Migrations | 17 (001–017) |
+| Last phase | Phase 13 — Task form v3: recurrence engine, rich popup, responsive modal, date shortcuts |

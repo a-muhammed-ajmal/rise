@@ -536,6 +536,7 @@ export async function executeTool(
           comments: [],
           activity: [],
           linked_tasks: [],
+          reminders: [],
         })
         .select()
         .single();

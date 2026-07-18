@@ -6,13 +6,7 @@ import {
   Clock, Bell, Repeat2, Plus, X, Star,
   ChevronDown, Paperclip, Flag, Tag, Pencil,
 } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +28,9 @@ import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DateTimePicker } from './DateTimePicker'
 import { DurationPicker } from './DurationPicker'
-import { PRIORITY_MAP, PRIORITY_CONFIG, repeatLabel } from './task-constants'
+import { RepeatEditor } from './RepeatEditor'
+import { describeRecurrence } from '@/lib/recurrence'
+import { PRIORITY_MAP, PRIORITY_CONFIG } from './task-constants'
 import { formatRelativeDate, display12h } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -56,7 +52,7 @@ interface TaskPopupProps {
  * `task` absent  => create mode (local draft, submitted via footer button).
  */
 export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate }: TaskPopupProps) {
-  const { tasks, updateTask, completeTask, reopenTask, deleteTask, duplicateTask, toggleFocus } = useTasks('all')
+  const { tasks, updateTask, completeTask, reopenTask, deleteTask, duplicateTask, starTask } = useTasks('all')
 
   const liveTask = task ? (tasks.find((t) => t.id === task.id) ?? task) : null
   const isCreate = !liveTask
@@ -90,6 +86,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showReminderPicker, setShowReminderPicker] = useState(false)
   const [showDurationPicker, setShowDurationPicker] = useState(false)
+  const [showRepeatPicker, setShowRepeatPicker] = useState(false)
   const [showCompletedSubtasks, setShowCompletedSubtasks] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [completing, setCompleting] = useState(false)
@@ -329,7 +326,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
 
   return (
     <>
-      <Dialog open onOpenChange={(v) => {
+      <ResponsiveModal ariaLabel={isCreate ? 'Add task' : 'Task detail'} open onOpenChange={(v) => {
         if (!v) {
           if (isCreate && title.trim()) {
             onCreate({
@@ -353,29 +350,28 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
           onClose()
         }
       }}>
-        <DialogContent className="sm:max-w-lg max-h-[92vh] flex flex-col overflow-hidden p-0" showCloseButton={false}>
-          <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0">
+        <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0">
 
             {/* Header */}
-            <DialogHeader className="shrink-0 px-4 py-3 border-b">
+            <div className="shrink-0 px-4 py-3 border-b">
               <div className="flex items-center gap-2">
-                <DialogTitle className="text-sm flex-1">
+                <h2 className="text-sm flex-1 font-heading font-semibold">
                   {isCreate ? 'Add new task' : 'Update the task'}
-                </DialogTitle>
+                </h2>
                 {!isCreate && (
                   <>
                     <button
                       type="button"
-                      onClick={() => toggleFocus(liveTask.id)}
+                      onClick={() => starTask(liveTask.id)}
                       className={cn(
                         'tap-target shrink-0 transition-colors',
-                        liveTask.is_focus
+                        liveTask.is_starred
                           ? 'text-[var(--color-warning)]'
                           : 'text-muted-foreground/30 hover:text-[var(--color-warning)]'
                       )}
-                      aria-label={liveTask.is_focus ? 'Remove from focus' : 'Add to focus'}
+                      aria-label={liveTask.is_starred ? 'Remove importance' : 'Mark important'}
                     >
-                      <Star className={cn('w-4 h-4', liveTask.is_focus && 'fill-[var(--color-warning)]')} />
+                      <Star className={cn('w-4 h-4', liveTask.is_starred && 'fill-[var(--color-warning)]')} />
                     </button>
                     <DropdownMenu>
                       <DropdownMenuTrigger className="tap-target shrink-0 rounded-md hover:bg-accent transition-colors">
@@ -403,7 +399,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                   </>
                 )}
               </div>
-            </DialogHeader>
+            </div>
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto space-y-3 px-4 py-3">
@@ -618,33 +614,22 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
               <div className="grid grid-cols-3 gap-2">
                 {/* Repeat */}
                 <div className="relative">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      className={cn(
-                        'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
-                        repeat !== 'none'
-                          ? 'border-brand/50 text-brand bg-brand-tint pr-7'
-                          : 'border-border text-muted-foreground hover:border-ring'
-                      )}
-                      aria-label={repeat !== 'none' ? `Repeat: ${repeatLabel(repeat)}` : 'Set repeat'}
-                    >
-                      <Repeat2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate flex-1 text-left">
-                        {repeat !== 'none' ? repeatLabel(repeat) : 'Repeat'}
-                      </span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {(['FREQ=DAILY', 'FREQ=WEEKLY', 'FREQ=MONTHLY', 'FREQ=YEARLY'] as const).map((v) => (
-                        <DropdownMenuItem
-                          key={v}
-                          onClick={() => handleRepeatChange(v)}
-                          className="text-xs"
-                        >
-                          {repeatLabel(v)}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <button
+                    type="button"
+                    onClick={() => setShowRepeatPicker((v) => !v)}
+                    className={cn(
+                      'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
+                      repeat !== 'none'
+                        ? 'border-brand/50 text-brand bg-brand-tint pr-7'
+                        : 'border-border text-muted-foreground hover:border-ring'
+                    )}
+                    aria-label={repeat !== 'none' ? `Repeat: ${describeRecurrence(repeat)}` : 'Set repeat'}
+                  >
+                    <Repeat2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span className="truncate flex-1 text-left">
+                      {repeat !== 'none' ? describeRecurrence(repeat) : 'Repeat'}
+                    </span>
+                  </button>
                   {repeat !== 'none' && (
                     <button
                       type="button"
@@ -882,7 +867,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
             </div>
 
             {/* Footer */}
-            <DialogFooter className="shrink-0 px-4 py-3 border-t flex items-center justify-between">
+            <div className="shrink-0 px-4 py-3 border-t flex items-center justify-between">
               <button
                 type="button"
                 onClick={onClose}
@@ -907,10 +892,9 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                   Update task
                 </button>
               )}
-            </DialogFooter>
+            </div>
           </form>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveModal>
 
       {/* DateTimePicker overlay — due date/time */}
       {showDatePicker && (
@@ -949,6 +933,21 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
               value={parseInt(estimatedMinutes, 10) || 0}
               onChange={handleDurationChange}
               onClose={() => setShowDurationPicker(false)}
+            />
+          </div>
+        </>
+      )}
+
+      {/* RepeatEditor overlay */}
+      {showRepeatPicker && (
+        <>
+          <div className="fixed inset-0 z-[59]" onClick={() => setShowRepeatPicker(false)} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+            <RepeatEditor
+              value={repeat !== 'none' ? repeat : null}
+              dueDate={dueDate || null}
+              onChange={(v) => { handleRepeatChange(v ?? 'none'); setShowRepeatPicker(false) }}
+              onClose={() => setShowRepeatPicker(false)}
             />
           </div>
         </>

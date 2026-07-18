@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 559 passing |
-| Line coverage | 95.62% on `lib/**` |
-| Migrations | 16 (001–016) |
-| DB tables | 25 (across 16 migrations) |
+| Test count | 601 passing |
+| Line coverage | 95.12% on `lib/**` |
+| Migrations | 17 (001–017) |
+| DB tables | 26 (across 17 migrations) |
 | AI tools | 60 AUTO + 17 APPROVAL = 77 total |
-| Last feature shipped | Phase 12 — Persistent chat history, real memory, user profile, remember/recall tools (2026-07-08) |
+| Last feature shipped | Phase 13 — Task form v3: recurrence engine, rich task popup, responsive modal, date shortcuts (2026-07-19) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -189,7 +189,7 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 
 > Tool schemas use Google GenAI's `FunctionDeclaration` format (`Type.OBJECT`, `Type.STRING`, etc.) from `@google/genai` — not the Anthropic `input_schema` format.
 
-### Data model (25 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–016)
+### Data model (26 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–017)
 
 ```text
 projects            id, name, description, status(active|completed|archived), color
@@ -226,6 +226,7 @@ oauth_authorization_codes  id, client_id, code_hash, user_id, redirect_uri,
                            code_challenge, expires_at, used_at
 oauth_tokens        id, client_id, access_token_hash, refresh_token_hash,
                     user_id, audience, expires_at, revoked_at
+task_labels         id, user_id, name, color, created_at
 ```
 
 pgvector function: `match_memories(query_embedding, match_user_id, match_count?, match_threshold?)` — default `match_threshold: 0.7`. Returns `{ id, content, metadata, similarity }[]`.
@@ -371,3 +372,4 @@ Candidate areas (not prioritized):
 | 9 | Payment methods / wallets | 2026-07-01 | `supabase/migrations/010_payment_methods.sql`, `011_fix_payment_methods.sql`, `lib/types/database.ts` (PaymentMethodRow, TransactionRow with transfer/adjustment types + FK columns), `app/(app)/finance/` (wallet cards, live balance tracking) |
 | 10 | Light-first orange design system | 2026-07-04 | `app/globals.css` (full token rewrite: brand/module/status/priority tokens, navy dark mode, `.card`/`.card-hover`, `brand-pulse`, graph-paper), `app/layout.tsx` (viewport theme colors), `app/(app)/layout.tsx` (graph-bg shell), `components/ui/` (button/card/input/textarea/badge/tabs/dialog/sheet — 4/8/12/16px radii, 1.5px borders, 44px buttons, bold CTAs), `components/layout/` (sidebar/topbar/bottom-nav), all 8 module pages + dashboard + login (slide-up/stagger/card-hover/mod-tint swaps, page-glow and glassmorphism removed), `components/assistant/` (card-style bubbles, orange recording pulse), `components/analytics/` (6 chart palettes), `.claude/skills/frontend-design/` (module token table, AI resolution, tokens.css Inter-only mono) |
 | 11 | RISE bee logo rollout + icon pipeline | 2026-07-04 | `scripts/generate-icons.mjs` (sharp pipeline from `public/rise-ai.png` master), `public/` (icon-192/512, maskable pair, apple-touch-icon, rise-logo transparent mark), `app/icon.png` (favicon), `public/manifest.webmanifest` (orange theme, maskable entries), `public/sw.js` (rise-v4, fixed icon paths), `components/brand/rise-logo.tsx` (RiseLogo with mono/keepColor variants), sidebar/bottom-nav/nav-items/assistant/dashboard/settings (Sparkles → bee), `app/globals.css` (bee-float), lint warnings cleared |
+| 13 | Task form v3: recurrence engine, rich popup, responsive modal | 2026-07-19 | `lib/recurrence.ts` (RRULE parser/formatter), `lib/tasks/validate.ts` (task validation), `components/productivity/RepeatEditor.tsx` (repeat picker), `components/productivity/DateTimePicker.tsx` (quick shortcuts), `components/productivity/task-popup.tsx` (RepeatEditor wired), `components/ui/responsive-modal.tsx`, `lib/hooks/use-is-desktop.ts`, `supabase/migrations/017_task_form_v3.sql` (task_labels table, tasks.reminders, tasks.description_rich) |

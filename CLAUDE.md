@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 559 tests, 95.62% — target met. Remaining gap is entirely `use-tasks.ts` (43%, pre-existing, not part of the last recovery pass).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 601 tests, 95.12% — target met. Remaining gap is entirely `use-tasks.ts` (43%, pre-existing, not part of the last recovery pass).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -181,6 +181,7 @@ lib/
     use-projects.ts         Project CRUD with Supabase Realtime subscription
     use-push-subscription.ts Push notification subscription management
     use-payment-methods.ts  Wallet balance state and CRUD operations (currently 0% test coverage)
+    use-is-desktop.ts       Returns true when viewport ≥ 768px (md breakpoint); SSR-safe
     use-categories.ts       Finance category state and CRUD (currently 0% test coverage)
     use-theme.tsx           Dark/light mode toggle; persists to localStorage
   supabase/
@@ -188,11 +189,11 @@ lib/
     server.ts               Server-side isolated client handlers
     middleware.ts           Session lifecycle handlers, ALLOWED_USER_EMAIL enforcement, token refresh
   types/
-    database.ts             Single Source of Truth — 25 Supabase tables with Row/Insert/Update types
+    database.ts             Single Source of Truth — 26 Supabase tables with Row/Insert/Update types
   format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h)
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities
 
-supabase/migrations/        001 through 016 (append-only; execute via Supabase SQL editor)
+supabase/migrations/        001 through 017 (append-only; execute via Supabase SQL editor)
 supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
 proxy.ts                    Next.js 16 middleware entry point — calls lib/supabase/middleware.ts

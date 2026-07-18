@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useId } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Task, Subtask, TaskAttachment, Comment, ActivityEntry, LinkedTask } from '@/lib/types/database'
+import type { Task, Subtask, TaskAttachment, Comment, ActivityEntry, LinkedTask, Reminder } from '@/lib/types/database'
 import { todayISO } from '@/lib/format'
 
 export type TaskFilter = 'today' | 'all' | 'project' | 'completed'
@@ -17,6 +17,7 @@ function coerceTask(t: Record<string, unknown>): Task {
     comments: Array.isArray(t.comments) ? (t.comments as Comment[]) : [],
     activity: Array.isArray(t.activity) ? (t.activity as ActivityEntry[]) : [],
     linked_tasks: Array.isArray(t.linked_tasks) ? (t.linked_tasks as LinkedTask[]) : [],
+    reminders: Array.isArray(t.reminders) ? (t.reminders as Reminder[]) : [],
   }
 }
 
@@ -80,6 +81,7 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       project_id: data.project_id ?? null,
       recurrence: data.recurrence ?? null,
       reminder: data.reminder ?? null,
+      reminders: (data.reminders ?? []) as unknown as never,
       is_starred: data.is_starred ?? false,
       is_focus: data.is_focus ?? false,
       labels: data.labels ?? [],
@@ -210,6 +212,7 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       project_id: task.project_id,
       recurrence: null,
       reminder: null,
+      reminders: [] as unknown as never,
       is_starred: false,
       is_focus: false,
       labels: task.labels,
