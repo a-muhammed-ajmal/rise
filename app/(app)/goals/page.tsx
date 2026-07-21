@@ -87,6 +87,23 @@ export default function GoalsPage() {
     fetchData();
   }, [fetchData]);
 
+  // Quick-add intent: open the goal or journal dialog via ?add=goal|journal.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const add = url.searchParams.get("add");
+    if (add === "goal") {
+      setEditGoal(null);
+      setGoalOpen(true);
+    } else if (add === "journal") {
+      setEditJournal(null);
+      setJournalOpen(true);
+    } else {
+      return;
+    }
+    url.searchParams.delete("add");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, []);
+
   async function handleDeleteGoal() {
     if (!deleteGoalId) return;
     const supabase = createClient();

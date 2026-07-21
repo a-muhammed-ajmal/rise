@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckSquare, Star, Loader2 } from "lucide-react";
+import { CheckSquare, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,12 +11,12 @@ import { TaskPopup } from "@/components/productivity/task-popup";
 
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
+import { todayISO } from "@/lib/format";
 
 import { toast } from "sonner";
 import type { Task } from "@/lib/types/database";
 
 const VISIBLE_COUNT = 5;
-const MAX_STARRED_TASKS = 3;
 
 export function TasksDashboardSection() {
   const {
@@ -59,15 +59,10 @@ export function TasksDashboardSection() {
     [completeTask, updateTask, deleteTask, duplicateTask, openDetail],
   );
 
-  const starredTasks = useMemo(
-    () => safeTasks.filter((task) => task.is_starred).slice(0, MAX_STARRED_TASKS),
-    [safeTasks],
-  );
-
-  const regularTasks = useMemo(
-    () => safeTasks.filter((task) => !task.is_starred),
-    [safeTasks],
-  );
+  const regularTasks = useMemo(() => {
+    const today = todayISO();
+    return safeTasks.filter((task) => !(task.is_focus && task.focus_date === today));
+  }, [safeTasks]);
 
   const visibleRegularTasks = regularTasks.slice(0, VISIBLE_COUNT);
   const remainingTasks = Math.max(0, regularTasks.length - visibleRegularTasks.length);
@@ -118,53 +113,25 @@ export function TasksDashboardSection() {
               <Skeleton className="h-14 w-full rounded-xl" />
             </div>
           </div>
-        ) : safeTasks.length === 0 ? (
+        ) : regularTasks.length === 0 ? (
           <div className="rounded-md border border-dashed border-border bg-muted/20 p-4">
             <p className="text-sm text-muted-foreground">No tasks due today.</p>
           </div>
         ) : (
-          <>
-            {starredTasks.length > 0 && (
-              <section className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Star
-                    className="h-3.5 w-3.5 fill-[var(--color-warning)] text-[var(--color-warning)]"
-                    aria-hidden="true"
-                  />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-warning)]">
-                    Focus
-                  </span>
-                </div>
+          <section className="space-y-2">
+            {visibleRegularTasks.map((task) => (
+              <TaskCard key={task.id} {...getTaskCardProps(task)} view="list" />
+            ))}
 
-                {starredTasks.map((task) => (
-                  <TaskCard key={task.id} {...getTaskCardProps(task)} view="list" />
-                ))}
-
-                {visibleRegularTasks.length > 0 && (
-                  <div className="flex items-center gap-2 pt-2">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-xs text-muted-foreground">Other tasks</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                )}
-              </section>
+            {remainingTasks > 0 && (
+              <Link
+                href="/productivity"
+                className="block pt-2 text-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                +{remainingTasks} more task{remainingTasks === 1 ? "" : "s"}
+              </Link>
             )}
-
-            <section className="space-y-2">
-              {visibleRegularTasks.map((task) => (
-                <TaskCard key={task.id} {...getTaskCardProps(task)} view="list" />
-              ))}
-
-              {remainingTasks > 0 && (
-                <Link
-                  href="/productivity"
-                  className="block pt-2 text-center text-xs text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  +{remainingTasks} more task{remainingTasks === 1 ? "" : "s"}
-                </Link>
-              )}
-            </section>
-          </>
+          </section>
         )}
       </CardContent>
 

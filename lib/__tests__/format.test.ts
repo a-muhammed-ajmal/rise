@@ -10,6 +10,7 @@ import {
   currentHourDubai,
   parseDate,
   display12h,
+  isPastDeadline,
 } from "../format";
 
 describe("formatAED", () => {
@@ -178,6 +179,53 @@ describe("currentHourDubai", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-23T21:00:00Z"));
     expect(currentHourDubai()).toBe(1);
+  });
+});
+
+describe("isPastDeadline", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("is false before a timed deadline", () => {
+    vi.useFakeTimers();
+    // Dubai 17:30 on 2026-06-23 == 13:30 UTC; now is 12:00 UTC (before)
+    vi.setSystemTime(new Date("2026-06-23T12:00:00Z"));
+    expect(isPastDeadline("2026-06-23", "17:30")).toBe(false);
+  });
+
+  it("is true after a timed deadline", () => {
+    vi.useFakeTimers();
+    // now is 14:00 UTC == 18:00 Dubai
+    vi.setSystemTime(new Date("2026-06-23T14:00:00Z"));
+    // 17:30 Dubai deadline has passed
+    expect(isPastDeadline("2026-06-23", "17:30")).toBe(true);
+    // 19:00 Dubai deadline is still ahead
+    expect(isPastDeadline("2026-06-23", "19:00")).toBe(false);
+  });
+
+  it("date-only: not past for today", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-23T10:00:00Z")); // Dubai 14:00, same day
+    expect(isPastDeadline("2026-06-23")).toBe(false);
+  });
+
+  it("date-only: not past for a future day", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-22T10:00:00Z"));
+    expect(isPastDeadline("2026-06-23")).toBe(false);
+  });
+
+  it("date-only: past once the due day has ended", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-24T10:00:00Z"));
+    expect(isPastDeadline("2026-06-23")).toBe(true);
+  });
+
+  it("treats null due_time as date-only", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-24T10:00:00Z"));
+    expect(isPastDeadline("2026-06-23", null)).toBe(true);
   });
 });
 

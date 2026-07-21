@@ -68,6 +68,16 @@ export function parseDate(dateStr: string): Date {
   return parseISO(dateStr)
 }
 
+// True when a task's due moment has passed (Asia/Dubai, UTC+4, no DST).
+// With a due_time, compares against the exact deadline instant.
+// Date-only: past only once the due day has fully ended (i.e. due_date is before today).
+export function isPastDeadline(dueDate: string, dueTime?: string | null): boolean {
+  if (dueTime) {
+    return Date.now() > new Date(`${dueDate}T${dueTime}:00+04:00`).getTime()
+  }
+  return dueDate < todayISO()
+}
+
 // Convert HH:MM (24h stored format) → "h:mm AM/PM" display
 export function display12h(time: string): string {
   const [hStr, mStr] = time.split(':')

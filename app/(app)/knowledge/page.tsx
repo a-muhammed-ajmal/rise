@@ -72,6 +72,23 @@ export default function KnowledgePage() {
     fetchData();
   }, [fetchData]);
 
+  // Quick-add intent: open the note or bookmark dialog via ?add=note|link.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const add = url.searchParams.get("add");
+    if (add === "note") {
+      setEditNote(null);
+      setNoteOpen(true);
+    } else if (add === "link") {
+      setEditLink(null);
+      setLinkOpen(true);
+    } else {
+      return;
+    }
+    url.searchParams.delete("add");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, []);
+
   async function handleDeleteNote() {
     if (!deleteNoteId) return;
     const supabase = createClient();

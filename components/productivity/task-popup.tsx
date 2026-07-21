@@ -31,7 +31,7 @@ import { DurationPicker } from './DurationPicker'
 import { RepeatEditor } from './RepeatEditor'
 import { describeRecurrence } from '@/lib/recurrence'
 import { PRIORITY_MAP, PRIORITY_CONFIG } from './task-constants'
-import { formatRelativeDate, display12h } from '@/lib/format'
+import { formatRelativeDate, display12h, todayISO } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -52,7 +52,7 @@ interface TaskPopupProps {
  * `task` absent  => create mode (local draft, submitted via footer button).
  */
 export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate }: TaskPopupProps) {
-  const { tasks, updateTask, completeTask, reopenTask, deleteTask, duplicateTask, starTask } = useTasks('all')
+  const { tasks, updateTask, completeTask, reopenTask, deleteTask, duplicateTask, toggleFocus } = useTasks('all')
 
   const liveTask = task ? (tasks.find((t) => t.id === task.id) ?? task) : null
   const isCreate = !liveTask
@@ -266,6 +266,24 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
     toast.success('Link copied')
   }
 
+  // Marking a task as "today's focus": only for today, max 3 per day.
+  function handleToggleFocus(t: Task) {
+    if (t.is_focus) {
+      toggleFocus(t.id)
+      return
+    }
+    if (t.due_date && t.due_date > todayISO()) {
+      toast.error('You can only focus on tasks due today')
+      return
+    }
+    const focusedToday = tasks.filter((x) => x.is_focus && x.focus_date === todayISO()).length
+    if (focusedToday >= 3) {
+      toast.error('You can only focus on 3 tasks a day')
+      return
+    }
+    toggleFocus(t.id)
+  }
+
   // ── Create submit ─────────────────────────────────────────────────────────
 
   async function handleFormSubmit(e: React.FormEvent) {
@@ -362,16 +380,16 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                   <>
                     <button
                       type="button"
-                      onClick={() => starTask(liveTask.id)}
+                      onClick={() => handleToggleFocus(liveTask)}
                       className={cn(
                         'tap-target shrink-0 transition-colors',
-                        liveTask.is_starred
+                        liveTask.is_focus
                           ? 'text-[var(--color-warning)]'
                           : 'text-muted-foreground/30 hover:text-[var(--color-warning)]'
                       )}
-                      aria-label={liveTask.is_starred ? 'Remove importance' : 'Mark important'}
+                      aria-label={liveTask.is_focus ? "Remove from today's focus" : "Mark as today's focus"}
                     >
-                      <Star className={cn('w-4 h-4', liveTask.is_starred && 'fill-[var(--color-warning)]')} />
+                      <Star className={cn('w-4 h-4', liveTask.is_focus && 'fill-[var(--color-warning)]')} />
                     </button>
                     <DropdownMenu>
                       <DropdownMenuTrigger className="tap-target shrink-0 rounded-md hover:bg-accent transition-colors">

@@ -9,6 +9,8 @@ import Link from "next/link";
 import { formatAED, formatDate, todayISO, todayDOW, currentHourDubai } from "@/lib/format";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TasksDashboardSection } from "@/components/dashboard/tasks-dashboard-section";
+import { FocusTasksSection } from "@/components/dashboard/focus-tasks-section";
+import { QuickAddFab } from "@/components/dashboard/quick-add-fab";
 import { HabitDashboardSection } from "@/components/wellness/habit-dashboard-section";
 
 const STAGE_COLORS: Record<string, string> = {
@@ -142,12 +144,13 @@ export default async function HomePage() {
         />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Today's tasks */}
-        <TasksDashboardSection />
+      {/* Primary daily sections — Focus → Habits → Tasks */}
+      <div className="space-y-4">
+        {/* Today's focus */}
+        <FocusTasksSection />
 
         {/* Today's habits */}
-        <Card className="slide-up stagger-4 border-t-4 border-t-mod-wellness">
+        <Card className="slide-up stagger-2 border-t-4 border-t-mod-wellness">
           <CardHeader className="pb-2 flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-wellness-tint flex items-center justify-center">
@@ -182,6 +185,11 @@ export default async function HomePage() {
           </CardContent>
         </Card>
 
+        {/* Today's tasks */}
+        <TasksDashboardSection />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
         {/* Active goals */}
         <Card className="slide-up stagger-4 border-t-4 border-t-mod-goals">
           <CardHeader className="pb-2 flex-row items-center justify-between">
@@ -389,6 +397,8 @@ export default async function HomePage() {
           </CardContent>
         </Card>
       )}
+
+      <QuickAddFab />
     </div>
   );
 }

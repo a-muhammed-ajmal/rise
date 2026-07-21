@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 601 passing |
-| Line coverage | 95.12% on `lib/**` |
+| Test count | 607 passing |
+| Line coverage | 95.13% on `lib/**` |
 | Migrations | 17 (001–017) |
 | DB tables | 26 (across 17 migrations) |
 | AI tools | 60 AUTO + 17 APPROVAL = 77 total |
-| Last feature shipped | Phase 13 — Task form v3: recurrence engine, rich task popup, responsive modal, date shortcuts (2026-07-19) |
+| Last feature shipped | Phase 14 — Overview redesign: Today's Focus (is_focus/focus_date), minimal unified task card, quick-add FAB (2026-07-21) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -373,3 +373,4 @@ Candidate areas (not prioritized):
 | 10 | Light-first orange design system | 2026-07-04 | `app/globals.css` (full token rewrite: brand/module/status/priority tokens, navy dark mode, `.card`/`.card-hover`, `brand-pulse`, graph-paper), `app/layout.tsx` (viewport theme colors), `app/(app)/layout.tsx` (graph-bg shell), `components/ui/` (button/card/input/textarea/badge/tabs/dialog/sheet — 4/8/12/16px radii, 1.5px borders, 44px buttons, bold CTAs), `components/layout/` (sidebar/topbar/bottom-nav), all 8 module pages + dashboard + login (slide-up/stagger/card-hover/mod-tint swaps, page-glow and glassmorphism removed), `components/assistant/` (card-style bubbles, orange recording pulse), `components/analytics/` (6 chart palettes), `.claude/skills/frontend-design/` (module token table, AI resolution, tokens.css Inter-only mono) |
 | 11 | RISE bee logo rollout + icon pipeline | 2026-07-04 | `scripts/generate-icons.mjs` (sharp pipeline from `public/rise-ai.png` master), `public/` (icon-192/512, maskable pair, apple-touch-icon, rise-logo transparent mark), `app/icon.png` (favicon), `public/manifest.webmanifest` (orange theme, maskable entries), `public/sw.js` (rise-v4, fixed icon paths), `components/brand/rise-logo.tsx` (RiseLogo with mono/keepColor variants), sidebar/bottom-nav/nav-items/assistant/dashboard/settings (Sparkles → bee), `app/globals.css` (bee-float), lint warnings cleared |
 | 13 | Task form v3: recurrence engine, rich popup, responsive modal | 2026-07-19 | `lib/recurrence.ts` (RRULE parser/formatter), `lib/tasks/validate.ts` (task validation), `components/productivity/RepeatEditor.tsx` (repeat picker), `components/productivity/DateTimePicker.tsx` (quick shortcuts), `components/productivity/task-popup.tsx` (RepeatEditor wired), `components/ui/responsive-modal.tsx`, `lib/hooks/use-is-desktop.ts`, `supabase/migrations/017_task_form_v3.sql` (task_labels table, tasks.reminders, tasks.description_rich) |
+| 14 | Overview redesign: Today's Focus, minimal task card, quick-add FAB | 2026-07-21 | `components/dashboard/focus-tasks-section.tsx` (new; is_focus/focus_date, cap 3, auto-clears at midnight), `components/dashboard/quick-add-fab.tsx` (new; all-entity quick add, `?add=` intent), `components/productivity/task-card.tsx` (minimal: priority-colored check, green→red due date, no pill/star/menu), `components/productivity/task-popup.tsx` (star button → toggleFocus with today-only + max-3 guards), `components/dashboard/tasks-dashboard-section.tsx`, `lib/format.ts` (isPastDeadline), `app/(app)/page.tsx` (Focus → Habits → Tasks order + FAB), wellness/goals/finance/knowledge/crm pages (`?add=` handlers) |

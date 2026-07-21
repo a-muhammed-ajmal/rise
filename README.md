@@ -89,7 +89,7 @@ To enable: set `CRON_SECRET` in Vercel environment variables. The digest note ap
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (601 tests) |
+| Testing | Vitest 4 + Testing Library (607 tests) |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -316,8 +316,8 @@ The Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the daily digest endp
 
 | Metric | Value |
 | --- | --- |
-| Test count | 601 passing |
+| Test count | 607 passing |
 | DB tables | 26 (RLS on all) |
 | AI tools | 77 (60 AUTO + 17 APPROVAL) |
 | Migrations | 17 (001–017) |
-| Last phase | Phase 13 — Task form v3: recurrence engine, rich popup, responsive modal, date shortcuts |
+| Last phase | Phase 14 — Overview redesign: Today's Focus, minimal task card, quick-add FAB |

@@ -120,6 +120,16 @@ export default function FinancePage() {
     deleteCategory,
   } = useCategories();
 
+  // Quick-add intent: open the transfer form via ?add=transfer.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("add") === "transfer") {
+      setTransferOpen(true);
+      url.searchParams.delete("add");
+      window.history.replaceState(null, "", url.pathname + url.search);
+    }
+  }, []);
+
   // Categories tab UI state
   const [addCatType, setAddCatType] = useState<"income" | "expense" | null>(null);
   const [addCatName, setAddCatName] = useState("");

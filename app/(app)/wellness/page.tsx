@@ -107,6 +107,17 @@ export default function WellnessPage() {
     fetchData();
   }, [fetchData]);
 
+  // Quick-add intent: open the add-habit dialog when arriving with ?add=habit.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("add") === "habit") {
+      setEditHabit(null);
+      setHabitDialogOpen(true);
+      url.searchParams.delete("add");
+      window.history.replaceState(null, "", url.pathname + url.search);
+    }
+  }, []);
+
   async function markDone(habitId: string) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();

@@ -196,7 +196,9 @@ export default function ProductivityPage() {
   // ── Today: starred focus tasks ──────────────────────────────────────────────
 
   const starredTodayTasks = useMemo(
-    () => filter === "today" ? tasks.filter((t) => t.is_starred).slice(0, 3) : [],
+    () => filter === "today"
+      ? tasks.filter((t) => t.is_focus && t.focus_date === todayISO()).slice(0, 3)
+      : [],
     [tasks, filter]
   );
   const starredIds = useMemo(
@@ -217,7 +219,8 @@ export default function ProductivityPage() {
       .from("tasks")
       .select("*", { count: "exact", head: true })
       .eq("status", "done")
-      .eq("is_starred", true)
+      .eq("is_focus", true)
+      .eq("focus_date", today)
       .gte("completed_at", `${today}T00:00:00`)
       .then(({ count }) => setCompletedFocusCount(count ?? 0));
   }, [filter, tasks]);

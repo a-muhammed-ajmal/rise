@@ -77,6 +77,17 @@ export default function CRMPage() {
     fetchContacts();
   }, [fetchContacts]);
 
+  // Quick-add intent: open the add-contact form via ?add=contact.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("add") === "contact") {
+      setEditContact(null);
+      setContactFormOpen(true);
+      url.searchParams.delete("add");
+      window.history.replaceState(null, "", url.pathname + url.search);
+    }
+  }, []);
+
   async function handleDeleteContact() {
     if (!deleteContactId) return;
     const supabase = createClient();
