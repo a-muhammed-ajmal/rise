@@ -151,19 +151,13 @@ export default async function HomePage() {
 
         {/* Today's habits */}
         <Card className="slide-up stagger-2 border-t-4 border-t-mod-wellness">
-          <CardHeader className="pb-2 flex-row items-center justify-between">
+          <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-wellness-tint flex items-center justify-center">
                 <Heart className="w-3.5 h-3.5 text-mod-wellness" />
               </div>
               Habits
             </CardTitle>
-            <Link
-              href="/wellness"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              View all
-            </Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {dueHabits.length > 0 ? (

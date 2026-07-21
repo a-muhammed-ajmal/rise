@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Undo2, ChevronDown, Flame } from "lucide-react";
+import { Check, X, ChevronDown, Flame } from "lucide-react";
 import { subDays, format } from "date-fns";
 import type { Habit, HabitLog } from "@/lib/types/database";
 import { todayISO } from "@/lib/format";
@@ -53,20 +53,6 @@ export function HabitDashboardSection({ habits, logs }: Props) {
     setLogMap((m) => new Map(m).set(habitId, false));
   }
 
-  async function undoMark(habitId: string) {
-    const supabase = createClient();
-    await supabase
-      .from("habit_logs")
-      .delete()
-      .eq("habit_id", habitId)
-      .eq("logged_date", today);
-    setLogMap((m) => {
-      const next = new Map(m);
-      next.delete(habitId);
-      return next;
-    });
-  }
-
   function scheduleLabel(habit: Habit): string {
     if (habit.target_days.length === 7) return "Every day";
     return habit.target_days.map((d) => DAYS_LONG[d]).join(", ");
@@ -94,37 +80,26 @@ export function HabitDashboardSection({ habits, logs }: Props) {
     return streak;
   }
 
-  const visible = expanded ? habits : habits.slice(0, VISIBLE_COUNT);
-  const remaining = habits.length - VISIBLE_COUNT;
+  // Only show habits not yet marked today — once marked (done or not-done) the card drops off.
+  const pending = habits.filter((h) => !logMap.has(h.id));
+  const visible = expanded ? pending : pending.slice(0, VISIBLE_COUNT);
+  const remaining = pending.length - VISIBLE_COUNT;
 
   if (!habits.length) {
     return <p className="text-sm text-muted-foreground">No habits due today.</p>;
   }
 
+  if (!pending.length) {
+    return <p className="text-sm text-muted-foreground">All habits logged for today.</p>;
+  }
+
   return (
     <div className="space-y-2">
       {visible.map((habit) => {
-        const logVal = logMap.get(habit.id);
-        const markState =
-          logVal === true ? "done" : logVal === false ? "notDone" : "none";
         const streak = getStreak(habit);
 
-        const cardBorderClass =
-          markState === "done"
-            ? "border-[var(--color-success)]/25 bg-[var(--color-success-tint)]"
-            : markState === "notDone"
-              ? "border-[var(--color-danger)]/25 bg-[var(--color-danger-tint)]"
-              : "";
-
-        const cardLeftBorder =
-          markState === "done"
-            ? "border-l-[3px] border-l-[var(--color-success)]"
-            : markState === "notDone"
-              ? "border-l-[3px] border-l-[var(--color-danger)]"
-              : "border-l-[3px] border-l-mod-wellness";
-
         return (
-          <Card key={habit.id} className={`card-hover ${cardBorderClass} ${cardLeftBorder}`}>
+          <Card key={habit.id} className="card-hover border-l-[3px] border-l-mod-wellness">
             <CardContent className="p-3 flex items-center gap-3">
               <div
                 className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
@@ -150,61 +125,29 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                   </Badge>
                 )}
 
-                {markState === "none" ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => markDone(habit.id)}
-                      className="w-7 h-7 rounded-full border-2 border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-tint)] active:scale-95"
-                      aria-label="Mark done"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => markNotDone(habit.id)}
-                      className="w-7 h-7 rounded-full border-2 border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-tint)] active:scale-95"
-                      aria-label="Mark not done"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                ) : markState === "done" ? (
-                  <>
-                    <div className="w-7 h-7 rounded-full bg-[var(--color-success)] flex items-center justify-center">
-                      <Check className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => undoMark(habit.id)}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="Undo"
-                    >
-                      <Undo2 className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-7 h-7 rounded-full bg-[var(--color-danger)] flex items-center justify-center">
-                      <X className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => undoMark(habit.id)}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="Undo"
-                    >
-                      <Undo2 className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  onClick={() => markDone(habit.id)}
+                  className="w-7 h-7 rounded-full border-2 border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-tint)] active:scale-95"
+                  aria-label="Mark done"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => markNotDone(habit.id)}
+                  className="w-7 h-7 rounded-full border-2 border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-tint)] active:scale-95"
+                  aria-label="Mark not done"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             </CardContent>
           </Card>
         );
       })}
 
-      {habits.length > VISIBLE_COUNT && (
+      {pending.length > VISIBLE_COUNT && (
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
