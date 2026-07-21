@@ -537,6 +537,7 @@ export async function executeTool(
           activity: [],
           linked_tasks: [],
           reminders: [],
+          area: "default" as const,
         })
         .select()
         .single();
@@ -1061,6 +1062,7 @@ export async function executeTool(
           description: p.data.description ?? null,
           color: p.data.color ?? "#6366f1",
           status: "active",
+          category: "default" as const,
         })
         .select()
         .single();

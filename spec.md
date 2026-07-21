@@ -10,10 +10,10 @@ Living specification for the RISE codebase. Describes what is currently implemen
 | --- | --- |
 | Test count | 608 passing |
 | Line coverage | 95.26% on `lib/**` |
-| Migrations | 17 (001–017) |
-| DB tables | 26 (across 17 migrations) |
+| Migrations | 19 (001–019) |
+| DB tables | 26 (across 19 migrations) |
 | AI tools | 60 AUTO + 17 APPROVAL = 77 total |
-| Last feature shipped | Phase 14 — Overview redesign: Today's Focus (is_focus/focus_date), minimal unified task card, quick-add FAB (2026-07-21) |
+| Last feature shipped | Phase 15 — Projects module: dedicated /projects page with 8 category tabs; task Area field + project-filtering in TaskPopup (2026-07-22) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -63,6 +63,7 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 | **Knowledge** | Notes (plain text, tags, linkable to task / goal / contact), Document metadata, Links |
 | **Analytics** | Recharts dashboards aggregating cross-module data |
 | **AI Assistant** | SSE-streaming chat with context injection (today's tasks, habits, goals, pgvector memories); `?q=` deep-link; quick-prompt shortcuts; approval banner for destructive tools |
+| **Projects** | Dedicated workspace with 8 fixed category tabs (personal, professional, financial, wellness, relationship, vision, legal, default); project cards per category; task drill-down per project; Area field on tasks links tasks to categories and filters the project dropdown |
 
 ---
 
@@ -189,14 +190,15 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 
 > Tool schemas use Google GenAI's `FunctionDeclaration` format (`Type.OBJECT`, `Type.STRING`, etc.) from `@google/genai` — not the Anthropic `input_schema` format.
 
-### Data model (26 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–017)
+### Data model (26 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–019)
 
 ```text
-projects            id, name, description, status(active|completed|archived), color
+projects            id, name, description, status(active|completed|archived), color,
+                    category(personal|professional|financial|wellness|relationship|vision|legal|default)
 tasks               id, title, description, status, priority, due_date, due_time,
                     completed_at, is_recurring, recurrence_rule, reminder_at,
                     is_starred, tags[], subtasks(JSONB), estimated_minutes,
-                    attachments(JSONB), project_id
+                    attachments(JSONB), project_id, area(ProjectCategory default 'default')
 goals               id, title, description, category, target_date, status, progress(0-100)
 milestones          id, goal_id, title, due_date, completed_at
 reviews             id, type, period_start, period_end, content(Json), mood, energy
@@ -374,3 +376,4 @@ Candidate areas (not prioritized):
 | 11 | RISE bee logo rollout + icon pipeline | 2026-07-04 | `scripts/generate-icons.mjs` (sharp pipeline from `public/rise-ai.png` master), `public/` (icon-192/512, maskable pair, apple-touch-icon, rise-logo transparent mark), `app/icon.png` (favicon), `public/manifest.webmanifest` (orange theme, maskable entries), `public/sw.js` (rise-v4, fixed icon paths), `components/brand/rise-logo.tsx` (RiseLogo with mono/keepColor variants), sidebar/bottom-nav/nav-items/assistant/dashboard/settings (Sparkles → bee), `app/globals.css` (bee-float), lint warnings cleared |
 | 13 | Task form v3: recurrence engine, rich popup, responsive modal | 2026-07-19 | `lib/recurrence.ts` (RRULE parser/formatter), `lib/tasks/validate.ts` (task validation), `components/productivity/RepeatEditor.tsx` (repeat picker), `components/productivity/DateTimePicker.tsx` (quick shortcuts), `components/productivity/task-popup.tsx` (RepeatEditor wired), `components/ui/responsive-modal.tsx`, `lib/hooks/use-is-desktop.ts`, `supabase/migrations/017_task_form_v3.sql` (task_labels table, tasks.reminders, tasks.description_rich) |
 | 14 | Overview redesign: Today's Focus, minimal task card, quick-add FAB | 2026-07-21 | `components/dashboard/focus-tasks-section.tsx` (new; is_focus/focus_date, cap 3, auto-clears at midnight), `components/dashboard/quick-add-fab.tsx` (new; all-entity quick add, `?add=` intent), `components/productivity/task-card.tsx` (minimal: priority-colored check, green→red due date, no pill/star/menu), `components/productivity/task-popup.tsx` (star button → toggleFocus with today-only + max-3 guards), `components/dashboard/tasks-dashboard-section.tsx`, `lib/format.ts` (isPastDeadline), `app/(app)/page.tsx` (Focus → Habits → Tasks order + FAB), wellness/goals/finance/knowledge/crm pages (`?add=` handlers) |
+| 15 | Projects module + task Area field | 2026-07-22 | `app/(app)/projects/page.tsx` (new; 8-category tabs, project grid, task drill-down per project), `components/layout/nav-items.ts` (Projects sidebar link), `components/layout/bottom-nav.tsx` (Projects BottomNav entry), `supabase/migrations/018_add_project_category.sql` (category on projects), `supabase/migrations/019_add_task_area.sql` (area on tasks), `lib/types/database.ts` (ProjectCategory union type, category on Project, area on Task), `components/productivity/task-popup.tsx` (Area select + filtered Project dropdown), `app/(app)/productivity/page.tsx` (project grid extracted) |

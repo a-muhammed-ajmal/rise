@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   CheckSquare,
+  FolderOpen,
   Target,
   DollarSign,
   Heart,
@@ -14,6 +15,7 @@ import { RiseLogo } from '@/components/brand/rise-logo'
 export const navItems = [
   { href: '/',            label: 'Home',        icon: LayoutDashboard, mobile: true  },
   { href: '/productivity',label: 'Tasks',       icon: CheckSquare,     mobile: true  },
+  { href: '/projects',    label: 'Projects',    icon: FolderOpen,      mobile: false },
   { href: '/finance',     label: 'Finance',     icon: DollarSign,      mobile: true  },
   { href: '/wellness',    label: 'Wellness',    icon: Heart,           mobile: true  },
   { href: '/goals',       label: 'Goals',       icon: Target,          mobile: false },

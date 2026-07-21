@@ -12,20 +12,30 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { PROJECT_COLORS } from './task-constants'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { PROJECT_COLORS, PROJECT_CATEGORIES } from './task-constants'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import type { ProjectCategory } from '@/lib/types/database'
 
 interface AddProjectDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
-  onProjectCreate: (name: string, color: string, description: string | null) => Promise<void>
+  defaultCategory?: ProjectCategory
+  onProjectCreate: (name: string, color: string, description: string | null, category: ProjectCategory) => Promise<void>
 }
 
-export function AddProjectDialog({ open, onOpenChange, onProjectCreate }: AddProjectDialogProps) {
+export function AddProjectDialog({ open, onOpenChange, defaultCategory = 'default', onProjectCreate }: AddProjectDialogProps) {
   const [projectName, setProjectName] = useState('')
   const [projectColor, setProjectColor] = useState(PROJECT_COLORS[0])
   const [projectDescription, setProjectDescription] = useState('')
+  const [projectCategory, setProjectCategory] = useState<ProjectCategory>(defaultCategory)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -33,9 +43,10 @@ export function AddProjectDialog({ open, onOpenChange, onProjectCreate }: AddPro
       setProjectName('')
       setProjectColor(PROJECT_COLORS[0])
       setProjectDescription('')
+      setProjectCategory(defaultCategory)
       setSaving(false)
     }
-  }, [open])
+  }, [open, defaultCategory])
 
   async function handleProjectCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -46,6 +57,7 @@ export function AddProjectDialog({ open, onOpenChange, onProjectCreate }: AddPro
         projectName.trim(),
         projectColor,
         projectDescription.trim() || null,
+        projectCategory,
       )
       onOpenChange(false)
     } catch {
@@ -73,6 +85,25 @@ export function AddProjectDialog({ open, onOpenChange, onProjectCreate }: AddPro
               autoFocus
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select value={projectCategory} onValueChange={(v) => setProjectCategory(v as ProjectCategory)}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROJECT_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                      {cat.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

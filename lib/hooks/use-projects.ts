@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Project } from "@/lib/types/database";
+import type { Project, ProjectCategory } from "@/lib/types/database";
 
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -23,7 +23,12 @@ export function useProjects() {
     fetchProjects();
   }, [fetchProjects]);
 
-  async function createProject(name: string, color: string, description?: string | null) {
+  async function createProject(
+    name: string,
+    color: string,
+    description?: string | null,
+    category: ProjectCategory = "default",
+  ) {
     const supabase = createClient();
     const {
       data: { user },
@@ -35,6 +40,7 @@ export function useProjects() {
       description: description ?? null,
       status: "active",
       color,
+      category,
     });
     await fetchProjects();
   }

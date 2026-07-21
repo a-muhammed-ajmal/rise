@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   CheckSquare,
+  FolderOpen,
   DollarSign,
   Heart,
   Target,
@@ -33,6 +34,7 @@ const LEFT_ITEMS = [
 const RIGHT_ITEM = { href: "/finance", label: "Finance", icon: DollarSign };
 
 const MORE_ITEMS = [
+  { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/wellness", label: "Wellness", icon: Heart },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/analytics", label: "Analytics", icon: BarChart2 },

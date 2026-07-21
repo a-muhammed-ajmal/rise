@@ -20,9 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { PROJECT_COLORS } from './task-constants'
+import { PROJECT_COLORS, PROJECT_CATEGORIES } from './task-constants'
 import { cn } from '@/lib/utils'
-import type { Project } from '@/lib/types/database'
+import type { Project, ProjectCategory } from '@/lib/types/database'
 
 type ProjectStatus = Project['status']
 
@@ -30,7 +30,7 @@ interface ProjectFormProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   initial: Project | null
-  onSaved: (name: string, color: string, description: string | null, status: ProjectStatus) => Promise<void>
+  onSaved: (name: string, color: string, description: string | null, status: ProjectStatus, category: ProjectCategory) => Promise<void>
 }
 
 export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFormProps) {
@@ -38,6 +38,7 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
   const [color, setColor] = useState(PROJECT_COLORS[0])
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<ProjectStatus>('active')
+  const [category, setCategory] = useState<ProjectCategory>('default')
   const [saving, setSaving] = useState(false)
 
   const [lastInitialId, setLastInitialId] = useState<string | null>(null)
@@ -48,11 +49,13 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
       setColor(initial.color)
       setDescription(initial.description ?? '')
       setStatus(initial.status)
+      setCategory(initial.category ?? 'default')
     } else {
       setName('')
       setColor(PROJECT_COLORS[0])
       setDescription('')
       setStatus('active')
+      setCategory('default')
     }
   }
 
@@ -60,7 +63,7 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
     e.preventDefault()
     if (!name.trim()) return
     setSaving(true)
-    await onSaved(name.trim(), color, description.trim() || null, status)
+    await onSaved(name.trim(), color, description.trim() || null, status, category)
     setSaving(false)
     onOpenChange(false)
   }
@@ -84,6 +87,26 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
               required
             />
           </div>
+
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select value={category} onValueChange={(v) => setCategory(v as ProjectCategory)}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROJECT_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                      {cat.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label>Color</Label>
             <div className="flex gap-2 flex-wrap">
@@ -104,6 +127,7 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
               ))}
             </div>
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="pf-desc">Description</Label>
             <Textarea
@@ -114,6 +138,7 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
+
           <div className="space-y-2">
             <Label>Status</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as ProjectStatus)}>
@@ -127,6 +152,7 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
               </SelectContent>
             </Select>
           </div>
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel

@@ -30,17 +30,17 @@ import { DateTimePicker } from './DateTimePicker'
 import { DurationPicker } from './DurationPicker'
 import { RepeatEditor } from './RepeatEditor'
 import { describeRecurrence } from '@/lib/recurrence'
-import { PRIORITY_MAP, PRIORITY_CONFIG } from './task-constants'
+import { PRIORITY_MAP, PRIORITY_CONFIG, PROJECT_CATEGORIES } from './task-constants'
 import { formatRelativeDate, display12h, todayISO } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useTasks } from '@/lib/hooks/use-tasks'
-import type { Task, Subtask, TaskAttachment } from '@/lib/types/database'
+import type { Task, Subtask, TaskAttachment, ProjectCategory } from '@/lib/types/database'
 
 interface TaskPopupProps {
   task?: Task | null
-  projects: Array<{ id: string; name: string; color: string }>
+  projects: Array<{ id: string; name: string; color: string; category: ProjectCategory }>
   defaultProjectId?: string | null
   onClose: () => void
   onCreate: (data: Partial<Task>) => Promise<void>
@@ -61,6 +61,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
   const [title, setTitle] = useState(liveTask?.title ?? '')
   const [description, setDescription] = useState(liveTask?.description ?? '')
   const [priority, setPriority] = useState<Task['priority']>(liveTask?.priority ?? 'P4')
+  const [area, setArea] = useState<ProjectCategory>(liveTask?.area ?? 'default')
   const [projectId, setProjectId] = useState(liveTask?.project_id ?? defaultProjectId ?? '')
   const [dueDate, setDueDate] = useState(liveTask?.due_date ?? '')
   const [dueTime, setDueTime] = useState(liveTask?.due_time ?? '')
@@ -104,6 +105,12 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
     return Array.from(s).sort()
   }, [tasks])
 
+  // Projects filtered to the selected area
+  const filteredProjects = useMemo(
+    () => projects.filter((p) => (p.category ?? 'default') === area),
+    [projects, area],
+  )
+
   // Auto-grow title textarea
   useEffect(() => {
     const el = titleRef.current
@@ -138,10 +145,29 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
     commit({ priority: p })
   }
 
+  function handleAreaChange(v: ProjectCategory) {
+    setArea(v)
+    commit({ area: v })
+    // Clear project if it no longer belongs to the new area
+    const currentProj = projects.find((p) => p.id === projectId)
+    if (currentProj && (currentProj.category ?? 'default') !== v) {
+      setProjectId('')
+      commit({ project_id: null })
+    }
+  }
+
   function handleProjectChange(v: string | null) {
     const id = (!v || v === 'none') ? null : v
     setProjectId(id ?? '')
     commit({ project_id: id })
+    // Auto-sync area to match the picked project's category
+    if (id) {
+      const proj = projects.find((p) => p.id === id)
+      if (proj && (proj.category ?? 'default') !== area) {
+        setArea(proj.category ?? 'default')
+        commit({ area: proj.category ?? 'default' })
+      }
+    }
   }
 
   function handleDateChange(v: { date?: string; time?: string }) {
@@ -306,6 +332,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
           : null,
         estimated_time: estimatedMinutes ? parseInt(estimatedMinutes, 10) : null,
         project_id: projectId || null,
+        area,
         labels,
         subtasks,
         attachments,
@@ -360,6 +387,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                 : null,
               estimated_time: estimatedMinutes ? parseInt(estimatedMinutes, 10) : null,
               project_id: projectId || null,
+              area,
               labels,
               subtasks,
               attachments,
@@ -719,29 +747,62 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                 </div>
               </div>
 
-              {/* Project */}
-              {projects.length > 0 && (
+              {/* Area + Project */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* Area */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    <Tag className="w-3.5 h-3.5 inline mr-1" />
-                    Project
-                  </Label>
-                  <Select value={projectId || 'none'} onValueChange={handleProjectChange}>
+                  <Label className="text-xs text-muted-foreground">Area</Label>
+                  <Select value={area} onValueChange={(v) => handleAreaChange(v as ProjectCategory)}>
                     <SelectTrigger className="h-9 w-full text-xs">
-                      <SelectValue placeholder="No project" />
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {(() => {
+                          const cat = PROJECT_CATEGORIES.find((c) => c.value === area)
+                          return cat ? (
+                            <>
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                              <span className="truncate">{cat.label}</span>
+                            </>
+                          ) : <SelectValue />
+                        })()}
+                      </div>
                     </SelectTrigger>
                     <SelectContent alignItemWithTrigger={false}>
-                      <SelectItem value="none" className="text-xs">Inbox</SelectItem>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={p.id} className="text-xs">
-                          <span className="w-2 h-2 rounded-full inline-block mr-1.5 shrink-0" style={{ backgroundColor: p.color }} />
-                          {p.name}
+                      {PROJECT_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value} className="text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                            {cat.label}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+
+                {/* Project — filtered to selected area */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    <Tag className="w-3.5 h-3.5 inline mr-1" aria-hidden="true" />
+                    Project
+                  </Label>
+                  <Select value={projectId || 'none'} onValueChange={handleProjectChange}>
+                    <SelectTrigger className="h-9 w-full text-xs">
+                      <SelectValue placeholder="Inbox" />
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectItem value="none" className="text-xs">Inbox</SelectItem>
+                      {filteredProjects.map((p) => (
+                        <SelectItem key={p.id} value={p.id} className="text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                            {p.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
               {/* Labels + Attachments — same row, no labels above */}
               <div className="space-y-2">

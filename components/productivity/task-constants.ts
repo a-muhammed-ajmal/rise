@@ -1,4 +1,22 @@
-import type { Task } from '@/lib/types/database'
+import type { Task, ProjectCategory } from '@/lib/types/database'
+
+export type ProjectCategoryMeta = {
+  value: ProjectCategory
+  label: string
+  color: string
+  bg: string
+}
+
+export const PROJECT_CATEGORIES: ProjectCategoryMeta[] = [
+  { value: 'default',      label: 'Default',      color: '#6B7280', bg: 'rgba(107,114,128,0.12)' },
+  { value: 'personal',     label: 'Personal',     color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)'  },
+  { value: 'professional', label: 'Professional', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)'  },
+  { value: 'financial',    label: 'Financial',    color: '#10B981', bg: 'rgba(16,185,129,0.12)'  },
+  { value: 'wellness',     label: 'Wellness',     color: '#14B8A6', bg: 'rgba(20,184,166,0.12)'  },
+  { value: 'relationship', label: 'Relationship', color: '#EC4899', bg: 'rgba(236,72,153,0.12)'  },
+  { value: 'vision',       label: 'Vision',       color: '#F59E0B', bg: 'rgba(245,158,11,0.12)'  },
+  { value: 'legal',        label: 'Legal',        color: '#EF4444', bg: 'rgba(239,68,68,0.12)'   },
+]
 
 export const PRIORITY_MAP: Array<{ value: Task['priority'] }> = [
   { value: 'P1' },

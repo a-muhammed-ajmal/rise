@@ -19,7 +19,8 @@ The AI isn't just a chatbot. It can create a task, log an expense, mark a habit 
 | Module | What it does |
 | --- | --- |
 | **Dashboard** | Daily overview — tasks due, habits to log, goal progress, and recent transactions at a glance |
-| **Productivity** | Tasks with priority, due dates, subtasks, tags, attachments, and Projects (color-coded grouping). Filter tabs (Today / All / Done / Projects), sort, group, and list / grid / calendar views |
+| **Productivity** | Tasks with priority, due dates, subtasks, tags, attachments. Filter tabs (Today / All / Done), sort, group, and list / grid / calendar views |
+| **Projects** | Dedicated workspace with 8 fixed category tabs (personal, professional, financial, wellness, relationship, vision, legal, default); project cards per category; task drill-down per project; Area field on tasks filters the project dropdown |
 | **Finance** | AED income/expense/transfer ledger with category budgets, debt tracking, and live wallet balances |
 | **Wellness** | Habit tracker with daily/weekly schedules, reminder times, streak logic, and 30-day progress view |
 | **Goals** | Goal cards with % progress slider, milestone tracking, and journal entries with mood/energy ratings |
@@ -110,7 +111,7 @@ RISE uses a locked light-first orange brand system (full spec in `.claude/skills
 
 ## Database Schema
 
-26 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–017:
+26 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–019:
 
 ```text
 projects · tasks · goals · milestones · reviews · journal_entries
@@ -260,7 +261,7 @@ MCP_OAUTH_CLIENT_ID=       # OAuth client for claude.ai web / Desktop (any id)
 MCP_OAUTH_CLIENT_SECRET=   # OAuth client secret (long random string)
 ```
 
-Apply migrations 001–017 in your Supabase SQL editor (in order), then:
+Apply migrations 001–019 in your Supabase SQL editor (in order), then:
 
 ```bash
 npm run dev   # Turbopack dev server → http://localhost:3000
@@ -319,5 +320,5 @@ The Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the daily digest endp
 | Test count | 608 passing |
 | DB tables | 26 (RLS on all) |
 | AI tools | 77 (60 AUTO + 17 APPROVAL) |
-| Migrations | 17 (001–017) |
-| Last phase | Phase 14 — Overview redesign: Today's Focus, minimal task card, quick-add FAB |
+| Migrations | 19 (001–019) |
+| Last phase | Phase 15 — Projects module: 8-category tab workspace; task Area field + filtered project dropdown |

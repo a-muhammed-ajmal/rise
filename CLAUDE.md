@@ -154,6 +154,7 @@ app/
     assistant/              Gemini AI chat view utilizing SSE streaming interfaces
     analytics/              Cross-modular reporting graphics powered by Recharts
     settings/               User localization preferences and application controls
+    projects/               Projects workspace with 8 fixed category tabs, project grid, and task drill-down
   api/ai/chat/              SSE chat route — approval gate (HMAC token), tool dispatch, Gemini streaming
   api/[transport]/          Remote MCP endpoint (/api/mcp) — static-token OR OAuth 2.1 auth, exposes AUTO_TOOLS only
   api/oauth/                OAuth 2.1 authorization server (authorize + token) for the claude.ai web / Desktop connector
@@ -193,7 +194,7 @@ lib/
   format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h)
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities
 
-supabase/migrations/        001 through 017 (append-only; execute via Supabase SQL editor)
+supabase/migrations/        001 through 019 (append-only; execute via Supabase SQL editor)
 supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
 proxy.ts                    Next.js 16 middleware entry point — calls lib/supabase/middleware.ts

@@ -8,6 +8,10 @@ export type Json =
 
 // ─── Standalone row types (avoids circular reference in Database generic) ────
 
+export type ProjectCategory =
+  | 'personal' | 'professional' | 'financial' | 'wellness'
+  | 'relationship' | 'vision' | 'legal' | 'default';
+
 type ProjectRow = {
   id: string;
   user_id: string;
@@ -15,6 +19,7 @@ type ProjectRow = {
   description: string | null;
   status: "active" | "completed" | "archived";
   color: string;
+  category: ProjectCategory;
   goal_id: string | null;
   created_at: string;
   updated_at: string;
@@ -101,6 +106,7 @@ type TaskRow = {
   location: string | null;
   linked_tasks: LinkedTask[];
   project_id: string | null;
+  area: ProjectCategory;
   created_at: string;
   updated_at: string;
 };

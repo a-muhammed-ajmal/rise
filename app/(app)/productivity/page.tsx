@@ -8,10 +8,7 @@ import { TaskCard } from "@/components/productivity/task-card";
 import { TaskPopup } from "@/components/productivity/task-popup";
 import { TaskToolbar } from "@/components/productivity/task-toolbar";
 import { TaskCalendar } from "@/components/productivity/task-calendar";
-import { AddProjectDialog } from "@/components/productivity/add-project-dialog";
-import { ProjectForm } from "@/components/productivity/project-form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,21 +17,14 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Plus,
   Inbox,
   List,
   Loader2,
-  FolderOpen,
-  FolderPlus,
-  MoreVertical,
-  Pencil,
-  Trash2,
   Star,
   CheckCircle2,
   LayoutGrid,
@@ -48,10 +38,9 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { PROJECT_COLOR_CLASS } from "@/components/productivity/task-constants";
 import type { Project, Task } from "@/lib/types/database";
 
-type Filter = "today" | "all" | "completed" | "projects";
+type Filter = "today" | "all" | "completed";
 type ViewMode = "list" | "grid" | "calendar";
 type SortBy = "priority" | "due_date" | "created_at" | "title" | "estimated";
 type GroupBy = "none" | "priority" | "project" | "status" | "tag";
@@ -148,36 +137,21 @@ export default function ProductivityPage() {
   const [sortBy, setSortBy] = useState<SortBy>("priority");
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
 
-  // New project dialog
-  const [addProjectOpen, setAddProjectOpen] = useState(false);
-
   // Single shared task popup — creatingTask = create mode, detailTaskId = edit/detail mode
   const [creatingTask, setCreatingTask] = useState(false);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  // Project edit / delete
-  const [projectFormOpen, setProjectFormOpen] = useState(false);
-  const [editProject, setEditProject] = useState<Project | null>(null);
-  const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
 
   // Today's Focus completed count
   const [completedFocusCount, setCompletedFocusCount] = useState(0);
 
-  const hookFilter =
-    filter === "projects" ? (selectedProject ? "project" : "all") :
-    filter === "completed" ? "completed" : filter;
-
   const {
     tasks, loading, createTask, updateTask, completeTask, deleteTask,
     duplicateTask, bulkComplete, bulkDelete, bulkUpdatePriority, starTask,
-  } = useTasks(hookFilter as Parameters<typeof useTasks>[0], selectedProject?.id);
+  } = useTasks(filter === "completed" ? "completed" : filter);
 
-  const {
-    projects, loading: projectsLoading, createProject, updateProject, deleteProject,
-  } = useProjects();
+  const { projects } = useProjects();
 
   const detailTask = useMemo(
     () => (detailTaskId ? tasks.find((t) => t.id === detailTaskId) ?? null : null),
@@ -263,15 +237,6 @@ export default function ProductivityPage() {
     toast.success("Priority updated");
   }
 
-  async function handleDeleteProject() {
-    if (!deleteProjectId) return;
-    await deleteProject(deleteProjectId);
-    if (selectedProject?.id === deleteProjectId) setSelectedProject(null);
-    toast.success("Project deleted");
-  }
-
-  const showTaskList = filter !== "projects" || selectedProject !== null;
-
   // ── Shared card props ───────────────────────────────────────────────────────
 
   function commonCardProps(task: Task) {
@@ -293,13 +258,9 @@ export default function ProductivityPage() {
     setCreatingTask(true);
   }
 
-  function openNewProject() {
-    setAddProjectOpen(true);
-  }
-
   // ── Toolbar strip ───────────────────────────────────────────────────────────
 
-  const toolbarStrip = showTaskList && (
+  const toolbarStrip = (
     <div className="flex items-center gap-2 flex-wrap">
       {/* View mode */}
       <div className="flex items-center rounded-lg border border-border overflow-hidden">
@@ -420,9 +381,7 @@ export default function ProductivityPage() {
           Tasks
         </h1>
         <Button
-          onClick={() =>
-            filter === "projects" && !selectedProject ? openNewProject() : openNewTask()
-          }
+          onClick={() => openNewTask()}
           size="sm"
           className="gap-1.5"
         >
@@ -437,7 +396,6 @@ export default function ProductivityPage() {
           value={filter}
           onValueChange={(v) => {
             setFilter(v as Filter);
-            setSelectedProject(null);
             setBulkMode(false);
             setSelectedIds(new Set());
           }}
@@ -452,20 +410,17 @@ export default function ProductivityPage() {
             <TabsTrigger value="completed" className="flex-1 gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" /> Done
             </TabsTrigger>
-            <TabsTrigger value="projects" className="flex-1 gap-1.5">
-              <FolderOpen className="w-3.5 h-3.5" /> Projects
-            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
-      {/* Toolbar strip — always visible when task list is shown */}
-      {showTaskList && !loading && (
+      {/* Toolbar strip */}
+      {!loading && (
         <div className="slide-up stagger-2">{toolbarStrip}</div>
       )}
 
       {/* Active filter chips */}
-      {showTaskList && !loading && (sortBy !== "priority" || groupBy !== "none") && (
+      {!loading && (sortBy !== "priority" || groupBy !== "none") && (
         <div className="flex flex-wrap gap-1.5 slide-up">
           {sortBy !== "priority" && (
             <button
@@ -498,122 +453,8 @@ export default function ProductivityPage() {
         </div>
       )}
 
-      {/* Projects grid */}
-      {filter === "projects" && !selectedProject && (
-        <div className="slide-up stagger-3">
-          {projectsLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-mod-tasks" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {projects.map((project) => (
-                <Card
-                  key={project.id}
-                  className="card-hover cursor-pointer"
-                  onClick={() => setSelectedProject(project)}
-                >
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className={cn(
-                            "w-3 h-3 rounded-full shrink-0",
-                            PROJECT_COLOR_CLASS[project.color] ?? "bg-muted"
-                          )}
-                        />
-                        <p className="font-medium text-sm truncate">{project.name}</p>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="w-4 h-4" aria-hidden="true" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditProject(project);
-                              setProjectFormOpen(true);
-                            }}
-                          >
-                            <Pencil className="w-4 h-4 mr-2" aria-hidden="true" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteProjectId(project.id);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" aria-hidden="true" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    {project.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {project.description}
-                      </p>
-                    )}
-                    <Badge variant="outline" className="text-xs capitalize">
-                      {project.status}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {/* Dashed "Add Project" card */}
-              <button
-                type="button"
-                onClick={() => openNewProject()}
-                className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl
-                           border-2 border-dashed border-border/60
-                           hover:border-[var(--mod-tasks)] hover:bg-[var(--mod-tasks-tint)]/30
-                           transition-all min-h-[100px]
-                           text-muted-foreground hover:text-[var(--mod-tasks)]"
-                aria-label="Add new project"
-              >
-                <FolderPlus className="w-5 h-5" aria-hidden="true" />
-                <span className="text-xs font-medium">Add Project</span>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Project drill-down header */}
-      {filter === "projects" && selectedProject && (
-        <div className="flex items-center gap-2 slide-up">
-          <button
-            type="button"
-            onClick={() => setSelectedProject(null)}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            ← Projects
-          </button>
-          <span className="text-xs text-muted-foreground">/</span>
-          <div className="flex items-center gap-1.5">
-            <div
-              className={cn(
-                "w-2.5 h-2.5 rounded-full",
-                PROJECT_COLOR_CLASS[selectedProject.color] ?? "bg-muted"
-              )}
-            />
-            <span className="text-sm font-medium">{selectedProject.name}</span>
-          </div>
-          <Button size="sm" onClick={() => openNewTask()} className="ml-auto gap-1.5">
-            <Plus className="w-4 h-4" /> Add Task
-          </Button>
-        </div>
-      )}
-
       {/* Task content */}
-      {showTaskList && (
-        loading ? (
+      {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-mod-tasks" />
           </div>
@@ -629,7 +470,6 @@ export default function ProductivityPage() {
             <p className="text-muted-foreground text-sm">
               {filter === "today" ? "Nothing due today! 🎉" :
                filter === "completed" ? "No completed tasks yet." :
-               filter === "projects" && selectedProject ? "No tasks in this project." :
                "No active tasks."}
             </p>
             {filter !== "completed" && (
@@ -735,18 +575,12 @@ export default function ProductivityPage() {
             </p>
           </div>
         )
-      )}
+      }
 
       {/* FAB for mobile */}
       <button
         type="button"
-        onClick={() => {
-          if (filter === "projects" && !selectedProject) {
-            openNewProject();
-          } else {
-            openNewTask();
-          }
-        }}
+        onClick={() => openNewTask()}
         className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label="Add new"
       >
@@ -767,54 +601,17 @@ export default function ProductivityPage() {
         <TaskPopup
           task={detailTask}
           projects={projects}
-          defaultProjectId={selectedProject?.id ?? null}
+          defaultProjectId={null}
           onClose={() => {
             setDetailTaskId(null);
             setCreatingTask(false);
           }}
           onCreate={async (data) => {
-            await createTask({
-              ...data,
-              project_id: data.project_id ?? selectedProject?.id ?? null,
-            });
+            await createTask({ ...data, project_id: data.project_id ?? null });
             toast.success("Task added");
           }}
         />
       )}
-
-      {/* Add Project Dialog */}
-      <AddProjectDialog
-        open={addProjectOpen}
-        onOpenChange={setAddProjectOpen}
-        onProjectCreate={async (name, color, description) => {
-          await createProject(name, color, description);
-          toast.success("Project created");
-        }}
-      />
-
-      {/* Project Edit Form */}
-      <ProjectForm
-        open={projectFormOpen}
-        onOpenChange={(v) => {
-          setProjectFormOpen(v);
-          if (!v) setEditProject(null);
-        }}
-        initial={editProject}
-        onSaved={async (name, color, description, status) => {
-          if (editProject) {
-            await updateProject(editProject.id, { name, color, description, status });
-            toast.success("Project updated");
-          }
-        }}
-      />
-
-      <ConfirmDialog
-        open={!!deleteProjectId}
-        onOpenChange={(v) => { if (!v) setDeleteProjectId(null); }}
-        title="Delete project?"
-        description="The project will be deleted. Tasks inside will remain but lose their project assignment."
-        onConfirm={handleDeleteProject}
-      />
     </div>
   );
 }
