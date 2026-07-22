@@ -118,6 +118,14 @@ export function TaskCard({
           {task.title}
         </p>
 
+        {/* Subtask progress */}
+        {task.subtasks && task.subtasks.length > 0 && (
+          <span className="flex items-center gap-1 text-xs mt-0.5 text-muted-foreground">
+            <Check className="w-3 h-3" aria-hidden="true" />
+            {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length}
+          </span>
+        )}
+
         {/* Due date / time — green until the deadline, red after */}
         {task.due_date && (
           <span

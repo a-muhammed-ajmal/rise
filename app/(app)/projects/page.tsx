@@ -63,6 +63,15 @@ export default function ProjectsPage() {
     [projects],
   );
 
+  // Task count per project (for kanban cards) — derived from the all-tasks fetch
+  const taskCountByProject = useMemo(() => {
+    const counts: Record<string, number> = {};
+    tasks.forEach((t) => {
+      if (t.project_id) counts[t.project_id] = (counts[t.project_id] ?? 0) + 1;
+    });
+    return counts;
+  }, [tasks]);
+
   const detailTask = useMemo(
     () => (detailTaskId ? tasks.find((t) => t.id === detailTaskId) ?? null : null),
     [detailTaskId, tasks],
@@ -246,7 +255,12 @@ export default function ProjectsPage() {
                         <Badge variant="outline" className="text-[10px] capitalize py-0 h-4">
                           {project.status}
                         </Badge>
-                        <span className="text-[10px] text-muted-foreground">
+                        {(taskCountByProject[project.id] ?? 0) > 0 && (
+                          <span className="text-[10px] font-medium text-muted-foreground">
+                            {taskCountByProject[project.id]} task{taskCountByProject[project.id] !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground ml-auto">
                           {formatDate(project.created_at)}
                         </span>
                       </div>
@@ -333,7 +347,13 @@ export default function ProjectsPage() {
           defaultProjectId={selectedProject?.id ?? null}
           onClose={() => { setDetailTaskId(null); setCreatingTask(false); }}
           onCreate={async (data) => {
-            await createTask({ ...data, project_id: data.project_id ?? selectedProject?.id ?? null });
+            const projectId = data.project_id ?? selectedProject?.id ?? null;
+            const proj = projects.find((p) => p.id === projectId);
+            await createTask({
+              ...data,
+              project_id: projectId,
+              area: proj ? (proj.category ?? "default") : (data.area ?? "default"),
+            });
             toast.success("Task added");
           }}
           refresh={refresh}

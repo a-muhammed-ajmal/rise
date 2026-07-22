@@ -9,11 +9,11 @@ Living specification for the RISE codebase. Describes what is currently implemen
 | Metric | Value |
 | --- | --- |
 | Test count | 609 passing |
-| Line coverage | 95.26% on `lib/**` |
+| Line coverage | 95.04% on `lib/**` |
 | Migrations | 19 (001–019) |
 | DB tables | 26 (across 19 migrations) |
 | AI tools | 60 AUTO + 17 APPROVAL = 77 total |
-| Last feature shipped | Phase 15 — Projects module: dedicated /projects page with 8 category tabs; task Area field + project-filtering in TaskPopup (2026-07-22) |
+| Last feature shipped | Phase 16 — Task UX overhaul: binary task state, redesigned productivity page with mobile-first sort/filter/bulk, P2 color fix, DateTimePicker dark-mode fix, focus section Star icon fix (2026-07-22) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -377,3 +377,4 @@ Candidate areas (not prioritized):
 | 13 | Task form v3: recurrence engine, rich popup, responsive modal | 2026-07-19 | `lib/recurrence.ts` (RRULE parser/formatter), `lib/tasks/validate.ts` (task validation), `components/productivity/RepeatEditor.tsx` (repeat picker), `components/productivity/DateTimePicker.tsx` (quick shortcuts), `components/productivity/task-popup.tsx` (RepeatEditor wired), `components/ui/responsive-modal.tsx`, `lib/hooks/use-is-desktop.ts`, `supabase/migrations/017_task_form_v3.sql` (task_labels table, tasks.reminders, tasks.description_rich) |
 | 14 | Overview redesign: Today's Focus, minimal task card, quick-add FAB | 2026-07-21 | `components/dashboard/focus-tasks-section.tsx` (new; is_focus/focus_date, cap 3, auto-clears at midnight), `components/dashboard/quick-add-fab.tsx` (new; all-entity quick add, `?add=` intent), `components/productivity/task-card.tsx` (minimal: priority-colored check, green→red due date, no pill/star/menu), `components/productivity/task-popup.tsx` (star button → toggleFocus with today-only + max-3 guards), `components/dashboard/tasks-dashboard-section.tsx`, `lib/format.ts` (isPastDeadline), `app/(app)/page.tsx` (Focus → Habits → Tasks order + FAB), wellness/goals/finance/knowledge/crm pages (`?add=` handlers) |
 | 15 | Projects module + task Area field | 2026-07-22 | `app/(app)/projects/page.tsx` (new; 8-category tabs, project grid, task drill-down per project), `components/layout/nav-items.ts` (Projects sidebar link), `components/layout/bottom-nav.tsx` (Projects BottomNav entry), `supabase/migrations/018_add_project_category.sql` (category on projects), `supabase/migrations/019_add_task_area.sql` (area on tasks), `lib/types/database.ts` (ProjectCategory union type, category on Project, area on Task), `components/productivity/task-popup.tsx` (Area select + filtered Project dropdown), `app/(app)/productivity/page.tsx` (project grid extracted) |
+| 16 | Task UX overhaul | 2026-07-22 | `components/productivity/task-constants.ts` (P2 color #22C55E → #FF6535), `components/productivity/task-card.tsx` (subtask progress badge, clean binary check), `components/productivity/task-toolbar.tsx` (totalCount + onSelectAll props, colored priority dots), `components/productivity/task-popup.tsx` (async completeTask, min-h-[44px] footer, null-safe star guard), `components/productivity/DateTimePicker.tsx` (bg-card dark-mode fix, TimeInputs extracted to module level, dial/manual render gating), `app/(app)/productivity/page.tsx` (combined Sort+Group dropdown, orange-dot indicator, FAB hidden in bulk mode, grid-cols-2), `components/dashboard/focus-tasks-section.tsx` (Target → Star icon), `lib/hooks/use-tasks.ts` (error early-return prevents silent list wipe) |

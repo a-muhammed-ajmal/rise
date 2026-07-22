@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Pencil } from 'lucide-react'
 import {
   Dialog,
@@ -41,9 +41,7 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
   const [category, setCategory] = useState<ProjectCategory>('default')
   const [saving, setSaving] = useState(false)
 
-  const [lastInitialId, setLastInitialId] = useState<string | null>(null)
-  if ((initial?.id ?? null) !== lastInitialId) {
-    setLastInitialId(initial?.id ?? null)
+  useEffect(() => {
     if (initial) {
       setName(initial.name)
       setColor(initial.color)
@@ -57,7 +55,8 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
       setStatus('active')
       setCategory('default')
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial?.id]) // intentionally keyed on id — avoids re-init on referential identity changes
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

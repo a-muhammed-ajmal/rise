@@ -289,10 +289,10 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
 
   // ── Complete / Reopen / Delete / Duplicate ────────────────────────────────
 
-  function handleComplete() {
+  async function handleComplete() {
     if (!liveTask) return
     setCompleting(true)
-    completeTask(liveTask.id)
+    await completeTask(liveTask.id)
     refresh?.()
     setTimeout(onClose, 1500)
   }
@@ -428,7 +428,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                   <>
                     <button
                       type="button"
-                      onClick={() => handleToggleFocus(liveTask)}
+                      onClick={() => liveTask && handleToggleFocus(liveTask)}
                       className={cn(
                         'tap-target shrink-0 transition-colors',
                         liveTask.is_focus
@@ -971,25 +971,17 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
               <button
                 type="button"
                 onClick={onClose}
-                className="h-9 px-3 text-xs rounded-md hover:bg-accent transition-colors text-muted-foreground"
+                className="min-h-[44px] px-3 text-xs rounded-md hover:bg-accent transition-colors text-muted-foreground"
               >
                 Close
               </button>
-              {isCreate ? (
+              {isCreate && (
                 <button
                   type="submit"
                   disabled={saving || !title.trim()}
-                  className="h-9 px-4 text-xs rounded-md font-semibold bg-brand text-white hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="min-h-[44px] px-4 text-xs rounded-md font-semibold bg-brand text-white hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Adding…' : 'Add task'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="h-9 px-4 text-xs rounded-md font-semibold bg-brand text-white hover:bg-brand-hover transition-colors"
-                >
-                  Update task
                 </button>
               )}
             </div>
@@ -1054,7 +1046,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       )}
 
       {/* Delete confirmation — edit mode only */}
-      {!isCreate && (
+      {liveTask && (
         <ConfirmDialog
           open={confirmDelete}
           onOpenChange={setConfirmDelete}

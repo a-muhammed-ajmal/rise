@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Target, Loader2 } from "lucide-react";
+import { Star, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,7 +63,7 @@ export function FocusTasksSection() {
             className="flex h-6 w-6 items-center justify-center rounded-md bg-mod-tasks-tint"
             aria-hidden="true"
           >
-            <Target className="h-3.5 w-3.5 text-mod-tasks" aria-hidden="true" />
+            <Star className="h-3.5 w-3.5 text-mod-tasks" aria-hidden="true" />
           </div>
           Today&apos;s Focus
         </CardTitle>

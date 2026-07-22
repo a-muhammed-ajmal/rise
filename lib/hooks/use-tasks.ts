@@ -48,7 +48,12 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       }
     }
 
-    const { data } = await query
+    const { data, error } = await query
+    if (error) {
+      console.error('[use-tasks] fetch error:', error.message)
+      setLoading(false)
+      return
+    }
     setTasks((data ?? []).map(coerceTask))
     setLoading(false)
   }, [filter, projectId])

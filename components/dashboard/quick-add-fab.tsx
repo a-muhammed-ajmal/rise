@@ -162,7 +162,11 @@ function QuickAddPanel({
       <AddProjectDialog
         open={active === "project"}
         onOpenChange={(v) => !v && setActive(null)}
-        onProjectCreate={createProject}
+        onProjectCreate={async (name, color, description, category) => {
+          await createProject(name, color, description, category);
+          toast.success("Project created");
+          setActive(null);
+        }}
       />
 
       <TransactionForm

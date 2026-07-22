@@ -18,6 +18,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -29,10 +30,8 @@ import {
   CheckCircle2,
   LayoutGrid,
   Calendar,
-  ArrowUpDown,
-  Layers,
+  SlidersHorizontal,
   CheckSquare,
-  Square,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -100,7 +99,6 @@ function groupTasks(
   if (groupBy === "none") return [{ key: "all", label: "", tasks }];
 
   const groups = new Map<string, Task[]>();
-
   tasks.forEach((task) => {
     let key = "";
     switch (groupBy) {
@@ -119,8 +117,7 @@ function groupTasks(
       if (groupBy === "priority") label = `${key} – ${key === "P1" ? "Urgent" : key === "P2" ? "High" : key === "P3" ? "Medium" : "Low"}`;
       if (groupBy === "status") label = STATUS_LABEL[key] ?? key;
       if (groupBy === "project") {
-        if (key === "__none__") label = "No Project";
-        else label = projects.find((p) => p.id === key)?.name ?? "Unknown Project";
+        label = key === "__none__" ? "No Project" : (projects.find((p) => p.id === key)?.name ?? "Unknown Project");
       }
       if (groupBy === "tag") label = key === "__none__" ? "No Tag" : `#${key}`;
       return { key, label, tasks };
@@ -137,13 +134,10 @@ export default function ProductivityPage() {
   const [sortBy, setSortBy] = useState<SortBy>("priority");
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
 
-  // Single shared task popup — creatingTask = create mode, detailTaskId = edit/detail mode
   const [creatingTask, setCreatingTask] = useState(false);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  // Today's Focus completed count
   const [completedFocusCount, setCompletedFocusCount] = useState(0);
 
   const {
@@ -158,8 +152,6 @@ export default function ProductivityPage() {
     [detailTaskId, tasks]
   );
 
-  // ── Sorting + grouping ──────────────────────────────────────────────────────
-
   const processedTasks = useMemo(() => sortTasks(tasks, sortBy), [tasks, sortBy]);
 
   const groups = useMemo(
@@ -167,24 +159,20 @@ export default function ProductivityPage() {
     [processedTasks, groupBy, projects]
   );
 
-  // ── Today: starred focus tasks ──────────────────────────────────────────────
-
+  // Today's focus section
   const starredTodayTasks = useMemo(
     () => filter === "today"
       ? tasks.filter((t) => t.is_focus && t.focus_date === todayISO()).slice(0, 3)
       : [],
     [tasks, filter]
   );
-  const starredIds = useMemo(
-    () => new Set(starredTodayTasks.map((t) => t.id)),
-    [starredTodayTasks]
-  );
+  const starredIds = useMemo(() => new Set(starredTodayTasks.map((t) => t.id)), [starredTodayTasks]);
   const regularTodayTasks = useMemo(
     () => filter === "today" ? processedTasks.filter((t) => !starredIds.has(t.id)) : processedTasks,
     [processedTasks, starredIds, filter]
   );
 
-  // Refresh completed focus count when tasks change (realtime-driven)
+  // Completed focus count (for progress bar)
   useEffect(() => {
     if (filter !== "today") return;
     const supabase = createClient();
@@ -199,8 +187,7 @@ export default function ProductivityPage() {
       .then(({ count }) => setCompletedFocusCount(count ?? 0));
   }, [filter, tasks]);
 
-  // ── Bulk helpers ────────────────────────────────────────────────────────────
-
+  // ── Bulk helpers ───────────────────────────────────────────────────────────
   function toggleBulkMode() {
     setBulkMode((v) => !v);
     setSelectedIds(new Set());
@@ -215,20 +202,18 @@ export default function ProductivityPage() {
     });
   }
 
-  function selectAll() {
-    setSelectedIds(new Set(tasks.map((t) => t.id)));
-  }
-
   async function handleBulkComplete() {
+    const count = selectedIds.size;
     await bulkComplete(Array.from(selectedIds));
     setSelectedIds(new Set());
-    toast.success(`${selectedIds.size} task(s) completed`);
+    toast.success(`${count} task${count !== 1 ? "s" : ""} completed`);
   }
 
   async function handleBulkDelete() {
+    const count = selectedIds.size;
     await bulkDelete(Array.from(selectedIds));
     setSelectedIds(new Set());
-    toast.success(`${selectedIds.size} task(s) deleted`);
+    toast.success(`${count} task${count !== 1 ? "s" : ""} deleted`);
   }
 
   async function handleBulkPriority(p: Task["priority"]) {
@@ -236,8 +221,6 @@ export default function ProductivityPage() {
     setSelectedIds(new Set());
     toast.success("Priority updated");
   }
-
-  // ── Shared card props ───────────────────────────────────────────────────────
 
   function commonCardProps(task: Task) {
     return {
@@ -254,107 +237,14 @@ export default function ProductivityPage() {
     };
   }
 
-  function openNewTask() {
-    setCreatingTask(true);
-  }
+  // ── Derived state for toolbar ──────────────────────────────────────────────
+  const hasActiveFilters = sortBy !== "priority" || groupBy !== "none";
 
-  // ── Toolbar strip ───────────────────────────────────────────────────────────
-
-  const toolbarStrip = (
-    <div className="flex items-center gap-2 flex-wrap">
-      {/* View mode */}
-      <div className="flex items-center rounded-lg border border-border overflow-hidden">
-        {([
-          { mode: "list",     icon: <List className="w-3.5 h-3.5" /> },
-          { mode: "grid",     icon: <LayoutGrid className="w-3.5 h-3.5" /> },
-          { mode: "calendar", icon: <Calendar className="w-3.5 h-3.5" /> },
-        ] as { mode: ViewMode; icon: React.ReactNode }[]).map(({ mode, icon }) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => setView(mode)}
-            className={cn(
-              "p-1.5 transition-colors",
-              view === mode ? "bg-primary text-primary-foreground" : "hover:bg-accent text-muted-foreground"
-            )}
-            aria-label={`${mode} view`}
-          >
-            {icon}
-          </button>
-        ))}
-      </div>
-
-      {/* Sort */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md border border-border bg-background hover:bg-accent transition-colors font-medium">
-          <ArrowUpDown className="w-3.5 h-3.5" />
-          Sort
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-            {(Object.entries(SORT_LABELS) as [SortBy, string][]).map(([val, label]) => (
-              <DropdownMenuItem
-                key={val}
-                onClick={() => setSortBy(val)}
-                className={sortBy === val ? "font-semibold" : ""}
-              >
-                {label}
-                {sortBy === val && <span className="ml-auto text-primary">✓</span>}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Group */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md border border-border bg-background hover:bg-accent transition-colors font-medium">
-          <Layers className="w-3.5 h-3.5" />
-          Group
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Group by</DropdownMenuLabel>
-            {(Object.entries(GROUP_LABELS) as [GroupBy, string][]).map(([val, label]) => (
-              <DropdownMenuItem
-                key={val}
-                onClick={() => setGroupBy(val)}
-                className={groupBy === val ? "font-semibold" : ""}
-              >
-                {label}
-                {groupBy === val && <span className="ml-auto text-primary">✓</span>}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Bulk toggle */}
-      <Button
-        variant={bulkMode ? "default" : "outline"}
-        size="sm"
-        className="gap-1.5 h-8 text-xs ml-auto"
-        onClick={toggleBulkMode}
-      >
-        {bulkMode ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
-        {bulkMode ? "Done" : "Select"}
-      </Button>
-
-      {bulkMode && tasks.length > 0 && (
-        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={selectAll}>
-          All
-        </Button>
-      )}
-    </div>
-  );
-
-  // ── Task list renderer ──────────────────────────────────────────────────────
-
+  // ── Task list renderer ─────────────────────────────────────────────────────
   function renderTaskGroup(groupedTasks: Task[]) {
     if (view === "grid") {
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {groupedTasks.map((task) => (
             <TaskCard key={task.id} {...commonCardProps(task)} view="grid" />
           ))}
@@ -372,7 +262,7 @@ export default function ProductivityPage() {
 
   return (
     <div className="p-3 md:p-5 max-w-2xl space-y-3">
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-tasks-tint flex items-center justify-center">
@@ -380,17 +270,13 @@ export default function ProductivityPage() {
           </div>
           Tasks
         </h1>
-        <Button
-          onClick={() => openNewTask()}
-          size="sm"
-          className="gap-1.5"
-        >
+        <Button onClick={() => setCreatingTask(true)} size="sm" className="gap-1.5">
           <Plus className="w-4 h-4" aria-hidden="true" />
-          + New
+          New
         </Button>
       </div>
 
-      {/* Tabs */}
+      {/* ── Filter tabs ────────────────────────────────────────────── */}
       <div className="slide-up stagger-2">
         <Tabs
           value={filter}
@@ -402,25 +288,110 @@ export default function ProductivityPage() {
         >
           <TabsList className="w-full">
             <TabsTrigger value="today" className="flex-1 gap-1.5">
-              <Star className="w-3.5 h-3.5" /> Today
+              <Star className="w-3.5 h-3.5" aria-hidden="true" /> Today
             </TabsTrigger>
             <TabsTrigger value="all" className="flex-1 gap-1.5">
-              <List className="w-3.5 h-3.5" /> All
+              <List className="w-3.5 h-3.5" aria-hidden="true" /> All
             </TabsTrigger>
             <TabsTrigger value="completed" className="flex-1 gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Done
+              <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" /> Done
             </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
-      {/* Toolbar strip */}
+      {/* ── Compact toolbar ────────────────────────────────────────── */}
       {!loading && (
-        <div className="slide-up stagger-2">{toolbarStrip}</div>
+        <div className="flex items-center gap-2 slide-up stagger-2">
+          {/* View mode — 3 icon buttons */}
+          <div className="flex items-center rounded-lg border border-border overflow-hidden shrink-0">
+            {([
+              { mode: "list" as ViewMode,     icon: <List className="w-3.5 h-3.5" />,       label: "List view" },
+              { mode: "grid" as ViewMode,     icon: <LayoutGrid className="w-3.5 h-3.5" />, label: "Grid view" },
+              { mode: "calendar" as ViewMode, icon: <Calendar className="w-3.5 h-3.5" />,   label: "Calendar view" },
+            ]).map(({ mode, icon, label }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setView(mode)}
+                className={cn(
+                  "p-2 transition-colors",
+                  view === mode ? "bg-primary text-primary-foreground" : "hover:bg-accent text-muted-foreground"
+                )}
+                aria-label={label}
+                aria-pressed={view === mode}
+              >
+                {icon}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort + Group combined dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(
+                "inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md border transition-colors font-medium",
+                hasActiveFilters
+                  ? "border-[var(--brand)]/50 bg-[var(--brand-tint)] text-[var(--brand-text)]"
+                  : "border-border bg-background hover:bg-accent text-foreground"
+              )}
+              aria-label="Sort and group options"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="hidden md:inline">Sort</span>
+              {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] md:hidden" />}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
+                {(Object.entries(SORT_LABELS) as [SortBy, string][]).map(([val, label]) => (
+                  <DropdownMenuItem
+                    key={val}
+                    onClick={() => setSortBy(val)}
+                    className={cn("text-xs", sortBy === val && "font-semibold")}
+                  >
+                    {label}
+                    {sortBy === val && <span className="ml-auto text-[var(--brand)]">✓</span>}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
+                {(Object.entries(GROUP_LABELS) as [GroupBy, string][]).map(([val, label]) => (
+                  <DropdownMenuItem
+                    key={val}
+                    onClick={() => setGroupBy(val)}
+                    className={cn("text-xs", groupBy === val && "font-semibold")}
+                  >
+                    {label}
+                    {groupBy === val && <span className="ml-auto text-[var(--brand)]">✓</span>}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Bulk select toggle — pushed to the right */}
+          <button
+            type="button"
+            onClick={toggleBulkMode}
+            className={cn(
+              "ml-auto inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md border transition-colors font-medium",
+              bulkMode
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background hover:bg-accent text-foreground"
+            )}
+            aria-pressed={bulkMode}
+          >
+            <CheckSquare className="w-3.5 h-3.5" aria-hidden="true" />
+            <span className="hidden md:inline">{bulkMode ? "Done" : "Select"}</span>
+          </button>
+        </div>
       )}
 
-      {/* Active filter chips */}
-      {!loading && (sortBy !== "priority" || groupBy !== "none") && (
+      {/* ── Active filter chips ─────────────────────────────────────── */}
+      {!loading && hasActiveFilters && (
         <div className="flex flex-wrap gap-1.5 slide-up">
           {sortBy !== "priority" && (
             <button
@@ -428,12 +399,11 @@ export default function ProductivityPage() {
               onClick={() => setSortBy("priority")}
               className="inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11px] font-semibold
                          bg-[var(--mod-tasks-tint)] text-[var(--mod-tasks)]
-                         border border-[var(--mod-tasks)]/20
-                         hover:opacity-80 transition-opacity"
-              aria-label={`Remove sort: ${SORT_LABELS[sortBy]}`}
+                         border border-[var(--mod-tasks)]/20 hover:opacity-80 transition-opacity"
+              aria-label={`Clear sort: ${SORT_LABELS[sortBy]}`}
             >
               Sort: {SORT_LABELS[sortBy]}
-              <X className="w-3 h-3 ml-0.5" aria-hidden="true" />
+              <X className="w-3 h-3" aria-hidden="true" />
             </button>
           )}
           {groupBy !== "none" && (
@@ -442,170 +412,158 @@ export default function ProductivityPage() {
               onClick={() => setGroupBy("none")}
               className="inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11px] font-semibold
                          bg-[var(--mod-tasks-tint)] text-[var(--mod-tasks)]
-                         border border-[var(--mod-tasks)]/20
-                         hover:opacity-80 transition-opacity"
-              aria-label={`Remove group: ${GROUP_LABELS[groupBy]}`}
+                         border border-[var(--mod-tasks)]/20 hover:opacity-80 transition-opacity"
+              aria-label={`Clear group: ${GROUP_LABELS[groupBy]}`}
             >
               Group: {GROUP_LABELS[groupBy]}
-              <X className="w-3 h-3 ml-0.5" aria-hidden="true" />
+              <X className="w-3 h-3" aria-hidden="true" />
             </button>
           )}
         </div>
       )}
 
-      {/* Task content */}
+      {/* ── Task content ────────────────────────────────────────────── */}
       {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-mod-tasks" />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-mod-tasks" aria-hidden="true" />
+          <span className="sr-only">Loading tasks</span>
+        </div>
+      ) : tasks.length === 0 ? (
+        <div className="text-center py-16 space-y-2 slide-up">
+          <div className="w-16 h-16 rounded-2xl bg-mod-tasks-tint flex items-center justify-center mx-auto mb-3">
+            {filter === "completed" ? (
+              <CheckCircle2 className="w-8 h-8 text-mod-tasks" />
+            ) : (
+              <Inbox className="w-8 h-8 text-mod-tasks" />
+            )}
           </div>
-        ) : tasks.length === 0 ? (
-          <div className="text-center py-16 space-y-2 slide-up">
-            <div className="w-16 h-16 rounded-2xl bg-mod-tasks-tint flex items-center justify-center mx-auto mb-3">
-              {filter === "completed" ? (
-                <CheckCircle2 className="w-8 h-8 text-mod-tasks" />
+          <p className="text-muted-foreground text-sm">
+            {filter === "today" ? "Nothing due today — all clear!" :
+             filter === "completed" ? "No completed tasks yet." :
+             "No active tasks."}
+          </p>
+          {filter !== "completed" && (
+            <Button variant="ghost" size="sm" onClick={() => setCreatingTask(true)}>
+              Add a task
+            </Button>
+          )}
+        </div>
+      ) : view === "calendar" ? (
+        <div className="slide-up stagger-3">
+          <TaskCalendar
+            tasks={processedTasks}
+            onComplete={completeTask}
+            onUpdate={updateTask}
+            onDelete={deleteTask}
+            onDuplicate={duplicateTask}
+            onStar={starTask}
+            onOpenDetail={(t) => setDetailTaskId(t.id)}
+          />
+        </div>
+      ) : (
+        <div className="slide-up stagger-3 space-y-4">
+          {/* Today's Focus section */}
+          {filter === "today" && starredTodayTasks.length > 0 && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-3.5 h-3.5 fill-[var(--color-warning)] text-[var(--color-warning)]" aria-hidden="true" />
+                    <span className="text-xs font-semibold text-[var(--color-warning)] uppercase tracking-wide">Focus</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {completedFocusCount}/{starredTodayTasks.length + completedFocusCount} done
+                  </span>
+                </div>
+                <Progress
+                  value={starredTodayTasks.length + completedFocusCount > 0
+                    ? (completedFocusCount / (starredTodayTasks.length + completedFocusCount)) * 100
+                    : 0}
+                  className="h-1.5"
+                />
+              </div>
+
+              {view === "grid" ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {starredTodayTasks.map((task) => (
+                    <TaskCard key={task.id} {...commonCardProps(task)} view="grid" />
+                  ))}
+                </div>
               ) : (
-                <Inbox className="w-8 h-8 text-mod-tasks" />
+                <div className="space-y-2">
+                  {starredTodayTasks.map((task) => (
+                    <TaskCard key={task.id} {...commonCardProps(task)} view="list" />
+                  ))}
+                </div>
+              )}
+
+              {regularTodayTasks.length > 0 && (
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs text-muted-foreground">Other tasks</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
               )}
             </div>
-            <p className="text-muted-foreground text-sm">
-              {filter === "today" ? "Nothing due today! 🎉" :
-               filter === "completed" ? "No completed tasks yet." :
-               "No active tasks."}
-            </p>
-            {filter !== "completed" && (
-              <Button variant="ghost" size="sm" onClick={() => openNewTask()}>
-                + Add a task
-              </Button>
-            )}
-          </div>
-        ) : view === "calendar" ? (
-          <div className="slide-up stagger-3">
-            <TaskCalendar
-              tasks={processedTasks}
-              onComplete={completeTask}
-              onUpdate={updateTask}
-              onDelete={deleteTask}
-              onDuplicate={duplicateTask}
-              onStar={starTask}
-              onOpenDetail={(t) => setDetailTaskId(t.id)}
-            />
-          </div>
-        ) : (
-          <div className="slide-up stagger-3 space-y-4">
-            {/* Today's Focus section */}
-            {filter === "today" && starredTodayTasks.length > 0 && (
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Star
-                        className="w-3.5 h-3.5 fill-[var(--color-warning)] text-[var(--color-warning)]"
-                        aria-hidden="true"
-                      />
-                      <span className="text-xs font-semibold text-[var(--color-warning)] uppercase tracking-wide">
-                        Focus
-                      </span>
-                    </div>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {completedFocusCount}/
-                      {starredTodayTasks.length + completedFocusCount} done
-                    </span>
-                  </div>
-                  <Progress
-                    value={
-                      starredTodayTasks.length + completedFocusCount > 0
-                        ? (completedFocusCount /
-                            (starredTodayTasks.length + completedFocusCount)) *
-                          100
-                        : 0
-                    }
-                    className="h-1.5"
-                  />
+          )}
+
+          {/* Grouped tasks */}
+          {(filter === "today"
+            ? groups.map((g) => ({ ...g, tasks: g.tasks.filter((t) => !starredIds.has(t.id)) })).filter((g) => g.tasks.length > 0)
+            : groups
+          ).map((group) => (
+            <div key={group.key} className="space-y-2">
+              {groupBy !== "none" && (
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {group.label}
+                  </h3>
+                  <Badge variant="outline" className="text-xs h-4 px-1.5">
+                    {group.tasks.length}
+                  </Badge>
+                  <div className="h-px flex-1 bg-border" />
                 </div>
+              )}
+              {renderTaskGroup(group.tasks)}
+            </div>
+          ))}
 
-                {view === "grid" ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                    {starredTodayTasks.map((task) => (
-                      <TaskCard key={task.id} {...commonCardProps(task)} view="grid" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {starredTodayTasks.map((task) => (
-                      <TaskCard key={task.id} {...commonCardProps(task)} view="list" />
-                    ))}
-                  </div>
-                )}
+          <p className="text-xs text-center text-muted-foreground pt-2">
+            {tasks.length} task{tasks.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+      )}
 
-                {regularTodayTasks.length > 0 && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-xs text-muted-foreground">Other tasks</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                )}
-              </div>
-            )}
+      {/* ── Mobile FAB — hidden during bulk mode ────────────────────── */}
+      {!bulkMode && (
+        <button
+          type="button"
+          onClick={() => setCreatingTask(true)}
+          className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
+          aria-label="Add task"
+        >
+          <Plus className="w-6 h-6" aria-hidden="true" />
+        </button>
+      )}
 
-            {/* Grouped tasks */}
-            {(filter === "today"
-              ? groups
-                  .map((g) => ({ ...g, tasks: g.tasks.filter((t) => !starredIds.has(t.id)) }))
-                  .filter((g) => g.tasks.length > 0)
-              : groups
-            ).map((group) => (
-              <div key={group.key} className="space-y-2">
-                {groupBy !== "none" && (
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      {group.label}
-                    </h3>
-                    <Badge variant="outline" className="text-xs h-4 px-1.5">
-                      {group.tasks.length}
-                    </Badge>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                )}
-                {renderTaskGroup(group.tasks)}
-              </div>
-            ))}
-
-            <p className="text-xs text-center text-muted-foreground pt-2">
-              {tasks.length} task{tasks.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-        )
-      }
-
-      {/* FAB for mobile */}
-      <button
-        type="button"
-        onClick={() => openNewTask()}
-        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
-        aria-label="Add new"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
-
-      {/* Bulk action toolbar */}
+      {/* ── Bulk action floating toolbar ────────────────────────────── */}
       <TaskToolbar
         selectedCount={selectedIds.size}
+        totalCount={tasks.length}
+        onSelectAll={() => setSelectedIds(new Set(tasks.map((t) => t.id)))}
         onComplete={handleBulkComplete}
         onDelete={handleBulkDelete}
         onSetPriority={handleBulkPriority}
         onClearSelection={() => { setSelectedIds(new Set()); setBulkMode(false); }}
       />
 
-      {/* Single shared task popup — create mode when creatingTask, edit/detail mode when detailTask is set */}
+      {/* ── Task popup ──────────────────────────────────────────────── */}
       {(detailTask || creatingTask) && (
         <TaskPopup
           task={detailTask}
           projects={projects}
           defaultProjectId={null}
-          onClose={() => {
-            setDetailTaskId(null);
-            setCreatingTask(false);
-          }}
+          onClose={() => { setDetailTaskId(null); setCreatingTask(false); }}
           onCreate={async (data) => {
             await createTask({ ...data, project_id: data.project_id ?? null });
             toast.success("Task added");
