@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DateTimePicker } from "@/components/productivity/DateTimePicker";
 import {
   Plus,
   Search,
@@ -426,6 +427,7 @@ function ContactDetail({
   const [note, setNote] = useState("");
   const [intType, setIntType] = useState<Interaction["type"]>("call");
   const [followUp, setFollowUp] = useState("");
+  const [showFollowUpPicker, setShowFollowUpPicker] = useState(false);
   const [deleteIntId, setDeleteIntId] = useState<string | null>(null);
   const [stageSaving, setStageSaving] = useState(false);
 
@@ -599,7 +601,26 @@ function ContactDetail({
                 rows={2}
                 required
               />
-              <Input type="date" placeholder="Follow-up date" value={followUp} onChange={(e) => setFollowUp(e.target.value)} />
+              <div className="space-y-2">
+                <Button type="button" variant="outline" className="w-full justify-between" onClick={() => setShowFollowUpPicker(true)}>
+                  <span>{followUp ? formatDate(followUp) : "Pick follow-up date"}</span>
+                  <span className="text-xs text-muted-foreground">{followUp ? "Change" : "Choose"}</span>
+                </Button>
+                {showFollowUpPicker && (
+                  <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[rgba(26,26,46,0.35)] p-3 md:items-center">
+                    <DateTimePicker
+                      initialDate={followUp ? new Date(`${followUp}T12:00:00`) : new Date()}
+                      mode="date"
+                      onSave={(date) => {
+                        const next = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+                        setFollowUp(next)
+                        setShowFollowUpPicker(false)
+                      }}
+                      onCancel={() => setShowFollowUpPicker(false)}
+                    />
+                  </div>
+                )}
+              </div>
               <Button size="sm" type="submit">Save</Button>
             </form>
           )}

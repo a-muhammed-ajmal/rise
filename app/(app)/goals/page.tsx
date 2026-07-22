@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DateTimePicker } from "@/components/productivity/DateTimePicker";
 import {
   Plus,
   BookOpen,
@@ -383,6 +384,7 @@ function GoalDialog({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<Goal["category"]>("personal");
   const [targetDate, setTargetDate] = useState("");
+  const [showTargetDatePicker, setShowTargetDatePicker] = useState(false);
   const [progress, setProgress] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -459,7 +461,24 @@ function GoalDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="goal-target-date">Target Date</Label>
-              <Input id="goal-target-date" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+              <Button type="button" variant="outline" className="w-full justify-between" onClick={() => setShowTargetDatePicker(true)}>
+                <span>{targetDate ? formatDate(targetDate) : "Pick target date"}</span>
+                <span className="text-xs text-muted-foreground">{targetDate ? "Change" : "Choose"}</span>
+              </Button>
+              {showTargetDatePicker && (
+                <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[rgba(26,26,46,0.35)] p-3 md:items-center">
+                  <DateTimePicker
+                    initialDate={targetDate ? new Date(`${targetDate}T12:00:00`) : new Date()}
+                    mode="date"
+                    onSave={(date) => {
+                      const next = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+                      setTargetDate(next)
+                      setShowTargetDatePicker(false)
+                    }}
+                    onCancel={() => setShowTargetDatePicker(false)}
+                  />
+                </div>
+              )}
             </div>
           </div>
           {goal && (

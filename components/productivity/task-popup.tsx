@@ -170,10 +170,12 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
     }
   }
 
-  function handleDateChange(v: { date?: string; time?: string }) {
-    setDueDate(v.date ?? '')
-    setDueTime(v.time ?? '')
-    commit({ due_date: v.date ?? null, due_time: v.time ?? null })
+  function handleDateChange(date: Date) {
+    const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    const nextTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    setDueDate(nextDate)
+    setDueTime(nextTime)
+    commit({ due_date: nextDate, due_time: nextTime })
   }
 
   function handleRepeatChange(v: string) {
@@ -181,12 +183,24 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
     commit({ recurrence: v === 'none' ? null : v })
   }
 
-  function handleReminderChange(v: { date?: string; time?: string }) {
-    setReminderDate(v.date ?? '')
-    setReminderTime(v.time ?? '')
-    const iso = v.date
-      ? new Date(`${v.date}T${v.time ?? '09:00'}:00`).toISOString()
-      : null
+  function clearDueDate() {
+    setDueDate('')
+    setDueTime('')
+    commit({ due_date: null, due_time: null })
+  }
+
+  function clearReminder() {
+    setReminderDate('')
+    setReminderTime('')
+    commit({ reminder: null })
+  }
+
+  function handleReminderChange(date: Date) {
+    const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    const nextTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    setReminderDate(nextDate)
+    setReminderTime(nextTime)
+    const iso = nextDate ? new Date(`${nextDate}T${nextTime}:00`).toISOString() : null
     commit({ reminder: iso })
   }
 
@@ -646,7 +660,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                   {dueDate && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); handleDateChange({}) }}
+                      onClick={(e) => { e.stopPropagation(); clearDueDate() }}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive transition-colors"
                       aria-label="Clear time"
                     >
@@ -709,7 +723,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                   {reminderDate && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); handleReminderChange({}) }}
+                      onClick={(e) => { e.stopPropagation(); clearReminder() }}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive transition-colors"
                       aria-label="Clear reminder"
                     >
@@ -981,9 +995,9 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
           <div className="fixed inset-0 z-[59]" onClick={() => setShowDatePicker(false)} />
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
             <DateTimePicker
-              value={{ date: dueDate || undefined, time: dueTime || undefined }}
-              onChange={handleDateChange}
-              onClose={() => setShowDatePicker(false)}
+              initialDate={dueDate ? new Date(`${dueDate}T${dueTime || '09:00'}:00`) : new Date()}
+              onSave={handleDateChange}
+              onCancel={() => setShowDatePicker(false)}
             />
           </div>
         </>
@@ -995,9 +1009,9 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
           <div className="fixed inset-0 z-[59]" onClick={() => setShowReminderPicker(false)} />
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
             <DateTimePicker
-              value={{ date: reminderDate || undefined, time: reminderTime || undefined }}
-              onChange={handleReminderChange}
-              onClose={() => setShowReminderPicker(false)}
+              initialDate={reminderDate ? new Date(`${reminderDate}T${reminderTime || '09:00'}:00`) : new Date()}
+              onSave={handleReminderChange}
+              onCancel={() => setShowReminderPicker(false)}
             />
           </div>
         </>
