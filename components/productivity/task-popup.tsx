@@ -44,6 +44,8 @@ interface TaskPopupProps {
   defaultProjectId?: string | null
   onClose: () => void
   onCreate: (data: Partial<Task>) => Promise<void>
+  /** Called after any write so the parent's useTasks instance re-fetches immediately. */
+  refresh?: () => void
 }
 
 /**
@@ -51,7 +53,7 @@ interface TaskPopupProps {
  * `task` present => live edit/detail mode (autosaves per field).
  * `task` absent  => create mode (local draft, submitted via footer button).
  */
-export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate }: TaskPopupProps) {
+export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate, refresh }: TaskPopupProps) {
   const { tasks, updateTask, completeTask, reopenTask, deleteTask, duplicateTask, toggleFocus } = useTasks('all')
 
   const liveTask = task ? (tasks.find((t) => t.id === task.id) ?? task) : null
@@ -121,7 +123,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
   }, [title])
 
   function commit(patch: Partial<Task>) {
-    if (liveTask) updateTask(liveTask.id, patch)
+    if (liveTask) updateTask(liveTask.id, patch).then(() => refresh?.())
   }
 
   // ── Field handlers ────────────────────────────────────────────────────────
@@ -291,12 +293,14 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
     if (!liveTask) return
     setCompleting(true)
     completeTask(liveTask.id)
+    refresh?.()
     setTimeout(onClose, 1500)
   }
 
   function handleReopen() {
     if (!liveTask) return
     reopenTask(liveTask.id)
+    refresh?.()
     setCompleting(false)
   }
 
@@ -310,6 +314,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
   function handleToggleFocus(t: Task) {
     if (t.is_focus) {
       toggleFocus(t.id)
+      refresh?.()
       return
     }
     if (t.due_date && t.due_date > todayISO()) {
@@ -322,6 +327,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
       return
     }
     toggleFocus(t.id)
+    refresh?.()
   }
 
   // ── Create submit ─────────────────────────────────────────────────────────
@@ -440,6 +446,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => {
                           duplicateTask(liveTask.id)
+                          refresh?.()
                           toast.success('Task duplicated')
                         }}>
                           <Copy className="w-4 h-4 mr-2" /> Duplicate Task
@@ -996,7 +1003,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
             <DateTimePicker
               initialDate={dueDate ? new Date(`${dueDate}T${dueTime || '09:00'}:00`) : new Date()}
-              onSave={handleDateChange}
+              onSave={(d) => { handleDateChange(d); setShowDatePicker(false) }}
               onCancel={() => setShowDatePicker(false)}
             />
           </div>
@@ -1010,7 +1017,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
             <DateTimePicker
               initialDate={reminderDate ? new Date(`${reminderDate}T${reminderTime || '09:00'}:00`) : new Date()}
-              onSave={handleReminderChange}
+              onSave={(d) => { handleReminderChange(d); setShowReminderPicker(false) }}
               onCancel={() => setShowReminderPicker(false)}
             />
           </div>
@@ -1056,6 +1063,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate 
           confirmLabel="Delete"
           onConfirm={() => {
             deleteTask(liveTask.id)
+            refresh?.()
             onClose()
           }}
         />

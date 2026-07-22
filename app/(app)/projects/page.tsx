@@ -48,7 +48,7 @@ export default function ProjectsPage() {
 
   const { projects, loading: projectsLoading, createProject, updateProject, deleteProject } = useProjects();
 
-  const { tasks, loading: tasksLoading, createTask, updateTask, completeTask, deleteTask, duplicateTask, starTask } =
+  const { tasks, loading: tasksLoading, createTask, updateTask, completeTask, deleteTask, duplicateTask, starTask, refresh } =
     useTasks(selectedProject ? "project" : "all", selectedProject?.id);
 
   // Kanban columns: group by category, hide empty, sort projects by created_at desc
@@ -336,6 +336,7 @@ export default function ProjectsPage() {
             await createTask({ ...data, project_id: data.project_id ?? selectedProject?.id ?? null });
             toast.success("Task added");
           }}
+          refresh={refresh}
         />
       )}
 

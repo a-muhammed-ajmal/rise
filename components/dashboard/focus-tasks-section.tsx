@@ -18,7 +18,7 @@ import type { Task } from "@/lib/types/database";
 const MAX_FOCUS_TASKS = 3;
 
 export function FocusTasksSection() {
-  const { tasks, loading, createTask, completeTask } = useTasks("today");
+  const { tasks, loading, createTask, completeTask, refresh } = useTasks("today");
   const { projects } = useProjects();
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
@@ -109,6 +109,7 @@ export function FocusTasksSection() {
           defaultProjectId={null}
           onClose={() => setDetailTaskId(null)}
           onCreate={handleCreateTask}
+          refresh={refresh}
         />
       )}
     </Card>

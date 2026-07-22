@@ -148,7 +148,7 @@ export default function ProductivityPage() {
 
   const {
     tasks, loading, createTask, updateTask, completeTask, deleteTask,
-    duplicateTask, bulkComplete, bulkDelete, bulkUpdatePriority, starTask,
+    duplicateTask, bulkComplete, bulkDelete, bulkUpdatePriority, starTask, refresh,
   } = useTasks(filter === "completed" ? "completed" : filter);
 
   const { projects } = useProjects();
@@ -610,6 +610,7 @@ export default function ProductivityPage() {
             await createTask({ ...data, project_id: data.project_id ?? null });
             toast.success("Task added");
           }}
+          refresh={refresh}
         />
       )}
     </div>

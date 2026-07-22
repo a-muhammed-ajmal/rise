@@ -27,6 +27,7 @@ export function TasksDashboardSection() {
     completeTask,
     deleteTask,
     duplicateTask,
+    refresh,
   } = useTasks("today");
 
   const { projects } = useProjects();
@@ -142,6 +143,7 @@ export function TasksDashboardSection() {
           defaultProjectId={null}
           onClose={() => setDetailTaskId(null)}
           onCreate={handleCreateTask}
+          refresh={refresh}
         />
       )}
     </Card>
