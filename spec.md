@@ -8,7 +8,7 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 609 passing |
+| Test count | 611 passing |
 | Line coverage | 94.9% on `lib/**` |
 | Migrations | 19 (001–019) |
 | DB tables | 26 (across 19 migrations) |

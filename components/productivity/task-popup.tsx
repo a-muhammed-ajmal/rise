@@ -1030,11 +1030,11 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       {/* DateTimePicker overlay — due date/time */}
       {showDatePicker && (
         <>
-          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowDatePicker(false)} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
+          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowDatePicker(false)} onPointerDown={e => e.stopPropagation()} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]" onPointerDown={e => e.stopPropagation()}>
             <DateTimePicker
               initialDate={dueDate ? parseSafeDate(dueDate, dueTime) : new Date()}
-              hasInitialTime={!!dueTime}
+              hasInitialTime={!!dueTime && dueTime !== '00:00'}
               onSave={(d, hasTime) => { handleDateChange(d, hasTime); setShowDatePicker(false) }}
               onCancel={() => setShowDatePicker(false)}
             />
@@ -1045,11 +1045,11 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       {/* DateTimePicker overlay — reminder */}
       {showReminderPicker && (
         <>
-          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowReminderPicker(false)} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
+          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowReminderPicker(false)} onPointerDown={e => e.stopPropagation()} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]" onPointerDown={e => e.stopPropagation()}>
             <DateTimePicker
               initialDate={reminderDate ? parseSafeDate(reminderDate, reminderTime) : new Date()}
-              hasInitialTime={!!reminderTime}
+              hasInitialTime={!!reminderTime && reminderTime !== '00:00'}
               onSave={(d, hasTime) => { handleReminderChange(d, hasTime); setShowReminderPicker(false) }}
               onCancel={() => setShowReminderPicker(false)}
             />
@@ -1060,8 +1060,8 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       {/* DurationPicker overlay */}
       {showDurationPicker && (
         <>
-          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowDurationPicker(false)} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
+          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowDurationPicker(false)} onPointerDown={e => e.stopPropagation()} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]" onPointerDown={e => e.stopPropagation()}>
             <DurationPicker
               value={parseInt(estimatedMinutes, 10) || 0}
               onChange={handleDurationChange}
@@ -1074,8 +1074,8 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       {/* RepeatEditor overlay */}
       {showRepeatPicker && (
         <>
-          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowRepeatPicker(false)} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
+          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowRepeatPicker(false)} onPointerDown={e => e.stopPropagation()} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]" onPointerDown={e => e.stopPropagation()}>
             <RepeatEditor
               value={repeat !== 'none' ? repeat : null}
               dueDate={dueDate || null}
