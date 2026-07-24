@@ -32,8 +32,8 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       .from('tasks')
       .select('*')
       .order('is_starred', { ascending: false })
-      .order('priority', { ascending: true })
       .order('due_date', { ascending: true, nullsFirst: false })
+      .order('due_time', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
 
     if (filter === 'completed') {

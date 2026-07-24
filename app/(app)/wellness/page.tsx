@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Habit, HabitLog } from "@/lib/types/database";
-import { todayISO, todayDOW } from "@/lib/format";
+import { todayISO, todayDOW, display12h } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -285,10 +285,16 @@ export default function WellnessPage() {
                       />
                       <span className="text-sm font-medium truncate">{habit.name}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                       {habit.target_days.length === 7
                         ? "Every day"
                         : habit.target_days.map((d) => DAYS_LONG[d]).join(", ")}
+                      {habit.reminder_time && (
+                        <span className="flex items-center gap-0.5 ml-1">
+                          <Clock className="w-3 h-3" />
+                          {display12h(habit.reminder_time)}
+                        </span>
+                      )}
                     </p>
                   </div>
 

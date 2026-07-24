@@ -53,7 +53,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const SORT_LABELS: Record<SortBy, string> = {
   priority: "Priority",
-  due_date: "Due Date",
+  due_date: "Due Time",
   created_at: "Created",
   title: "Title A–Z",
   estimated: "Duration",
@@ -72,10 +72,14 @@ function sortTasks(tasks: Task[], sortBy: SortBy): Task[] {
       case "priority":
         return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
       case "due_date": {
-        if (!a.due_date && !b.due_date) return 0;
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
-        return a.due_date.localeCompare(b.due_date);
+        // Group 0: has date + time  →  sort chronologically ascending
+        // Group 1: has date only    →  sort by created_at desc (newest first)
+        // Group 2: no date          →  sort by created_at desc (newest first, shown last)
+        const aGroup = a.due_date && a.due_time ? 0 : a.due_date ? 1 : 2;
+        const bGroup = b.due_date && b.due_time ? 0 : b.due_date ? 1 : 2;
+        if (aGroup !== bGroup) return aGroup - bGroup;
+        if (aGroup === 0) return `${a.due_date}T${a.due_time}`.localeCompare(`${b.due_date}T${b.due_time}`);
+        return b.created_at.localeCompare(a.created_at);
       }
       case "created_at":
         return b.created_at.localeCompare(a.created_at);
@@ -131,7 +135,7 @@ function groupTasks(
 export default function ProductivityPage() {
   const [filter, setFilter] = useState<Filter>("today");
   const [view, setView] = useState<ViewMode>("list");
-  const [sortBy, setSortBy] = useState<SortBy>("priority");
+  const [sortBy, setSortBy] = useState<SortBy>("due_date");
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
 
   const [creatingTask, setCreatingTask] = useState(false);

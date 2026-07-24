@@ -4,10 +4,10 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, ChevronDown, Flame } from "lucide-react";
+import { Check, X, ChevronDown, Flame, Clock } from "lucide-react";
 import { subDays, format } from "date-fns";
 import type { Habit, HabitLog } from "@/lib/types/database";
-import { todayISO } from "@/lib/format";
+import { todayISO, display12h } from "@/lib/format";
 import { AffirmationDialog } from "@/components/wellness/affirmation-dialog";
 
 const DAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -112,8 +112,14 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                   />
                   <span className="text-sm font-medium truncate">{habit.name}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5 ml-4">
+                <p className="text-xs text-muted-foreground mt-0.5 ml-4 flex items-center gap-1">
                   {scheduleLabel(habit)}
+                  {habit.reminder_time && (
+                    <span className="flex items-center gap-0.5 ml-1">
+                      <Clock className="w-3 h-3" />
+                      {display12h(habit.reminder_time)}
+                    </span>
+                  )}
                 </p>
               </div>
 

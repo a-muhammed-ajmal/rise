@@ -178,7 +178,7 @@ lib/
     mcp-schema.ts           Gemini FunctionDeclaration → JSON Schema converter for MCP tools/list
     upload-helpers.ts       File upload parsing and text/audio extraction for chat attachments
   hooks/
-    use-tasks.ts            Task CRUD with Supabase Realtime subscription
+    use-tasks.ts            Task CRUD with Supabase Realtime subscription; DB sort: starred → due_date → due_time NULLS LAST → created_at
     use-projects.ts         Project CRUD with Supabase Realtime subscription
     use-push-subscription.ts Push notification subscription management
     use-payment-methods.ts  Wallet balance state and CRUD operations (currently 0% test coverage)

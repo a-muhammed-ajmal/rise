@@ -127,7 +127,7 @@ export function TaskCard({
         )}
 
         {/* Due date / time — green until the deadline, red after */}
-        {task.due_date && (
+        {task.due_date ? (
           <span
             className={cn(
               'flex items-center gap-1 text-xs mt-1',
@@ -147,6 +147,11 @@ export function TaskCard({
                 {display12h(task.due_time)}
               </span>
             )}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-xs mt-1 text-muted-foreground">
+            <Clock className="w-3 h-3" />
+            {formatRelativeDate(task.created_at.slice(0, 10))}
           </span>
         )}
       </div>
