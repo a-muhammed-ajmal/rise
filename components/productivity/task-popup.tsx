@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Check, Trash2, Copy, MoreVertical, Link as LinkIcon,
   Clock, Bell, Repeat2, Plus, X, Star,
@@ -1044,11 +1045,11 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
           </form>
       </ResponsiveModal>
 
-      {/* DateTimePicker overlay — due date/time */}
-      {showDatePicker && (
+      {/* DateTimePicker overlay — due date/time — portalled above the modal */}
+      {showDatePicker && createPortal(
         <>
-          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowDatePicker(false)} onPointerDown={e => e.stopPropagation()} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]" onPointerDown={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[200] bg-black/20" onClick={() => setShowDatePicker(false)} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[201]">
             <DateTimePicker
               initialDate={dueDate ? parseSafeDate(dueDate, dueTime) : new Date()}
               hasInitialTime={!!dueTime && dueTime !== '00:00'}
@@ -1056,14 +1057,15 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
               onCancel={() => setShowDatePicker(false)}
             />
           </div>
-        </>
+        </>,
+        document.body
       )}
 
-      {/* DateTimePicker overlay — reminder */}
-      {showReminderPicker && (
+      {/* DateTimePicker overlay — reminder — portalled above the modal */}
+      {showReminderPicker && createPortal(
         <>
-          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowReminderPicker(false)} onPointerDown={e => e.stopPropagation()} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]" onPointerDown={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[200] bg-black/20" onClick={() => setShowReminderPicker(false)} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[201]">
             <DateTimePicker
               initialDate={reminderDate ? parseSafeDate(reminderDate, reminderTime) : new Date()}
               hasInitialTime={!!reminderTime && reminderTime !== '00:00'}
@@ -1071,28 +1073,30 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
               onCancel={() => setShowReminderPicker(false)}
             />
           </div>
-        </>
+        </>,
+        document.body
       )}
 
-      {/* DurationPicker overlay */}
-      {showDurationPicker && (
+      {/* DurationPicker overlay — portalled above the modal */}
+      {showDurationPicker && createPortal(
         <>
-          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowDurationPicker(false)} onPointerDown={e => e.stopPropagation()} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]" onPointerDown={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[200] bg-black/20" onClick={() => setShowDurationPicker(false)} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[201]">
             <DurationPicker
               value={parseInt(estimatedMinutes, 10) || 0}
               onChange={handleDurationChange}
               onClose={() => setShowDurationPicker(false)}
             />
           </div>
-        </>
+        </>,
+        document.body
       )}
 
-      {/* RepeatEditor overlay */}
-      {showRepeatPicker && (
+      {/* RepeatEditor overlay — portalled above the modal */}
+      {showRepeatPicker && createPortal(
         <>
-          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowRepeatPicker(false)} onPointerDown={e => e.stopPropagation()} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]" onPointerDown={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[200] bg-black/20" onClick={() => setShowRepeatPicker(false)} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[201]">
             <RepeatEditor
               value={repeat !== 'none' ? repeat : null}
               dueDate={dueDate || null}
@@ -1100,7 +1104,8 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
               onClose={() => setShowRepeatPicker(false)}
             />
           </div>
-        </>
+        </>,
+        document.body
       )}
 
       {/* Delete confirmation — edit mode only */}
