@@ -239,11 +239,13 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
   function clearDueDate() {
     setDueDate('')
     setDueTime('')
+    setShowDatePicker(false)
   }
 
   function clearReminder() {
     setReminderDate('')
     setReminderTime('')
+    setShowReminderPicker(false)
   }
 
   function handleReminderChange(date: Date, hasTime: boolean) {
@@ -685,7 +687,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => { closeAllPickers(); setShowDatePicker((v) => !v) }}
+                    onClick={() => { closeAllPickers(); setShowDatePicker(true) }}
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       dueDate
@@ -720,7 +722,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => { closeAllPickers(); setShowRepeatPicker((v) => !v) }}
+                    onClick={() => { closeAllPickers(); setShowRepeatPicker(true) }}
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       repeat !== 'none'
@@ -750,7 +752,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => { closeAllPickers(); setShowReminderPicker((v) => !v) }}
+                    onClick={() => { closeAllPickers(); setShowReminderPicker(true) }}
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       reminderDate
@@ -780,7 +782,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => { closeAllPickers(); setShowDurationPicker((v) => !v) }}
+                    onClick={() => { closeAllPickers(); setShowDurationPicker(true) }}
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       estimatedMinutes
@@ -845,7 +847,15 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                   </Label>
                   <Select value={projectId || 'none'} onValueChange={handleProjectChange}>
                     <SelectTrigger className="h-9 w-full text-xs">
-                      <SelectValue placeholder="Inbox" />
+                      {(() => {
+                        const proj = projects.find((p) => p.id === projectId)
+                        return proj ? (
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: proj.color }} />
+                            <span className="truncate">{proj.name}</span>
+                          </div>
+                        ) : <span className="text-muted-foreground/60">Inbox</span>
+                      })()}
                     </SelectTrigger>
                     <SelectContent alignItemWithTrigger={false}>
                       <SelectItem value="none" className="text-xs">Inbox</SelectItem>
