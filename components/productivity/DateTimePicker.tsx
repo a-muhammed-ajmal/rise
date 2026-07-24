@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, ChevronDown, Keyboard, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -16,29 +16,68 @@ interface DateTimePickerProps {
 
 type DateView = 'calendar' | 'year'
 type TimeView = 'dial' | 'manual'
+type DialPhase = 'hour' | 'minute'
 
-const INPUT_CLS = 'w-16 border-b-2 border-border px-1 py-1 text-2xl font-semibold text-foreground bg-transparent outline-none focus:border-[var(--border-focus)]'
+const INPUT_CLS = 'w-16 border-b-2 px-1 py-1 text-2xl font-semibold bg-transparent outline-none transition-colors'
 const SUB_LABEL_CLS = 'mt-1 text-xs text-muted-foreground'
+
+const MINUTE_VALUES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55] as const
+const HOUR_VALUES = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const
 
 interface TimeInputsProps {
   hourField: string
   minuteField: string
   meridiem: 'AM' | 'PM'
+  activeInput: 'hour' | 'minute' | null
   onHourChange: (v: string) => void
   onMinuteChange: (v: string) => void
   onMeridiemChange: (v: 'AM' | 'PM') => void
+  onHourFocus: () => void
+  onMinuteFocus: () => void
+  onHourBlur: () => void
+  onMinuteBlur: () => void
 }
 
-function TimeInputs({ hourField, minuteField, meridiem, onHourChange, onMinuteChange, onMeridiemChange }: TimeInputsProps) {
+function TimeInputs({
+  hourField, minuteField, meridiem,
+  activeInput,
+  onHourChange, onMinuteChange, onMeridiemChange,
+  onHourFocus, onMinuteFocus,
+  onHourBlur, onMinuteBlur,
+}: TimeInputsProps) {
   return (
     <div className="flex items-end gap-2">
       <div>
-        <input value={hourField} onChange={e => onHourChange(e.target.value)} className={INPUT_CLS} aria-label="Hour" />
+        <input
+          value={hourField}
+          onChange={e => onHourChange(e.target.value)}
+          onFocus={onHourFocus}
+          onBlur={onHourBlur}
+          className={cn(
+            INPUT_CLS,
+            activeInput === 'hour'
+              ? 'border-[var(--brand)] text-[var(--brand-text)]'
+              : 'border-border text-foreground'
+          )}
+          aria-label="Hour"
+        />
         <p className={SUB_LABEL_CLS}>hour</p>
       </div>
       <span className="pb-2 text-2xl font-semibold text-foreground">:</span>
       <div>
-        <input value={minuteField} onChange={e => onMinuteChange(e.target.value)} className={INPUT_CLS} aria-label="Minute" />
+        <input
+          value={minuteField}
+          onChange={e => onMinuteChange(e.target.value)}
+          onFocus={onMinuteFocus}
+          onBlur={onMinuteBlur}
+          className={cn(
+            INPUT_CLS,
+            activeInput === 'minute'
+              ? 'border-[var(--brand)] text-[var(--brand-text)]'
+              : 'border-border text-foreground'
+          )}
+          aria-label="Minute"
+        />
         <p className={SUB_LABEL_CLS}>minute</p>
       </div>
       <div className="relative ml-3 mb-1">
@@ -85,6 +124,22 @@ function isDateDisabled(date: Date, minDate?: Date, maxDate?: Date, disabledDate
   return disabledDates.some((d) => normalizeDate(d).getTime() === normalized.getTime())
 }
 
+/** Clamp a 12h hour value to 1–12 */
+function clampHour(raw: string): string {
+  const n = parseInt(raw, 10)
+  if (isNaN(n) || n < 1) return '12'
+  if (n > 12) return '12'
+  return String(n)
+}
+
+/** Clamp a minute value to 0–59 */
+function clampMinute(raw: string): string {
+  const n = parseInt(raw, 10)
+  if (isNaN(n) || n < 0) return '00'
+  if (n > 59) return '59'
+  return String(n).padStart(2, '0')
+}
+
 export const DateTimePicker = ({
   initialDate,
   onSave,
@@ -97,12 +152,14 @@ export const DateTimePicker = ({
   const [tab, setTab] = useState<'date' | 'time'>(mode === 'time' ? 'time' : 'date')
   const [dateView, setDateView] = useState<DateView>('calendar')
   const [timeView, setTimeView] = useState<TimeView>('dial')
+  const [dialPhase, setDialPhase] = useState<DialPhase>('hour')
   const [selected, setSelected] = useState<Date>(initialDate ?? new Date())
   const [viewMonth, setViewMonth] = useState(selected.getMonth())
   const [viewYear, setViewYear] = useState(selected.getFullYear())
   const [hourField, setHourField] = useState(String(selected.getHours() % 12 || 12))
   const [minuteField, setMinuteField] = useState(String(selected.getMinutes()).padStart(2, '0'))
   const [meridiem, setMeridiem] = useState<'AM' | 'PM'>(selected.getHours() >= 12 ? 'PM' : 'AM')
+  const [activeInput, setActiveInput] = useState<'hour' | 'minute' | null>(null)
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth)
   const firstWeekday = getFirstWeekday(viewYear, viewMonth)
@@ -119,6 +176,10 @@ export const DateTimePicker = ({
     next.setFullYear(viewYear, viewMonth, day)
     if (isDateDisabled(next, minDate, maxDate, disabledDates)) return
     setSelected(next)
+    // Auto-switch to time tab after selecting a date (if datetime mode)
+    if (showTimeTab) {
+      setTimeout(() => setTab('time'), 200)
+    }
   }
 
   function handleSelectYear(year: number) {
@@ -132,11 +193,19 @@ export const DateTimePicker = ({
   function handleSave() {
     const final = new Date(selected)
     if (showTimeTab) {
-      let hour = parseInt(hourField, 10) % 12
-      if (isNaN(hour)) hour = 0
-      if (meridiem === 'PM' && hour !== 12) hour += 12
-      if (meridiem === 'AM' && hour === 12) hour = 0
-      final.setHours(hour, parseInt(minuteField, 10) || 0, 0, 0)
+      const h12 = parseInt(hourField, 10) || 12
+      const clamped = Math.min(12, Math.max(1, h12))
+      const min = parseInt(minuteField, 10) || 0
+      const clampedMin = Math.min(59, Math.max(0, min))
+
+      // Convert 12h → 24h
+      let h24: number
+      if (meridiem === 'AM') {
+        h24 = clamped === 12 ? 0 : clamped
+      } else {
+        h24 = clamped === 12 ? 12 : clamped + 12
+      }
+      final.setHours(h24, clampedMin, 0, 0)
     } else {
       final.setHours(selected.getHours(), selected.getMinutes(), 0, 0)
     }
@@ -145,8 +214,34 @@ export const DateTimePicker = ({
 
   function handleTimeInput(value: string, target: 'hour' | 'minute') {
     const sanitized = value.replace(/\D/g, '').slice(0, 2)
-    if (target === 'hour') setHourField(sanitized || '1')
-    else setMinuteField(sanitized || '00')
+    if (target === 'hour') {
+      setHourField(sanitized)
+    } else {
+      setMinuteField(sanitized)
+    }
+  }
+
+  const handleHourBlur = useCallback(() => {
+    setHourField(prev => clampHour(prev))
+    setActiveInput(null)
+  }, [])
+
+  const handleMinuteBlur = useCallback(() => {
+    setMinuteField(prev => clampMinute(prev))
+    setActiveInput(null)
+  }, [])
+
+  /** Select an hour on the clock dial — auto-advance to minute phase */
+  function handleDialHourSelect(value: number) {
+    setHourField(String(value))
+    // Auto-advance to minute selection
+    setDialPhase('minute')
+  }
+
+  /** Select a minute on the clock dial — done, stay on dial */
+  function handleDialMinuteSelect(value: number) {
+    setMinuteField(String(value).padStart(2, '0'))
+    // Minute selected — dial is complete, stay showing the result
   }
 
   const navBtnCls = 'tap-target flex items-center justify-center rounded-full border border-border transition hover:border-[var(--border-focus)] hover:bg-[var(--brand-tint)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]'
@@ -155,9 +250,14 @@ export const DateTimePicker = ({
     hourField,
     minuteField,
     meridiem,
+    activeInput,
     onHourChange: (v) => handleTimeInput(v, 'hour'),
     onMinuteChange: (v) => handleTimeInput(v, 'minute'),
     onMeridiemChange: setMeridiem,
+    onHourFocus: () => { setActiveInput('hour'); setDialPhase('hour') },
+    onMinuteFocus: () => { setActiveInput('minute'); setDialPhase('minute') },
+    onHourBlur: handleHourBlur,
+    onMinuteBlur: handleMinuteBlur,
   }
 
   return (
@@ -295,7 +395,33 @@ export const DateTimePicker = ({
         <>
           {/* Dark time header */}
           <div className="flex items-center justify-between bg-[var(--surface-dark)] px-6 py-6 graph-bg-dark">
-            <p className="text-5xl font-semibold tracking-tight text-white">{hourField}:{minuteField}</p>
+            <div className="flex items-baseline gap-0.5">
+              {/* Tappable hour */}
+              <button
+                type="button"
+                onClick={() => setDialPhase('hour')}
+                className={cn(
+                  'text-5xl font-semibold tracking-tight transition-colors',
+                  dialPhase === 'hour' ? 'text-white' : 'text-white/40'
+                )}
+                aria-label="Select hour"
+              >
+                {hourField || '12'}
+              </button>
+              <span className="text-5xl font-semibold text-white/40">:</span>
+              {/* Tappable minute */}
+              <button
+                type="button"
+                onClick={() => setDialPhase('minute')}
+                className={cn(
+                  'text-5xl font-semibold tracking-tight transition-colors',
+                  dialPhase === 'minute' ? 'text-white' : 'text-white/40'
+                )}
+                aria-label="Select minute"
+              >
+                {minuteField || '00'}
+              </button>
+            </div>
             <div className="flex flex-col gap-1 text-sm font-semibold">
               {(['AM', 'PM'] as const).map((m) => (
                 <button
@@ -310,31 +436,91 @@ export const DateTimePicker = ({
             </div>
           </div>
 
-          {/* Clock dial — hidden when manual mode active */}
+          {/* Clock dial — two-phase: hour then minute */}
           {timeView === 'dial' && (
             <div className="px-6 py-6">
+              {/* Phase indicator */}
+              <div className="mb-3 flex items-center justify-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setDialPhase('hour')}
+                  className={cn(
+                    'text-xs font-semibold uppercase tracking-wider transition-colors',
+                    dialPhase === 'hour'
+                      ? 'text-[var(--brand-text)]'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Hour
+                </button>
+                <span className="text-muted-foreground/40">→</span>
+                <button
+                  type="button"
+                  onClick={() => setDialPhase('minute')}
+                  className={cn(
+                    'text-xs font-semibold uppercase tracking-wider transition-colors',
+                    dialPhase === 'minute'
+                      ? 'text-[var(--brand-text)]'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Minute
+                </button>
+              </div>
+
               <div className="relative mx-auto flex h-56 w-56 items-center justify-center rounded-full border border-border bg-muted/30">
-                {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((value, index) => {
-                  const angle = (index * 30 * Math.PI) / 180
-                  const radius = 92
-                  const x = 112 + radius * Math.sin(angle)
-                  const y = 112 - radius * Math.cos(angle)
-                  const isActive = parseInt(hourField, 10) === value || (value === 12 && hourField === '12')
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setHourField(String(value))}
-                      style={{ left: x - 18, top: y - 18 }}
-                      className={cn(
-                        'tap-target absolute flex items-center justify-center rounded-full text-sm font-medium transition',
-                        isActive ? 'bg-[var(--brand)] text-white' : 'text-foreground/70 hover:bg-[var(--brand-tint)]'
-                      )}
-                    >
-                      {value}
-                    </button>
-                  )
-                })}
+                {/* Center dot */}
+                <div className="absolute w-2 h-2 rounded-full bg-[var(--brand)]" />
+
+                {dialPhase === 'hour' ? (
+                  /* Hour dial — 12 positions */
+                  HOUR_VALUES.map((value, index) => {
+                    const angle = (index * 30 * Math.PI) / 180
+                    const radius = 92
+                    const x = 112 + radius * Math.sin(angle)
+                    const y = 112 - radius * Math.cos(angle)
+                    const currentHour = parseInt(hourField, 10) || 12
+                    const isActive = currentHour === value
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => handleDialHourSelect(value)}
+                        style={{ left: x - 18, top: y - 18 }}
+                        className={cn(
+                          'tap-target absolute flex items-center justify-center rounded-full text-sm font-medium transition',
+                          isActive ? 'bg-[var(--brand)] text-white' : 'text-foreground/70 hover:bg-[var(--brand-tint)]'
+                        )}
+                      >
+                        {value}
+                      </button>
+                    )
+                  })
+                ) : (
+                  /* Minute dial — 12 positions (0, 5, 10, ..., 55) */
+                  MINUTE_VALUES.map((value, index) => {
+                    const angle = (index * 30 * Math.PI) / 180
+                    const radius = 92
+                    const x = 112 + radius * Math.sin(angle)
+                    const y = 112 - radius * Math.cos(angle)
+                    const currentMinute = parseInt(minuteField, 10) || 0
+                    const isActive = currentMinute === value
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => handleDialMinuteSelect(value)}
+                        style={{ left: x - 18, top: y - 18 }}
+                        className={cn(
+                          'tap-target absolute flex items-center justify-center rounded-full text-sm font-medium transition',
+                          isActive ? 'bg-[var(--brand)] text-white' : 'text-foreground/70 hover:bg-[var(--brand-tint)]'
+                        )}
+                      >
+                        {String(value).padStart(2, '0')}
+                      </button>
+                    )
+                  })
+                )}
               </div>
 
               <div className="mt-6 flex items-center justify-between gap-3">

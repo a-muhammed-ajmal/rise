@@ -111,7 +111,11 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       is_completed: _ic,
       ...safeUpdates
     } = updates
-    await supabase.from('tasks').update(safeUpdates as never).eq('id', id)
+    const { error } = await supabase.from('tasks').update(safeUpdates as never).eq('id', id)
+    if (error) {
+      console.error('[use-tasks] update error:', error.message)
+      throw new Error(error.message)
+    }
     await fetchTasks()
   }
 

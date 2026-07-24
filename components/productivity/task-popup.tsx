@@ -123,7 +123,21 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
   }, [title])
 
   function commit(patch: Partial<Task>) {
-    if (liveTask) updateTask(liveTask.id, patch).then(() => refresh?.())
+    if (liveTask) {
+      updateTask(liveTask.id, patch)
+        .then(() => refresh?.())
+        .catch((err: Error) => {
+          toast.error(`Update failed: ${err.message}`)
+        })
+    }
+  }
+
+  /** Close all picker overlays — ensures only one is open at a time */
+  function closeAllPickers() {
+    setShowDatePicker(false)
+    setShowReminderPicker(false)
+    setShowDurationPicker(false)
+    setShowRepeatPicker(false)
   }
 
   // ── Field handlers ────────────────────────────────────────────────────────
@@ -648,7 +662,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowDatePicker((v) => !v)}
+                    onClick={() => { closeAllPickers(); setShowDatePicker((v) => !v) }}
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       dueDate
@@ -683,7 +697,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowRepeatPicker((v) => !v)}
+                    onClick={() => { closeAllPickers(); setShowRepeatPicker((v) => !v) }}
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       repeat !== 'none'
@@ -713,7 +727,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowReminderPicker((v) => !v)}
+                    onClick={() => { closeAllPickers(); setShowReminderPicker((v) => !v) }}
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       reminderDate
@@ -743,7 +757,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowDurationPicker((v) => !v)}
+                    onClick={() => { closeAllPickers(); setShowDurationPicker((v) => !v) }}
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       estimatedMinutes
@@ -991,8 +1005,8 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       {/* DateTimePicker overlay — due date/time */}
       {showDatePicker && (
         <>
-          <div className="fixed inset-0 z-[59]" onClick={() => setShowDatePicker(false)} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowDatePicker(false)} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
             <DateTimePicker
               initialDate={dueDate ? new Date(`${dueDate}T${dueTime || '09:00'}:00`) : new Date()}
               onSave={(d) => { handleDateChange(d); setShowDatePicker(false) }}
@@ -1005,8 +1019,8 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       {/* DateTimePicker overlay — reminder */}
       {showReminderPicker && (
         <>
-          <div className="fixed inset-0 z-[59]" onClick={() => setShowReminderPicker(false)} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowReminderPicker(false)} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
             <DateTimePicker
               initialDate={reminderDate ? new Date(`${reminderDate}T${reminderTime || '09:00'}:00`) : new Date()}
               onSave={(d) => { handleReminderChange(d); setShowReminderPicker(false) }}
@@ -1019,8 +1033,8 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       {/* DurationPicker overlay */}
       {showDurationPicker && (
         <>
-          <div className="fixed inset-0 z-[59]" onClick={() => setShowDurationPicker(false)} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowDurationPicker(false)} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
             <DurationPicker
               value={parseInt(estimatedMinutes, 10) || 0}
               onChange={handleDurationChange}
@@ -1033,8 +1047,8 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       {/* RepeatEditor overlay */}
       {showRepeatPicker && (
         <>
-          <div className="fixed inset-0 z-[59]" onClick={() => setShowRepeatPicker(false)} />
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowRepeatPicker(false)} />
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
             <RepeatEditor
               value={repeat !== 'none' ? repeat : null}
               dueDate={dueDate || null}
