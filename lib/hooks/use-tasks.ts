@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useId } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Task, Subtask, TaskAttachment, Comment, ActivityEntry, LinkedTask, Reminder } from '@/lib/types/database'
+import type { Task, Subtask, TaskAttachment } from '@/lib/types/database'
 import { todayISO } from '@/lib/format'
 
 export type TaskFilter = 'today' | 'all' | 'project' | 'completed'
@@ -14,10 +14,6 @@ function coerceTask(t: Record<string, unknown>): Task {
     labels: Array.isArray(t.labels) ? (t.labels as string[]) : [],
     subtasks: Array.isArray(t.subtasks) ? (t.subtasks as Subtask[]) : [],
     attachments: Array.isArray(t.attachments) ? (t.attachments as TaskAttachment[]) : [],
-    comments: Array.isArray(t.comments) ? (t.comments as Comment[]) : [],
-    activity: Array.isArray(t.activity) ? (t.activity as ActivityEntry[]) : [],
-    linked_tasks: Array.isArray(t.linked_tasks) ? (t.linked_tasks as LinkedTask[]) : [],
-    reminders: Array.isArray(t.reminders) ? (t.reminders as Reminder[]) : [],
   }
 }
 
@@ -87,17 +83,12 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       area: data.area ?? 'default',
       recurrence: data.recurrence ?? null,
       reminder: data.reminder ?? null,
-      reminders: (data.reminders ?? []) as unknown as never,
       is_starred: data.is_starred ?? false,
       is_focus: data.is_focus ?? false,
       labels: data.labels ?? [],
       subtasks: (data.subtasks ?? []) as unknown as never,
       estimated_time: data.estimated_time ?? null,
       attachments: (data.attachments ?? []) as unknown as never,
-      comments: [] as unknown as never,
-      activity: [] as unknown as never,
-      linked_tasks: [] as unknown as never,
-      location: data.location ?? null,
     }).select('id').single()
     await fetchTasks()
     return row?.id ?? null
@@ -150,22 +141,6 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       prev.map((t) =>
         t.id === id ? { ...t, is_focus: newFocus, focus_date: newFocus ? todayISO() : null } : t
       )
-    )
-  }
-
-  async function addComment(id: string, text: string) {
-    const task = tasks.find((t) => t.id === id)
-    if (!task) return
-    const newComment: Comment = {
-      id: crypto.randomUUID(),
-      text: text.trim(),
-      created_at: new Date().toISOString(),
-    }
-    const updated = [...task.comments, newComment]
-    const supabase = createClient()
-    await supabase.from('tasks').update({ comments: updated as unknown as never }).eq('id', id)
-    setTasks((prev) =>
-      prev.map((t) => t.id === id ? { ...t, comments: updated } : t)
     )
   }
 
@@ -223,17 +198,12 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       area: task.area ?? 'default',
       recurrence: null,
       reminder: null,
-      reminders: [] as unknown as never,
       is_starred: false,
       is_focus: false,
       labels: task.labels,
       subtasks: [] as unknown as never,
       estimated_time: task.estimated_time,
       attachments: [] as unknown as never,
-      comments: [] as unknown as never,
-      activity: [] as unknown as never,
-      linked_tasks: [] as unknown as never,
-      location: task.location,
     })
     await fetchTasks()
   }
@@ -246,7 +216,6 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
     completeTask,
     reopenTask,
     toggleFocus,
-    addComment,
     deleteTask,
     duplicateTask,
     bulkComplete,

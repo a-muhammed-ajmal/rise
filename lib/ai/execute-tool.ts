@@ -533,10 +533,6 @@ export async function executeTool(
           labels: [],
           subtasks: [],
           attachments: [],
-          comments: [],
-          activity: [],
-          linked_tasks: [],
-          reminders: [],
           area: "default" as const,
         })
         .select()

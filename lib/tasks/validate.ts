@@ -6,7 +6,6 @@
 
 export const TITLE_MAX = 500
 export const EST_TIME_MAX = 2880 // minutes (48h)
-export const REMINDERS_MAX = 5
 export const LABELS_MAX = 10
 
 export interface TaskDraft {
@@ -15,7 +14,6 @@ export interface TaskDraft {
   due_time?: string | null
   recurrence?: string | null
   estimated_time?: number | null
-  reminders?: unknown[] | null
   labels?: unknown[] | null
 }
 
@@ -50,10 +48,6 @@ export function validateTask(d: TaskDraft): ValidationResult {
     } else if (t > EST_TIME_MAX) {
       errors.estimated_time = `Estimated time can be at most ${EST_TIME_MAX} minutes (48h).`
     }
-  }
-
-  if (Array.isArray(d.reminders) && d.reminders.length > REMINDERS_MAX) {
-    errors.reminders = `A task can have at most ${REMINDERS_MAX} reminders.`
   }
 
   if (Array.isArray(d.labels) && d.labels.length > LABELS_MAX) {

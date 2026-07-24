@@ -3,7 +3,6 @@ import {
   validateTask,
   TITLE_MAX,
   EST_TIME_MAX,
-  REMINDERS_MAX,
   LABELS_MAX,
 } from '../validate'
 
@@ -63,12 +62,6 @@ describe('validateTask', () => {
   })
 
   describe('collection caps', () => {
-    it('rejects more than the max reminders', () => {
-      const reminders = Array.from({ length: REMINDERS_MAX + 1 }, (_, i) => ({ id: String(i) }))
-      expect(validateTask({ title: 'x', reminders }).errors.reminders).toBeDefined()
-      expect(validateTask({ title: 'x', reminders: reminders.slice(0, REMINDERS_MAX) }).valid).toBe(true)
-    })
-
     it('rejects more than the max labels', () => {
       const labels = Array.from({ length: LABELS_MAX + 1 }, (_, i) => `l${i}`)
       expect(validateTask({ title: 'x', labels }).errors.labels).toBeDefined()

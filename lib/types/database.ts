@@ -46,36 +46,6 @@ export type TaskAttachment = {
 export type TaskStatus = "todo" | "in_progress" | "blocked" | "on_hold" | "done";
 export type TaskPriority = "P1" | "P2" | "P3" | "P4";
 
-export type Comment = {
-  id: string;
-  text: string;
-  created_at: string;
-};
-
-export type ActivityEntry = {
-  id: string;
-  action: string;
-  field?: string;
-  old_value?: string;
-  new_value?: string;
-  created_at: string;
-};
-
-export type LinkedTask = {
-  task_id: string;
-  relationship: "blocks" | "blocked_by" | "related";
-};
-
-export type Reminder = {
-  id: string;
-  /** relative → fires `offset_minutes` before the due time; absolute → fires at `at`. */
-  type: "relative" | "absolute";
-  /** For relative reminders: minutes before the due date/time. */
-  offset_minutes?: number;
-  /** For absolute reminders: ISO timestamp of the exact moment. */
-  at?: string;
-};
-
 /** iCal RRULE string, e.g. "FREQ=DAILY" */
 export type RecurrenceRule = string;
 
@@ -84,8 +54,6 @@ type TaskRow = {
   user_id: string;
   title: string;
   description: string | null;
-  /** Tiptap JSON for rich notes; `description` mirrors its plain text. */
-  description_rich: Json | null;
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
@@ -97,14 +65,9 @@ type TaskRow = {
   labels: string[];
   subtasks: Subtask[];
   attachments: TaskAttachment[];
-  comments: Comment[];
-  activity: ActivityEntry[];
   recurrence: RecurrenceRule | null;
   reminder: string | null;
-  reminders: Reminder[];
   estimated_time: number | null;
-  location: string | null;
-  linked_tasks: LinkedTask[];
   project_id: string | null;
   area: ProjectCategory;
   created_at: string;
