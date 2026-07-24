@@ -38,6 +38,19 @@ import { toast } from 'sonner'
 import { useTasks } from '@/lib/hooks/use-tasks'
 import type { Task, Subtask, TaskAttachment, ProjectCategory } from '@/lib/types/database'
 
+/**
+ * Safely build a Date from YYYY-MM-DD + HH:MM strings.
+ * Handles: missing values, NaN poison, wrong formats, extra seconds.
+ * Always returns a valid Date (falls back to now).
+ */
+function parseSafeDate(dateStr: string, timeStr: string): Date {
+  if (!dateStr || dateStr.includes('NaN') || dateStr.includes('Invalid')) return new Date()
+  // Normalize time to HH:MM only (strip seconds if present)
+  const timePart = (timeStr && !timeStr.includes('NaN')) ? timeStr.slice(0, 5) : '09:00'
+  const d = new Date(`${dateStr}T${timePart}:00`)
+  return isNaN(d.getTime()) ? new Date() : d
+}
+
 interface TaskPopupProps {
   task?: Task | null
   projects: Array<{ id: string; name: string; color: string; category: ProjectCategory }>
@@ -187,6 +200,10 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
   }
 
   function handleDateChange(date: Date) {
+    if (isNaN(date.getTime())) {
+      toast.error('Invalid date selected')
+      return
+    }
     const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
     const nextTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
     setDueDate(nextDate)
@@ -212,11 +229,15 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
   }
 
   function handleReminderChange(date: Date) {
+    if (isNaN(date.getTime())) {
+      toast.error('Invalid reminder date')
+      return
+    }
     const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
     const nextTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
     setReminderDate(nextDate)
     setReminderTime(nextTime)
-    const iso = nextDate ? new Date(`${nextDate}T${nextTime}:00`).toISOString() : null
+    const iso = new Date(`${nextDate}T${nextTime}:00`).toISOString()
     commit({ reminder: iso })
   }
 
@@ -1008,7 +1029,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
           <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowDatePicker(false)} />
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
             <DateTimePicker
-              initialDate={dueDate ? new Date(`${dueDate}T${dueTime || '09:00'}:00`) : new Date()}
+              initialDate={dueDate ? parseSafeDate(dueDate, dueTime) : new Date()}
               onSave={(d) => { handleDateChange(d); setShowDatePicker(false) }}
               onCancel={() => setShowDatePicker(false)}
             />
@@ -1022,7 +1043,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
           <div className="fixed inset-0 z-[70] bg-black/20" onClick={() => setShowReminderPicker(false)} />
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
             <DateTimePicker
-              initialDate={reminderDate ? new Date(`${reminderDate}T${reminderTime || '09:00'}:00`) : new Date()}
+              initialDate={reminderDate ? parseSafeDate(reminderDate, reminderTime) : new Date()}
               onSave={(d) => { handleReminderChange(d); setShowReminderPicker(false) }}
               onCancel={() => setShowReminderPicker(false)}
             />

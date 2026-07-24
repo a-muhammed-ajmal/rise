@@ -140,6 +140,12 @@ function clampMinute(raw: string): string {
   return String(n).padStart(2, '0')
 }
 
+/** Return a valid Date — falls back to now if the input is missing or invalid */
+function safeDate(d: Date | undefined | null): Date {
+  if (d instanceof Date && !isNaN(d.getTime())) return d
+  return new Date()
+}
+
 export const DateTimePicker = ({
   initialDate,
   onSave,
@@ -153,7 +159,7 @@ export const DateTimePicker = ({
   const [dateView, setDateView] = useState<DateView>('calendar')
   const [timeView, setTimeView] = useState<TimeView>('dial')
   const [dialPhase, setDialPhase] = useState<DialPhase>('hour')
-  const [selected, setSelected] = useState<Date>(initialDate ?? new Date())
+  const [selected, setSelected] = useState<Date>(() => safeDate(initialDate))
   const [viewMonth, setViewMonth] = useState(selected.getMonth())
   const [viewYear, setViewYear] = useState(selected.getFullYear())
   const [hourField, setHourField] = useState(String(selected.getHours() % 12 || 12))
