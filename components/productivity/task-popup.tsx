@@ -135,13 +135,46 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
     }
   }, [title])
 
-  function commit(patch: Partial<Task>) {
+  // Used only for file upload (storage op must be linked immediately)
+  function commitImmediate(patch: Partial<Task>) {
     if (liveTask) {
       updateTask(liveTask.id, patch)
         .then(() => refresh?.())
         .catch((err: Error) => {
           toast.error(`Update failed: ${err.message}`)
         })
+    }
+  }
+
+  async function handleSave() {
+    if (!liveTask) return
+    const t = title.trim()
+    if (!t) { toast.error('Task title is required'); return }
+    setSaving(true)
+    try {
+      await updateTask(liveTask.id, {
+        title: t,
+        description: description.trim() || null,
+        priority,
+        area,
+        project_id: projectId || null,
+        due_date: dueDate || null,
+        due_time: dueTime || null,
+        recurrence: repeat === 'none' ? null : repeat,
+        reminder: reminderDate
+          ? new Date(`${reminderDate}T${reminderTime || '09:00'}:00`).toISOString()
+          : null,
+        estimated_time: estimatedMinutes ? parseInt(estimatedMinutes, 10) : null,
+        labels,
+        subtasks,
+        attachments,
+      })
+      refresh?.()
+      toast.success('Task updated')
+    } catch (err: unknown) {
+      toast.error(`Update failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -156,45 +189,32 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
   // ── Field handlers ────────────────────────────────────────────────────────
 
   function handleTitleBlur() {
-    const t = title.trim()
     if (!liveTask) return
-    if (t && t !== liveTask.title) commit({ title: t })
-    else if (!t) setTitle(liveTask.title)
-  }
-
-  function handleDescriptionBlur() {
-    if (!liveTask) return
-    const d = description.trim() || null
-    if (d !== liveTask.description) commit({ description: d })
+    if (!title.trim()) setTitle(liveTask.title) // revert empty to original
   }
 
   function handlePriorityChange(p: Task['priority'] | null) {
     if (!p) return
     setPriority(p)
-    commit({ priority: p })
   }
 
   function handleAreaChange(v: ProjectCategory) {
     setArea(v)
-    commit({ area: v })
     // Clear project if it no longer belongs to the new area
     const currentProj = projects.find((p) => p.id === projectId)
     if (currentProj && (currentProj.category ?? 'default') !== v) {
       setProjectId('')
-      commit({ project_id: null })
     }
   }
 
   function handleProjectChange(v: string | null) {
     const id = (!v || v === 'none') ? null : v
     setProjectId(id ?? '')
-    commit({ project_id: id })
     // Auto-sync area to match the picked project's category
     if (id) {
       const proj = projects.find((p) => p.id === id)
       if (proj && (proj.category ?? 'default') !== area) {
         setArea(proj.category ?? 'default')
-        commit({ area: proj.category ?? 'default' })
       }
     }
   }
@@ -210,24 +230,20 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       : ''
     setDueDate(nextDate)
     setDueTime(nextTime)
-    commit({ due_date: nextDate, due_time: hasTime ? nextTime : null })
   }
 
   function handleRepeatChange(v: string) {
     setRepeat(v)
-    commit({ recurrence: v === 'none' ? null : v })
   }
 
   function clearDueDate() {
     setDueDate('')
     setDueTime('')
-    commit({ due_date: null, due_time: null })
   }
 
   function clearReminder() {
     setReminderDate('')
     setReminderTime('')
-    commit({ reminder: null })
   }
 
   function handleReminderChange(date: Date, hasTime: boolean) {
@@ -241,33 +257,24 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       : ''
     setReminderDate(nextDate)
     setReminderTime(nextTime)
-    const iso = new Date(`${nextDate}T${nextTime || '09:00'}:00`).toISOString()
-    commit({ reminder: iso })
   }
 
   function handleDurationChange(totalMinutes: number) {
     const val = totalMinutes > 0 ? totalMinutes.toString() : ''
     setEstimatedMinutes(val)
-    commit({ estimated_time: totalMinutes > 0 ? totalMinutes : null })
   }
 
   // ── Labels ───────────────────────────────────────────────────────────────
 
   function toggleLabel(label: string) {
-    const updated = labels.includes(label)
+    setLabels(labels.includes(label)
       ? labels.filter((x) => x !== label)
-      : [...labels, label]
-    setLabels(updated)
-    commit({ labels: updated })
+      : [...labels, label])
   }
 
   function addNewLabel() {
     const l = newLabelInput.trim().toLowerCase()
-    if (l && !labels.includes(l)) {
-      const updated = [...labels, l]
-      setLabels(updated)
-      commit({ labels: updated })
-    }
+    if (l && !labels.includes(l)) setLabels((prev) => [...prev, l])
     setNewLabelInput('')
     setShowLabelInput(false)
   }
@@ -277,23 +284,17 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
   function handleAddSubtask() {
     const t = newSubtask.trim()
     if (!t) return
-    const updated: Subtask[] = [...subtasks, { id: crypto.randomUUID(), title: t, done: false }]
-    setSubtasks(updated)
+    setSubtasks((prev) => [...prev, { id: crypto.randomUUID(), title: t, done: false }])
     setNewSubtask('')
-    commit({ subtasks: updated })
     setTimeout(() => subtaskRef.current?.focus(), 0)
   }
 
   function toggleSubtask(id: string) {
-    const updated = subtasks.map((s) => s.id === id ? { ...s, done: !s.done } : s)
-    setSubtasks(updated)
-    commit({ subtasks: updated })
+    setSubtasks((prev) => prev.map((s) => s.id === id ? { ...s, done: !s.done } : s))
   }
 
   function removeSubtask(id: string) {
-    const updated = subtasks.filter((s) => s.id !== id)
-    setSubtasks(updated)
-    commit({ subtasks: updated })
+    setSubtasks((prev) => prev.filter((s) => s.id !== id))
   }
 
   // ── Attachments ──────────────────────────────────────────────────────────
@@ -312,7 +313,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       const { data: urlData } = supabase.storage.from('task-attachments').getPublicUrl(path)
       const updated = [...attachments, { name: file.name, url: urlData.publicUrl, type: file.type }]
       setAttachments(updated)
-      commit({ attachments: updated })
+      commitImmediate({ attachments: updated })
       toast.success('File attached')
     } finally {
       setUploading(false)
@@ -321,9 +322,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
   }
 
   function removeAttachment(index: number) {
-    const updated = attachments.filter((_, i) => i !== index)
-    setAttachments(updated)
-    commit({ attachments: updated })
+    setAttachments((prev) => prev.filter((_, i) => i !== index))
   }
 
   // ── Complete / Reopen / Delete / Duplicate ────────────────────────────────
@@ -548,7 +547,6 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                   icon={<Pencil aria-hidden="true" />}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  onBlur={handleDescriptionBlur}
                   rows={3}
                   maxLength={5000}
                   className="resize-none text-sm"
@@ -1014,13 +1012,22 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
               >
                 Close
               </button>
-              {isCreate && (
+              {isCreate ? (
                 <button
                   type="submit"
                   disabled={saving || !title.trim()}
                   className="min-h-[44px] px-4 text-xs rounded-md font-semibold bg-brand text-white hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Adding…' : 'Add task'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || !title.trim()}
+                  className="min-h-[44px] px-4 text-xs rounded-md font-semibold bg-brand text-white hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? 'Saving…' : 'Save'}
                 </button>
               )}
             </div>
