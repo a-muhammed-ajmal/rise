@@ -199,16 +199,18 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
     }
   }
 
-  function handleDateChange(date: Date) {
+  function handleDateChange(date: Date, hasTime: boolean) {
     if (isNaN(date.getTime())) {
       toast.error('Invalid date selected')
       return
     }
     const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-    const nextTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    const nextTime = hasTime
+      ? `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+      : ''
     setDueDate(nextDate)
     setDueTime(nextTime)
-    commit({ due_date: nextDate, due_time: nextTime })
+    commit({ due_date: nextDate, due_time: hasTime ? nextTime : null })
   }
 
   function handleRepeatChange(v: string) {
@@ -228,16 +230,18 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
     commit({ reminder: null })
   }
 
-  function handleReminderChange(date: Date) {
+  function handleReminderChange(date: Date, hasTime: boolean) {
     if (isNaN(date.getTime())) {
       toast.error('Invalid reminder date')
       return
     }
     const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-    const nextTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    const nextTime = hasTime
+      ? `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+      : ''
     setReminderDate(nextDate)
     setReminderTime(nextTime)
-    const iso = new Date(`${nextDate}T${nextTime}:00`).toISOString()
+    const iso = new Date(`${nextDate}T${nextTime || '09:00'}:00`).toISOString()
     commit({ reminder: iso })
   }
 
@@ -1030,7 +1034,8 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
             <DateTimePicker
               initialDate={dueDate ? parseSafeDate(dueDate, dueTime) : new Date()}
-              onSave={(d) => { handleDateChange(d); setShowDatePicker(false) }}
+              hasInitialTime={!!dueTime}
+              onSave={(d, hasTime) => { handleDateChange(d, hasTime); setShowDatePicker(false) }}
               onCancel={() => setShowDatePicker(false)}
             />
           </div>
@@ -1044,7 +1049,8 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[71]">
             <DateTimePicker
               initialDate={reminderDate ? parseSafeDate(reminderDate, reminderTime) : new Date()}
-              onSave={(d) => { handleReminderChange(d); setShowReminderPicker(false) }}
+              hasInitialTime={!!reminderTime}
+              onSave={(d, hasTime) => { handleReminderChange(d, hasTime); setShowReminderPicker(false) }}
               onCancel={() => setShowReminderPicker(false)}
             />
           </div>

@@ -1,12 +1,14 @@
 'use client'
 
 import { useMemo, useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, Keyboard, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Keyboard, Clock, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DateTimePickerProps {
   initialDate?: Date
-  onSave: (date: Date) => void
+  /** Pass true when the task already has an explicit saved time — keeps time section open */
+  hasInitialTime?: boolean
+  onSave: (date: Date, hasTime: boolean) => void
   onCancel: () => void
   mode?: 'date' | 'time' | 'datetime'
   minDate?: Date
@@ -124,7 +126,6 @@ function isDateDisabled(date: Date, minDate?: Date, maxDate?: Date, disabledDate
   return disabledDates.some((d) => normalizeDate(d).getTime() === normalized.getTime())
 }
 
-/** Clamp a 12h hour value to 1–12 */
 function clampHour(raw: string): string {
   const n = parseInt(raw, 10)
   if (isNaN(n) || n < 1) return '12'
@@ -132,7 +133,6 @@ function clampHour(raw: string): string {
   return String(n)
 }
 
-/** Clamp a minute value to 0–59 */
 function clampMinute(raw: string): string {
   const n = parseInt(raw, 10)
   if (isNaN(n) || n < 0) return '00'
@@ -140,7 +140,6 @@ function clampMinute(raw: string): string {
   return String(n).padStart(2, '0')
 }
 
-/** Return a valid Date — falls back to now if the input is missing or invalid */
 function safeDate(d: Date | undefined | null): Date {
   if (d instanceof Date && !isNaN(d.getTime())) return d
   return new Date()
@@ -148,6 +147,7 @@ function safeDate(d: Date | undefined | null): Date {
 
 export const DateTimePicker = ({
   initialDate,
+  hasInitialTime = false,
   onSave,
   onCancel,
   mode = 'datetime',
@@ -155,7 +155,11 @@ export const DateTimePicker = ({
   maxDate,
   disabledDates = [],
 }: DateTimePickerProps) => {
-  const [tab, setTab] = useState<'date' | 'time'>(mode === 'time' ? 'time' : 'date')
+  const showDateSection = mode !== 'time'
+  const showTimeSection = mode !== 'date'
+
+  // Time starts enabled only when mode is time-only or task already had an explicit time
+  const [timeEnabled, setTimeEnabled] = useState(mode === 'time' || hasInitialTime)
   const [dateView, setDateView] = useState<DateView>('calendar')
   const [timeView, setTimeView] = useState<TimeView>('dial')
   const [dialPhase, setDialPhase] = useState<DialPhase>('hour')
@@ -170,22 +174,16 @@ export const DateTimePicker = ({
   const daysInMonth = getDaysInMonth(viewYear, viewMonth)
   const firstWeekday = getFirstWeekday(viewYear, viewMonth)
   const today = new Date()
-  const showDateTab = mode !== 'time'
-  const showTimeTab = mode !== 'date'
+  const yearOptions = useMemo(() => Array.from({ length: 15 }, (_, i) => viewYear - 2 + i), [viewYear])
 
   const weekdayLabel = selected.toLocaleDateString('en-US', { weekday: 'short' })
   const monthShort = selected.toLocaleDateString('en-US', { month: 'short' })
-  const yearOptions = useMemo(() => Array.from({ length: 15 }, (_, i) => viewYear - 2 + i), [viewYear])
 
   function handleSelectDate(day: number) {
     const next = new Date(selected)
     next.setFullYear(viewYear, viewMonth, day)
     if (isDateDisabled(next, minDate, maxDate, disabledDates)) return
     setSelected(next)
-    // Auto-switch to time tab after selecting a date (if datetime mode)
-    if (showTimeTab) {
-      setTimeout(() => setTab('time'), 200)
-    }
   }
 
   function handleSelectYear(year: number) {
@@ -198,13 +196,12 @@ export const DateTimePicker = ({
 
   function handleSave() {
     const final = new Date(selected)
-    if (showTimeTab) {
+    const effectiveHasTime = showTimeSection && timeEnabled
+    if (effectiveHasTime) {
       const h12 = parseInt(hourField, 10) || 12
       const clamped = Math.min(12, Math.max(1, h12))
       const min = parseInt(minuteField, 10) || 0
       const clampedMin = Math.min(59, Math.max(0, min))
-
-      // Convert 12h → 24h
       let h24: number
       if (meridiem === 'AM') {
         h24 = clamped === 12 ? 0 : clamped
@@ -213,9 +210,9 @@ export const DateTimePicker = ({
       }
       final.setHours(h24, clampedMin, 0, 0)
     } else {
-      final.setHours(selected.getHours(), selected.getMinutes(), 0, 0)
+      final.setHours(0, 0, 0, 0)
     }
-    onSave(final)
+    onSave(final, effectiveHasTime)
   }
 
   function handleTimeInput(value: string, target: 'hour' | 'minute') {
@@ -237,17 +234,13 @@ export const DateTimePicker = ({
     setActiveInput(null)
   }, [])
 
-  /** Select an hour on the clock dial — auto-advance to minute phase */
   function handleDialHourSelect(value: number) {
     setHourField(String(value))
-    // Auto-advance to minute selection
     setDialPhase('minute')
   }
 
-  /** Select a minute on the clock dial — done, stay on dial */
   function handleDialMinuteSelect(value: number) {
     setMinuteField(String(value).padStart(2, '0'))
-    // Minute selected — dial is complete, stay showing the result
   }
 
   const navBtnCls = 'tap-target flex items-center justify-center rounded-full border border-border transition hover:border-[var(--border-focus)] hover:bg-[var(--brand-tint)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]'
@@ -279,44 +272,36 @@ export const DateTimePicker = ({
         <div className="h-1 w-10 rounded-full bg-muted-foreground/25" />
       </div>
 
-      {/* Tab strip */}
-      {showDateTab && showTimeTab && (
-        <div className="flex border-b border-border">
-          {(['date', 'time'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={cn(
-                'flex-1 py-3 text-sm font-semibold uppercase transition-colors',
-                tab === t
-                  ? 'border-b-2 border-[var(--brand)] text-[var(--brand-text)]'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── DATE TAB ─────────────────────────────────── */}
-      {showDateTab && tab === 'date' && (
+      {/* ── DATE SECTION ─────────────────────────────────── */}
+      {showDateSection && (
         <>
-          {/* Dark header band */}
-          <button
-            type="button"
-            onClick={() => setDateView(v => v === 'calendar' ? 'year' : 'calendar')}
-            className="relative w-full overflow-hidden bg-[var(--surface-dark)] px-6 py-6 text-left graph-bg-dark"
-          >
-            <p className="mb-1 text-xs text-white/70">{viewYear}</p>
-            <p className={cn('text-3xl font-semibold tracking-tight text-white', dateView === 'year' && 'text-white/40')}>
-              {weekdayLabel}, {selected.getDate()} {monthShort}
-            </p>
-          </button>
+          {/* Selected date — light, no dark band */}
+          <div className="px-5 pt-4 pb-2">
+            <button
+              type="button"
+              onClick={() => setDateView(v => v === 'calendar' ? 'year' : 'calendar')}
+              className="group flex items-baseline gap-2"
+              aria-label={`${weekdayLabel} ${selected.getDate()} ${monthShort} ${viewYear} — tap to change year`}
+            >
+              <span className={cn(
+                'text-2xl font-semibold transition-colors',
+                dateView === 'year'
+                  ? 'text-muted-foreground'
+                  : 'text-foreground group-hover:text-[var(--brand-text)]'
+              )}>
+                {weekdayLabel}, {selected.getDate()} {monthShort}
+              </span>
+              <span className={cn(
+                'text-sm transition-colors',
+                dateView === 'year' ? 'text-[var(--brand-text)]' : 'text-muted-foreground'
+              )}>
+                {viewYear}
+              </span>
+            </button>
+          </div>
 
           {dateView === 'calendar' ? (
-            <div className="px-5 py-4">
+            <div className="px-5 pb-2">
               {/* Month nav */}
               <div className="mb-3 flex items-center justify-between">
                 <button type="button" aria-label="Previous month" className={navBtnCls}
@@ -396,161 +381,176 @@ export const DateTimePicker = ({
         </>
       )}
 
-      {/* ── TIME TAB ─────────────────────────────────── */}
-      {showTimeTab && tab === 'time' && (
-        <>
-          {/* Dark time header */}
-          <div className="flex items-center justify-between bg-[var(--surface-dark)] px-6 py-6 graph-bg-dark">
-            <div className="flex items-baseline gap-0.5">
-              {/* Tappable hour */}
-              <button
-                type="button"
-                onClick={() => setDialPhase('hour')}
-                className={cn(
-                  'text-5xl font-semibold tracking-tight transition-colors',
-                  dialPhase === 'hour' ? 'text-white' : 'text-white/40'
-                )}
-                aria-label="Select hour"
-              >
-                {hourField || '12'}
-              </button>
-              <span className="text-5xl font-semibold text-white/40">:</span>
-              {/* Tappable minute */}
-              <button
-                type="button"
-                onClick={() => setDialPhase('minute')}
-                className={cn(
-                  'text-5xl font-semibold tracking-tight transition-colors',
-                  dialPhase === 'minute' ? 'text-white' : 'text-white/40'
-                )}
-                aria-label="Select minute"
-              >
-                {minuteField || '00'}
-              </button>
-            </div>
-            <div className="flex flex-col gap-1 text-sm font-semibold">
-              {(['AM', 'PM'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMeridiem(m)}
-                  className={cn('rounded px-2 py-1 transition', meridiem === m ? 'bg-[var(--brand)] text-white' : 'text-white/40 hover:text-white/70')}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Clock dial — two-phase: hour then minute */}
-          {timeView === 'dial' && (
-            <div className="px-6 py-6">
-              {/* Phase indicator */}
-              <div className="mb-3 flex items-center justify-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => setDialPhase('hour')}
-                  className={cn(
-                    'text-xs font-semibold uppercase tracking-wider transition-colors',
-                    dialPhase === 'hour'
-                      ? 'text-[var(--brand-text)]'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Hour
-                </button>
-                <span className="text-muted-foreground/40">→</span>
-                <button
-                  type="button"
-                  onClick={() => setDialPhase('minute')}
-                  className={cn(
-                    'text-xs font-semibold uppercase tracking-wider transition-colors',
-                    dialPhase === 'minute'
-                      ? 'text-[var(--brand-text)]'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Minute
-                </button>
-              </div>
-
-              <div className="relative mx-auto flex h-56 w-56 items-center justify-center rounded-full border border-border bg-muted/30">
-                {/* Center dot */}
-                <div className="absolute w-2 h-2 rounded-full bg-[var(--brand)]" />
-
-                {dialPhase === 'hour' ? (
-                  /* Hour dial — 12 positions */
-                  HOUR_VALUES.map((value, index) => {
-                    const angle = (index * 30 * Math.PI) / 180
-                    const radius = 92
-                    const x = 112 + radius * Math.sin(angle)
-                    const y = 112 - radius * Math.cos(angle)
-                    const currentHour = parseInt(hourField, 10) || 12
-                    const isActive = currentHour === value
-                    return (
+      {/* ── TIME SECTION (optional toggle) ─────────────────────────────── */}
+      {showTimeSection && (
+        <div className="border-t border-border">
+          {!timeEnabled ? (
+            <button
+              type="button"
+              onClick={() => setTimeEnabled(true)}
+              className="flex w-full items-center gap-2 px-5 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-[var(--brand-text)]"
+            >
+              <Clock size={15} />
+              Add time
+            </button>
+          ) : (
+            <>
+              {/* Time display — light orange tint, no dark navy */}
+              <div className="flex items-center justify-between bg-[var(--brand-tint)] px-5 py-3">
+                <div className="flex items-baseline gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => { setDialPhase('hour'); setTimeView('dial') }}
+                    className={cn(
+                      'text-4xl font-semibold tracking-tight transition-colors',
+                      dialPhase === 'hour' ? 'text-[var(--brand-text)]' : 'text-foreground/50'
+                    )}
+                    aria-label="Select hour"
+                  >
+                    {hourField || '12'}
+                  </button>
+                  <span className="text-4xl font-semibold text-foreground/30">:</span>
+                  <button
+                    type="button"
+                    onClick={() => { setDialPhase('minute'); setTimeView('dial') }}
+                    className={cn(
+                      'text-4xl font-semibold tracking-tight transition-colors',
+                      dialPhase === 'minute' ? 'text-[var(--brand-text)]' : 'text-foreground/50'
+                    )}
+                    aria-label="Select minute"
+                  >
+                    {minuteField || '00'}
+                  </button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-1 text-xs font-semibold">
+                    {(['AM', 'PM'] as const).map((m) => (
                       <button
-                        key={value}
+                        key={m}
                         type="button"
-                        onClick={() => handleDialHourSelect(value)}
-                        style={{ left: x - 18, top: y - 18 }}
+                        onClick={() => setMeridiem(m)}
                         className={cn(
-                          'tap-target absolute flex items-center justify-center rounded-full text-sm font-medium transition',
-                          isActive ? 'bg-[var(--brand)] text-white' : 'text-foreground/70 hover:bg-[var(--brand-tint)]'
+                          'rounded px-2 py-0.5 transition',
+                          meridiem === m
+                            ? 'bg-[var(--brand)] text-white'
+                            : 'border border-border bg-background text-muted-foreground hover:border-[var(--brand)]'
                         )}
                       >
-                        {value}
+                        {m}
                       </button>
-                    )
-                  })
-                ) : (
-                  /* Minute dial — 12 positions (0, 5, 10, ..., 55) */
-                  MINUTE_VALUES.map((value, index) => {
-                    const angle = (index * 30 * Math.PI) / 180
-                    const radius = 92
-                    const x = 112 + radius * Math.sin(angle)
-                    const y = 112 - radius * Math.cos(angle)
-                    const currentMinute = parseInt(minuteField, 10) || 0
-                    const isActive = currentMinute === value
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => handleDialMinuteSelect(value)}
-                        style={{ left: x - 18, top: y - 18 }}
-                        className={cn(
-                          'tap-target absolute flex items-center justify-center rounded-full text-sm font-medium transition',
-                          isActive ? 'bg-[var(--brand)] text-white' : 'text-foreground/70 hover:bg-[var(--brand-tint)]'
-                        )}
-                      >
-                        {String(value).padStart(2, '0')}
-                      </button>
-                    )
-                  })
-                )}
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTimeEnabled(false)}
+                    className="tap-target flex items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label="Remove time"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-6 flex items-center justify-between gap-3">
-                <TimeInputs {...timeInputsProps} />
-                <button type="button" aria-label="Switch to manual entry" onClick={() => setTimeView('manual')} className={navBtnCls}>
-                  <Keyboard size={18} />
-                </button>
-              </div>
-            </div>
-          )}
+              {/* Clock dial */}
+              {timeView === 'dial' && (
+                <div className="px-6 py-5">
+                  <div className="mb-3 flex items-center justify-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setDialPhase('hour')}
+                      className={cn(
+                        'text-xs font-semibold uppercase tracking-wider transition-colors',
+                        dialPhase === 'hour' ? 'text-[var(--brand-text)]' : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      Hour
+                    </button>
+                    <span className="text-muted-foreground/40">→</span>
+                    <button
+                      type="button"
+                      onClick={() => setDialPhase('minute')}
+                      className={cn(
+                        'text-xs font-semibold uppercase tracking-wider transition-colors',
+                        dialPhase === 'minute' ? 'text-[var(--brand-text)]' : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      Minute
+                    </button>
+                  </div>
 
-          {/* Manual entry — hidden when dial mode active */}
-          {timeView === 'manual' && (
-            <div className="px-6 py-6">
-              <p className="mb-3 text-sm font-medium text-foreground/70">Type in time</p>
-              <div className="mb-4">
-                <TimeInputs {...timeInputsProps} />
-              </div>
-              <button type="button" aria-label="Switch to clock dial" onClick={() => setTimeView('dial')} className={navBtnCls}>
-                <Clock size={18} />
-              </button>
-            </div>
+                  <div className="relative mx-auto flex h-52 w-52 items-center justify-center rounded-full border border-border bg-muted/30">
+                    <div className="absolute h-2 w-2 rounded-full bg-[var(--brand)]" />
+                    {dialPhase === 'hour' ? (
+                      HOUR_VALUES.map((value, index) => {
+                        const angle = (index * 30 * Math.PI) / 180
+                        const radius = 86
+                        const x = 104 + radius * Math.sin(angle)
+                        const y = 104 - radius * Math.cos(angle)
+                        const isActive = (parseInt(hourField, 10) || 12) === value
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => handleDialHourSelect(value)}
+                            style={{ left: x - 18, top: y - 18 }}
+                            className={cn(
+                              'tap-target absolute flex items-center justify-center rounded-full text-sm font-medium transition',
+                              isActive ? 'bg-[var(--brand)] text-white' : 'text-foreground/70 hover:bg-[var(--brand-tint)]'
+                            )}
+                          >
+                            {value}
+                          </button>
+                        )
+                      })
+                    ) : (
+                      MINUTE_VALUES.map((value, index) => {
+                        const angle = (index * 30 * Math.PI) / 180
+                        const radius = 86
+                        const x = 104 + radius * Math.sin(angle)
+                        const y = 104 - radius * Math.cos(angle)
+                        const isActive = (parseInt(minuteField, 10) || 0) === value
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => handleDialMinuteSelect(value)}
+                            style={{ left: x - 18, top: y - 18 }}
+                            className={cn(
+                              'tap-target absolute flex items-center justify-center rounded-full text-sm font-medium transition',
+                              isActive ? 'bg-[var(--brand)] text-white' : 'text-foreground/70 hover:bg-[var(--brand-tint)]'
+                            )}
+                          >
+                            {String(value).padStart(2, '0')}
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+
+                  <div className="mt-5 flex items-center justify-between gap-3">
+                    <TimeInputs {...timeInputsProps} />
+                    <button type="button" aria-label="Switch to manual entry" onClick={() => setTimeView('manual')} className={navBtnCls}>
+                      <Keyboard size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Manual keyboard entry */}
+              {timeView === 'manual' && (
+                <div className="px-6 py-5">
+                  <p className="mb-3 text-sm font-medium text-foreground/70">Type in time</p>
+                  <div className="mb-4">
+                    <TimeInputs {...timeInputsProps} />
+                  </div>
+                  <button type="button" aria-label="Switch to clock dial" onClick={() => setTimeView('dial')} className={navBtnCls}>
+                    <Clock size={18} />
+                  </button>
+                </div>
+              )}
+            </>
           )}
-        </>
+        </div>
       )}
 
       {/* Footer */}
