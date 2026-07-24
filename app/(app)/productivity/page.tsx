@@ -72,13 +72,17 @@ function sortTasks(tasks: Task[], sortBy: SortBy): Task[] {
       case "priority":
         return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
       case "due_date": {
-        // Group 0: has date + time  →  sort chronologically ascending
-        // Group 1: has date only    →  sort by created_at desc (newest first)
-        // Group 2: no date          →  sort by created_at desc (newest first, shown last)
-        const aGroup = a.due_date && a.due_time ? 0 : a.due_date ? 1 : 2;
-        const bGroup = b.due_date && b.due_time ? 0 : b.due_date ? 1 : 2;
-        if (aGroup !== bGroup) return aGroup - bGroup;
-        if (aGroup === 0) return `${a.due_date}T${a.due_time}`.localeCompare(`${b.due_date}T${b.due_time}`);
+        // No date → always last, newest-created first
+        if (!a.due_date && !b.due_date) return b.created_at.localeCompare(a.created_at);
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        // Primary: date ascending (today before tomorrow, yesterday before today)
+        const dateCmp = a.due_date.localeCompare(b.due_date);
+        if (dateCmp !== 0) return dateCmp;
+        // Same date: timed tasks first (chronological), then date-only (newest-created first)
+        if (a.due_time && !b.due_time) return -1;
+        if (!a.due_time && b.due_time) return 1;
+        if (a.due_time && b.due_time) return a.due_time.localeCompare(b.due_time);
         return b.created_at.localeCompare(a.created_at);
       }
       case "created_at":
@@ -242,7 +246,7 @@ export default function ProductivityPage() {
   }
 
   // ── Derived state for toolbar ──────────────────────────────────────────────
-  const hasActiveFilters = sortBy !== "priority" || groupBy !== "none";
+  const hasActiveFilters = sortBy !== "due_date" || groupBy !== "none";
 
   // ── Task list renderer ─────────────────────────────────────────────────────
   function renderTaskGroup(groupedTasks: Task[]) {
@@ -397,7 +401,7 @@ export default function ProductivityPage() {
       {/* ── Active filter chips ─────────────────────────────────────── */}
       {!loading && hasActiveFilters && (
         <div className="flex flex-wrap gap-1.5 slide-up">
-          {sortBy !== "priority" && (
+          {sortBy !== "due_date" && (
             <button
               type="button"
               onClick={() => setSortBy("priority")}
