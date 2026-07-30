@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 611 tests, 95.48% — target met. Remaining gap is entirely `use-tasks.ts` (47%, pre-existing).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 667 tests, 95.55% — target met. Remaining gap is entirely `use-tasks.ts` (47%, pre-existing).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -191,7 +191,9 @@ lib/
     middleware.ts           Session lifecycle handlers, ALLOWED_USER_EMAIL enforcement, token refresh
   types/
     database.ts             Single Source of Truth — 26 Supabase tables with Row/Insert/Update types
-  format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h)
+  format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + isPastDeadline, truncateLabel
+  area-colors.ts            AREA_META / AREA_LIST / areaTint() — life-area colors as --area-* CSS tokens
+  task-attachments.ts       Private-bucket attachment helpers: attachmentPath() recovers legacy object keys
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities
 
 supabase/migrations/        001 through 019 (append-only; execute via Supabase SQL editor)

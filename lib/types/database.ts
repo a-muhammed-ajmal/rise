@@ -39,8 +39,15 @@ export type Subtask = {
 
 export type TaskAttachment = {
   name: string;
-  url: string;
   type: string; // MIME type
+  /** Object key in the private `task-attachments` bucket. Set on all new uploads. */
+  storage_path?: string;
+  /**
+   * Legacy public URL written before the bucket was read via signed URLs.
+   * Never resolvable (the bucket is private) — kept only so the object key can
+   * be recovered from it. See `lib/task-attachments.ts`.
+   */
+  url?: string;
 };
 
 export type TaskStatus = "todo" | "in_progress" | "blocked" | "on_hold" | "done";

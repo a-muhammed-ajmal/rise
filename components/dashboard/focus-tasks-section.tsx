@@ -20,7 +20,9 @@ const MAX_FOCUS_TASKS = 3;
 export function FocusTasksSection() {
   const { tasks, loading, createTask, completeTask, refresh } = useTasks("today");
   const { projects } = useProjects();
-  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  // Snapshot, not an id looked up in `tasks`: unfocusing or rescheduling a task
+  // would drop it out of this section's list and unmount the popup mid-save.
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
 
   const safeTasks = useMemo(() => (Array.isArray(tasks) ? tasks : []), [tasks]);
 
@@ -31,16 +33,13 @@ export function FocusTasksSection() {
       .slice(0, MAX_FOCUS_TASKS);
   }, [safeTasks]);
 
-  const detailTask = useMemo(
-    () =>
-      detailTaskId
-        ? safeTasks.find((task) => task.id === detailTaskId) ?? null
-        : null,
-    [detailTaskId, safeTasks],
+  const projectNameById = useMemo(
+    () => new Map(projects.map((p) => [p.id, p.name])),
+    [projects],
   );
 
   const openDetail = useCallback((task: Task) => {
-    setDetailTaskId(task.id);
+    setDetailTask(task);
   }, []);
 
   const handleCreateTask = useCallback(
@@ -96,6 +95,7 @@ export function FocusTasksSection() {
               task={task}
               onComplete={completeTask}
               onOpenDetail={openDetail}
+              projectName={task.project_id ? projectNameById.get(task.project_id) ?? null : null}
               view="list"
             />
           ))
@@ -107,7 +107,7 @@ export function FocusTasksSection() {
           task={detailTask}
           projects={projects}
           defaultProjectId={null}
-          onClose={() => setDetailTaskId(null)}
+          onClose={() => setDetailTask(null)}
           onCreate={handleCreateTask}
           refresh={refresh}
         />

@@ -6,6 +6,7 @@ import {
   Check, Trash2, Copy, MoreVertical, Link as LinkIcon,
   Clock, Bell, Repeat2, Plus, X, Star,
   ChevronDown, Paperclip, Flag, Tag, Pencil,
+  Download, Loader2,
 } from 'lucide-react'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import {
@@ -35,6 +36,11 @@ import { PRIORITY_MAP, PRIORITY_CONFIG, PROJECT_CATEGORIES } from './task-consta
 import { formatRelativeDate, display12h, todayISO } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import {
+  TASK_ATTACHMENT_BUCKET,
+  attachmentPath,
+  sanitizeObjectName,
+} from '@/lib/task-attachments'
 import { toast } from 'sonner'
 import { useTasks } from '@/lib/hooks/use-tasks'
 import type { Task, Subtask, TaskAttachment, ProjectCategory } from '@/lib/types/database'
@@ -50,6 +56,95 @@ function parseSafeDate(dateStr: string, timeStr: string): Date {
   const timePart = (timeStr && !timeStr.includes('NaN')) ? timeStr.slice(0, 5) : '09:00'
   const d = new Date(`${dateStr}T${timePart}:00`)
   return isNaN(d.getTime()) ? new Date() : d
+}
+
+const SIGNED_URL_TTL_SECONDS = 3600
+
+/**
+ * One attachment row.
+ *
+ * `task-attachments` is a private bucket, so a stored URL can never resolve —
+ * both the view and download links have to be signed at read time. Rows saved
+ * before this fix hold a dead `getPublicUrl()` link; `attachmentPath` recovers
+ * the object key from it, so old attachments work again without a backfill.
+ */
+function AttachmentRow({ att, onRemove }: { att: TaskAttachment; onRemove: () => void }) {
+  const [openUrl, setOpenUrl] = useState<string | null>(null)
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  const path = attachmentPath(att)
+
+  useEffect(() => {
+    if (!path) {
+      setFailed(true)
+      return
+    }
+    let active = true
+    const storage = createClient().storage.from(TASK_ATTACHMENT_BUCKET)
+    Promise.all([
+      storage.createSignedUrl(path, SIGNED_URL_TTL_SECONDS),
+      storage.createSignedUrl(path, SIGNED_URL_TTL_SECONDS, { download: att.name }),
+    ])
+      .then(([view, download]) => {
+        if (!active) return
+        if (view.data?.signedUrl) setOpenUrl(view.data.signedUrl)
+        if (download.data?.signedUrl) setDownloadUrl(download.data.signedUrl)
+        if (!view.data?.signedUrl && !download.data?.signedUrl) setFailed(true)
+      })
+      .catch(() => {
+        if (active) setFailed(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [path, att.name])
+
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 group">
+      <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+
+      {openUrl ? (
+        <a
+          href={openUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 text-xs truncate hover:underline"
+        >
+          {att.name}
+        </a>
+      ) : (
+        <span className="flex-1 text-xs truncate flex items-center gap-1.5 text-muted-foreground">
+          <span className="truncate">{att.name}</span>
+          {failed ? (
+            <span className="shrink-0">— unavailable</span>
+          ) : (
+            <Loader2 className="w-3 h-3 animate-spin shrink-0" aria-hidden="true" />
+          )}
+        </span>
+      )}
+
+      {downloadUrl && (
+        <a
+          href={downloadUrl}
+          download={att.name}
+          className="tap-target flex items-center justify-center shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-brand-text"
+          aria-label={`Download attachment: ${att.name}`}
+        >
+          <Download className="w-3.5 h-3.5" aria-hidden="true" />
+        </a>
+      )}
+
+      <button
+        type="button"
+        aria-label={`Remove attachment: ${att.name}`}
+        onClick={onRemove}
+        className="tap-target flex items-center justify-center shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+      >
+        <X className="w-3.5 h-3.5" aria-hidden="true" />
+      </button>
+    </div>
+  )
 }
 
 interface TaskPopupProps {
@@ -172,6 +267,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       })
       refresh?.()
       toast.success('Task updated')
+      onClose()
     } catch (err: unknown) {
       toast.error(`Update failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
@@ -310,11 +406,17 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { toast.error('Not authenticated'); return }
-      const path = `${user.id}/${Date.now()}-${file.name}`
-      const { error } = await supabase.storage.from('task-attachments').upload(path, file)
-      if (error) { toast.error('Upload failed'); return }
-      const { data: urlData } = supabase.storage.from('task-attachments').getPublicUrl(path)
-      const updated = [...attachments, { name: file.name, url: urlData.publicUrl, type: file.type }]
+      // Sanitize the object key — encodeURI leaves '#', '?', '&' and '+' intact,
+      // which would make the stored key unreachable. The original name is kept
+      // for display and for the download filename.
+      const path = `${user.id}/${Date.now()}-${sanitizeObjectName(file.name)}`
+      const { error } = await supabase.storage
+        .from(TASK_ATTACHMENT_BUCKET)
+        .upload(path, file, { contentType: file.type || 'application/octet-stream' })
+      if (error) { toast.error(`Upload failed: ${error.message}`); return }
+      // Store the object key, not a URL: the bucket is private, so links must be
+      // signed at read time.
+      const updated = [...attachments, { name: file.name, type: file.type, storage_path: path }]
       setAttachments(updated)
       commitImmediate({ attachments: updated })
       toast.success('File attached')
@@ -335,7 +437,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
     setCompleting(true)
     await completeTask(liveTask.id)
     refresh?.()
-    setTimeout(onClose, 1500)
+    onClose()
   }
 
   function handleReopen() {
@@ -988,25 +1090,11 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 {attachments.length > 0 && (
                   <div className="space-y-1">
                     {attachments.map((att, i) => (
-                      <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-muted/50 group">
-                        <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <a
-                          href={att.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 text-xs truncate hover:underline"
-                        >
-                          {att.name}
-                        </a>
-                        <button
-                          type="button"
-                          aria-label={`Remove attachment: ${att.name}`}
-                          onClick={() => removeAttachment(i)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      <AttachmentRow
+                        key={att.storage_path ?? att.url ?? `${att.name}-${i}`}
+                        att={att}
+                        onRemove={() => removeAttachment(i)}
+                      />
                     ))}
                   </div>
                 )}

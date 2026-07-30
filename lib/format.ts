@@ -73,9 +73,19 @@ export function parseDate(dateStr: string): Date {
 // Date-only: past only once the due day has fully ended (i.e. due_date is before today).
 export function isPastDeadline(dueDate: string, dueTime?: string | null): boolean {
   if (dueTime) {
-    return Date.now() > new Date(`${dueDate}T${dueTime}:00+04:00`).getTime()
+    // Postgres `time` columns return "HH:MM:SS"; the picker writes "HH:MM".
+    // Normalise to HH:MM so the ISO string stays valid either way.
+    const deadline = new Date(`${dueDate}T${dueTime.slice(0, 5)}:00+04:00`).getTime()
+    if (!Number.isNaN(deadline)) return Date.now() > deadline
+    // Unparseable time — fall through to the date-only comparison.
   }
   return dueDate < todayISO()
+}
+
+// Clip a label to `max` characters, appending an ellipsis when it overflows.
+// Used for project names on task cards, where space is fixed.
+export function truncateLabel(text: string, max = 15): string {
+  return text.length > max ? `${text.slice(0, max)}...` : text
 }
 
 // Convert HH:MM (24h stored format) → "h:mm AM/PM" display

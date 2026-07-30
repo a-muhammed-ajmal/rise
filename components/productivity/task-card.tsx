@@ -2,7 +2,8 @@
 
 import { Check, Calendar, Clock } from 'lucide-react'
 import type { Task } from '@/lib/types/database'
-import { formatRelativeDate, display12h, isPastDeadline } from '@/lib/format'
+import { formatRelativeDate, display12h, isPastDeadline, truncateLabel } from '@/lib/format'
+import { AREA_META, areaTint } from '@/lib/area-colors'
 import { cn } from '@/lib/utils'
 import { PRIORITY_CONFIG } from './task-constants'
 
@@ -10,6 +11,8 @@ interface TaskCardProps {
   task: Task
   onComplete: (id: string) => void
   onOpenDetail: (task: Task) => void
+  /** Name of the task's project, resolved by the parent. Shown right-aligned on the meta row. */
+  projectName?: string | null
   // Retained for caller compatibility; secondary actions now live in the task popup.
   onUpdate?: (id: string, data: Partial<Task>) => Promise<void>
   onDelete?: (id: string) => void
@@ -26,14 +29,17 @@ interface TaskCardProps {
 
 /**
  * Minimal, unified task card used everywhere (tasks page, dashboard, focus, calendar).
- * Shows only: a priority-colored completion checkbox, the title, and a green→red
- * due date/time. Every other action is reached by tapping the card to open the
- * shared task popup.
+ *
+ * The card's surface carries its life area: a saturated left border plus a very
+ * light tint of the same area token. Tasks with no area (`default`) keep the base
+ * card surface. Below the title, one meta row holds the green→red due date/time on
+ * the left and the project name on the right, both at 12px.
  */
 export function TaskCard({
   task,
   onComplete,
   onOpenDetail,
+  projectName,
   bulkMode = false,
   selected = false,
   onToggleSelect,
@@ -42,19 +48,23 @@ export function TaskCard({
   const isCompleted = task.status === 'done'
   const priorityColor = PRIORITY_CONFIG[task.priority].color
   const overdue = !isCompleted && task.due_date ? isPastDeadline(task.due_date, task.due_time) : false
+  const area = AREA_META[task.area] ?? AREA_META.default
+  // Completed and bulk-selected states own the surface, so the area tint stands down.
+  const tint = isCompleted || selected ? undefined : areaTint(task.area)
 
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-2.5 rounded-lg border transition-colors group',
+        'card-hover flex items-start gap-3 p-2.5 rounded-lg border border-l-[3px] shadow-card group',
         view === 'grid' ? 'flex-col min-h-[80px]' : '',
         isCompleted
           ? 'border-border/50 bg-muted/30 opacity-60'
           : selected
             ? 'border-primary/60 bg-primary/5'
-            : 'border-border bg-card hover:bg-accent/30',
-        isCompleted ? 'border-l-[3px] border-l-mod-tasks/30' : 'border-l-[3px] border-l-mod-tasks'
+            : 'border-border bg-card'
       )}
+      // Inline so the area token also wins over the orange hover border.
+      style={{ backgroundColor: tint, borderLeftColor: area.color }}
     >
       {/* Bulk checkbox / Complete button */}
       {bulkMode ? (
@@ -62,14 +72,16 @@ export function TaskCard({
           type="button"
           onClick={() => onToggleSelect?.(task.id)}
           className={cn(
-            'mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+            'relative mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+            // Expands the hit area to the 44x44 minimum without changing layout.
+            'before:absolute before:inset-[-12px] before:content-[""]',
             selected
               ? 'bg-primary border-primary'
               : 'border-muted-foreground/40 hover:border-primary'
           )}
           aria-label={selected ? 'Deselect task' : 'Select task'}
         >
-          {selected && <Check className="w-3 h-3 text-primary-foreground" />}
+          {selected && <Check className="w-3 h-3 text-primary-foreground" aria-hidden="true" />}
         </button>
       ) : (
         <div className="relative mt-0.5 shrink-0 w-5 h-5">
@@ -78,7 +90,8 @@ export function TaskCard({
             onClick={() => onComplete(task.id)}
             className={cn(
               'absolute inset-0 rounded-full border-2 flex items-center justify-center transition-colors',
-              'before:absolute before:inset-[-10px] before:content-[""]'
+              // Expands the hit area to the 44x44 minimum without changing layout.
+              'before:absolute before:inset-[-12px] before:content-[""]'
             )}
             style={
               isCompleted
@@ -93,6 +106,7 @@ export function TaskCard({
                 isCompleted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               )}
               style={{ color: isCompleted ? '#ffffff' : priorityColor }}
+              aria-hidden="true"
             />
           </button>
         </div>
@@ -126,34 +140,42 @@ export function TaskCard({
           </span>
         )}
 
-        {/* Due date / time — green until the deadline, red after */}
-        {task.due_date ? (
-          <span
-            className={cn(
-              'flex items-center gap-1 text-xs mt-1',
-              isCompleted && 'text-muted-foreground'
-            )}
-            style={
-              isCompleted
-                ? undefined
-                : { color: overdue ? 'var(--color-danger)' : 'var(--color-success)' }
-            }
-          >
-            <Calendar className="w-3 h-3" />
-            {formatRelativeDate(task.due_date)}
-            {task.due_time && (
-              <span className="flex items-center gap-0.5">
-                <Clock className="w-3 h-3" />
-                {display12h(task.due_time)}
-              </span>
-            )}
-          </span>
-        ) : (
-          <span className="flex items-center gap-1 text-xs mt-1 text-muted-foreground">
-            <Clock className="w-3 h-3" />
-            {formatRelativeDate(task.created_at.slice(0, 10))}
-          </span>
-        )}
+        {/* Meta row — due date/time left, project name right, both 12px */}
+        <div className="flex items-center justify-between gap-2 mt-1">
+          {task.due_date ? (
+            <span
+              className={cn(
+                'flex items-center gap-1 text-xs min-w-0',
+                isCompleted && 'text-muted-foreground'
+              )}
+              style={
+                isCompleted
+                  ? undefined
+                  : { color: overdue ? 'var(--color-danger)' : 'var(--color-success)' }
+              }
+            >
+              <Calendar className="w-3 h-3 shrink-0" aria-hidden="true" />
+              {formatRelativeDate(task.due_date)}
+              {task.due_time && (
+                <span className="flex items-center gap-0.5">
+                  <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  {display12h(task.due_time)}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-xs min-w-0 text-muted-foreground">
+              <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
+              {formatRelativeDate(task.created_at.slice(0, 10))}
+            </span>
+          )}
+
+          {projectName ? (
+            <span className="text-xs text-muted-foreground shrink-0" title={projectName}>
+              {truncateLabel(projectName)}
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   )

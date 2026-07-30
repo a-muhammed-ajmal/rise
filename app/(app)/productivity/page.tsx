@@ -143,7 +143,11 @@ export default function ProductivityPage() {
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
 
   const [creatingTask, setCreatingTask] = useState(false);
-  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  // Held as a snapshot, not an id looked up in `tasks`: saving a task that no
+  // longer matches the active filter would otherwise unmount the popup
+  // mid-save, and the stale id would re-open it on the next tab switch.
+  // TaskPopup resolves live data from its own useTasks instance.
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [completedFocusCount, setCompletedFocusCount] = useState(0);
@@ -155,9 +159,9 @@ export default function ProductivityPage() {
 
   const { projects } = useProjects();
 
-  const detailTask = useMemo(
-    () => (detailTaskId ? tasks.find((t) => t.id === detailTaskId) ?? null : null),
-    [detailTaskId, tasks]
+  const projectNameById = useMemo(
+    () => new Map(projects.map((p) => [p.id, p.name])),
+    [projects]
   );
 
   const processedTasks = useMemo(() => sortTasks(tasks, sortBy), [tasks, sortBy]);
@@ -238,7 +242,8 @@ export default function ProductivityPage() {
       onDelete: deleteTask,
       onDuplicate: duplicateTask,
       onStar: starTask,
-      onOpenDetail: (t: Task) => setDetailTaskId(t.id),
+      onOpenDetail: (t: Task) => setDetailTask(t),
+      projectName: task.project_id ? projectNameById.get(task.project_id) ?? null : null,
       bulkMode,
       selected: selectedIds.has(task.id),
       onToggleSelect: toggleSelectTask,
@@ -465,7 +470,8 @@ export default function ProductivityPage() {
             onDelete={deleteTask}
             onDuplicate={duplicateTask}
             onStar={starTask}
-            onOpenDetail={(t) => setDetailTaskId(t.id)}
+            onOpenDetail={(t) => setDetailTask(t)}
+            projectNameById={projectNameById}
           />
         </div>
       ) : (
@@ -571,7 +577,7 @@ export default function ProductivityPage() {
           task={detailTask}
           projects={projects}
           defaultProjectId={null}
-          onClose={() => { setDetailTaskId(null); setCreatingTask(false); }}
+          onClose={() => { setDetailTask(null); setCreatingTask(false); }}
           onCreate={async (data) => {
             await createTask({ ...data, project_id: data.project_id ?? null });
             toast.success("Task added");

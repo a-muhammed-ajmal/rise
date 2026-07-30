@@ -35,6 +35,8 @@ interface TaskCalendarProps {
   onDuplicate?: (id: string) => void
   onStar?: (id: string) => void
   onOpenDetail: (task: Task) => void
+  /** Project id → name, so cards can show their project. Owned by the page. */
+  projectNameById?: Map<string, string>
 }
 
 export function TaskCalendar({
@@ -45,6 +47,7 @@ export function TaskCalendar({
   onDuplicate,
   onStar,
   onOpenDetail,
+  projectNameById,
 }: TaskCalendarProps) {
   const [viewDate, setViewDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
@@ -178,6 +181,7 @@ export function TaskCalendar({
                 onDuplicate={onDuplicate}
                 onStar={onStar}
                 onOpenDetail={onOpenDetail}
+                projectName={task.project_id ? projectNameById?.get(task.project_id) ?? null : null}
               />
             ))
           )}
@@ -200,6 +204,7 @@ export function TaskCalendar({
               onDuplicate={onDuplicate}
               onStar={onStar}
               onOpenDetail={onOpenDetail}
+              projectName={task.project_id ? projectNameById?.get(task.project_id) ?? null : null}
             />
           ))}
         </div>

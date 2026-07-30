@@ -44,7 +44,9 @@ export default function ProjectsPage() {
   const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
 
   const [creatingTask, setCreatingTask] = useState(false);
-  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  // Snapshot, not an id looked up in `tasks`: moving a task to another project
+  // would drop it out of this project's query and unmount the popup mid-save.
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
 
   const { projects, loading: projectsLoading, createProject, updateProject, deleteProject } = useProjects();
 
@@ -72,9 +74,9 @@ export default function ProjectsPage() {
     return counts;
   }, [tasks]);
 
-  const detailTask = useMemo(
-    () => (detailTaskId ? tasks.find((t) => t.id === detailTaskId) ?? null : null),
-    [detailTaskId, tasks],
+  const projectNameById = useMemo(
+    () => new Map(projects.map((p) => [p.id, p.name])),
+    [projects],
   );
 
   const selectedProjectMeta = selectedProject
@@ -97,7 +99,8 @@ export default function ProjectsPage() {
       onDelete: deleteTask,
       onDuplicate: duplicateTask,
       onStar: starTask,
-      onOpenDetail: (t: Task) => setDetailTaskId(t.id),
+      onOpenDetail: (t: Task) => setDetailTask(t),
+      projectName: task.project_id ? projectNameById.get(task.project_id) ?? null : null,
       bulkMode: false as const,
       selected: false,
       onToggleSelect: () => {},
@@ -117,7 +120,7 @@ export default function ProjectsPage() {
           {selectedProject && (
             <button
               type="button"
-              onClick={() => { setSelectedProject(null); setDetailTaskId(null); setCreatingTask(false); }}
+              onClick={() => { setSelectedProject(null); setDetailTask(null); setCreatingTask(false); }}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -345,7 +348,7 @@ export default function ProjectsPage() {
           task={detailTask}
           projects={projects}
           defaultProjectId={selectedProject?.id ?? null}
-          onClose={() => { setDetailTaskId(null); setCreatingTask(false); }}
+          onClose={() => { setDetailTask(null); setCreatingTask(false); }}
           onCreate={async (data) => {
             const projectId = data.project_id ?? selectedProject?.id ?? null;
             const proj = projects.find((p) => p.id === projectId);

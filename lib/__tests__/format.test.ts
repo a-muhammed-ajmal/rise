@@ -11,6 +11,7 @@ import {
   parseDate,
   display12h,
   isPastDeadline,
+  truncateLabel,
 } from "../format";
 
 describe("formatAED", () => {
@@ -226,6 +227,56 @@ describe("isPastDeadline", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-24T10:00:00Z"));
     expect(isPastDeadline("2026-06-23", null)).toBe(true);
+  });
+
+  // Regression: Postgres `time` columns come back as "HH:MM:SS", which used to
+  // build an invalid Date ("…T17:30:00:00+04:00") and make every timed task
+  // look permanently upcoming.
+  it("handles HH:MM:SS due_time from Postgres — past", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-23T14:00:00Z")); // Dubai 18:00
+    expect(isPastDeadline("2026-06-23", "17:30:00")).toBe(true);
+  });
+
+  it("handles HH:MM:SS due_time from Postgres — upcoming", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-23T12:00:00Z")); // Dubai 16:00
+    expect(isPastDeadline("2026-06-23", "17:30:00")).toBe(false);
+  });
+
+  it("treats a long-overdue timed task as past", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-30T08:00:00Z"));
+    expect(isPastDeadline("2026-07-24", "11:37:00")).toBe(true);
+  });
+
+  it("falls back to date-only when due_time is unparseable", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-24T10:00:00Z"));
+    expect(isPastDeadline("2026-06-23", "not-a-time")).toBe(true);
+    expect(isPastDeadline("2026-06-25", "not-a-time")).toBe(false);
+  });
+});
+
+describe("truncateLabel", () => {
+  it("returns short text unchanged", () => {
+    expect(truncateLabel("Website")).toBe("Website");
+  });
+
+  it("returns text of exactly the limit unchanged", () => {
+    expect(truncateLabel("123456789012345")).toBe("123456789012345");
+  });
+
+  it("truncates past the limit to 15 chars plus an ellipsis", () => {
+    expect(truncateLabel("1234567890123456")).toBe("123456789012345...");
+  });
+
+  it("respects a custom limit", () => {
+    expect(truncateLabel("abcdefgh", 3)).toBe("abc...");
+  });
+
+  it("handles an empty string", () => {
+    expect(truncateLabel("")).toBe("");
   });
 });
 

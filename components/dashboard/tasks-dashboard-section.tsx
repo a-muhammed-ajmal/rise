@@ -31,20 +31,19 @@ export function TasksDashboardSection() {
   } = useTasks("today");
 
   const { projects } = useProjects();
-  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  // Snapshot, not an id looked up in `tasks`: this section only queries today's
+  // tasks, so rescheduling one would unmount the popup mid-save.
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
 
   const safeTasks = useMemo(() => (Array.isArray(tasks) ? tasks : []), [tasks]);
 
-  const detailTask = useMemo(
-    () =>
-      detailTaskId
-        ? safeTasks.find((task) => task.id === detailTaskId) ?? null
-        : null,
-    [detailTaskId, safeTasks],
+  const projectNameById = useMemo(
+    () => new Map(projects.map((p) => [p.id, p.name])),
+    [projects],
   );
 
   const openDetail = useCallback((task: Task) => {
-    setDetailTaskId(task.id);
+    setDetailTask(task);
   }, []);
 
   const getTaskCardProps = useCallback(
@@ -55,9 +54,10 @@ export function TasksDashboardSection() {
       onDelete: deleteTask,
       onDuplicate: duplicateTask,
       onOpenDetail: openDetail,
+      projectName: task.project_id ? projectNameById.get(task.project_id) ?? null : null,
       showMenu: false,
     }),
-    [completeTask, updateTask, deleteTask, duplicateTask, openDetail],
+    [completeTask, updateTask, deleteTask, duplicateTask, openDetail, projectNameById],
   );
 
   const regularTasks = useMemo(() => {
@@ -141,7 +141,7 @@ export function TasksDashboardSection() {
           task={detailTask}
           projects={projects}
           defaultProjectId={null}
-          onClose={() => setDetailTaskId(null)}
+          onClose={() => setDetailTask(null)}
           onCreate={handleCreateTask}
           refresh={refresh}
         />

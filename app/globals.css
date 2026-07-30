@@ -67,6 +67,24 @@
   --color-mod-knowledge-tint: var(--mod-knowledge-tint);
   --color-mod-crm: var(--mod-crm);
   --color-mod-crm-tint: var(--mod-crm-tint);
+
+  /* Life-area accent colors — identity color + very light card tint per area */
+  --color-area-default: var(--area-default);
+  --color-area-default-tint: var(--area-default-tint);
+  --color-area-personal: var(--area-personal);
+  --color-area-personal-tint: var(--area-personal-tint);
+  --color-area-professional: var(--area-professional);
+  --color-area-professional-tint: var(--area-professional-tint);
+  --color-area-financial: var(--area-financial);
+  --color-area-financial-tint: var(--area-financial-tint);
+  --color-area-wellness: var(--area-wellness);
+  --color-area-wellness-tint: var(--area-wellness-tint);
+  --color-area-relationship: var(--area-relationship);
+  --color-area-relationship-tint: var(--area-relationship-tint);
+  --color-area-vision: var(--area-vision);
+  --color-area-vision-tint: var(--area-vision-tint);
+  --color-area-legal: var(--area-legal);
+  --color-area-legal-tint: var(--area-legal-tint);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -122,6 +140,19 @@
   --mod-goals: #7C3AED;          --mod-goals-tint: #F5F3FF;
   --mod-knowledge: #D97706;      --mod-knowledge-tint: #FFFBEB;
   --mod-crm: #0891B2;            --mod-crm-tint: #ECFEFF;
+
+  /* ── Life-area tokens — identity color + very light card tint ────────────
+     Hue ladder 0→30→162→192→224→272→333 keeps every pair distinguishable
+     (the old financial #10B981 / wellness #14B8A6 sat only 14° apart).
+     Tints are 50-level so a whole card can carry one without shouting. */
+  --area-default: #64748B;       --area-default-tint: #F1F5F9;
+  --area-legal: #B91C1C;         --area-legal-tint: #FEF2F2;
+  --area-vision: #B45309;        --area-vision-tint: #FFFBEB;
+  --area-financial: #059669;     --area-financial-tint: #ECFDF5;
+  --area-wellness: #0891B2;      --area-wellness-tint: #ECFEFF;
+  --area-professional: #1D4ED8;  --area-professional-tint: #EFF6FF;
+  --area-personal: #7C3AED;      --area-personal-tint: #F5F3FF;
+  --area-relationship: #DB2777;  --area-relationship-tint: #FDF2F8;
 
   /* ── Surfaces ───────────────────────────────────────────────────────────── */
   --surface-base:    #FFFFFF;
@@ -262,6 +293,16 @@
   --mod-goals: #A78BFA;          --mod-goals-tint: rgba(167, 139, 250, 0.15);
   --mod-knowledge: #FBBF24;      --mod-knowledge-tint: rgba(251, 191, 36, 0.15);
   --mod-crm: #22D3EE;            --mod-crm-tint: rgba(34, 211, 238, 0.15);
+
+  /* ── Life-area tokens (dark) — lightened for navy surfaces ─────────────── */
+  --area-default: #94A3B8;       --area-default-tint: rgba(148, 163, 184, 0.15);
+  --area-legal: #F87171;         --area-legal-tint: rgba(248, 113, 113, 0.15);
+  --area-vision: #FBBF24;        --area-vision-tint: rgba(251, 191, 36, 0.15);
+  --area-financial: #34D399;     --area-financial-tint: rgba(52, 211, 153, 0.15);
+  --area-wellness: #22D3EE;      --area-wellness-tint: rgba(34, 211, 238, 0.15);
+  --area-professional: #60A5FA;  --area-professional-tint: rgba(96, 165, 250, 0.15);
+  --area-personal: #A78BFA;      --area-personal-tint: rgba(167, 139, 250, 0.15);
+  --area-relationship: #F472B6;  --area-relationship-tint: rgba(244, 114, 182, 0.15);
 
   /* ── Surfaces (dark) — elevation via lighter navy, not shadows ──────────── */
   --surface-base:    #0B1120;
