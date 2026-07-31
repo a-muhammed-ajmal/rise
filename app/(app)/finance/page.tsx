@@ -156,7 +156,8 @@ export default function FinancePage() {
       supabase
         .from("transactions")
         .select("*")
-        .order("date", { ascending: false }),
+        .order("date", { ascending: false })
+        .limit(500),
       supabase.from("budgets").select("*").gte("period_end", todayISO()),
       supabase
         .from("debts")

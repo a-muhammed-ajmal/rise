@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useId } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Project, ProjectCategory } from "@/lib/types/database";
 
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const id = useId();
+  const channelName = `projects-${id.replace(/:/g, "")}`;
 
   const fetchProjects = useCallback(async () => {
     const supabase = createClient();
@@ -21,7 +23,15 @@ export function useProjects() {
 
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(channelName)
+      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, fetchProjects)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchProjects, channelName]);
 
   async function createProject(
     name: string,

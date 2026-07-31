@@ -321,4 +321,4 @@ The Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the daily digest endp
 | DB tables | 26 (RLS on all) |
 | AI tools | 77 (60 AUTO + 17 APPROVAL) |
 | Migrations | 19 (001–019) |
-| Last phase | Phase 16 — Task UX overhaul: binary task state, mobile-first sort/filter/bulk, P2 color fix, DateTimePicker dark-mode + TimeInputs refactor |
+| Last phase | Phase 18 — Motivational quotes rotator + performance hardening: router cache, realtime projects, React.memo TaskCard, reduced queries |

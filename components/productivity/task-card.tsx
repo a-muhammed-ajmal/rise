@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { Check, Calendar, Clock } from 'lucide-react'
 import type { Task } from '@/lib/types/database'
 import { formatRelativeDate, display12h, isPastDeadline, truncateLabel } from '@/lib/format'
@@ -27,15 +28,7 @@ interface TaskCardProps {
   view?: 'list' | 'grid'
 }
 
-/**
- * Minimal, unified task card used everywhere (tasks page, dashboard, focus, calendar).
- *
- * The card's surface carries its life area: a saturated left border plus a very
- * light tint of the same area token. Tasks with no area (`default`) keep the base
- * card surface. Below the title, one meta row holds the green→red due date/time on
- * the left and the project name on the right, both at 12px.
- */
-export function TaskCard({
+export const TaskCard = memo(function TaskCard({
   task,
   onComplete,
   onOpenDetail,
@@ -179,4 +172,4 @@ export function TaskCard({
       </div>
     </div>
   )
-}
+})

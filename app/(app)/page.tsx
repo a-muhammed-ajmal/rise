@@ -12,6 +12,7 @@ import { TasksDashboardSection } from "@/components/dashboard/tasks-dashboard-se
 import { FocusTasksSection } from "@/components/dashboard/focus-tasks-section";
 import { QuickAddFab } from "@/components/dashboard/quick-add-fab";
 import { HabitDashboardSection } from "@/components/wellness/habit-dashboard-section";
+import { MotivationalQuote } from "@/components/dashboard/motivational-quote";
 
 const STAGE_COLORS: Record<string, string> = {
   new: "stage-new",
@@ -25,8 +26,6 @@ const STAGE_COLORS: Record<string, string> = {
 export default async function HomePage() {
   const supabase = await createClient();
   const today = todayISO();
-
-  const last30 = format(subDays(parseISO(today), 30), "yyyy-MM-dd");
 
   const [
     { data: todayHabits },
@@ -47,7 +46,7 @@ export default async function HomePage() {
     supabase
       .from("habit_logs")
       .select("habit_id, completed, logged_date")
-      .gte("logged_date", last30),
+      .eq("logged_date", today),
     supabase
       .from("goals")
       .select("*")
@@ -144,8 +143,11 @@ export default async function HomePage() {
         />
       </div>
 
-      {/* Primary daily sections — Focus → Habits → Tasks */}
+      {/* Primary daily sections — Quote → Focus → Habits → Tasks */}
       <div className="space-y-4">
+        {/* Motivational quote */}
+        <MotivationalQuote />
+
         {/* Today's focus */}
         <FocusTasksSection />
 

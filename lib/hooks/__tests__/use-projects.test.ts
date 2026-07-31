@@ -10,11 +10,18 @@ const mockQueryChain = {
   order: vi.fn().mockReturnThis(),
 };
 
+const mockChannel = {
+  on: vi.fn().mockReturnThis(),
+  subscribe: vi.fn().mockReturnThis(),
+};
+
 const mockSupabase = {
   from: vi.fn(() => mockQueryChain),
   auth: {
     getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }),
   },
+  channel: vi.fn(() => mockChannel),
+  removeChannel: vi.fn(),
 };
 
 vi.mock("@/lib/supabase/client", () => ({

@@ -197,7 +197,7 @@ export default function ProductivityPage() {
       .eq("focus_date", today)
       .gte("completed_at", `${today}T00:00:00`)
       .then(({ count }) => setCompletedFocusCount(count ?? 0));
-  }, [filter, tasks]);
+  }, [filter]);
 
   // ── Bulk helpers ───────────────────────────────────────────────────────────
   function toggleBulkMode() {
