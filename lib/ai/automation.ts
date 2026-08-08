@@ -1,14 +1,22 @@
 import { GoogleGenAI } from "@google/genai";
-import { format, subDays } from "date-fns";
+import { addDaysISO, toDubaiISODate } from "@/lib/format";
 
+type QueryResult = { data?: unknown; error?: unknown };
+
+// Only `select` and `eq` are invoked unconditionally; every other step in the
+// chain is called with `?.`, so the contract marks them optional. Keeping this
+// honest lets a caller supply a table-specific builder (the notes path needs
+// no ordering or filtering) without stubbing methods it never reaches.
 type QueryBuilder = {
   select: (...args: string[]) => QueryBuilder;
   eq: (column: string, value: unknown) => QueryBuilder;
-  neq: (column: string, value: unknown) => QueryBuilder;
-  gte: (column: string, value: string) => QueryBuilder;
-  order: (column: string, options?: { ascending?: boolean }) => QueryBuilder;
-  limit: (value: number) => QueryBuilder;
-  upsert?: (payload: Record<string, unknown>, options?: { onConflict?: string }) => Promise<{ data?: unknown; error?: unknown }>;
+  neq?: (column: string, value: unknown) => QueryBuilder;
+  gte?: (column: string, value: string) => QueryBuilder;
+  order?: (column: string, options?: { ascending?: boolean }) => QueryBuilder;
+  limit?: (value: number) => QueryBuilder;
+  maybeSingle?: () => Promise<QueryResult>;
+  insert?: (payload: Record<string, unknown>) => Promise<QueryResult>;
+  update?: (payload: Record<string, unknown>) => QueryBuilder;
 };
 
 export interface DailyDigestWorkflowArgs {
@@ -25,15 +33,46 @@ export interface DailyDigestWorkflowArgs {
   source?: string;
 }
 
+export interface DailyDigestResult {
+  success: boolean;
+  date: string;
+  digestText: string;
+  noteTitle: string;
+  source: string;
+  error?: string;
+}
+
+// P1 first, P4 last — plain string sort already gives that ordering.
+function byDueThenPriority(
+  a: { due_date?: string; priority?: string },
+  b: { due_date?: string; priority?: string },
+): number {
+  const dueCompare = (a.due_date ?? "9999-12-31").localeCompare(
+    b.due_date ?? "9999-12-31",
+  );
+  if (dueCompare !== 0) return dueCompare;
+  return (a.priority ?? "P4").localeCompare(b.priority ?? "P4");
+}
+
+function rowsOf(result: unknown): {
+  rows: Array<Record<string, unknown>>;
+  error: unknown;
+} {
+  const r = (result ?? {}) as {
+    data?: Array<Record<string, unknown>>;
+    error?: unknown;
+  };
+  return { rows: r.data ?? [], error: r.error ?? null };
+}
+
 export async function runDailyDigestWorkflow({
   userId,
   db,
   ai,
   now = new Date(),
   source = "scheduled",
-}: DailyDigestWorkflowArgs) {
-  const dubaiNow = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-  const todayStr = format(dubaiNow, "yyyy-MM-dd");
+}: DailyDigestWorkflowArgs): Promise<DailyDigestResult> {
+  const todayStr = toDubaiISODate(now);
 
   const completedTasksQuery = db.from("tasks").select("title, priority, completed_at");
   const todayHabitLogsQuery = db.from("habit_logs").select("habit_id, completed, logged_date");
@@ -51,28 +90,58 @@ export async function runDailyDigestWorkflow({
     activeGoalsQuery.eq?.("user_id", userId).eq?.("status", "active").order?.("progress", { ascending: false }).limit?.(5),
   ]);
 
-  const completedTasks = (completedTasksResult as { data?: Array<Record<string, unknown>>; error?: unknown }).data ?? [];
-  const todayHabitLogs = (todayHabitLogsResult as { data?: Array<Record<string, unknown>>; error?: unknown }).data ?? [];
-  const habits = (habitsResult as { data?: Array<Record<string, unknown>>; error?: unknown }).data ?? [];
-  const todayTransactions = (todayTransactionsResult as { data?: Array<Record<string, unknown>>; error?: unknown }).data ?? [];
-  const pendingTasks = (pendingTasksResult as { data?: Array<Record<string, unknown>>; error?: unknown }).data ?? [];
-  const activeGoals = (activeGoalsResult as { data?: Array<Record<string, unknown>>; error?: unknown }).data ?? [];
+  const completed = rowsOf(completedTasksResult);
+  const habitLogs = rowsOf(todayHabitLogsResult);
+  const habitRows = rowsOf(habitsResult);
+  const transactions = rowsOf(todayTransactionsResult);
+  const pending = rowsOf(pendingTasksResult);
+  const goalRows = rowsOf(activeGoalsResult);
+
+  // A partial read would silently produce a wrong digest ("0 habits done"), so
+  // fail loudly instead of reporting an empty day as if it were real.
+  const readError = [completed, habitLogs, habitRows, transactions, pending, goalRows].find(
+    (r) => r.error,
+  );
+  if (readError) {
+    console.error("[daily-digest] read failed:", readError.error);
+    return {
+      success: false,
+      date: todayStr,
+      digestText: "",
+      noteTitle: `Daily Digest — ${todayStr}`,
+      source,
+      error: "Failed to read digest data",
+    };
+  }
+
+  const completedTasks = completed.rows as Array<{ priority?: string; title?: string }>;
+  const todayHabitLogs = habitLogs.rows as Array<{ habit_id: string; completed: boolean }>;
+  const habits = habitRows.rows as Array<{ id: string; name: string }>;
+  const todayTransactions = transactions.rows as Array<{ type: string; amount: number; category?: string }>;
+  const pendingTasks = pending.rows as Array<{ due_date?: string; priority?: string; title?: string }>;
+  const activeGoals = goalRows.rows as Array<{ title?: string; progress?: number }>;
 
   const completedCount = completedTasks.length;
-  const habitMap = new Map((habits as Array<{ id: string; name: string }>).map((habit) => [habit.id, habit.name]));
-  const doneHabits = (todayHabitLogs as Array<{ habit_id: string; completed: boolean }>).filter((log) => log.completed).map((log) => habitMap.get(log.habit_id) ?? "—");
-  const missedHabits = (todayHabitLogs as Array<{ habit_id: string; completed: boolean }>).filter((log) => !log.completed).map((log) => habitMap.get(log.habit_id) ?? "—");
-  const totalIncome = (todayTransactions as Array<{ type: string; amount: number }>).filter((transaction) => transaction.type === "income").reduce((sum, transaction) => sum + transaction.amount, 0);
-  const totalExpense = (todayTransactions as Array<{ type: string; amount: number }>).filter((transaction) => transaction.type === "expense").reduce((sum, transaction) => sum + transaction.amount, 0);
+  // Logs carry habit_id; names come from the habits table. Compare IDs to IDs.
+  const habitMap = new Map(habits.map((habit) => [habit.id, habit.name]));
+  const doneHabits = todayHabitLogs.filter((log) => log.completed).map((log) => habitMap.get(log.habit_id) ?? "—");
+  const missedHabits = todayHabitLogs.filter((log) => !log.completed).map((log) => habitMap.get(log.habit_id) ?? "—");
+  const totalIncome = todayTransactions.filter((transaction) => transaction.type === "income").reduce((sum, transaction) => sum + transaction.amount, 0);
+  const totalExpense = todayTransactions.filter((transaction) => transaction.type === "expense").reduce((sum, transaction) => sum + transaction.amount, 0);
 
-  const todayTomorrow = format(subDays(dubaiNow, -1), "yyyy-MM-dd");
-  const dueSoon = (pendingTasks as Array<{ due_date?: string; priority?: string; title?: string }>).filter((task) => task.due_date && task.due_date <= todayTomorrow).slice(0, 5).map((task) => `${task.priority}: ${task.title}`);
+  const tomorrow = addDaysISO(todayStr, 1);
+  const dueSoon = pendingTasks
+    .filter((task) => task.due_date && task.due_date <= tomorrow)
+    // Sort before slicing so an overdue P4 cannot crowd out today's P1.
+    .sort(byDueThenPriority)
+    .slice(0, 5)
+    .map((task) => `${task.priority}: ${task.title}`);
 
   const context = `
 Today's date: ${todayStr} (Dubai time)
 
 COMPLETED TASKS (${completedCount}):
-${(completedTasks as Array<{ priority?: string; title?: string }>).map((task) => `- [${task.priority}] ${task.title}`).join("\n") || "None"}
+${completedTasks.map((task) => `- [${task.priority}] ${task.title}`).join("\n") || "None"}
 
 HABITS:
 - Done: ${doneHabits.join(", ") || "None"}
@@ -81,13 +150,13 @@ HABITS:
 FINANCE:
 - Income today: AED ${totalIncome.toFixed(2)}
 - Expenses today: AED ${totalExpense.toFixed(2)}
-- Transactions: ${(todayTransactions as Array<{ type: string; amount: number; category?: string }>).map((transaction) => `${transaction.type} AED ${transaction.amount} (${transaction.category})`).join(", ") || "None"}
+- Transactions: ${todayTransactions.map((transaction) => `${transaction.type} AED ${transaction.amount} (${transaction.category})`).join(", ") || "None"}
 
 TASKS DUE SOON:
 ${dueSoon.join("\n") || "None due imminently"}
 
 ACTIVE GOALS (top 5):
-${(activeGoals as Array<{ title?: string; progress?: number }>).map((goal) => `- ${goal.title}: ${goal.progress}%`).join("\n") || "None"}
+${activeGoals.map((goal) => `- ${goal.title}: ${goal.progress}%`).join("\n") || "None"}
 `.trim();
 
   const genAI = ai ?? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -128,17 +197,75 @@ ${context}`,
   const digestText = (response as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates?.[0]?.content?.parts?.[0]?.text ?? "Daily digest unavailable.";
 
   const noteTitle = `Daily Digest — ${todayStr}`;
-  const notePayload = {
+
+  // `notes` has no unique constraint on (user_id, title) and no `source`
+  // column, so an upsert with onConflict cannot work here. Look the note up,
+  // then update or insert. linked_to_type stays null — the column's CHECK only
+  // permits 'task' | 'goal' | 'contact'.
+  const writeError = await writeDigestNote({
+    db,
+    userId,
+    noteTitle,
+    digestText,
+  });
+
+  if (writeError) {
+    console.error("[daily-digest] note write failed:", writeError);
+    return {
+      success: false,
+      date: todayStr,
+      digestText,
+      noteTitle,
+      source,
+      error: "Failed to save the digest note",
+    };
+  }
+
+  return { success: true, date: todayStr, digestText, noteTitle, source };
+}
+
+async function writeDigestNote({
+  db,
+  userId,
+  noteTitle,
+  digestText,
+}: {
+  db: DailyDigestWorkflowArgs["db"];
+  userId: string;
+  noteTitle: string;
+  digestText: string;
+}): Promise<unknown> {
+  const existingResult = await db
+    .from("notes")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("title", noteTitle)
+    .maybeSingle?.();
+
+  const existing = (existingResult ?? {}) as {
+    data?: { id?: string } | null;
+    error?: unknown;
+  };
+  if (existing.error) return existing.error;
+
+  const nowIso = new Date().toISOString();
+
+  if (existing.data?.id) {
+    const updateResult = await db
+      .from("notes")
+      .update?.({ content: digestText, updated_at: nowIso })
+      .eq("id", existing.data.id)
+      .eq("user_id", userId);
+    return (updateResult as QueryResult | undefined)?.error ?? null;
+  }
+
+  const insertResult = await db.from("notes").insert?.({
     user_id: userId,
     title: noteTitle,
     content: digestText,
     tags: ["daily-digest"],
-    linked_to_type: "daily-digest",
-    updated_at: new Date().toISOString(),
-    source,
-  };
-
-  await db.from("notes").upsert?.(notePayload, { onConflict: "user_id,title" });
-
-  return { success: true, date: todayStr, digestText, noteTitle, source };
+    linked_to_type: null,
+    updated_at: nowIso,
+  });
+  return (insertResult as QueryResult | undefined)?.error ?? null;
 }

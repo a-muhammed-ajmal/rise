@@ -35,7 +35,7 @@ The AI isn't just a chatbot. It can create a task, log an expense, mark a habit 
 
 The assistant runs 77 tools across every module — split into two tiers:
 
-**AUTO_TOOLS (60)** — execute immediately without user confirmation:
+**AUTO_TOOLS (57)** — execute immediately without user confirmation:
 
 | Group | Tools |
 | --- | --- |
@@ -43,7 +43,7 @@ The assistant runs 77 tools across every module — split into two tiers:
 | Projects | `list_projects` · `create_project` · `update_project` |
 | Goals | `list_goals` · `create_goal` · `update_goal` · `complete_goal` |
 | Milestones | `list_milestones` · `create_milestone` · `update_milestone` · `complete_milestone` |
-| Habits | `create_habit` · `list_habits` · `log_habit` · `update_habit` · `delete_habit_log` |
+| Habits | `create_habit` · `list_habits` · `log_habit` · `update_habit` |
 | Finance | `log_expense` · `log_income` · `list_transactions` · `list_payment_methods` |
 | Budgets | `list_budgets` · `create_budget` · `update_budget` |
 | Debts | `list_debts` · `create_debt` |
@@ -51,16 +51,20 @@ The assistant runs 77 tools across every module — split into two tiers:
 | Interactions | `list_interactions` · `create_interaction` · `update_interaction` |
 | Notes | `add_note` · `list_notes` · `update_note` |
 | Documents | `list_documents` · `create_document` · `update_document` |
-| Links | `list_links` · `create_link` · `update_link` · `delete_link` |
+| Links | `list_links` · `create_link` · `update_link` |
 | Journal | `list_journal_entries` · `create_journal_entry` · `update_journal_entry` |
 | Reviews | `list_reviews` · `create_review` · `update_review` |
-| Focus Sessions | `list_focus_sessions` · `create_focus_session` · `update_focus_session` · `delete_focus_session` |
+| Focus Sessions | `list_focus_sessions` · `create_focus_session` · `update_focus_session` |
 | Memory | `remember_user_fact` · `recall_memories` |
 | Analytics | `get_daily_briefing` · `get_analytics` · `search_data` |
 
-**APPROVAL_TOOLS (17)** — stream pauses, a confirmation banner appears, user approves before execution:
+**APPROVAL_TOOLS (20)** — stream pauses, a confirmation banner appears, user approves before execution:
 
-`delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `update_transaction` · `delete_transaction` · `delete_budget` · `update_debt` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review`
+`delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `delete_habit_log` · `update_transaction` · `delete_transaction` · `delete_budget` · `update_debt` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review` · `delete_link` · `delete_focus_session`
+
+Every destructive operation sits in this tier, so none of them is reachable over MCP (`MCP_TOOLS` derives from `AUTO_TOOLS`).
+
+`log_expense` and `log_income` are AUTO, but the chat route escalates them to the same signed-approval flow when the amount exceeds AED 500 or the payload is ambiguous — see `lib/ai/financial-safety.ts`.
 
 ---
 
@@ -70,9 +74,9 @@ At **11:59 PM Dubai time** every day, a Vercel cron job fires `POST /api/ai/dail
 
 1. Fetches the day's completed tasks, habit logs, transactions, pending tasks, and active goals via the Supabase service-role client
 2. Calls Gemini 2.5 Flash to generate a structured markdown digest (wins, finance, goals pulse, upcoming tasks, one insight)
-3. Saves the result as a note tagged `daily-digest` in the Knowledge module
+3. Saves the result as a note tagged `daily-digest` in the Knowledge module (inserted, or updated in place if the day's digest already exists)
 
-To enable: set `CRON_SECRET` in Vercel environment variables. The digest note appears in Knowledge the next morning.
+`CRON_SECRET` is required — the route authenticates on `Authorization: Bearer $CRON_SECRET` only, and returns `503` when the secret is missing. The `x-vercel-cron` header is never accepted as proof of a cron run: it is caller-controlled, so trusting it would let anyone trigger service-role reads and Gemini spend.
 
 ---
 
@@ -90,7 +94,7 @@ To enable: set `CRON_SECRET` in Vercel environment variables. The digest note ap
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (667 tests) |
+| Testing | Vitest 4 + Testing Library (822 tests) |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -111,7 +115,7 @@ RISE uses a locked light-first orange brand system (full spec in `.claude/skills
 
 ## Database Schema
 
-26 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–019:
+26 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–021:
 
 ```text
 projects · tasks · goals · milestones · reviews · journal_entries
@@ -261,7 +265,7 @@ MCP_OAUTH_CLIENT_ID=       # OAuth client for claude.ai web / Desktop (any id)
 MCP_OAUTH_CLIENT_SECRET=   # OAuth client secret (long random string)
 ```
 
-Apply migrations 001–019 in your Supabase SQL editor (in order), then:
+Apply migrations 001–021 in your Supabase SQL editor (in order), then:
 
 ```bash
 npm run dev   # Turbopack dev server → http://localhost:3000
@@ -269,13 +273,49 @@ npm run dev   # Turbopack dev server → http://localhost:3000
 
 ### Supabase Storage Buckets
 
-Create these buckets in **Supabase Dashboard → Storage**:
+| Bucket | Visibility | Created by | Purpose |
+| --- | --- | --- | --- |
+| `chat-attachments` | **Private** | migration 020 | File/image/audio uploads in AI chat |
+| `task-attachments` | **Private** | migration 020 | File attachments on tasks |
+| `avatars` | Public | manual | User profile photos |
 
-| Bucket | Visibility | Purpose |
+Both attachment buckets are private by design: content is served through
+short-lived signed URLs, and RLS on `storage.objects` restricts every operation
+to objects under the caller's own `<user_uuid>/` path prefix. Making either
+bucket public would expose every attachment to anyone holding the object URL.
+
+Create `avatars` manually (**Dashboard → Storage → New bucket**, public) — it
+holds profile photos that are intentionally world-readable.
+
+#### Storage policies — Dashboard only
+
+**Storage policies cannot be created from the SQL editor on this project.**
+`storage.objects` is owned by `supabase_storage_admin`; the SQL editor runs as
+`postgres`, which is not a member of that role. Any `CREATE POLICY`,
+`DROP POLICY` or `ALTER TABLE` against it fails with
+`ERROR: 42501: must be owner of table objects`. Migration 020 therefore handles
+only bucket creation and the private flag (`storage.buckets` does grant
+`postgres` DML).
+
+Create these six policies under **Dashboard → Storage → \<bucket\> → Policies**,
+all targeting the `authenticated` role. RLS is already enabled by Supabase.
+
+| Bucket | Operation | Expression |
 | --- | --- | --- |
-| `task-attachments` | Public | File attachments on tasks |
-| `chat-attachments` | Public | File/image uploads in AI chat |
-| `avatars` | Public | User profile photos |
+| `chat-attachments` | INSERT (WITH CHECK) | `bucket_id = 'chat-attachments' AND (storage.foldername(name))[1] = (select auth.uid())::text` |
+| `chat-attachments` | SELECT (USING) | same expression |
+| `chat-attachments` | DELETE (USING) | same expression |
+| `task-attachments` | INSERT (WITH CHECK) | `bucket_id = 'task-attachments' AND (storage.foldername(name))[1] = (select auth.uid())::text` |
+| `task-attachments` | SELECT (USING) | same expression |
+| `task-attachments` | DELETE (USING) | same expression |
+
+**Do not add an UPDATE policy.** With RLS on and no UPDATE policy, updates are
+denied outright. A USING-only UPDATE policy would constrain which rows may
+change but not the resulting row, letting a user rename an object into
+`<other-user-uuid>/…` where the other user's SELECT policy would then serve it.
+Nothing in the app needs it — uploads use `upsert: false` and delete on failure
+rather than overwriting. If a future feature needs overwrite, add the policy
+with **both** `USING` and `WITH CHECK`.
 
 ### Commands
 
@@ -297,7 +337,7 @@ npm run test:coverage  # Coverage report for lib/**
 - **AI memory** — user messages embedded via Voyage AI and stored in `ai_memory` (pgvector). Top-10 memories retrieved by cosine similarity (`threshold: 0.7`) and injected into each system prompt. ILIKE keyword fallback activates when `VOYAGE_API_KEY` is absent.
 - **Realtime** — `use-tasks.ts` and `use-projects.ts` subscribe to Supabase Realtime channels for live UI updates; channels are cleaned up on unmount.
 - **PWA** — installable; service worker uses stale-while-revalidate for assets, network-only for `/api/**`, and `/offline` fallback for navigation. Push notifications delivered hourly via Supabase Edge Function.
-- **Security** — HMAC-signed approval tokens with 5-minute expiry prevent replay attacks on destructive tool calls. All server secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`) are never exposed to client components.
+- **Security** — HMAC-signed, user-bound approval tokens (2-minute expiry, single-use nonce) gate every destructive tool call. In-memory sliding-window rate limits cap `/api/ai/chat`, `/api/ai/upload`, `/api/oauth/token` and the digest cron. AI routes return a stable generic message plus a correlation id; the detail stays in the server log. All server secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`) are never exposed to client components.
 - **Locale** — AED currency throughout (`Intl.NumberFormat('en-AE', { currency: 'AED' })`), DD/MM/YYYY dates, 12-hour time — all via `lib/format.ts`. Timezone and format preferences stored in Supabase user_metadata and configurable in Settings.
 - **Profile** — Display name and avatar photo stored in Supabase auth `user_metadata` (`full_name`, `avatar_url`). Google OAuth photo is used by default; custom photos can be uploaded to the `avatars` storage bucket.
 
@@ -309,7 +349,100 @@ Deployed on Vercel. Push to `main` triggers a production deploy.
 
 Set environment variables via the Vercel dashboard or `vercel env pull`. Supabase migrations must be applied manually in the SQL editor — never auto-migrated in CI.
 
-The Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the daily digest endpoint automatically on Pro/Enterprise plans. On Hobby, set up an external cron (e.g. cron-job.org) to hit `POST /api/ai/daily-digest` with `Authorization: Bearer <CRON_SECRET>`.
+### Deployment checklist
+
+Run through this for every environment. Each step has a verification query so
+nothing depends on remembering an undocumented dashboard click.
+
+**1. Environment variables** — all of the following must be set in Vercel:
+
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `APPROVAL_HMAC_SECRET`,
+`ALLOWED_USER_EMAIL`, `CRON_SECRET`.
+
+> `CRON_SECRET` is **required**, not optional. The daily-digest route fails
+> closed with `503` when it is unset or shorter than 16 characters — the route
+> spends money on Gemini and reads with the service-role key, so it will not run
+> without a credential to check.
+
+Optional: `VOYAGE_API_KEY` (keyword fallback without it), `VAPID_*` (push),
+`MCP_ACCESS_TOKEN` (Claude Code), `MCP_OAUTH_CLIENT_ID` / `MCP_OAUTH_CLIENT_SECRET`
+(claude.ai connector).
+
+**2. Migrations** — apply `001` … `021` in order in the Supabase SQL editor.
+Migrations are append-only; never edit an applied file.
+
+**3. Storage** — migration `020` creates both buckets and pins them private.
+The six object policies are a **Dashboard** step (see "Storage policies —
+Dashboard only" above); they cannot be created from the SQL editor. Verify:
+
+```sql
+-- Both buckets exist and are private
+select id, public from storage.buckets
+where id in ('chat-attachments','task-attachments');
+-- expect public = false for both
+
+-- Six object policies, three per bucket (INSERT / SELECT / DELETE)
+select policyname, cmd, roles::text from pg_policies
+where schemaname = 'storage' and tablename = 'objects'
+order by policyname;
+-- expect 6 rows, all TO {authenticated}
+
+-- No UPDATE policy at all — see the note above on the rename vector
+select policyname from pg_policies
+where schemaname = 'storage' and tablename = 'objects' and cmd = 'UPDATE';
+-- expect zero rows
+```
+
+**4. RLS** — verify no user table is left open:
+
+```sql
+-- Every public table has RLS enabled
+select tablename from pg_tables t
+where schemaname = 'public'
+  and not exists (
+    select 1 from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relname = t.tablename and c.relrowsecurity
+  );
+-- expect zero rows
+
+-- Every policy binds an explicit role
+select tablename, policyname from pg_policies
+where schemaname = 'public' and roles = '{public}';
+-- expect zero rows
+
+-- Every UPDATE policy constrains the resulting row
+select tablename, policyname from pg_policies
+where schemaname = 'public' and cmd = 'UPDATE' and with_check is null;
+-- expect zero rows
+```
+
+**5. Cron** — the Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the
+daily digest automatically on Pro/Enterprise; Vercel attaches
+`Authorization: Bearer $CRON_SECRET` itself. On Hobby, point an external cron
+(e.g. cron-job.org) at `POST /api/ai/daily-digest` with that same header.
+
+Confirm the endpoint is not publicly triggerable:
+
+```bash
+# Must return 401 — the x-vercel-cron header is caller-controlled and untrusted
+curl -i -X POST https://<your-app>/api/ai/daily-digest -H 'x-vercel-cron: 1'
+
+# Must return 405 — there is no GET handler
+curl -i https://<your-app>/api/ai/daily-digest
+```
+
+**6. MCP** — confirm no destructive tool is reachable over the connector:
+
+```bash
+curl -s https://<your-app>/api/mcp \
+  -H "Authorization: Bearer $MCP_ACCESS_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
+  | grep -o '"name":"delete_[a-z_]*"'
+# expect no output
+```
 
 ---
 
@@ -317,8 +450,8 @@ The Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the daily digest endp
 
 | Metric | Value |
 | --- | --- |
-| Test count | 667 passing |
+| Test count | 822 passing |
 | DB tables | 26 (RLS on all) |
-| AI tools | 77 (60 AUTO + 17 APPROVAL) |
-| Migrations | 19 (001–019) |
-| Last phase | Phase 18 — Motivational quotes rotator + performance hardening: router cache, realtime projects, React.memo TaskCard, reduced queries |
+| AI tools | 77 (57 AUTO + 20 APPROVAL) |
+| Migrations | 21 (001–021) |
+| Last phase | Phase 19 — Security & correctness hardening: cron auth, digest/analytics fixes, all destructive tools gated behind approval, rate limiting, service-role isolation |

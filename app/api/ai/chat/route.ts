@@ -10,10 +10,12 @@ import {
   formatMemoriesForPrompt,
   formatUserFactsForPrompt,
 } from "@/lib/ai/memory";
-import type { ChatAttachment } from "@/lib/types/database";
+import type { ChatAttachment, Database } from "@/lib/types/database";
 import { format, parseISO } from "date-fns";
 import { todayISO, todayDOW } from "@/lib/format";
-import { createHmac, timingSafeEqual } from "crypto";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { evaluateFinancialGate, isMoneyTool } from "@/lib/ai/financial-safety";
+import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { z } from "zod";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
@@ -53,13 +55,31 @@ export type MessageParam = {
 
 // ─── Approval token (HMAC-signed, 5-minute expiry) ────────────────────────────
 
+const APPROVAL_TTL_MS = 2 * 60 * 1000;
+
 const ApprovalPayloadSchema = z.object({
   userId: z.string(),
   toolName: z.string(),
   input: z.record(z.string(), z.unknown()),
   exp: z.number(),
+  jti: z.string(),
 });
 type ApprovalPayload = z.infer<typeof ApprovalPayloadSchema>;
+
+// Single-use guard for approval tokens. In-process only, so it is a best-effort
+// defence against double-submits and quick replays within one instance's
+// lifetime — not a distributed guarantee. The short TTL is the real bound.
+const spentApprovals = new Map<string, number>();
+
+function consumeApprovalNonce(jti: string, exp: number): boolean {
+  const now = Date.now();
+  for (const [id, expiry] of spentApprovals) {
+    if (expiry < now) spentApprovals.delete(id);
+  }
+  if (spentApprovals.has(jti)) return false;
+  spentApprovals.set(jti, exp);
+  return true;
+}
 
 function hmacSecret(): string {
   const s = process.env.APPROVAL_HMAC_SECRET;
@@ -96,10 +116,75 @@ function verifyApprovalToken(
     const payload = payloadParsed.data;
     if (payload.userId !== userId) return null;
     if (Date.now() > payload.exp) return null;
+    if (!consumeApprovalNonce(payload.jti, payload.exp)) return null;
     return { toolName: payload.toolName, input: payload.input };
   } catch {
     return null;
   }
+}
+
+// ─── Approval ownership preflight ─────────────────────────────────────────────
+
+// Which table and argument identify the resource each approval tool acts on, so
+// the confirmation prompt can never name a row the user does not own. One table
+// drives one query instead of a per-tool if/else chain.
+type ApprovalResource = {
+  table: keyof Database["public"]["Tables"];
+  idArg: string;
+  label: string;
+};
+
+const APPROVAL_RESOURCES: Record<string, ApprovalResource> = {
+  delete_task: { table: "tasks", idArg: "task_id", label: "Task" },
+  delete_note: { table: "notes", idArg: "note_id", label: "Note" },
+  delete_project: { table: "projects", idArg: "project_id", label: "Project" },
+  delete_goal: { table: "goals", idArg: "goal_id", label: "Goal" },
+  delete_milestone: { table: "milestones", idArg: "milestone_id", label: "Milestone" },
+  delete_habit: { table: "habits", idArg: "habit_id", label: "Habit" },
+  delete_habit_log: { table: "habits", idArg: "habit_id", label: "Habit" },
+  delete_transaction: { table: "transactions", idArg: "transaction_id", label: "Transaction" },
+  update_transaction: { table: "transactions", idArg: "transaction_id", label: "Transaction" },
+  delete_budget: { table: "budgets", idArg: "budget_id", label: "Budget" },
+  delete_debt: { table: "debts", idArg: "debt_id", label: "Debt" },
+  update_debt: { table: "debts", idArg: "debt_id", label: "Debt" },
+  delete_contact: { table: "contacts", idArg: "contact_id", label: "Contact" },
+  delete_interaction: { table: "interactions", idArg: "interaction_id", label: "Interaction" },
+  delete_document: { table: "documents", idArg: "document_id", label: "Document" },
+  delete_journal_entry: { table: "journal_entries", idArg: "entry_id", label: "Journal entry" },
+  delete_review: { table: "reviews", idArg: "review_id", label: "Review" },
+  delete_link: { table: "links", idArg: "id", label: "Link" },
+  delete_focus_session: { table: "focus_sessions", idArg: "id", label: "Focus session" },
+};
+
+async function countActivePaymentMethods(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<number> {
+  const { count } = await supabase
+    .from("payment_methods")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_active", true);
+  return count ?? 0;
+}
+
+async function approvalResourceExists(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  toolName: string,
+  args: Record<string, unknown>,
+  userId: string,
+): Promise<boolean> {
+  const resource = APPROVAL_RESOURCES[toolName];
+  if (!resource) return true; // e.g. bulk_complete_tasks — no single row to check
+  const id = args[resource.idArg];
+  if (typeof id !== "string") return true; // let the tool's own zod schema reject it
+  const { data } = await supabase
+    .from(resource.table)
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!data;
 }
 
 // ─── System prompt ────────────────────────────────────────────────────────────
@@ -116,7 +201,8 @@ Key rules:
 - Always use AED for money amounts in UAE Dirham format.
 - Use DD/MM/YYYY for dates when displaying to the user.
 - When creating tasks from natural language, extract the due date intelligently (e.g. "tomorrow" → correct date).
-- For approval-required tools (delete_task, bulk_complete_tasks, delete_project, delete_goal, delete_milestone, delete_habit, update_transaction, delete_transaction, delete_budget, update_debt, delete_debt, delete_contact, delete_interaction, delete_note, delete_document, delete_journal_entry, delete_review): always call the tool — the system will intercept it and ask the user for approval before executing.
+- For approval-required tools (delete_task, bulk_complete_tasks, delete_project, delete_goal, delete_milestone, delete_habit, delete_habit_log, update_transaction, delete_transaction, delete_budget, update_debt, delete_debt, delete_contact, delete_interaction, delete_note, delete_document, delete_journal_entry, delete_review, delete_link, delete_focus_session): always call the tool — the system will intercept it and ask the user for approval before executing.
+- Logging money (log_expense, log_income) runs immediately for small, fully-specified amounts, but the system will ask the user to confirm large or ambiguous amounts. Always include a category, and call list_payment_methods first when the user has more than one wallet.
 - When updating or deleting by name (e.g. "delete my dentist contact"), always call the relevant list_* or search_data tool first to resolve the name to an id. Never guess an id.
 - After using tools, report back clearly: what was created/updated/found.
 - If the user asks "what should I do today?" — call get_daily_briefing first, then summarize.
@@ -291,7 +377,11 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
 
-  const bodyParsed = ChatRequestBody.safeParse(await request.json());
+  // Caps Gemini spend per user. Applied after auth so the key is a real user id.
+  const rl = checkRateLimit(`chat:${user.id}`, { limit: 20, windowMs: 60_000 });
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSec);
+
+  const bodyParsed = ChatRequestBody.safeParse(await request.json().catch(() => null));
   if (!bodyParsed.success)
     return new Response("Bad Request", { status: 400 });
 
@@ -302,7 +392,11 @@ export async function POST(request: Request) {
     const verified = verifyApprovalToken(approvalToken, user.id);
     if (!verified)
       return new Response("Invalid or expired approval", { status: 403 });
-    if (!APPROVAL_TOOL_NAMES.has(verified.toolName))
+    // Money tools are AUTO-tier but reach this path via the financial gate.
+    if (
+      !APPROVAL_TOOL_NAMES.has(verified.toolName) &&
+      !isMoneyTool(verified.toolName)
+    )
       return new Response("Forbidden", { status: 403 });
     const result = await executeTool(verified.toolName, verified.input);
     return Response.json({ type: "tool_result", result });
@@ -364,6 +458,8 @@ export async function POST(request: Request) {
   }
 
   const encoder = new TextEncoder();
+  // Correlates the generic client-facing error with the full server-side log.
+  const requestId = randomUUID();
 
   function sseChunk(payload: Record<string, unknown>) {
     return encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
@@ -426,52 +522,28 @@ export async function POST(request: Request) {
           let hasApproval = false;
 
           for (const fc of functionCalls) {
-            if (APPROVAL_TOOL_NAMES.has(fc.name)) {
-              // Verify the referenced resource exists before presenting approval
-              let resourceExists = true;
-              if (fc.name === "delete_task" && typeof fc.args.task_id === "string") {
-                const { data } = await supabase.from("tasks").select("id").eq("id", fc.args.task_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_note" && typeof fc.args.note_id === "string") {
-                const { data } = await supabase.from("notes").select("id").eq("id", fc.args.note_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_project" && typeof fc.args.project_id === "string") {
-                const { data } = await supabase.from("projects").select("id").eq("id", fc.args.project_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_goal" && typeof fc.args.goal_id === "string") {
-                const { data } = await supabase.from("goals").select("id").eq("id", fc.args.goal_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_milestone" && typeof fc.args.milestone_id === "string") {
-                const { data } = await supabase.from("milestones").select("id").eq("id", fc.args.milestone_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_habit" && typeof fc.args.habit_id === "string") {
-                const { data } = await supabase.from("habits").select("id").eq("id", fc.args.habit_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if ((fc.name === "delete_transaction" || fc.name === "update_transaction") && typeof fc.args.transaction_id === "string") {
-                const { data } = await supabase.from("transactions").select("id").eq("id", fc.args.transaction_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_budget" && typeof fc.args.budget_id === "string") {
-                const { data } = await supabase.from("budgets").select("id").eq("id", fc.args.budget_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if ((fc.name === "delete_debt" || fc.name === "update_debt") && typeof fc.args.debt_id === "string") {
-                const { data } = await supabase.from("debts").select("id").eq("id", fc.args.debt_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_contact" && typeof fc.args.contact_id === "string") {
-                const { data } = await supabase.from("contacts").select("id").eq("id", fc.args.contact_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_interaction" && typeof fc.args.interaction_id === "string") {
-                const { data } = await supabase.from("interactions").select("id").eq("id", fc.args.interaction_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_document" && typeof fc.args.document_id === "string") {
-                const { data } = await supabase.from("documents").select("id").eq("id", fc.args.document_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_journal_entry" && typeof fc.args.entry_id === "string") {
-                const { data } = await supabase.from("journal_entries").select("id").eq("id", fc.args.entry_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              } else if (fc.name === "delete_review" && typeof fc.args.review_id === "string") {
-                const { data } = await supabase.from("reviews").select("id").eq("id", fc.args.review_id).eq("user_id", user.id).maybeSingle();
-                resourceExists = !!data;
-              }
+            // Money writes stay AUTO for small, fully-specified amounts but
+            // escalate to the same signed-approval flow when the figure is
+            // material or the payload is ambiguous.
+            let financialGateSummary: string | undefined;
+            if (isMoneyTool(fc.name)) {
+              const decision = evaluateFinancialGate(
+                fc.name,
+                fc.args,
+                await countActivePaymentMethods(supabase, user.id),
+              );
+              if (decision.requiresApproval)
+                financialGateSummary = decision.summary;
+            }
+
+            if (APPROVAL_TOOL_NAMES.has(fc.name) || financialGateSummary) {
+              // Never show a confirmation naming a row the user does not own.
+              const resourceExists = await approvalResourceExists(
+                supabase,
+                fc.name,
+                fc.args,
+                user.id,
+              );
 
               if (!resourceExists) {
                 toolResultParts.push({
@@ -489,7 +561,8 @@ export async function POST(request: Request) {
                 userId: user.id,
                 toolName: fc.name,
                 input: fc.args,
-                exp: Date.now() + 5 * 60 * 1000,
+                exp: Date.now() + APPROVAL_TTL_MS,
+                jti: randomUUID(),
               });
 
               hasApproval = true;
@@ -497,6 +570,7 @@ export async function POST(request: Request) {
                 sseChunk({
                   type: "approval_required",
                   tool: { id: fc.id, name: fc.name, input: fc.args },
+                  reason: financialGateSummary,
                   token,
                 }),
               );
@@ -546,11 +620,21 @@ export async function POST(request: Request) {
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        console.error("[ai/chat] streaming error:", errMsg);
-        controller.enqueue(
-          sseChunk({ type: "error", message: `AI error: ${errMsg}` }),
-        );
+        // The raw error can carry Gemini/Supabase internals and env-var names.
+        // Log it server-side against a correlation id; return a stable message.
+        console.error(`[ai/chat] ${requestId} streaming error:`, err);
+        try {
+          controller.enqueue(
+            sseChunk({
+              type: "error",
+              message: "AI request failed. Please try again.",
+              requestId,
+            }),
+          );
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        } catch {
+          // Controller already closed (client disconnected) — nothing to send.
+        }
         controller.close();
       }
     },

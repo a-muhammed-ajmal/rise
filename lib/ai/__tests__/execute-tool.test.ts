@@ -38,6 +38,7 @@ function createMockQuery(
   chain.contains = vi.fn().mockReturnValue(chain);
   chain.order = vi.fn().mockReturnValue(chain);
   chain.limit = vi.fn().mockReturnValue(chain);
+  chain.range = vi.fn().mockReturnValue(chain);
   chain.single = vi
     .fn()
     .mockResolvedValue({ data: returnData, error: returnError });
@@ -581,6 +582,46 @@ describe("executeTool", () => {
       expect(result.message).toBe("Daily briefing retrieved");
       expect(result.data).toBeDefined();
     });
+
+    // habit_logs rows carry habit_id; the done flag previously compared that
+    // id set against habit *names*, so every habit reported done: false.
+    it("marks a habit done by matching the logged habit_id", async () => {
+      const mock = setupMockSupabase({});
+      const makeResolvable = (data: unknown) => {
+        const q = createMockQuery();
+        Object.defineProperty(q, "then", {
+          value: (resolve: (v: unknown) => void) =>
+            Promise.resolve({ data, error: null }).then(resolve),
+          writable: true,
+          configurable: true,
+        });
+        return q;
+      };
+
+      const tableMap: Record<string, ReturnType<typeof createMockQuery>> = {
+        tasks: makeResolvable([]),
+        habits: makeResolvable([
+          { id: "h-1", name: "Exercise", icon: "🏃" },
+          { id: "h-2", name: "Read", icon: "📖" },
+        ]),
+        habit_logs: makeResolvable([{ habit_id: "h-1" }]),
+        goals: makeResolvable([]),
+        budgets: makeResolvable([]),
+        transactions: makeResolvable([]),
+        interactions: makeResolvable([]),
+      };
+      mock.from = vi.fn((table: string) => tableMap[table] ?? createMockQuery());
+
+      const result = await executeTool("get_daily_briefing", {});
+      const data = result.data as {
+        habits: Array<{ id: string; name: string; done: boolean }>;
+      };
+
+      expect(data.habits).toEqual([
+        { id: "h-1", name: "Exercise", icon: "🏃", done: true },
+        { id: "h-2", name: "Read", icon: "📖", done: false },
+      ]);
+    });
   });
 
   describe("search_data", () => {
@@ -730,6 +771,139 @@ describe("executeTool", () => {
       setupMockSupabase({});
       const result = await executeTool("get_analytics", {});
       expect(result.success).toBe(true);
+    });
+
+    describe("date filtering", () => {
+      function setupAnalytics() {
+        const txQuery = createMockQuery([]);
+        const taskQuery = createMockQuery([]);
+        const habitQuery = createMockQuery([]);
+        const habitLogQuery = createMockQuery([]);
+        const goalQuery = createMockQuery([]);
+        setupMockSupabase({
+          queries: {
+            transactions: txQuery,
+            tasks: taskQuery,
+            habits: habitQuery,
+            habit_logs: habitLogQuery,
+            goals: goalQuery,
+          },
+        });
+        return { txQuery, taskQuery, habitLogQuery };
+      }
+
+      // The schema column is habit_logs.logged_date — filtering on `date`
+      // errored out and produced empty habit analytics.
+      it("filters habit logs on logged_date, never on date", async () => {
+        const { habitLogQuery } = setupAnalytics();
+        await executeTool("get_analytics", { period: "month" });
+
+        const columns = habitLogQuery.gte.mock.calls.map((c) => c[0]);
+        expect(columns).toContain("logged_date");
+        expect(columns).not.toContain("date");
+      });
+
+      it("uses the Dubai month start for the monthly window", async () => {
+        const { txQuery, habitLogQuery } = setupAnalytics();
+        await executeTool("get_analytics", { period: "month" });
+
+        expect(txQuery.gte).toHaveBeenCalledWith("date", "2026-06-01");
+        expect(habitLogQuery.gte).toHaveBeenCalledWith(
+          "logged_date",
+          "2026-06-01",
+        );
+      });
+
+      it("uses a trailing 7-day window for the weekly period", async () => {
+        const { txQuery, habitLogQuery } = setupAnalytics();
+        await executeTool("get_analytics", { period: "week" });
+
+        // Frozen clock is 2026-06-23 → inclusive 7-day window starts 06-17.
+        expect(txQuery.gte).toHaveBeenCalledWith("date", "2026-06-17");
+        expect(habitLogQuery.gte).toHaveBeenCalledWith(
+          "logged_date",
+          "2026-06-17",
+        );
+      });
+
+      it("anchors the timestamptz task filter to the Dubai day boundary", async () => {
+        const { taskQuery } = setupAnalytics();
+        await executeTool("get_analytics", { period: "month" });
+
+        expect(taskQuery.gte).toHaveBeenCalledWith(
+          "created_at",
+          "2026-06-01T00:00:00+04:00",
+        );
+      });
+    });
+
+    describe("counts", () => {
+      it("aggregates finance, task, habit and goal figures", async () => {
+        setupMockSupabase({
+          queries: {
+            transactions: createMockQuery([
+              { type: "income", amount: 5000, category: "salary" },
+              { type: "expense", amount: 200, category: "food" },
+              { type: "expense", amount: 100, category: "transport" },
+            ]),
+            tasks: createMockQuery([
+              { id: "t-1", status: "done" },
+              { id: "t-2", status: "done" },
+              { id: "t-3", status: "in_progress" },
+            ]),
+            habits: createMockQuery([
+              { id: "h-1", name: "Run" },
+              { id: "h-2", name: "Read" },
+            ]),
+            habit_logs: createMockQuery([
+              { habit_id: "h-1", completed: true },
+              { habit_id: "h-2", completed: true },
+              { habit_id: "h-1", completed: false },
+            ]),
+            goals: createMockQuery([
+              { id: "g-1", status: "active", progress: 60 },
+              { id: "g-2", status: "completed", progress: 100 },
+            ]),
+          },
+        });
+
+        const result = await executeTool("get_analytics", { period: "month" });
+        expect(result.data).toEqual({
+          period: "month",
+          finance: { income: 5000, expenses: 300, net: 4700 },
+          tasks: { total: 3, completed: 2 },
+          habits: { tracked: 2, logsCompleted: 2 },
+          goals: { active: 1, completed: 1, avgProgress: 80 },
+        });
+      });
+    });
+
+    describe("query failures", () => {
+      // Returning zeros for a failed query is indistinguishable from a
+      // genuinely empty period — the caller must be told it failed.
+      it.each([
+        "transactions",
+        "tasks",
+        "habits",
+        "habit_logs",
+        "goals",
+      ])("reports failure when the %s query errors", async (failingTable) => {
+        const queries: Record<string, ReturnType<typeof createMockQuery>> = {
+          transactions: createMockQuery([]),
+          tasks: createMockQuery([]),
+          habits: createMockQuery([]),
+          habit_logs: createMockQuery([]),
+          goals: createMockQuery([]),
+        };
+        queries[failingTable] = createMockQuery(null, {
+          message: "column does not exist",
+        });
+        setupMockSupabase({ queries });
+
+        const result = await executeTool("get_analytics", { period: "month" });
+        expect(result.success).toBe(false);
+        expect(result.message).toBe("Something went wrong. Please try again.");
+      });
     });
   });
 
@@ -1008,7 +1182,13 @@ describe("executeTool", () => {
 
     it("creates a milestone", async () => {
       const query = createMockQuery({ id: "m1", title: "Run 10km" });
-      setupMockSupabase({ queries: { milestones: query } });
+      setupMockSupabase({
+        queries: {
+          milestones: query,
+          // Parent goal must resolve to the calling user.
+          goals: createMockQuery({ id: goalId }),
+        },
+      });
 
       const result = await executeTool("create_milestone", {
         goal_id: goalId,
@@ -1016,6 +1196,20 @@ describe("executeTool", () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain("Run 10km");
+    });
+
+    it("refuses a goal that does not belong to the user", async () => {
+      const query = createMockQuery({ id: "m1", title: "Run 10km" });
+      setupMockSupabase({
+        queries: { milestones: query, goals: createMockQuery(null) },
+      });
+
+      const result = await executeTool("create_milestone", {
+        goal_id: goalId,
+        title: "Run 10km",
+      });
+      expect(result).toEqual({ success: false, message: "Goal not found" });
+      expect(query.insert).not.toHaveBeenCalled();
     });
 
     it("returns badInput for missing title", async () => {
@@ -1342,7 +1536,13 @@ describe("executeTool", () => {
 
     it("logs an interaction", async () => {
       const query = createMockQuery({ id: "i1" });
-      setupMockSupabase({ queries: { interactions: query } });
+      setupMockSupabase({
+        queries: {
+          interactions: query,
+          // Parent contact must resolve to the calling user.
+          contacts: createMockQuery({ id: contactId }),
+        },
+      });
 
       const result = await executeTool("create_interaction", {
         contact_id: contactId,
@@ -1351,6 +1551,21 @@ describe("executeTool", () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain("call");
+    });
+
+    it("refuses a contact that does not belong to the user", async () => {
+      const query = createMockQuery({ id: "i1" });
+      setupMockSupabase({
+        queries: { interactions: query, contacts: createMockQuery(null) },
+      });
+
+      const result = await executeTool("create_interaction", {
+        contact_id: contactId,
+        type: "call",
+        notes: "Discussed proposal",
+      });
+      expect(result).toEqual({ success: false, message: "Contact not found" });
+      expect(query.insert).not.toHaveBeenCalled();
     });
 
     it("returns badInput for missing notes", async () => {
@@ -2722,5 +2937,264 @@ describe("executeTool with injected ToolContext", () => {
     expect(result.success).toBe(true);
     expect(tasksQuery.eq).toHaveBeenCalledWith("user_id", "user-999");
     expect(createClient).not.toHaveBeenCalled();
+  });
+
+  // A capped page previously looked identical to a complete result, so the
+  // assistant would confidently report a truncated list as everything.
+  describe("pagination", () => {
+    it("requests one row beyond the page so truncation is detectable", async () => {
+      const notesQuery = createMockQuery([]);
+      const sb = { from: vi.fn(() => notesQuery) };
+
+      await executeTool(
+        "list_notes",
+        { limit: 5 },
+        { supabase: sb as never, userId: "user-999" },
+      );
+      // range() is inclusive, so [0, 5] fetches 6 rows for a page of 5.
+      expect(notesQuery.range).toHaveBeenCalledWith(0, 5);
+    });
+
+    it("reports the next offset when more rows exist", async () => {
+      const rows = Array.from({ length: 6 }, (_, i) => ({ id: `n-${i}` }));
+      const notesQuery = createMockQuery(rows);
+      const sb = { from: vi.fn(() => notesQuery) };
+
+      const result = await executeTool(
+        "list_notes",
+        { limit: 5 },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(result.message).toBe(
+        "Found 5 notes (more available — call again with offset 5)",
+      );
+      // The probe row is trimmed from the returned page.
+      expect(result.data).toHaveLength(5);
+    });
+
+    it("does not claim more results when the page is not full", async () => {
+      const rows = Array.from({ length: 3 }, (_, i) => ({ id: `n-${i}` }));
+      const notesQuery = createMockQuery(rows);
+      const sb = { from: vi.fn(() => notesQuery) };
+
+      const result = await executeTool(
+        "list_notes",
+        { limit: 5 },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(result.message).toBe("Found 3 notes");
+      expect(result.data).toHaveLength(3);
+    });
+
+    it("advances the range window for a later offset", async () => {
+      const contactsQuery = createMockQuery([]);
+      const sb = { from: vi.fn(() => contactsQuery) };
+
+      await executeTool(
+        "list_contacts",
+        { limit: 10, offset: 20 },
+        { supabase: sb as never, userId: "user-999" },
+      );
+      expect(contactsQuery.range).toHaveBeenCalledWith(20, 30);
+    });
+
+    it("reports the cumulative offset when paging deeper", async () => {
+      const rows = Array.from({ length: 11 }, (_, i) => ({ id: `t-${i}` }));
+      const txQuery = createMockQuery(rows);
+      const sb = { from: vi.fn(() => txQuery) };
+
+      const result = await executeTool(
+        "list_transactions",
+        { limit: 10, offset: 20 },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(result.message).toContain("offset 30");
+    });
+  });
+
+  // The MCP path injects a service-role client, which bypasses RLS entirely.
+  // Every read and write must therefore carry the userId predicate itself —
+  // without it a query returns (or mutates) every user's rows.
+  describe("service-role isolation", () => {
+    function injected(queries: Record<string, ReturnType<typeof createMockQuery>>) {
+      const fallback = createMockQuery();
+      return {
+        from: vi.fn((table: string) => queries[table] ?? fallback),
+      };
+    }
+
+    it("scopes list_tasks by user_id", async () => {
+      const tasksQuery = createMockQuery([]);
+      const sb = injected({ tasks: tasksQuery });
+      await executeTool("list_tasks", {}, { supabase: sb as never, userId: "user-999" });
+      expect(tasksQuery.eq).toHaveBeenCalledWith("user_id", "user-999");
+    });
+
+    it("scopes every search_data query by user_id", async () => {
+      const tasksQuery = createMockQuery([]);
+      const notesQuery = createMockQuery([]);
+      const contactsQuery = createMockQuery([]);
+      const goalsQuery = createMockQuery([]);
+      const sb = injected({
+        tasks: tasksQuery,
+        notes: notesQuery,
+        contacts: contactsQuery,
+        goals: goalsQuery,
+      });
+
+      await executeTool(
+        "search_data",
+        { query: "budget" },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      for (const q of [tasksQuery, notesQuery, contactsQuery, goalsQuery]) {
+        expect(q.eq).toHaveBeenCalledWith("user_id", "user-999");
+      }
+    });
+
+    it("scopes the log_habit lookup by user_id", async () => {
+      const habitsQuery = createMockQuery([{ id: "h-1", name: "Run" }]);
+      const logsQuery = createMockQuery(null);
+      const sb = injected({ habits: habitsQuery, habit_logs: logsQuery });
+
+      await executeTool(
+        "log_habit",
+        { habit_name: "Run" },
+        { supabase: sb as never, userId: "user-999" },
+      );
+      expect(habitsQuery.eq).toHaveBeenCalledWith("user_id", "user-999");
+    });
+
+    it("scopes the delete_task delete by user_id, not just the preflight", async () => {
+      const tasksQuery = createMockQuery({ id: "task-1" });
+      const sb = injected({ tasks: tasksQuery });
+
+      await executeTool(
+        "delete_task",
+        { task_id: "123e4567-e89b-12d3-a456-426614174000" },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(tasksQuery.delete).toHaveBeenCalled();
+      expect(tasksQuery.eq).toHaveBeenCalledWith("user_id", "user-999");
+    });
+
+    it("scopes the delete_note delete by user_id", async () => {
+      const notesQuery = createMockQuery({ id: "note-1" });
+      const sb = injected({ notes: notesQuery });
+
+      await executeTool(
+        "delete_note",
+        { note_id: "123e4567-e89b-12d3-a456-426614174000" },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(notesQuery.delete).toHaveBeenCalled();
+      expect(notesQuery.eq).toHaveBeenCalledWith("user_id", "user-999");
+    });
+
+    it("does not delete another user's task", async () => {
+      // Preflight finds nothing because the row belongs to someone else.
+      const tasksQuery = createMockQuery(null);
+      const sb = injected({ tasks: tasksQuery });
+
+      const result = await executeTool(
+        "delete_task",
+        { task_id: "123e4567-e89b-12d3-a456-426614174000" },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(result).toEqual({ success: false, message: "Task not found" });
+      expect(tasksQuery.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  // Foreign keys arrive from tool input, so under service role they must be
+  // proven to belong to the caller before they are written.
+  describe("parent-child ownership", () => {
+    const uuid = "123e4567-e89b-12d3-a456-426614174000";
+
+    it("rejects a payment_method_id owned by another user", async () => {
+      const txQuery = createMockQuery(null);
+      const pmQuery = createMockQuery(null); // lookup finds nothing for this user
+      const sb = {
+        from: vi.fn((table: string) =>
+          table === "payment_methods" ? pmQuery : txQuery,
+        ),
+      };
+
+      const result = await executeTool(
+        "log_expense",
+        { amount: 50, category: "Food", payment_method_id: uuid },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(result).toEqual({
+        success: false,
+        message: "Payment method not found",
+      });
+      expect(txQuery.insert).not.toHaveBeenCalled();
+    });
+
+    it("accepts a payment_method_id the caller owns", async () => {
+      const txQuery = createMockQuery(null);
+      const pmQuery = createMockQuery({ id: uuid });
+      const sb = {
+        from: vi.fn((table: string) =>
+          table === "payment_methods" ? pmQuery : txQuery,
+        ),
+      };
+
+      const result = await executeTool(
+        "log_income",
+        { amount: 50, category: "Salary", payment_method_id: uuid },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(result.success).toBe(true);
+      expect(txQuery.insert).toHaveBeenCalled();
+    });
+
+    it("rejects a focus session attached to another user's task", async () => {
+      const sessionQuery = createMockQuery(null);
+      const tasksQuery = createMockQuery(null);
+      const sb = {
+        from: vi.fn((table: string) =>
+          table === "tasks" ? tasksQuery : sessionQuery,
+        ),
+      };
+
+      const result = await executeTool(
+        "create_focus_session",
+        { duration_minutes: 25, task_id: uuid },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(result).toEqual({ success: false, message: "Task not found" });
+      expect(sessionQuery.insert).not.toHaveBeenCalled();
+    });
+
+    it("rejects moving a task into another user's project", async () => {
+      const tasksQuery = createMockQuery({ title: "T" });
+      const projectsQuery = createMockQuery(null);
+      const sb = {
+        from: vi.fn((table: string) =>
+          table === "projects" ? projectsQuery : tasksQuery,
+        ),
+      };
+
+      const result = await executeTool(
+        "update_task",
+        { id: uuid, project_id: uuid },
+        { supabase: sb as never, userId: "user-999" },
+      );
+
+      expect(result).toEqual({ success: false, message: "Project not found" });
+      expect(tasksQuery.update).not.toHaveBeenCalled();
+    });
   });
 });

@@ -223,4 +223,54 @@ describe("mcp-oauth code + token store", () => {
     const t = await issueTokens(CODE_PARAMS);
     expect(await rotateRefreshToken(t.refreshToken, "client-other")).toBeNull();
   });
+
+  // Reuse of a rotated-away refresh token means replay or theft. Rejecting the
+  // one request is not enough — the attacker may hold the newer token too.
+  it("revokes the whole token family when a used refresh token is replayed", async () => {
+    const first = await issueTokens(CODE_PARAMS);
+    const second = await rotateRefreshToken(first.refreshToken, "client-abc");
+    expect(second).not.toBeNull();
+
+    // Replay of the already-rotated token.
+    expect(await rotateRefreshToken(first.refreshToken, "client-abc")).toBeNull();
+
+    // The legitimate successor is now dead too.
+    expect(await verifyAccessToken(second!.accessToken)).toBeNull();
+    expect(await rotateRefreshToken(second!.refreshToken, "client-abc")).toBeNull();
+  });
+
+  it("rejects an access token that was not issued with the mcp scope", async () => {
+    const t = await issueTokens({ ...CODE_PARAMS, scope: "profile" });
+    expect(await verifyAccessToken(t.accessToken)).toBeNull();
+  });
+
+  it("accepts an access token whose scope list includes mcp", async () => {
+    const t = await issueTokens({ ...CODE_PARAMS, scope: "profile mcp" });
+    expect((await verifyAccessToken(t.accessToken))?.userId).toBe("user-1");
+  });
+
+  it("rejects an unknown access token", async () => {
+    await issueTokens(CODE_PARAMS);
+    expect(await verifyAccessToken("not-a-real-token")).toBeNull();
+  });
+
+  it("carries the redirect_uri on the code so the token endpoint can match it", async () => {
+    const code = await issueAuthorizationCode(CODE_PARAMS);
+    const consumed = await consumeAuthorizationCode(code);
+    // app/api/oauth/token compares this against the presented redirect_uri.
+    expect(consumed?.redirectUri).toBe(CODE_PARAMS.redirectUri);
+    expect(consumed?.clientId).toBe("client-abc");
+  });
+
+  it("carries the resource so the MCP endpoint can enforce the audience", async () => {
+    const t = await issueTokens(CODE_PARAMS);
+    const verified = await verifyAccessToken(t.accessToken);
+    expect(
+      resourceMatches(verified!.resource, "https://rise.example.com"),
+    ).toBe(true);
+    // A token minted for this app must not satisfy a different resource server.
+    expect(resourceMatches(verified!.resource, "https://other.example.com")).toBe(
+      false,
+    );
+  });
 });

@@ -36,6 +36,18 @@ const SIZE_LIMITS: Record<ChatAttachmentCategory, number> = {
   audio: 50 * 1024 * 1024,  // 50 MB
 };
 
+// Largest ceiling across every category — used as a cheap pre-read guard before
+// the exact per-category limit is known.
+export const MAX_UPLOAD_BYTES = Math.max(...Object.values(SIZE_LIMITS));
+
+// ─── Storage path safety ───────────────────────────────────────────────────
+
+// session_id is interpolated into the object key, so it must be a single safe
+// path segment — no separators, no traversal.
+export function isSafeSessionId(sessionId: string): boolean {
+  return /^[A-Za-z0-9_-]{1,64}$/.test(sessionId);
+}
+
 // ─── MIME validation ───────────────────────────────────────────────────────
 
 type ValidationOk = { category: ChatAttachmentCategory };

@@ -53,10 +53,50 @@ vi.mock("exceljs", () => ({
   }),
 }));
 
-import { validateMimeAndSize, extractText, transcribeAudio } from "../upload-helpers";
+import {
+  MAX_UPLOAD_BYTES,
+  isSafeSessionId,
+  validateMimeAndSize,
+  extractText,
+  transcribeAudio,
+} from "../upload-helpers";
 import pdfParse from "pdf-parse";
 import * as mammoth from "mammoth";
 import { Workbook } from "exceljs";
+
+// ─── Storage path safety ──────────────────────────────────────────────────
+
+// session_id is interpolated into `${user.id}/${sessionId}/...`, so anything
+// that escapes a single path segment could write outside the user's prefix.
+describe("isSafeSessionId", () => {
+  it.each(["abc123", "session-1", "session_1", "A-b_C-9", "x".repeat(64)])(
+    "accepts %s",
+    (value) => {
+      expect(isSafeSessionId(value)).toBe(true);
+    },
+  );
+
+  it.each([
+    ["empty", ""],
+    ["traversal", ".."],
+    ["parent-prefixed", "../other-user"],
+    ["path separator", "a/b"],
+    ["backslash", "a\\b"],
+    ["encoded traversal", "%2e%2e"],
+    ["absolute path", "/etc/passwd"],
+    ["dot", "."],
+    ["space", "a b"],
+    ["too long", "x".repeat(65)],
+  ])("rejects %s", (_label, value) => {
+    expect(isSafeSessionId(value)).toBe(false);
+  });
+});
+
+describe("MAX_UPLOAD_BYTES", () => {
+  it("is the largest per-category ceiling, for the pre-read guard", () => {
+    expect(MAX_UPLOAD_BYTES).toBe(50 * 1024 * 1024);
+  });
+});
 
 // ─── validateMimeAndSize ──────────────────────────────────────────────────
 

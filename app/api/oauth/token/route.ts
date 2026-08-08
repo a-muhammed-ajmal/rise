@@ -6,6 +6,7 @@ import {
   verifyPkceS256,
   type IssuedTokens,
 } from "@/lib/ai/mcp-oauth";
+import { checkRateLimit, clientIpFrom, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -70,6 +71,14 @@ function readClientCredentials(
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // Throttled ahead of client-secret verification so this also caps secret and
+  // refresh-token guessing, not just successful issuance.
+  const rl = checkRateLimit(`oauth-token:${clientIpFrom(req.headers)}`, {
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSec);
+
   let form: FormData;
   try {
     form = await req.formData();

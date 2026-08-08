@@ -202,6 +202,11 @@ export async function issueTokens(params: {
 }
 
 // Rotating refresh: revokes the presented token and issues a fresh pair.
+//
+// Reuse detection: presenting an already-revoked refresh token means either a
+// replay or a leaked token being raced against the legitimate client. Neither
+// is recoverable, so the whole token family for that user+client is revoked
+// (RFC 6819 §5.2.2.3) rather than just rejecting the one request.
 export async function rotateRefreshToken(
   refreshToken: string,
   clientId: string,
@@ -213,7 +218,17 @@ export async function rotateRefreshToken(
     .eq("refresh_token_hash", hashToken(refreshToken))
     .maybeSingle();
   if (error || !data) return null;
-  if (data.revoked || data.client_id !== clientId) return null;
+  if (data.client_id !== clientId) return null;
+  if (data.revoked) {
+    await sb
+      .from("oauth_tokens")
+      .update({ revoked: true })
+      .eq("user_id", data.user_id)
+      .eq("client_id", data.client_id)
+      .eq("revoked", false);
+    console.warn("[oauth] refresh token reuse detected — family revoked");
+    return null;
+  }
   if (
     data.refresh_expires_at &&
     new Date(data.refresh_expires_at).getTime() < Date.now()
@@ -249,6 +264,8 @@ export async function verifyAccessToken(
   if (error || !data) return null;
   if (data.revoked) return null;
   if (new Date(data.access_expires_at).getTime() < Date.now()) return null;
+  // A token issued without the mcp scope must not reach the MCP resource server.
+  if (!data.scope.split(" ").includes(OAUTH_SCOPE)) return null;
   return {
     userId: data.user_id,
     clientId: data.client_id,

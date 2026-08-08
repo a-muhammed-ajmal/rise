@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 667 tests, 95.57% — target met. Remaining gap is entirely `use-tasks.ts` (47%, pre-existing).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 822 tests, 95.99% lines — target met. Remaining gap is entirely `use-tasks.ts` (47%, pre-existing) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -76,11 +76,24 @@ The tool system has two tiers defined in `lib/ai/tools.ts`:
 - **AUTO_TOOLS:** All non-destructive CRUD. Executed directly in the SSE route.
 - **APPROVAL_TOOLS:** Destructive or high-risk operations. Gated by HMAC-signed approval token in `app/api/ai/chat/route.ts` — **the gate lives in the route, not in `execute-tool.ts`**. `executeTool()` runs unconditionally when called.
 
+**Tier rule:** every destructive operation is APPROVAL. `lib/ai/__tests__/tools.test.ts`
+asserts that no tool named `delete_*` or `bulk_*` appears in `AUTO_TOOLS`, and that
+`isMcpAllowedTool()` rejects every approval tool — so a new destructive tool filed
+into the wrong tier fails the suite rather than shipping auto-executable.
+
 **Non-obvious tier assignments:**
 
-- `delete_link` → AUTO (only delete that bypasses approval)
 - `update_transaction`, `update_debt` → APPROVAL (financial edits are high-risk)
 - `bulk_complete_tasks` → APPROVAL
+- `log_expense`, `log_income` → AUTO, but the chat route escalates them to the
+  same signed-approval flow when the amount exceeds `MATERIAL_AMOUNT_AED` (500)
+  or the payload is ambiguous. The predicate lives in `lib/ai/financial-safety.ts`,
+  **not** in the tier arrays.
+
+**Approval token:** HMAC-signed, user-bound, `jti` nonce, 2-minute expiry, single-use
+within the serving instance. Ownership of the referenced row is verified *before*
+the confirmation prompt is shown, via the `APPROVAL_RESOURCES` lookup table in
+`app/api/ai/chat/route.ts` — add an entry there when adding an APPROVAL tool.
 
 **When adding a new APPROVAL tool:** The `FunctionDeclaration` must include a human-readable `*_title`, `*_name`, or `*_summary` field alongside the UUID — this text is what `ConfirmDialog` displays to the user.
 
@@ -88,9 +101,19 @@ The tool system has two tiers defined in `lib/ai/tools.ts`:
 
 **MCP endpoint** (`/api/mcp`): Exposes only `AUTO_TOOLS`. `APPROVAL_TOOLS` are never reachable via MCP. Auth accepts the static `MCP_ACCESS_TOKEN` (Claude Code) **or** OAuth 2.1 (claude.ai web / Desktop). OAuth is a self-hosted authorization server: helpers in `lib/ai/mcp-oauth.ts`, endpoints at `app/api/oauth/{authorize,token}/` + discovery at `app/.well-known/oauth-*`, tokens/codes stored **hashed** in `oauth_tokens` / `oauth_authorization_codes` (migration `015`, service-role-only RLS). The route wraps the handler in `mcp-handler`'s `withMcpAuth` and validates both token types via `verifyMcpToken`; OAuth tokens are audience-bound (RFC 8707). Pre-registered confidential client via `MCP_OAUTH_CLIENT_ID` / `MCP_OAUTH_CLIENT_SECRET`.
 
+**Service-role isolation:** the MCP path injects a service-role client, which bypasses
+RLS entirely. Every query in `execute-tool.ts` must therefore carry `.eq("user_id", userId)`
+itself, and every foreign key taken from tool input must pass `isOwnedBy()` before it is
+written (`goal_id`, `contact_id`, `task_id`, `project_id`, `payment_method_id`). RLS is a
+backstop here, not the boundary.
+
+**Pagination:** the paginated `list_*` tools fetch `limit + 1` rows via `.range()` and
+report `offset` for the next page in the result message, so a truncated list is never
+mistaken for a complete one. Helpers: `pageOf` / `pagedResult` / `rangeFor`.
+
 **Non-obvious behaviors in `execute-tool.ts`:**
 
-- `log_habit`: Uses fuzzy `ilike` name match, not ID lookup. First result wins — can silently log the wrong habit if names are similar.
+- `log_habit`: Uses fuzzy `ilike` name match, not ID lookup. First result wins — can silently log the wrong habit if names are similar. Upserts on `(habit_id, logged_date)`.
 - `create_journal_entry`: Upserts on `(user_id, date)` — one entry per day. Calling it twice on the same date updates, never duplicates.
 - `remember_user_fact`: Writes to both `user_profile.facts` (JSONB column, drives profile context) AND `ai_memory` vector store via `storeMemory()` (drives semantic `recall_memories()`).
 - `recall_memories`: Merges `user_profile.facts` (all entries returned with `similarity: 1`, highest priority) and semantic `ai_memory` vector results — profile facts always rank first regardless of actual relevance.
@@ -196,7 +219,7 @@ lib/
   task-attachments.ts       Private-bucket attachment helpers: attachmentPath() recovers legacy object keys
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities
 
-supabase/migrations/        001 through 019 (append-only; execute via Supabase SQL editor)
+supabase/migrations/        001 through 021 (append-only; execute via Supabase SQL editor)
 supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
 proxy.ts                    Next.js 16 middleware entry point — calls lib/supabase/middleware.ts

@@ -33,18 +33,33 @@ export function formatRelativeDate(dateStr: string): string {
   return format(date, 'dd/MM/yyyy')
 }
 
-// Today as YYYY-MM-DD in Asia/Dubai timezone (UTC+4, no DST)
-export function todayISO(): string {
+// Any instant as YYYY-MM-DD in Asia/Dubai timezone (UTC+4, no DST).
+// Intl resolves the zone properly, so this is correct regardless of the host
+// TZ — unlike adding 4h and formatting in local time, which only works on a
+// UTC machine.
+export function toDubaiISODate(date: Date): string {
   const parts = new Intl.DateTimeFormat('en', {
     timeZone: 'Asia/Dubai',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(new Date())
+  }).formatToParts(date)
   const y = parts.find(p => p.type === 'year')!.value
   const m = parts.find(p => p.type === 'month')!.value
   const d = parts.find(p => p.type === 'day')!.value
   return `${y}-${m}-${d}`
+}
+
+// Shift a Dubai calendar date (YYYY-MM-DD) by whole days, staying in Dubai time.
+export function addDaysISO(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  const shifted = new Date(Date.UTC(y, m - 1, d + days))
+  return shifted.toISOString().slice(0, 10)
+}
+
+// Today as YYYY-MM-DD in Asia/Dubai timezone (UTC+4, no DST)
+export function todayISO(): string {
+  return toDubaiISODate(new Date())
 }
 
 // Day of week (0=Sun…6=Sat) in Asia/Dubai timezone

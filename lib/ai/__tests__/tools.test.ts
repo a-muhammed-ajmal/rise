@@ -5,6 +5,7 @@ import {
   ALL_TOOLS,
   APPROVAL_TOOL_NAMES,
 } from "../tools";
+import { MCP_TOOLS, isMcpAllowedTool } from "../mcp";
 
 describe("AUTO_TOOLS", () => {
   it("contains expected auto-execute tools", () => {
@@ -22,8 +23,8 @@ describe("AUTO_TOOLS", () => {
     expect(names).toContain("search_data");
   });
 
-  it("has 60 auto-execute tools", () => {
-    expect(AUTO_TOOLS).toHaveLength(60);
+  it("has 57 auto-execute tools", () => {
+    expect(AUTO_TOOLS).toHaveLength(57);
   });
 
   it.each(AUTO_TOOLS)("$name has valid schema", (tool) => {
@@ -41,6 +42,15 @@ describe("AUTO_TOOLS", () => {
     expect(names).not.toContain("bulk_complete_tasks");
     expect(names).not.toContain("delete_note");
   });
+
+  // Generic rather than a fixed deny-list, so a future destructive tool filed
+  // into the wrong tier fails here instead of shipping auto-executable.
+  it("contains no destructive tool of any kind", () => {
+    const destructive = AUTO_TOOLS.map((t) => t.name ?? "").filter(
+      (name) => name.startsWith("delete_") || name.startsWith("bulk_"),
+    );
+    expect(destructive).toEqual([]);
+  });
 });
 
 describe("APPROVAL_TOOLS", () => {
@@ -51,8 +61,26 @@ describe("APPROVAL_TOOLS", () => {
     expect(names).toContain("delete_note");
   });
 
-  it("has 17 approval-required tools", () => {
-    expect(APPROVAL_TOOLS).toHaveLength(17);
+  it("has 20 approval-required tools", () => {
+    expect(APPROVAL_TOOLS).toHaveLength(20);
+  });
+
+  it("gates the deletes that used to auto-execute", () => {
+    const names = APPROVAL_TOOLS.map((t) => t.name);
+    expect(names).toContain("delete_link");
+    expect(names).toContain("delete_focus_session");
+    expect(names).toContain("delete_habit_log");
+  });
+
+  // ConfirmDialog renders a human-readable label, so every approval tool must
+  // require something beyond the bare UUID (CLAUDE.md guardrail) — otherwise
+  // the user is asked to confirm an opaque id.
+  it.each(APPROVAL_TOOLS)("$name requires a human-readable field", (tool) => {
+    const required = tool.parameters?.required ?? [];
+    const displayFields = required.filter(
+      (p) => p !== "id" && !p.endsWith("_id") && !p.endsWith("_ids"),
+    );
+    expect(displayFields.length).toBeGreaterThan(0);
   });
 
   it.each(APPROVAL_TOOLS)("$name description mentions approval", (tool) => {
@@ -91,6 +119,33 @@ describe("APPROVAL_TOOL_NAMES", () => {
 
   it("matches APPROVAL_TOOLS length", () => {
     expect(APPROVAL_TOOL_NAMES.size).toBe(APPROVAL_TOOLS.length);
+  });
+});
+
+// The MCP surface derives from AUTO_TOOLS, so tier placement is what keeps
+// destructive operations off the connector. Assert the outcome directly.
+describe("MCP exposure", () => {
+  it("never exposes an approval-required tool", () => {
+    for (const name of APPROVAL_TOOL_NAMES) {
+      expect(isMcpAllowedTool(name ?? "")).toBe(false);
+    }
+  });
+
+  it("lists no destructive tool", () => {
+    const destructive = MCP_TOOLS.map((t) => t.name).filter(
+      (name) => name.startsWith("delete_") || name.startsWith("bulk_"),
+    );
+    expect(destructive).toEqual([]);
+  });
+
+  it("still exposes the read and create tools", () => {
+    expect(isMcpAllowedTool("list_tasks")).toBe(true);
+    expect(isMcpAllowedTool("create_task")).toBe(true);
+    expect(isMcpAllowedTool("get_analytics")).toBe(true);
+  });
+
+  it("rejects an unknown tool name", () => {
+    expect(isMcpAllowedTool("drop_database")).toBe(false);
   });
 });
 

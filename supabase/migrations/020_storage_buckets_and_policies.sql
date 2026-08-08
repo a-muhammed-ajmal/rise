@@ -1,0 +1,81 @@
+-- ─── 020_storage_buckets_and_policies.sql ────────────────────────────────────
+-- Storage hardening — bucket privacy in SQL, policies via the Dashboard.
+--
+-- WHY THIS FILE DOES NOT CREATE POLICIES
+--   `storage.objects` is owned by `supabase_storage_admin`. The SQL editor runs
+--   as `postgres`, which on this project is NOT a member of that role and cannot
+--   SET ROLE to it:
+--
+--     select pg_has_role('postgres','supabase_storage_admin','member');  -- false
+--
+--   Policy DDL (CREATE/DROP POLICY) and ALTER TABLE both require table
+--   ownership, so every such statement fails with:
+--
+--     ERROR: 42501: must be owner of table objects
+--
+--   That is what aborted the first version of this migration. Postgres DOES hold
+--   INSERT/UPDATE on `storage.buckets`, so bucket creation and the private flag
+--   stay here; object policies are a documented Dashboard step (see README →
+--   "Storage policies"). RLS is already enabled on storage.objects and
+--   storage.buckets by Supabase — there is nothing to switch on.
+--
+-- Safe to re-run.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─── Buckets: exist, and are private ─────────────────────────────────────────
+-- Private is the security-relevant property: content is reached only through
+-- short-lived signed URLs. A public bucket serves every object to anyone with
+-- the URL, regardless of the policies below.
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES
+  ('chat-attachments', 'chat-attachments', false),
+  ('task-attachments', 'task-attachments', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+-- ─── Verification ────────────────────────────────────────────────────────────
+-- These are plain SELECTs and run fine as `postgres`.
+--
+-- 1. Both buckets private:
+--
+--    select id, public from storage.buckets
+--    where id in ('chat-attachments','task-attachments');
+--    -- expect public = false for both
+--
+-- 2. Six object policies, three per bucket (INSERT / SELECT / DELETE):
+--
+--    select policyname, cmd, roles::text from pg_policies
+--    where schemaname = 'storage' and tablename = 'objects'
+--    order by policyname;
+--
+--    Expected, all TO authenticated, all keyed on the first path segment:
+--      chat_attachments_insert_own              INSERT
+--      chat_attachments_select_own              SELECT
+--      chat_attachments_delete_own              DELETE
+--      Users can upload task attachments        INSERT
+--      Users can view own task attachments      SELECT
+--      Users can delete own task attachments    DELETE
+--
+-- 3. NO UPDATE policy on storage.objects — this is deliberate, not an omission:
+--
+--    select policyname from pg_policies
+--    where schemaname = 'storage' and tablename = 'objects' and cmd = 'UPDATE';
+--    -- expect zero rows
+--
+--    With RLS on and no UPDATE policy, UPDATE is denied outright for
+--    `authenticated`. Granting UPDATE would reintroduce the rename vector: a
+--    USING-only UPDATE policy constrains which rows may change but not the
+--    resulting row, so a user could rename their object to
+--    "<other-user-uuid>/…" and the other user's SELECT policy would then serve
+--    it. Nothing in the app needs UPDATE — app/api/ai/upload/route.ts uploads
+--    with `upsert: false` and deletes on failure rather than overwriting.
+--
+--    If a future feature genuinely needs overwrite, add the policy with BOTH
+--    USING and WITH CHECK pinning `split_part(name,'/',1)` to the caller's uid.
+--
+-- 4. Cross-user read is denied (run as an authenticated user):
+--
+--    select count(*) from storage.objects
+--    where bucket_id = 'chat-attachments'
+--      and split_part(name,'/',1) <> (select auth.uid())::text;
+--    -- expect 0

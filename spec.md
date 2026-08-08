@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 667 passing |
-| Line coverage | 95.57% on `lib/**` |
-| Migrations | 19 (001–019) |
-| DB tables | 26 (across 19 migrations) |
-| AI tools | 60 AUTO + 17 APPROVAL = 77 total |
-| Last feature shipped | Phase 18 — Motivational quotes rotator + performance hardening: router cache, realtime projects, React.memo TaskCard, reduced queries (2026-08-01) |
+| Test count | 822 passing |
+| Line coverage | 95.99% on `lib/**` |
+| Migrations | 21 (001–021) |
+| DB tables | 26 (across 21 migrations) |
+| AI tools | 57 AUTO + 20 APPROVAL = 77 total |
+| Last feature shipped | Phase 19 — Security & correctness hardening: cron auth, digest/analytics fixes, all destructive tools gated, rate limiting, service-role isolation (2026-08-08) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -162,7 +162,7 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 
 ### AI tool set
 
-**AUTO_TOOLS** (execute immediately, 60 total):
+**AUTO_TOOLS** (execute immediately, 57 total):
 
 | Group | Tools |
 | --- | --- |
@@ -170,7 +170,7 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 | Projects (3) | `list_projects` · `create_project` · `update_project` |
 | Goals (4) | `list_goals` · `create_goal` · `update_goal` · `complete_goal` |
 | Milestones (4) | `create_milestone` · `list_milestones` · `update_milestone` · `complete_milestone` |
-| Habits (5) | `log_habit` · `list_habits` · `create_habit` · `update_habit` · `delete_habit_log` |
+| Habits (4) | `log_habit` · `list_habits` · `create_habit` · `update_habit` |
 | Finance (4) | `list_payment_methods` · `log_expense` · `log_income` · `list_transactions` |
 | Budgets (3) | `list_budgets` · `create_budget` · `update_budget` |
 | Debts (2) | `list_debts` · `create_debt` |
@@ -178,19 +178,21 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 | Interactions (3) | `create_interaction` · `list_interactions` · `update_interaction` |
 | Notes (3) | `add_note` · `list_notes` · `update_note` |
 | Documents (3) | `list_documents` · `create_document` · `update_document` |
-| Links (4) | `list_links` · `create_link` · `update_link` · `delete_link` |
+| Links (3) | `list_links` · `create_link` · `update_link` |
 | Journal entries (3) | `list_journal_entries` · `create_journal_entry` · `update_journal_entry` |
 | Reviews (3) | `list_reviews` · `create_review` · `update_review` |
-| Focus sessions (4) | `list_focus_sessions` · `create_focus_session` · `update_focus_session` · `delete_focus_session` |
+| Focus sessions (3) | `list_focus_sessions` · `create_focus_session` · `update_focus_session` |
 | Analytics & Search (3) | `get_daily_briefing` · `get_analytics` · `search_data` |
 | Personal Memory (2) | `remember_user_fact` · `recall_memories` |
 
-**APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes, 17 total):
-`delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `update_transaction` · `delete_transaction` · `delete_budget` · `update_debt` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review`
+**APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes, 20 total):
+`delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `delete_habit_log` · `update_transaction` · `delete_transaction` · `delete_budget` · `update_debt` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review` · `delete_link` · `delete_focus_session`
+
+Every destructive operation lives in this tier, so none is reachable over MCP (`MCP_TOOLS` derives from `AUTO_TOOLS`). `log_expense` / `log_income` stay AUTO but the chat route escalates them to the same signed-approval flow above AED 500 or on an ambiguous payload (`lib/ai/financial-safety.ts`).
 
 > Tool schemas use Google GenAI's `FunctionDeclaration` format (`Type.OBJECT`, `Type.STRING`, etc.) from `@google/genai` — not the Anthropic `input_schema` format.
 
-### Data model (26 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–019)
+### Data model (26 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–021)
 
 ```text
 projects            id, name, description, status(active|completed|archived), color,
@@ -379,4 +381,5 @@ Candidate areas (not prioritized):
 | 15 | Projects module + task Area field | 2026-07-22 | `app/(app)/projects/page.tsx` (new; 8-category tabs, project grid, task drill-down per project), `components/layout/nav-items.ts` (Projects sidebar link), `components/layout/bottom-nav.tsx` (Projects BottomNav entry), `supabase/migrations/018_add_project_category.sql` (category on projects), `supabase/migrations/019_add_task_area.sql` (area on tasks), `lib/types/database.ts` (ProjectCategory union type, category on Project, area on Task), `components/productivity/task-popup.tsx` (Area select + filtered Project dropdown), `app/(app)/productivity/page.tsx` (project grid extracted) |
 | 16 | Task UX overhaul | 2026-07-22 | `components/productivity/task-constants.ts` (P2 color #22C55E → #FF6535), `components/productivity/task-card.tsx` (subtask progress badge, clean binary check), `components/productivity/task-toolbar.tsx` (totalCount + onSelectAll props, colored priority dots), `components/productivity/task-popup.tsx` (async completeTask, min-h-[44px] footer, null-safe star guard), `components/productivity/DateTimePicker.tsx` (bg-card dark-mode fix, TimeInputs extracted to module level, dial/manual render gating), `app/(app)/productivity/page.tsx` (combined Sort+Group dropdown, orange-dot indicator, FAB hidden in bulk mode, grid-cols-2), `components/dashboard/focus-tasks-section.tsx` (Target → Star icon), `lib/hooks/use-tasks.ts` (error early-return prevents silent list wipe) |
 | 17 | Task card area colors + attachment and deadline fixes | 2026-07-30 | `app/globals.css` (8 `--area-*` token pairs, light + dark), `lib/area-colors.ts` (new; `AREA_META` / `areaTint`, CSS-token only), `components/productivity/task-card.tsx` (area tint + area left border, `.card-hover`, one meta row with due date left and truncated project name right, 44px tap target), `lib/format.ts` (**fix:** `isPastDeadline` built an invalid Date from Postgres `HH:MM:SS`, so timed tasks never turned red; adds `truncateLabel`), `lib/task-attachments.ts` (new; **fix:** uploads stored `getPublicUrl()` links against a private bucket and never opened — now stores `storage_path`, signs at read time, recovers legacy keys from the dead URLs), `components/productivity/task-popup.tsx` (`AttachmentRow` with signed view + download URLs, sanitized object keys, closes on save), `app/(app)/productivity/page.tsx` + `app/(app)/projects/page.tsx` + `components/dashboard/{focus,tasks}-*-section.tsx` (`detailTask` snapshot replaces derived id lookup — stops the popup unmounting mid-save and re-opening on the next tab switch) |
+| 19 | Security & correctness hardening | 2026-08-08 | `lib/ai/cron-auth.ts` (new; CRON_SECRET bearer only — the caller-controlled `x-vercel-cron` header is no longer accepted, and the route fails closed without a secret), `app/api/ai/daily-digest/route.ts` (auth before any service-role/Gemini work, GET handler removed), `lib/rate-limit.ts` (new; in-process sliding window on chat/upload/oauth-token/digest), `lib/ai/financial-safety.ts` (new; escalates `log_expense`/`log_income` to approval above AED 500 or on ambiguous input), `lib/ai/automation.ts` (**fix:** Dubai date came from `+4h` then host-local `format()`; **fix:** the digest note upserted on a non-existent constraint with a non-existent `source` column and an invalid `linked_to_type`, discarded the error and reported success — so it had never persisted), `lib/ai/execute-tool.ts` (**fix:** `get_analytics` filtered `habit_logs.date`, which does not exist — now `logged_date`, with query errors surfaced instead of reported as zeros; **fix:** `get_daily_briefing` matched a habit-id set against habit _names_, so every habit read as not-done; **fix:** `log_habit` upserted without `onConflict` and swallowed the resulting error; 9 unscoped queries now carry `user_id`; `isOwnedBy()` guards 5 foreign keys taken from tool input; paginated `list_*`), `lib/ai/tools.ts` (`delete_link`, `delete_focus_session`, `delete_habit_log` moved AUTO → APPROVAL, which also removes them from MCP), `app/api/ai/chat/route.ts` (14-branch ownership chain → `APPROVAL_RESOURCES` table, `jti` nonce + 2-min TTL, generic error + correlation id), `app/api/ai/upload/route.ts` (path-safe `session_id`, pre-read size check, object cleanup on failed extraction/transcription), `lib/ai/mcp-oauth.ts` (mcp-scope check, refresh-reuse family revocation), `supabase/migrations/020_storage_buckets_and_policies.sql` + `021_rls_and_function_hardening.sql` (bucket privacy; `SET search_path` and per-user ownership on the SECURITY DEFINER balance trigger; `TO authenticated` on `user_profile`/`categories`; pagination indexes), `app/(app)/assistant/page.tsx` (last 3 production `any` removed) |
 | 18 | Motivational quotes rotator + performance hardening | 2026-08-01 | `components/dashboard/motivational-quote.tsx` (new; 78-quote Fisher-Yates shuffle, 5-min rotation, fade transition), `app/(app)/page.tsx` (quote inserted above Today's Focus; habit_logs query scoped to today only — 30× reduction), `next.config.ts` (staleTimes: dynamic 30s — fixes slow tab switching; removeConsole in prod), `lib/supabase/server.ts` (React.cache() wrapper — deduplicates cookie reads per request), `app/(app)/productivity/page.tsx` (removed tasks from focus-count effect deps — stops cascade query on every task mutation), `app/(app)/finance/page.tsx` (.limit(500) on transactions), `components/productivity/task-card.tsx` (React.memo), `lib/hooks/use-projects.ts` (Realtime postgres_changes subscription) |

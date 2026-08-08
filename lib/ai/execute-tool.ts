@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { format, parseISO, startOfMonth } from "date-fns";
-import { todayISO, todayDOW } from "@/lib/format";
+import { todayISO, todayDOW, addDaysISO } from "@/lib/format";
 import { z } from "zod";
 import {
   storeMemory,
@@ -68,6 +68,7 @@ const AddContactInput = z.object({
 const SearchDataInput = z.object({
   query: z.string().min(1).max(200),
   types: z.array(z.enum(["tasks", "notes", "contacts", "goals"])).optional(),
+  limit: z.number().int().positive().max(50).optional(),
 });
 
 const GetAnalyticsInput = z.object({
@@ -217,12 +218,15 @@ const DeleteHabitLogInput = z.object({
 });
 
 // Transactions
+const offsetInput = z.number().int().nonnegative().max(10_000).optional();
+
 const ListTransactionsInput = z.object({
   type: z
     .enum(["income", "expense", "transfer", "adjustment", "all"])
     .optional(),
   start_date: dateStr.optional(),
   limit: z.number().int().positive().max(100).optional(),
+  offset: offsetInput,
 });
 
 const UpdateTransactionInput = z.object({
@@ -296,6 +300,7 @@ const ListContactsInput = z.object({
     .enum(["lead", "prospect", "client", "network", "personal", "all"])
     .optional(),
   limit: z.number().int().positive().max(100).optional(),
+  offset: offsetInput,
 });
 
 const UpdateContactInput = z.object({
@@ -349,6 +354,7 @@ const DeleteInteractionInput = z.object({
 const ListNotesInput = z.object({
   tag: z.string().max(50).optional(),
   limit: z.number().int().positive().max(100).optional(),
+  offset: offsetInput,
 });
 
 const UpdateNoteInput = z.object({
@@ -485,6 +491,72 @@ function badInput(): ToolResult {
   return { success: false, message: "Invalid input for this action." };
 }
 
+// Tables whose rows can be referenced as a parent by another tool's input.
+type OwnableTable =
+  | "goals"
+  | "contacts"
+  | "tasks"
+  | "projects"
+  | "payment_methods";
+
+/**
+ * Confirms a foreign key taken from tool input belongs to the calling user.
+ *
+ * Under a cookie-backed client RLS already enforces this, but the MCP path
+ * injects a service-role client that bypasses RLS entirely — without this check
+ * a caller could attach a milestone to someone else's goal or move another
+ * user's wallet balance.
+ */
+async function isOwnedBy(
+  supabase: SupabaseClient<Database>,
+  table: OwnableTable,
+  id: string,
+  userId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from(table)
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!data;
+}
+
+function notOwned(entity: string): ToolResult {
+  return { success: false, message: `${entity} not found` };
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+// Callers request `limit` rows; the query asks for one extra so we can tell the
+// difference between "that is everything" and "the list was truncated". Without
+// this the assistant silently reports a capped page as the complete set.
+const DEFAULT_PAGE_SIZE = 20;
+
+type Page<T> = { rows: T[]; hasMore: boolean; nextOffset: number };
+
+function pageOf<T>(rows: T[] | null, limit: number, offset: number): Page<T> {
+  const fetched = rows ?? [];
+  const hasMore = fetched.length > limit;
+  const page = hasMore ? fetched.slice(0, limit) : fetched;
+  return { rows: page, hasMore, nextOffset: offset + page.length };
+}
+
+function pagedResult<T>(noun: string, page: Page<T>): ToolResult {
+  return {
+    success: true,
+    message: page.hasMore
+      ? `Found ${page.rows.length} ${noun} (more available — call again with offset ${page.nextOffset})`
+      : `Found ${page.rows.length} ${noun}`,
+    data: page.rows,
+  };
+}
+
+// Inclusive bounds covering limit + 1 rows, per PostgREST range semantics.
+function rangeFor(limit: number, offset: number): [number, number] {
+  return [offset, offset + limit];
+}
+
 // ─── Executor ─────────────────────────────────────────────────────────────────
 
 // Cookieless callers (e.g. the MCP endpoint) inject their own client + user
@@ -551,11 +623,13 @@ export async function executeTool(
       let query = supabase
         .from("tasks")
         .select("id, title, priority, due_date, status")
+        .eq("user_id", userId)
         .neq("status", "done");
       if (filter === "today")
         query = query.or(`due_date.eq.${today},due_date.lt.${today}`);
+      // 'P1'…'P4' sort ascending to put the highest priority first.
       const { data, error } = await query
-        .order("priority", { ascending: false })
+        .order("priority", { ascending: true })
         .limit(20);
       if (error) return dbErr("list_tasks", error);
       return {
@@ -597,6 +671,18 @@ export async function executeTool(
     case "log_expense": {
       const p = LogMoneyInput.safeParse(input);
       if (!p.success) return badInput();
+      // A foreign payment_method_id would move another user's wallet balance
+      // via the balance trigger.
+      if (
+        p.data.payment_method_id &&
+        !(await isOwnedBy(
+          supabase,
+          "payment_methods",
+          p.data.payment_method_id,
+          userId,
+        ))
+      )
+        return notOwned("Payment method");
       const { error } = await supabase.from("transactions").insert({
         user_id: userId,
         type: "expense",
@@ -617,6 +703,16 @@ export async function executeTool(
     case "log_income": {
       const p = LogMoneyInput.safeParse(input);
       if (!p.success) return badInput();
+      if (
+        p.data.payment_method_id &&
+        !(await isOwnedBy(
+          supabase,
+          "payment_methods",
+          p.data.payment_method_id,
+          userId,
+        ))
+      )
+        return notOwned("Payment method");
       const { error } = await supabase.from("transactions").insert({
         user_id: userId,
         type: "income",
@@ -640,6 +736,7 @@ export async function executeTool(
       const { data: habits } = await supabase
         .from("habits")
         .select("id, name")
+        .eq("user_id", userId)
         .eq("active", true)
         .ilike("name", `%${p.data.habit_name}%`)
         .limit(1);
@@ -649,12 +746,18 @@ export async function executeTool(
           message: `No habit found matching "${p.data.habit_name}"`,
         };
       const habit = habits[0];
-      await supabase.from("habit_logs").upsert({
-        user_id: userId,
-        habit_id: habit.id,
-        logged_date: today,
-        completed: true,
-      });
+      // habit_logs has UNIQUE (habit_id, logged_date) — without onConflict the
+      // second log of the day raises a conflict instead of updating.
+      const { error: logError } = await supabase.from("habit_logs").upsert(
+        {
+          user_id: userId,
+          habit_id: habit.id,
+          logged_date: today,
+          completed: true,
+        },
+        { onConflict: "habit_id,logged_date" },
+      );
+      if (logError) return dbErr("log_habit", logError);
       return { success: true, message: `Logged habit: "${habit.name}"` };
     }
 
@@ -742,7 +845,7 @@ export async function executeTool(
           .limit(5),
         supabase
           .from("habits")
-          .select("name, icon")
+          .select("id, name, icon")
           .eq("user_id", userId)
           .eq("active", true)
           .contains("target_days", [todayDOW()]),
@@ -795,10 +898,13 @@ export async function executeTool(
         data: {
           todayTasks,
           overdueTasks: overdue,
-          habits: (habits ?? []).map((h: { name: string; icon: string }) => ({
-            ...h,
-            done: loggedIds.has(h.name),
-          })),
+          // loggedIds holds habit_id — match on id, not name.
+          habits: (habits ?? []).map(
+            (h: { id: string; name: string; icon: string }) => ({
+              ...h,
+              done: loggedIds.has(h.id),
+            }),
+          ),
           goals,
           budgetWarnings,
           followUps,
@@ -809,7 +915,11 @@ export async function executeTool(
     case "search_data": {
       const p = SearchDataInput.safeParse(input);
       if (!p.success) return badInput();
-      const { query, types = ["tasks", "notes", "contacts", "goals"] } = p.data;
+      const {
+        query,
+        types = ["tasks", "notes", "contacts", "goals"],
+        limit: searchLimit = 5,
+      } = p.data;
       const results: Record<string, unknown[]> = {};
 
       await Promise.all([
@@ -817,8 +927,9 @@ export async function executeTool(
           supabase
             .from("tasks")
             .select("id, title, status, priority")
+            .eq("user_id", userId)
             .ilike("title", `%${query}%`)
-            .limit(5)
+            .limit(searchLimit)
             .then(({ data }) => {
               results.tasks = data ?? [];
             }),
@@ -827,13 +938,15 @@ export async function executeTool(
             supabase
               .from("notes")
               .select("id, title, content")
+              .eq("user_id", userId)
               .ilike("title", `%${query}%`)
-              .limit(5),
+              .limit(searchLimit),
             supabase
               .from("notes")
               .select("id, title, content")
+              .eq("user_id", userId)
               .ilike("content", `%${query}%`)
-              .limit(5),
+              .limit(searchLimit),
           ]).then(([byTitle, byContent]) => {
             const seen = new Set<string>();
             const combined = [
@@ -842,14 +955,15 @@ export async function executeTool(
             ];
             results.notes = combined
               .filter((n) => !seen.has(n.id) && seen.add(n.id) !== undefined)
-              .slice(0, 5);
+              .slice(0, searchLimit);
           }),
         types.includes("contacts") &&
           supabase
             .from("contacts")
             .select("id, name, company, email")
+            .eq("user_id", userId)
             .ilike("name", `%${query}%`)
-            .limit(5)
+            .limit(searchLimit)
             .then(({ data }) => {
               results.contacts = data ?? [];
             }),
@@ -857,8 +971,9 @@ export async function executeTool(
           supabase
             .from("goals")
             .select("id, title, progress, status")
+            .eq("user_id", userId)
             .ilike("title", `%${query}%`)
-            .limit(5)
+            .limit(searchLimit)
             .then(({ data }) => {
               results.goals = data ?? [];
             }),
@@ -878,10 +993,10 @@ export async function executeTool(
     case "get_analytics": {
       const p = GetAnalyticsInput.safeParse(input);
       const period = p.success ? (p.data.period ?? "month") : "month";
+      // Both boundaries are Dubai calendar dates so they line up with the
+      // date columns they are compared against.
       const startDate =
-        period === "week"
-          ? format(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
-          : today.slice(0, 7) + "-01";
+        period === "week" ? addDaysISO(today, -6) : today.slice(0, 7) + "-01";
 
       const [txRes, taskRes, habitRes, habitLogRes, goalRes] =
         await Promise.all([
@@ -894,18 +1009,31 @@ export async function executeTool(
             .from("tasks")
             .select("id,status")
             .eq("user_id", userId)
-            .gte("created_at", startDate),
+            // created_at is timestamptz — anchor to the start of the Dubai day
+            // rather than relying on an implicit midnight-UTC cast.
+            .gte("created_at", `${startDate}T00:00:00+04:00`),
           supabase.from("habits").select("id,name").eq("user_id", userId),
           supabase
             .from("habit_logs")
             .select("habit_id,completed")
             .eq("user_id", userId)
-            .gte("date", startDate),
+            // Schema column is logged_date (001_schema.sql), not date.
+            .gte("logged_date", startDate),
           supabase
             .from("goals")
             .select("id,status,progress")
             .eq("user_id", userId),
         ]);
+
+      // Reporting zeros for a failed query would look like a genuinely empty
+      // period — surface the failure instead.
+      const analyticsError =
+        txRes.error ??
+        taskRes.error ??
+        habitRes.error ??
+        habitLogRes.error ??
+        goalRes.error;
+      if (analyticsError) return dbErr("get_analytics", analyticsError);
 
       const transactions = txRes.data ?? [];
       const income = transactions
@@ -969,7 +1097,8 @@ export async function executeTool(
       const { error } = await supabase
         .from("tasks")
         .delete()
-        .eq("id", p.data.task_id);
+        .eq("id", p.data.task_id)
+        .eq("user_id", userId);
       if (error) return dbErr("delete_task", error);
       return {
         success: true,
@@ -1006,7 +1135,8 @@ export async function executeTool(
       const { error } = await supabase
         .from("notes")
         .delete()
-        .eq("id", p.data.note_id);
+        .eq("id", p.data.note_id)
+        .eq("user_id", userId);
       if (error) return dbErr("delete_note", error);
       return {
         success: true,
@@ -1020,6 +1150,11 @@ export async function executeTool(
       const p = UpdateTaskInput.safeParse(input);
       if (!p.success) return badInput();
       const { id, ...updates } = p.data;
+      if (
+        updates.project_id &&
+        !(await isOwnedBy(supabase, "projects", updates.project_id, userId))
+      )
+        return notOwned("Project");
       const { error, data } = await supabase
         .from("tasks")
         .update(updates)
@@ -1180,6 +1315,8 @@ export async function executeTool(
     case "create_milestone": {
       const p = CreateMilestoneInput.safeParse(input);
       if (!p.success) return badInput();
+      if (!(await isOwnedBy(supabase, "goals", p.data.goal_id, userId)))
+        return notOwned("Goal");
       const { error, data } = await supabase
         .from("milestones")
         .insert({
@@ -1391,7 +1528,8 @@ export async function executeTool(
       const p = ListTransactionsInput.safeParse(input);
       const typeFilter = p.success ? p.data.type : "all";
       const startDate = p.success ? p.data.start_date : undefined;
-      const limitVal = p.success && p.data.limit ? p.data.limit : 20;
+      const limitVal = p.success && p.data.limit ? p.data.limit : DEFAULT_PAGE_SIZE;
+      const offsetVal = (p.success && p.data.offset) || 0;
       let query = supabase
         .from("transactions")
         .select(
@@ -1403,13 +1541,9 @@ export async function executeTool(
       if (startDate) query = query.gte("date", startDate);
       const { data, error } = await query
         .order("date", { ascending: false })
-        .limit(limitVal);
+        .range(...rangeFor(limitVal, offsetVal));
       if (error) return dbErr("list_transactions", error);
-      return {
-        success: true,
-        message: `Found ${data?.length ?? 0} transactions`,
-        data,
-      };
+      return pagedResult("transactions", pageOf(data, limitVal, offsetVal));
     }
 
     case "update_transaction": {
@@ -1627,20 +1761,19 @@ export async function executeTool(
     case "list_contacts": {
       const p = ListContactsInput.safeParse(input);
       const typeFilter = p.success ? p.data.type : "all";
-      const limitVal = p.success && p.data.limit ? p.data.limit : 20;
+      const limitVal = p.success && p.data.limit ? p.data.limit : DEFAULT_PAGE_SIZE;
+      const offsetVal = (p.success && p.data.offset) || 0;
       let query = supabase
         .from("contacts")
         .select("id, name, email, phone, company, type, stage")
         .eq("user_id", userId);
       if (typeFilter && typeFilter !== "all")
         query = query.eq("type", typeFilter);
-      const { data, error } = await query.order("name").limit(limitVal);
+      const { data, error } = await query
+        .order("name")
+        .range(...rangeFor(limitVal, offsetVal));
       if (error) return dbErr("list_contacts", error);
-      return {
-        success: true,
-        message: `Found ${data?.length ?? 0} contacts`,
-        data,
-      };
+      return pagedResult("contacts", pageOf(data, limitVal, offsetVal));
     }
 
     case "update_contact": {
@@ -1682,6 +1815,8 @@ export async function executeTool(
     case "create_interaction": {
       const p = CreateInteractionInput.safeParse(input);
       if (!p.success) return badInput();
+      if (!(await isOwnedBy(supabase, "contacts", p.data.contact_id, userId)))
+        return notOwned("Contact");
       const { error, data } = await supabase
         .from("interactions")
         .insert({
@@ -1757,7 +1892,8 @@ export async function executeTool(
 
     case "list_notes": {
       const p = ListNotesInput.safeParse(input);
-      const limitVal = p.success && p.data.limit ? p.data.limit : 20;
+      const limitVal = p.success && p.data.limit ? p.data.limit : DEFAULT_PAGE_SIZE;
+      const offsetVal = (p.success && p.data.offset) || 0;
       const tagFilter = p.success ? p.data.tag : undefined;
       let query = supabase
         .from("notes")
@@ -1766,13 +1902,9 @@ export async function executeTool(
       if (tagFilter) query = query.contains("tags", [tagFilter]);
       const { data, error } = await query
         .order("created_at", { ascending: false })
-        .limit(limitVal);
+        .range(...rangeFor(limitVal, offsetVal));
       if (error) return dbErr("list_notes", error);
-      return {
-        success: true,
-        message: `Found ${data?.length ?? 0} notes`,
-        data,
-      };
+      return pagedResult("notes", pageOf(data, limitVal, offsetVal));
     }
 
     case "update_note": {
@@ -2137,6 +2269,11 @@ export async function executeTool(
     case "create_focus_session": {
       const p = CreateFocusSessionInput.safeParse(input);
       if (!p.success) return badInput();
+      if (
+        p.data.task_id &&
+        !(await isOwnedBy(supabase, "tasks", p.data.task_id, userId))
+      )
+        return notOwned("Task");
       const now = new Date().toISOString();
       const { error, data } = await supabase
         .from("focus_sessions")

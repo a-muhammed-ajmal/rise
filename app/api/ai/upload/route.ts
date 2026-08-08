@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { fileTypeFromBuffer } from "file-type";
+import { randomUUID } from "crypto";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import {
+  MAX_UPLOAD_BYTES,
+  isSafeSessionId,
   validateMimeAndSize,
   extractText,
   transcribeAudio,
@@ -17,6 +21,11 @@ export async function POST(request: Request): Promise<Response> {
   } = await supabase.auth.getUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
 
+  // ── Abuse control ───────────────────────────────────────────────────────
+  // Transcription bills per request; this is the direct cost ceiling.
+  const rl = checkRateLimit(`upload:${user.id}`, { limit: 8, windowMs: 60_000 });
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSec);
+
   // ── Parse form data ─────────────────────────────────────────────────────
   let formData: FormData;
   try {
@@ -31,8 +40,17 @@ export async function POST(request: Request): Promise<Response> {
   if (!(file instanceof File)) {
     return new Response("Missing file field", { status: 400 });
   }
-  if (typeof sessionId !== "string" || !sessionId.trim() || sessionId.length > 64) {
+  // Must be a safe path segment: this value is interpolated into the storage
+  // key, so `..` or `/` would let a caller write outside their own prefix.
+  if (typeof sessionId !== "string" || !isSafeSessionId(sessionId)) {
     return new Response("Invalid session_id", { status: 400 });
+  }
+
+  // ── Size ceiling before buffering ───────────────────────────────────────
+  // Checked against the reported size first so an oversized upload is not read
+  // fully into memory before being rejected.
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return new Response("File too large.", { status: 413 });
   }
 
   // ── Read bytes ──────────────────────────────────────────────────────────
@@ -61,8 +79,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── Sanitise filename ───────────────────────────────────────────────────
   const rawName = file.name.replace(/[^a-zA-Z0-9._\-]/g, "_").slice(0, 200);
-  const uuid = crypto.randomUUID();
-  const storagePath = `${user.id}/${sessionId}/${uuid}-${rawName}`;
+  const storagePath = `${user.id}/${sessionId}/${randomUUID()}-${rawName}`;
 
   // ── Upload to Supabase Storage ──────────────────────────────────────────
   const { error: uploadError } = await supabase.storage
@@ -75,13 +92,36 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // ── Process attachment (extract text / transcribe) ──────────────────────
+  // If processing fails the stored object is useless to the assistant, so it is
+  // removed rather than left orphaned in the bucket.
   let extracted_text: string | undefined;
   let transcript: string | undefined;
 
-  if (category === "file") {
-    extracted_text = await extractText(buf, mime);
-  } else if (category === "audio") {
-    transcript = await transcribeAudio(buf, mime);
+  try {
+    if (category === "file") {
+      extracted_text = await extractText(buf, mime);
+      if (extracted_text === undefined) {
+        await removeQuietly(supabase, storagePath);
+        return new Response(
+          "Could not read any text from this file. Please try a different format.",
+          { status: 422 },
+        );
+      }
+    } else if (category === "audio") {
+      transcript = await transcribeAudio(buf, mime);
+      if (!transcript.trim()) {
+        await removeQuietly(supabase, storagePath);
+        return new Response("Could not transcribe this audio. Please try again.", {
+          status: 422,
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[upload] processing failed:", err);
+    await removeQuietly(supabase, storagePath);
+    return new Response("Could not process this file. Please try again.", {
+      status: 502,
+    });
   }
 
   // ── Return attachment metadata ──────────────────────────────────────────
@@ -94,4 +134,16 @@ export async function POST(request: Request): Promise<Response> {
     ...(extracted_text !== undefined ? { extracted_text } : {}),
     ...(transcript !== undefined ? { transcript } : {}),
   });
+}
+
+async function removeQuietly(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  storagePath: string,
+): Promise<void> {
+  const { error } = await supabase.storage
+    .from("chat-attachments")
+    .remove([storagePath]);
+  if (error) {
+    console.error("[upload] cleanup failed for", storagePath, error.message);
+  }
 }

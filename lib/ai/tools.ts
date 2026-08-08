@@ -252,18 +252,6 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
       required: ['id'],
     },
   },
-  {
-    name: 'delete_habit_log',
-    description: 'Undo / remove a habit log entry for a specific date',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        habit_id: { type: Type.STRING, description: 'Habit UUID' },
-        logged_date: { type: Type.STRING, description: 'Date to undo in YYYY-MM-DD format' },
-      },
-      required: ['habit_id', 'logged_date'],
-    },
-  },
 
   // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
   {
@@ -310,6 +298,7 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
         type: { type: Type.STRING, enum: ['income', 'expense', 'transfer', 'adjustment', 'all'], description: 'Filter by transaction type' },
         start_date: { type: Type.STRING, description: 'Only return transactions on or after this date (YYYY-MM-DD)' },
         limit: { type: Type.NUMBER, description: 'Max results, default 20' },
+        offset: { type: Type.NUMBER, description: 'Skip this many results — use the offset reported when more results are available' },
       },
       required: [],
     },
@@ -390,6 +379,7 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
       properties: {
         type: { type: Type.STRING, enum: ['lead', 'prospect', 'client', 'network', 'personal', 'all'] },
         limit: { type: Type.NUMBER, description: 'Max results, default 20' },
+        offset: { type: Type.NUMBER, description: 'Skip this many results — use the offset reported when more results are available' },
       },
       required: [],
     },
@@ -496,6 +486,7 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
       properties: {
         tag: { type: Type.STRING, description: 'Filter by tag' },
         limit: { type: Type.NUMBER, description: 'Max results, default 20' },
+        offset: { type: Type.NUMBER, description: 'Skip this many results — use the offset reported when more results are available' },
       },
       required: [],
     },
@@ -596,17 +587,6 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
         title: { type: Type.STRING },
         description: { type: Type.STRING },
         tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-      },
-      required: ['id'],
-    },
-  },
-  {
-    name: 'delete_link',
-    description: 'Delete a saved link',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        id: { type: Type.STRING, description: 'Link UUID' },
       },
       required: ['id'],
     },
@@ -738,17 +718,6 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
         ended_at: { type: Type.STRING, description: 'ISO 8601 datetime' },
         notes: { type: Type.STRING },
         task_id: { type: Type.STRING, description: 'Associated task UUID or null to unlink' },
-      },
-      required: ['id'],
-    },
-  },
-  {
-    name: 'delete_focus_session',
-    description: 'Delete a focus session record',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        id: { type: Type.STRING, description: 'Session UUID' },
       },
       required: ['id'],
     },
@@ -1052,6 +1021,49 @@ export const APPROVAL_TOOLS: FunctionDeclaration[] = [
         review_summary: { type: Type.STRING, description: 'Brief description for confirmation display e.g. "Weekly review 2026-06-23"' },
       },
       required: ['review_id', 'review_summary'],
+    },
+  },
+
+  // ─── KNOWLEDGE ────────────────────────────────────────────────────────────────
+  {
+    name: 'delete_link',
+    description: 'Delete a saved link permanently (REQUIRES USER APPROVAL)',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        id: { type: Type.STRING, description: 'Link UUID' },
+        link_title: { type: Type.STRING, description: 'Link title or URL for confirmation display' },
+      },
+      required: ['id', 'link_title'],
+    },
+  },
+
+  // ─── WELLNESS ─────────────────────────────────────────────────────────────────
+  {
+    name: 'delete_habit_log',
+    description: 'Undo / remove a habit log entry for a specific date (REQUIRES USER APPROVAL)',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        habit_id: { type: Type.STRING, description: 'Habit UUID' },
+        logged_date: { type: Type.STRING, description: 'Date to undo in YYYY-MM-DD format' },
+        habit_name: { type: Type.STRING, description: 'Habit name for confirmation display' },
+      },
+      required: ['habit_id', 'logged_date', 'habit_name'],
+    },
+  },
+
+  // ─── FOCUS SESSIONS ───────────────────────────────────────────────────────────
+  {
+    name: 'delete_focus_session',
+    description: 'Delete a focus session record permanently (REQUIRES USER APPROVAL)',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        id: { type: Type.STRING, description: 'Session UUID' },
+        session_summary: { type: Type.STRING, description: 'Brief description for confirmation display e.g. "25-minute session on 23/06/2026"' },
+      },
+      required: ['id', 'session_summary'],
     },
   },
 ]

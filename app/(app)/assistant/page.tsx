@@ -10,7 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AttachmentChip } from "@/components/assistant/attachment-chip";
 import { AudioRecorder } from "@/components/assistant/audio-recorder";
 import type { AttachmentStatus } from "@/components/assistant/attachment-chip";
-import type { ChatAttachment } from "@/lib/types/database";
+import type { ChatAttachment, Database } from "@/lib/types/database";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   Send,
   AlertTriangle,
@@ -77,6 +78,11 @@ const TOOL_LABELS: Record<string, string> = {
   delete_document: "Delete document",
   delete_journal_entry: "Delete journal entry",
   delete_review: "Delete review",
+  delete_link: "Delete link",
+  delete_habit_log: "Undo habit log",
+  delete_focus_session: "Delete focus session",
+  log_expense: "Log expense",
+  log_income: "Log income",
 };
 
 const ACCEPTED_TYPES =
@@ -138,8 +144,7 @@ function ImageAttachmentView({
   supabase,
 }: {
   att: ChatAttachment;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any;
+  supabase: SupabaseClient<Database>;
 }) {
   const [url, setUrl] = useState<string | null>(null);
 
@@ -176,8 +181,7 @@ function FileAttachmentView({
   supabase,
 }: {
   att: ChatAttachment;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any;
+  supabase: SupabaseClient<Database>;
 }) {
   const [url, setUrl] = useState<string | null>(null);
 
@@ -212,8 +216,7 @@ function AudioAttachmentView({
   supabase,
 }: {
   att: ChatAttachment;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any;
+  supabase: SupabaseClient<Database>;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
