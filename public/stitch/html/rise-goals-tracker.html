@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RISE - Goals Tracker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#afecff",
+                        "primary-container": "#ff6535",
+                        "inverse-on-surface": "#2a3040",
+                        "on-secondary-container": "#00374d",
+                        "primary-fixed": "#ffdbd1",
+                        "on-secondary": "#00354a",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "outline": "#a98a81",
+                        "on-tertiary": "#003641",
+                        "inverse-surface": "#dde2f8",
+                        "surface-container-highest": "#2f3445",
+                        "on-error": "#690005",
+                        "surface-variant": "#2f3445",
+                        "error": "#ffb4ab",
+                        "surface-container": "#191f2f",
+                        "tertiary": "#5bd6f5",
+                        "outline-variant": "#5a413a",
+                        "on-tertiary-container": "#003540",
+                        "on-surface-variant": "#e2bfb5",
+                        "secondary-fixed-dim": "#7bd0ff",
+                        "surface-bright": "#33394a",
+                        "surface": "#0d1322",
+                        "primary": "#ffb59f",
+                        "on-tertiary-fixed": "#001f27",
+                        "on-secondary-fixed": "#001e2c",
+                        "on-background": "#dde2f8",
+                        "surface-dim": "#0d1322",
+                        "surface-container-low": "#151b2b",
+                        "on-primary-fixed": "#3a0a00",
+                        "primary-fixed-dim": "#ffb59f",
+                        "inverse-primary": "#af3000",
+                        "background": "#0d1322",
+                        "surface-tint": "#ffb59f",
+                        "on-primary-fixed-variant": "#862300",
+                        "on-secondary-fixed-variant": "#004c69",
+                        "on-surface": "#dde2f8",
+                        "tertiary-fixed-dim": "#5bd6f5",
+                        "on-primary": "#5f1600",
+                        "secondary-fixed": "#c4e7ff",
+                        "secondary": "#7bd0ff",
+                        "on-primary-container": "#5d1500",
+                        "surface-container-high": "#242a3a",
+                        "surface-container-lowest": "#080e1d",
+                        "secondary-container": "#00a6e0",
+                        "on-tertiary-fixed-variant": "#004e5d",
+                        "tertiary-container": "#00a5c3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "gutter": "24px",
+                        "container-max": "1440px",
+                        "margin-mobile": "16px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "mono-label": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "mono-label": ["13px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    },
+                    backgroundImage: {
+                        'grid-pattern': 'linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px)'
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(19, 27, 46, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-primary {
+            box-shadow: 0 0 15px 0 rgba(255, 101, 53, 0.15);
+        }
+        
+        .grid-bg {
+            background-size: 16px 16px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md min-h-screen relative pb-24 grid-bg bg-grid-pattern">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/60 dark:bg-surface/60 backdrop-blur-xl border-b border-white/10 shadow-sm flex justify-between items-center px-margin-mobile py-4 h-16">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-white/10">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A macro photography style portrait of a futuristic AI processing core. The core is a glowing crystalline structure in deep blue and vibrant orange hues, set against a completely black background. The lighting is dramatic and cinematic, creating a sense of immense computational power. High tech, precise, modern glassmorphic aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaCC11TNbJSJHWsGU0XrfWRCrXxqNsleVZmgXv8cnju8aZ5lmk-XZ7hLbzpvjrRqJBNJABBCNI3pQTSS3qLLRWciXJQ9HUidCQyPcu795QSJycprvlbA0zlyKKUbYqIlpg94wa_elaYBG6SYvnSQbriMXr6gSF-eswwF3hqczQW40Du1XkFy0smGGAktL6JjHW9IXnelK2u-1pmv4vZzGDEq33KuVNVgsa4dseSAqQVL7mLs_eW5JJ0ChR1pMBx687WM96GfZheQ"/>
+</div>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tighter text-primary dark:text-primary">RISE</h1>
+</div>
+<button aria-label="Settings" class="text-primary dark:text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="pt-24 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto space-y-8">
+<!-- Header Section -->
+<div class="flex justify-between items-center">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Goals</h2>
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg border border-primary-container text-primary-container hover:bg-primary-container/10 transition-colors font-label-md text-label-md">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                Add Goal
+            </button>
+</div>
+<!-- Active Goals -->
+<section class="space-y-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant">Active</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Goal Card 1 -->
+<div class="glass-panel rounded-xl p-6 glow-primary hover:border-primary-container/30 transition-colors relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/5 rounded-full blur-2xl -mr-16 -mt-16"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">Launch Side Project</h4>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="event">event</span>
+<span class="font-body-sm text-body-sm">Dec 2024</span>
+</div>
+</div>
+<span class="px-2 py-1 rounded bg-[#38BDF8]/10 text-[#38BDF8] font-label-md text-label-md border border-[#38BDF8]/20">Business</span>
+</div>
+<div class="space-y-2 mb-6 relative z-10">
+<div class="flex justify-between font-label-md text-label-md text-on-surface-variant">
+<span>Progress</span>
+<span class="text-primary-container">65%</span>
+</div>
+<div class="w-full h-1 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full w-[65%] glow-primary"></div>
+</div>
+</div>
+<div class="flex flex-wrap gap-2 relative z-10">
+<span class="px-3 py-1 rounded-full bg-surface-container border border-white/5 font-label-md text-label-md text-on-surface">MVP</span>
+<span class="px-3 py-1 rounded-full bg-surface-container border border-white/5 font-label-md text-label-md text-on-surface">Beta</span>
+<span class="px-3 py-1 rounded-full bg-surface-container border border-white/5 font-label-md text-label-md text-on-surface-variant opacity-50 line-through">Launch</span>
+</div>
+</div>
+<!-- Goal Card 2 -->
+<div class="glass-panel rounded-xl p-6 hover:border-white/20 transition-colors relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-[#38BDF8]/5 rounded-full blur-2xl -mr-16 -mt-16"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">Get Fit</h4>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="update">update</span>
+<span class="font-body-sm text-body-sm">Ongoing</span>
+</div>
+</div>
+<span class="px-2 py-1 rounded bg-secondary-container/10 text-secondary-container font-label-md text-label-md border border-secondary-container/20">Health</span>
+</div>
+<div class="space-y-2 mb-6 relative z-10">
+<div class="flex justify-between font-label-md text-label-md text-on-surface-variant">
+<span>Progress</span>
+<span class="text-primary-container">40%</span>
+</div>
+<div class="w-full h-1 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full w-[40%] glow-primary"></div>
+</div>
+</div>
+<div class="flex flex-wrap gap-2 relative z-10">
+<span class="px-3 py-1 rounded-full bg-surface-container border border-white/5 font-label-md text-label-md text-on-surface">Daily Workout</span>
+<span class="px-3 py-1 rounded-full bg-surface-container border border-white/5 font-label-md text-label-md text-on-surface">Clean Eating</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Completed Goals -->
+<section class="space-y-4 pt-4 border-t border-white/5">
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant">Completed</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Completed Card 1 -->
+<div class="glass-panel rounded-xl p-4 flex items-center justify-between opacity-70 hover:opacity-100 transition-opacity">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center text-[#10B981]">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg text-on-surface line-through">Read 12 Books</h4>
+<span class="font-label-md text-label-md text-on-surface-variant">Personal Growth</span>
+</div>
+</div>
+<span class="font-label-md text-label-md text-[#10B981]">100%</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container/60 dark:bg-surface-container/60 backdrop-blur-xl border-t border-white/10 shadow-[0_-4px_20px_rgba(255,101,53,0.15)] md:hidden">
+<ul class="flex justify-around items-center h-20 px-2">
+<!-- Home -->
+<li class="flex-1">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-white/5 active:scale-90 transition-all duration-200 w-full h-full py-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+</li>
+<!-- Tasks -->
+<li class="flex-1">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-white/5 active:scale-90 transition-all duration-200 w-full h-full py-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="check_circle">check_circle</span>
+<span class="font-label-md text-label-md">Tasks</span>
+</a>
+</li>
+<!-- Goals (Active) -->
+<li class="flex-1 relative">
+<!-- Active indicator dot -->
+<div class="absolute top-1 right-1/2 translate-x-3 w-2 h-2 rounded-full bg-primary-container glow-primary"></div>
+<a class="flex flex-col items-center justify-center text-primary-container dark:text-primary-container font-bold hover:bg-white/5 active:scale-90 transition-all duration-200 w-full h-full py-2 rounded-lg bg-white/5" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="ads_click" style="font-variation-settings: 'FILL' 1;">ads_click</span>
+<span class="font-label-md text-label-md">Goals</span>
+</a>
+</li>
+<!-- Finance -->
+<li class="flex-1">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-white/5 active:scale-90 transition-all duration-200 w-full h-full py-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="payments">payments</span>
+<span class="font-label-md text-label-md">Finance</span>
+</a>
+</li>
+<!-- More -->
+<li class="flex-1">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-white/5 active:scale-90 transition-all duration-200 w-full h-full py-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="more_horiz">more_horiz</span>
+<span class="font-label-md text-label-md">More</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Desktop Nav Placeholder (Hidden on mobile) -->
+<nav class="hidden md:flex fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-surface/60 backdrop-blur-xl border border-white/10 rounded-full mt-4 px-6 py-3 shadow-lg">
+<ul class="flex items-center gap-8">
+<li><a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md" href="#">Home</a></li>
+<li><a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md" href="#">Tasks</a></li>
+<li><a class="text-primary-container font-bold font-label-md text-label-md relative after:content-[''] after:absolute after:-bottom-2 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-primary-container after:rounded-full after:shadow-[0_0_8px_rgba(255,101,53,0.8)]" href="#">Goals</a></li>
+<li><a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md" href="#">Finance</a></li>
+</ul>
+</nav>
+</body></html>

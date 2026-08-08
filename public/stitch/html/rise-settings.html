@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RISE - Settings</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "error-container": "#93000a",
+                    "on-tertiary-container": "#003540",
+                    "surface-container-low": "#151b2b",
+                    "inverse-on-surface": "#2a3040",
+                    "secondary-fixed": "#dae2fc",
+                    "on-primary-fixed": "#3a0a00",
+                    "on-secondary-container": "#b0b8d1",
+                    "on-primary-container": "#5d1500",
+                    "surface-container": "#191f2f",
+                    "inverse-primary": "#af3000",
+                    "primary-fixed-dim": "#ffb59f",
+                    "tertiary": "#5bd6f5",
+                    "primary-fixed": "#ffdbd1",
+                    "surface-bright": "#33394a",
+                    "surface-dim": "#0d1322",
+                    "surface": "#0d1322",
+                    "background": "#0d1322",
+                    "on-primary": "#5f1600",
+                    "surface-container-lowest": "#080e1d",
+                    "tertiary-fixed-dim": "#5bd6f5",
+                    "on-surface-variant": "#e2bfb5",
+                    "outline": "#a98a81",
+                    "tertiary-container": "#00a5c3",
+                    "inverse-surface": "#dde2f8",
+                    "on-primary-fixed-variant": "#862300",
+                    "on-tertiary": "#003641",
+                    "on-secondary": "#283044",
+                    "surface-container-high": "#242a3a",
+                    "on-tertiary-fixed": "#001f27",
+                    "secondary-container": "#41495e",
+                    "error": "#ffb4ab",
+                    "on-background": "#dde2f8",
+                    "surface-container-highest": "#2f3445",
+                    "on-tertiary-fixed-variant": "#004e5d",
+                    "surface-variant": "#2f3445",
+                    "tertiary-fixed": "#afecff",
+                    "secondary": "#bec6e0",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "on-error-container": "#ffdad6",
+                    "outline-variant": "#5a413a",
+                    "surface-tint": "#ffb59f",
+                    "primary": "#ffb59f",
+                    "on-secondary-fixed-variant": "#3f465b",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-surface": "#dde2f8",
+                    "on-error": "#690005",
+                    "primary-container": "#ff6535"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "4px",
+                    "container-max": "1200px",
+                    "margin-mobile": "20px",
+                    "margin-desktop": "40px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "mono-label": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "headline-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "mono-label": ["13px", {"lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        /* Base Grid Texture */
+        .bg-grid-pattern {
+            background-image: 
+                linear-gradient(to right, rgba(255, 101, 53, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 101, 53, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        /* Disable scrollbar for cleaner mobile look */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Mobile Simulator Container (for desktop viewing) */
+        .mobile-container {
+            max-width: 375px;
+            margin: 0 auto;
+            min-height: 100vh;
+            position: relative;
+            background-color: theme('colors.background');
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            overflow-x: hidden;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#000000] text-on-background antialiased selection:bg-primary-container selection:text-white">
+<div class="mobile-container overflow-y-auto">
+<!-- Background Texture Layer -->
+<div class="absolute inset-0 bg-grid-pattern pointer-events-none z-0 mix-blend-screen"></div>
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-margin-mobile h-16 w-full sticky top-0 z-50 backdrop-blur-md bg-background/80">
+<button aria-label="Menu" class="text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 flex items-center justify-center w-10 h-10 rounded-full">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 0;">grid_view</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tighter text-primary">RISE</h1>
+<button aria-label="Profile" class="text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 flex items-center justify-center w-10 h-10 rounded-full">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 0;">account_circle</span>
+</button>
+</header>
+<!-- Main Scrollable Content -->
+<main class="relative z-10 px-margin-mobile pt-6 pb-[120px]">
+<!-- Profile Header Section -->
+<section class="flex flex-col items-center mb-10 w-full animate-fade-in">
+<div class="relative w-24 h-24 rounded-full bg-surface-container border border-outline-variant/30 flex items-center justify-center shadow-lg mb-4 before:absolute before:inset-0 before:rounded-full before:border before:border-primary-container/20 before:scale-[1.1] before:opacity-50">
+<span class="font-headline-xl text-headline-xl text-primary-container tracking-tighter">MA</span>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-primary-container rounded-full border-2 border-background z-10 shadow-[0_0_8px_rgba(255,101,53,0.6)]"></div>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-1 text-center w-full truncate">Muhammed Ajmal</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-center opacity-80">ajmal@rise.ai</p>
+</section>
+<!-- Settings Groups -->
+<div class="flex flex-col gap-6">
+<!-- Group: Account -->
+<section class="flex flex-col gap-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase pl-2">Account</h3>
+<div class="bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-hidden flex flex-col shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors border-b border-outline-variant/10 group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-primary-container/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">person</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Profile</span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant opacity-50">chevron_right</span>
+</button>
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors border-b border-outline-variant/10 group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-primary-container/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Notifications</span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant opacity-50">chevron_right</span>
+</button>
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-primary-container/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">security</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Security</span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant opacity-50">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Group: Appearance -->
+<section class="flex flex-col gap-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase pl-2">Appearance</h3>
+<div class="bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-hidden flex flex-col shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+<div class="flex items-center justify-between w-full p-4 border-b border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">dark_mode</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Dark Mode</span>
+</div>
+<!-- Custom Toggle Switch (ON State) -->
+<div class="w-11 h-6 rounded-full bg-primary-container relative cursor-pointer shadow-[0_0_10px_rgba(255,101,53,0.3)] transition-all">
+<div class="absolute right-0.5 top-0.5 w-5 h-5 bg-[#ffffff] rounded-full shadow-sm transition-transform"></div>
+</div>
+</div>
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors border-b border-outline-variant/10 group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-primary-container/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">language</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Language</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">English</span>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant opacity-50">chevron_right</span>
+</div>
+</button>
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-primary-container/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">payments</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Currency</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">AED</span>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant opacity-50">chevron_right</span>
+</div>
+</button>
+</div>
+</section>
+<!-- Group: AI & Data -->
+<section class="flex flex-col gap-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase pl-2">AI &amp; Data</h3>
+<div class="bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-hidden flex flex-col shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors border-b border-outline-variant/10 group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-primary-container/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">memory</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Memory</span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant opacity-50">chevron_right</span>
+</button>
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors border-b border-outline-variant/10 group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-primary-container/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">lock</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Privacy</span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant opacity-50">chevron_right</span>
+</button>
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-primary-container/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">download</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Export Data</span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant opacity-50">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Group: About -->
+<section class="flex flex-col gap-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase pl-2">About</h3>
+<div class="bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-hidden flex flex-col shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+<div class="flex items-center justify-between w-full p-4 border-b border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">info</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Version</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">v1.0.4</span>
+</div>
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors border-b border-outline-variant/10 group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-primary-container/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-primary-container opacity-90" style="font-variation-settings: 'FILL' 0;">chat</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Feedback</span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant opacity-50">chevron_right</span>
+</button>
+<button class="flex items-center justify-between w-full p-4 hover:bg-surface-container transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-center group-hover:border-error/30 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-error opacity-90" style="font-variation-settings: 'FILL' 0;">logout</span>
+</div>
+<span class="font-body-md text-body-md text-error font-medium">Sign Out</span>
+</div>
+</button>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar (Shared Component) -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pt-3 pb-8 h-24 bg-surface-container/60 backdrop-blur-xl saturate-180 z-50 max-w-[375px] mx-auto border-none">
+<!-- Item 1 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200 w-16 gap-1">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 0;">target</span>
+<span class="font-label-caps text-label-caps">Focus</span>
+</button>
+<!-- Item 2 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200 w-16 gap-1">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span class="font-label-caps text-label-caps">Insights</span>
+</button>
+<!-- Item 3 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200 w-16 gap-1">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 0;">psychology</span>
+<span class="font-label-caps text-label-caps">Neural</span>
+</button>
+<!-- Item 4 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200 w-16 gap-1">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 0;">check_circle</span>
+<span class="font-label-caps text-label-caps">Tasks</span>
+</button>
+<!-- Item 5 (Active) -->
+<button class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:absolute after:-bottom-2 after:w-6 after:h-1 after:bg-primary-container after:rounded-full after:shadow-[0_0_8px_rgba(255,101,53,0.8)] transition-all duration-200 w-16 gap-1">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</button>
+</nav>
+</div>
+</body></html>

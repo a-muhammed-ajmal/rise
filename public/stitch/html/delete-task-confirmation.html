@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Delete Task - RISE</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#003540",
+                        "surface-variant": "#2f3445",
+                        "tertiary-fixed": "#afecff",
+                        "inverse-primary": "#af3000",
+                        "surface-container-high": "#242a3a",
+                        "on-primary": "#5f1600",
+                        "secondary": "#bec6e0",
+                        "on-primary-fixed": "#3a0a00",
+                        "on-tertiary": "#003641",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed-variant": "#004e5d",
+                        "on-primary-fixed-variant": "#862300",
+                        "surface-container": "#191f2f",
+                        "surface-container-lowest": "#080e1d",
+                        "on-error-container": "#ffdad6",
+                        "inverse-surface": "#dde2f8",
+                        "background": "#0d1322",
+                        "surface": "#0d1322",
+                        "inverse-on-surface": "#2a3040",
+                        "tertiary": "#5bd6f5",
+                        "on-surface-variant": "#e2bfb5",
+                        "surface-container-low": "#151b2b",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-primary-container": "#5d1500",
+                        "outline-variant": "#5a413a",
+                        "error-container": "#93000a",
+                        "on-surface": "#dde2f8",
+                        "tertiary-container": "#00a5c3",
+                        "on-secondary-fixed": "#131b2e",
+                        "primary-fixed": "#ffdbd1",
+                        "primary": "#ffb59f",
+                        "on-secondary": "#283044",
+                        "primary-fixed-dim": "#ffb59f",
+                        "surface-bright": "#33394a",
+                        "secondary-container": "#41495e",
+                        "outline": "#a98a81",
+                        "secondary-fixed": "#dae2fc",
+                        "on-secondary-fixed-variant": "#3f465b",
+                        "on-background": "#dde2f8",
+                        "tertiary-fixed-dim": "#5bd6f5",
+                        "surface-tint": "#ffb59f",
+                        "surface-dim": "#0d1322",
+                        "primary-container": "#ff6535",
+                        "on-secondary-container": "#b0b8d1",
+                        "surface-container-highest": "#2f3445",
+                        "on-tertiary-fixed": "#001f27"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "unit": "4px",
+                        "container-max": "1200px",
+                        "md": "16px",
+                        "xl": "40px",
+                        "gutter": "20px",
+                        "sm": "8px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "display": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "600" }],
+                        "display": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .grid-bg {
+            background-image: 
+                linear-gradient(to right, rgba(255, 101, 53, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 101, 53, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen relative overflow-hidden">
+<!-- Grid Background -->
+<div class="absolute inset-0 grid-bg pointer-events-none z-0"></div>
+<!-- Top App Bar (Behind Overlay) -->
+<header class="fixed top-0 w-full z-10 bg-surface/70 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-lg py-md">
+<button aria-label="Menu" class="text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<div class="flex items-center gap-2">
+<img alt="RISE Logo" class="h-8 w-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBL7YfJwakq-QpbVplpLz8WyXqguAcaqtF0LnHrWrzewfNfJjK1FW3G5c3ANMNg3ry9UR4lTLspl-ia4lQdJoPlgmavuEscihLvzkTW3tze37S0adDP_jmVukFthrKU80U7kmY7oX80nGKPgU89NwErtoh_oNfDVmAI1pP6mCrzhmMSic_8LzXK4KC91K-ix0d06sIvQ3kYxNn5GEUmnDVCDs1EKh8TQt68zt2QfUrOo_Lcr8y37WkKIuNtaupBanwCqoUsSC8A_Q"/>
+<h1 class="font-display text-display tracking-tighter text-primary">RISE</h1>
+</div>
+<button aria-label="User profile avatar" class="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-white/10">
+<img class="w-full h-full object-cover" data-alt="A close-up portrait of an AI assistant avatar, featuring glowing digital elements against a dark navy background. The style is modern, sleek, and high-tech, incorporating the signature orange accents of the brand. The lighting is dramatic and directional, highlighting the artificial intelligence theme. Perfect for a premium user profile icon." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtfZVI-yeoKJZwdAoyZcKaHqUBUb1lxQnB0s1IAhO76rKM6bRONyOxyb8RBg5O61UbimpYJ3mrNJdLz5Cx6TwMWC6OYcuwUi-LPwS9Ali9YEdGOvc3ShUUBpoXC3CNk5KlIGRAfyN3lPpSvPZHi3M9FJNS3u2ouXyzikMH3q0HZtsJL_IhpLqhxmpgFHgUSJFdWuCkxQILICFAD6YO4sN4EhrvrhBt4v5kvElqhgMcMKCzOErovIsbNUqsE7a1bkqYGxfZKstCvg"/>
+</button>
+</header>
+<!-- Main Content Canvas (Behind Overlay) -->
+<main class="pt-[88px] pb-[80px] px-md md:px-lg h-screen flex flex-col items-center justify-center relative z-0">
+<div class="w-full max-w-md bg-surface-container/50 rounded-xl p-md border border-white/5 opacity-50 blur-sm pointer-events-none">
+<div class="h-4 bg-white/10 rounded w-1/3 mb-4"></div>
+<div class="h-12 bg-white/5 rounded w-full mb-2"></div>
+<div class="h-12 bg-white/5 rounded w-full"></div>
+</div>
+</main>
+<!-- Modal Overlay -->
+<div class="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-center justify-center px-md">
+<!-- Delete Task Modal -->
+<div class="w-full max-w-sm bg-surface-container rounded-xl p-lg border border-white/10 shadow-2xl relative overflow-hidden flex flex-col items-center text-center">
+<!-- Warning Icon -->
+<div class="w-16 h-16 rounded-full bg-error-container flex items-center justify-center mb-md">
+<span class="material-symbols-outlined text-[32px] text-error" data-icon="warning">warning</span>
+</div>
+<!-- Content -->
+<h2 class="font-headline-md text-headline-md text-on-surface mb-sm">Delete Task?</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-xl">
+                This will permanently delete "Review Q3 Report". This action cannot be undone.
+            </p>
+<!-- Actions -->
+<div class="w-full flex flex-col gap-sm">
+<button class="w-full py-3 bg-[#EF4444] hover:bg-[#DC2626] text-white font-label-md text-label-md rounded-lg transition-colors shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]">
+                    Delete
+                </button>
+<button class="w-full py-3 bg-transparent border border-primary-container text-primary-container hover:bg-surface-container-high font-label-md text-label-md rounded-lg transition-colors">
+                    Cancel
+                </button>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Bar (Hidden on md+) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container/70 backdrop-blur-xl border-t border-white/10 flex justify-around items-center h-20 px-md pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary/80 transition-colors active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+<span class="font-label-sm text-label-sm mt-1">Nexus</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary/80 transition-colors active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="font-label-sm text-label-sm mt-1">Threads</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary after:content-[''] after:w-6 after:h-0.5 after:bg-primary after:mt-1 after:rounded-full hover:text-primary/80 transition-colors active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="Memory" style="font-variation-settings: 'FILL' 1;">cloud_download</span>
+<span class="font-label-sm text-label-sm mt-1">Compute</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary/80 transition-colors active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="folder_open">folder_open</span>
+<span class="font-label-sm text-label-sm mt-1">Vault</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary/80 transition-colors active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-sm text-label-sm mt-1">System</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RISE CRM - Contacts</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#e2bfb5",
+                        "surface-container-low": "#151b2b",
+                        "inverse-primary": "#af3000",
+                        "tertiary": "#5bd6f5",
+                        "surface": "#0d1322",
+                        "tertiary-container": "#00a5c3",
+                        "inverse-on-surface": "#2a3040",
+                        "secondary": "#bcc7de",
+                        "on-error-container": "#ffdad6",
+                        "surface-bright": "#33394a",
+                        "primary-fixed": "#ffdbd1",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#bcc7de",
+                        "on-secondary-fixed": "#111c2d",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#3c475a",
+                        "outline": "#a98a81",
+                        "secondary-fixed": "#d8e3fb",
+                        "surface-container-high": "#242a3a",
+                        "surface-container": "#191f2f",
+                        "on-secondary-container": "#aeb9d0",
+                        "tertiary-fixed-dim": "#5bd6f5",
+                        "on-primary-fixed-variant": "#862300",
+                        "surface-container-lowest": "#080e1d",
+                        "on-tertiary-fixed": "#001f27",
+                        "on-primary-container": "#5d1500",
+                        "surface-dim": "#0d1322",
+                        "surface-variant": "#2f3445",
+                        "on-tertiary-fixed-variant": "#004e5d",
+                        "surface-tint": "#ffb59f",
+                        "inverse-surface": "#dde2f8",
+                        "on-primary-fixed": "#3a0a00",
+                        "tertiary-fixed": "#afecff",
+                        "on-error": "#690005",
+                        "on-secondary": "#263143",
+                        "surface-container-highest": "#2f3445",
+                        "on-primary": "#5f1600",
+                        "primary": "#ffb59f",
+                        "on-surface": "#dde2f8",
+                        "secondary-container": "#3e495d",
+                        "primary-fixed-dim": "#ffb59f",
+                        "on-tertiary-container": "#003540",
+                        "on-tertiary": "#003641",
+                        "primary-container": "#ff6535",
+                        "background": "#0d1322",
+                        "outline-variant": "#5a413a",
+                        "on-background": "#dde2f8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "xs": "4px",
+                        "margin-desktop": "48px",
+                        "md": "16px",
+                        "sm": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "unit": "4px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "code-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "code-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0B1120;
+            background-image: linear-gradient(rgba(255, 101, 53, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 101, 53, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+            background-position: center top;
+        }
+
+        /* Hide scrollbar for cleaner mobile look */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Glassmorphism utility classes */
+        .glass-panel {
+            background: rgba(13, 19, 34, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        
+        .contact-card {
+            background-color: #131B2E;
+            border: 1px solid #1E293B;
+            transition: all 0.2s ease;
+        }
+        
+        .contact-card:hover {
+            border-color: rgba(255, 101, 53, 0.4);
+            box-shadow: 0 0 10px rgba(255, 101, 53, 0.1);
+        }
+        
+        .contact-card:active {
+            transform: scale(0.98);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #FF6535;
+            box-shadow: 0 0 0 4px rgba(255, 101, 53, 0.1);
+        }
+        
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background font-body-md antialiased min-h-screen flex flex-col items-center justify-start overflow-x-hidden">
+<!-- Mobile Device Container for Preview (375px wide) -->
+<div class="w-full max-w-[375px] mx-auto min-h-screen flex flex-col relative pb-32">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 bg-surface/70 dark:bg-surface/70 backdrop-blur-xl border-b border-outline-variant shadow-sm w-full transition-all duration-200">
+<div class="flex items-center justify-between px-margin-mobile w-full h-16">
+<button class="text-on-surface-variant hover:bg-surface-variant/50 p-2 rounded-full transition-all duration-200 active:scale-95 flex items-center justify-center">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface tracking-tight">Contacts</h1>
+<button class="text-on-surface-variant hover:bg-surface-variant/50 p-2 rounded-full transition-all duration-200 active:scale-95 flex items-center justify-center">
+<span class="material-symbols-outlined">search</span>
+</button>
+</div>
+</header>
+<!-- Search Area -->
+<div class="px-margin-mobile py-4 w-full z-30 sticky top-16 bg-gradient-to-b from-background to-transparent">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">search</span>
+<input class="search-input w-full bg-surface-container border border-surface-variant rounded-full py-3 pl-10 pr-4 text-on-surface placeholder:text-on-surface-variant/70 font-body-md text-body-md transition-all" placeholder="Search contacts..." type="text"/>
+</div>
+</div>
+<!-- Content Canvas: Contacts List -->
+<main class="flex-1 px-margin-mobile flex flex-col gap-sm pb-xl z-10 w-full relative">
+<!-- Contact Card 1 -->
+<div class="contact-card rounded-[16px] p-4 flex items-center gap-4 w-full">
+<div class="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-headline-md text-headline-md flex-shrink-0 border border-blue-500/30">
+                    JD
+                </div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-headline-md text-[16px] leading-[20px] font-bold text-on-surface truncate">John Doe</h3>
+<span class="text-[12px] text-on-surface-variant/70 whitespace-nowrap">2h ago</span>
+</div>
+<p class="font-body-md text-[14px] leading-[20px] text-on-surface-variant truncate">Discussed Q4 goals</p>
+<div class="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+<span class="text-[10px] font-medium text-blue-400 uppercase tracking-wider">Work</span>
+</div>
+</div>
+</div>
+<!-- Contact Card 2 -->
+<div class="contact-card rounded-[16px] p-4 flex items-center gap-4 w-full">
+<div class="w-12 h-12 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-headline-md text-headline-md flex-shrink-0 border border-green-500/30">
+                    AS
+                </div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-headline-md text-[16px] leading-[20px] font-bold text-on-surface truncate">Alice Smith</h3>
+<span class="text-[12px] text-on-surface-variant/70 whitespace-nowrap">5h ago</span>
+</div>
+<p class="font-body-md text-[14px] leading-[20px] text-on-surface-variant truncate">Sent the pitch deck</p>
+<div class="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+<span class="text-[10px] font-medium text-green-400 uppercase tracking-wider">Friend</span>
+</div>
+</div>
+</div>
+<!-- Contact Card 3 -->
+<div class="contact-card rounded-[16px] p-4 flex items-center gap-4 w-full">
+<div class="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-headline-md text-headline-md flex-shrink-0 border border-purple-500/30">
+                    MJ
+                </div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-headline-md text-[16px] leading-[20px] font-bold text-on-surface truncate">Michael Johnson</h3>
+<span class="text-[12px] text-on-surface-variant/70 whitespace-nowrap">1d ago</span>
+</div>
+<p class="font-body-md text-[14px] leading-[20px] text-on-surface-variant truncate">Lunch reservation confirmed</p>
+<div class="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20">
+<span class="text-[10px] font-medium text-purple-400 uppercase tracking-wider">Family</span>
+</div>
+</div>
+</div>
+<!-- Contact Card 4 -->
+<div class="contact-card rounded-[16px] p-4 flex items-center gap-4 w-full">
+<div class="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-headline-md text-headline-md flex-shrink-0 border border-blue-500/30">
+                    EW
+                </div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-headline-md text-[16px] leading-[20px] font-bold text-on-surface truncate">Emma Wilson</h3>
+<span class="text-[12px] text-on-surface-variant/70 whitespace-nowrap">2d ago</span>
+</div>
+<p class="font-body-md text-[14px] leading-[20px] text-on-surface-variant truncate">Reviewing the API specs</p>
+<div class="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+<span class="text-[10px] font-medium text-blue-400 uppercase tracking-wider">Work</span>
+</div>
+</div>
+</div>
+<!-- Contact Card 5 -->
+<div class="contact-card rounded-[16px] p-4 flex items-center gap-4 w-full">
+<div class="w-12 h-12 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-headline-md text-headline-md flex-shrink-0 border border-green-500/30">
+                    DT
+                </div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-headline-md text-[16px] leading-[20px] font-bold text-on-surface truncate">David Taylor</h3>
+<span class="text-[12px] text-on-surface-variant/70 whitespace-nowrap">3d ago</span>
+</div>
+<p class="font-body-md text-[14px] leading-[20px] text-on-surface-variant truncate">Coffee meetup next week</p>
+<div class="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+<span class="text-[10px] font-medium text-green-400 uppercase tracking-wider">Friend</span>
+</div>
+</div>
+</div>
+<!-- Contact Card 6 -->
+<div class="contact-card rounded-[16px] p-4 flex items-center gap-4 w-full">
+<div class="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-headline-md text-headline-md flex-shrink-0 border border-blue-500/30">
+                    SL
+                </div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-headline-md text-[16px] leading-[20px] font-bold text-on-surface truncate">Sarah Lee</h3>
+<span class="text-[12px] text-on-surface-variant/70 whitespace-nowrap">1w ago</span>
+</div>
+<p class="font-body-md text-[14px] leading-[20px] text-on-surface-variant truncate">Updated the design system</p>
+<div class="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+<span class="text-[10px] font-medium text-blue-400 uppercase tracking-wider">Work</span>
+</div>
+</div>
+</div>
+<div class="h-20 w-full"></div> <!-- Spacing for FAB and Nav -->
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-[100px] right-6 z-40 w-14 h-14 bg-primary-container text-surface-container-lowest rounded-full shadow-lg flex items-center justify-center hover:bg-primary-container/90 transition-transform duration-300 active:scale-90 md:hidden shadow-[0_0_20px_rgba(255,101,53,0.3)] border border-[#ff8b66]/30">
+<span class="material-symbols-outlined text-[32px] font-bold" style="font-variation-settings: 'wght' 600;">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 bg-surface-container/70 dark:bg-surface-container/70 backdrop-blur-20 border-t border-outline-variant shadow-lg rounded-t-xl pb-safe h-20">
+<div class="flex justify-around items-center h-full px-4 w-full max-w-[375px] mx-auto">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary/80 transition-transform duration-300 active:scale-90 gap-1 w-16">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="font-label-md text-label-md text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary/80 transition-transform duration-300 active:scale-90 gap-1 w-16">
+<span class="material-symbols-outlined text-[24px]">assignment</span>
+<span class="font-label-md text-label-md text-[10px]">Tasks</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-8 after:h-1 after:bg-primary after:rounded-full transition-transform duration-300 active:scale-90 gap-1 w-16">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-label-md text-label-md text-[10px] font-bold">CRM</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary/80 transition-transform duration-300 active:scale-90 gap-1 w-16">
+<span class="material-symbols-outlined text-[24px]">payments</span>
+<span class="font-label-md text-label-md text-[10px]">Finance</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary/80 transition-transform duration-300 active:scale-90 gap-1 w-16">
+<span class="material-symbols-outlined text-[24px]">more_horiz</span>
+<span class="font-label-md text-label-md text-[10px]">More</span>
+</button>
+</div>
+</nav>
+</div>
+</body></html>

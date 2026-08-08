@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RISE Projects Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "tertiary-fixed": "#afecff",
+                            "surface-variant": "#2f3445",
+                            "tertiary-fixed-dim": "#5bd6f5",
+                            "tertiary": "#5bd6f5",
+                            "on-primary-fixed-variant": "#862300",
+                            "on-error-container": "#ffdad6",
+                            "on-secondary-fixed-variant": "#3f465b",
+                            "on-primary": "#5f1600",
+                            "on-secondary-container": "#b0b8d1",
+                            "surface-tint": "#ffb59f",
+                            "secondary-fixed-dim": "#bec6e0",
+                            "surface-container-lowest": "#080e1d",
+                            "on-surface": "#dde2f8",
+                            "error": "#ffb4ab",
+                            "on-tertiary-fixed": "#001f27",
+                            "on-background": "#dde2f8",
+                            "on-secondary": "#283044",
+                            "surface-container-low": "#151b2b",
+                            "secondary": "#bec6e0",
+                            "outline": "#a98a81",
+                            "on-primary-container": "#5d1500",
+                            "surface-container-high": "#242a3a",
+                            "on-tertiary-fixed-variant": "#004e5d",
+                            "on-primary-fixed": "#3a0a00",
+                            "inverse-primary": "#af3000",
+                            "surface-dim": "#0d1322",
+                            "on-surface-variant": "#e2bfb5",
+                            "primary": "#ffb59f",
+                            "surface": "#0d1322",
+                            "background": "#0d1322",
+                            "surface-container-highest": "#2f3445",
+                            "surface-container": "#191f2f",
+                            "on-tertiary": "#003641",
+                            "primary-fixed-dim": "#ffb59f",
+                            "inverse-on-surface": "#2a3040",
+                            "primary-container": "#ff6535",
+                            "secondary-fixed": "#dae2fc",
+                            "outline-variant": "#5a413a",
+                            "secondary-container": "#41495e",
+                            "on-tertiary-container": "#003540",
+                            "error-container": "#93000a",
+                            "surface-bright": "#33394a",
+                            "on-secondary-fixed": "#131b2e",
+                            "tertiary-container": "#00a5c3",
+                            "inverse-surface": "#dde2f8",
+                            "on-error": "#690005",
+                            "primary-fixed": "#ffdbd1"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "margin-mobile": "16px",
+                            "base": "4px",
+                            "gutter": "20px",
+                            "sm": "16px",
+                            "xl": "64px",
+                            "xs": "8px",
+                            "margin-desktop": "48px",
+                            "lg": "40px",
+                            "md": "24px",
+                            "safe": "env(safe-area-inset-bottom)"
+                    },
+                    "fontFamily": {
+                            "title-md": ["Inter"],
+                            "display-lg": ["Inter"],
+                            "headline-lg-mobile": ["Inter"],
+                            "body-sm": ["Inter"],
+                            "body-lg": ["Inter"],
+                            "headline-lg": ["Inter"],
+                            "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                            "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "500"}],
+                            "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                            "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                            "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                            "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                            "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0B1120;
+            background-image: 
+                linear-gradient(to right, rgba(255, 101, 53, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 101, 53, 0.03) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        
+        /* Hide scrollbar for category tabs */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background min-h-screen relative pb-32">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-40 bg-background/90 backdrop-blur-md">
+<div class="flex items-center justify-between px-margin-mobile py-sm w-full border-b border-surface-container-high/30">
+<button class="p-2 -ml-2 rounded-full hover:bg-surface-container-high transition-colors active:scale-95 transition-transform text-primary">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary tracking-tight">Projects</h1>
+<button class="w-8 h-8 rounded-full overflow-hidden border border-surface-container-high active:scale-95 transition-transform hover:ring-2 ring-primary/50">
+<img alt="User profile photo" class="w-full h-full object-cover" data-alt="A small, circular avatar portrait of a modern professional against a deep dark background, fitting the high-end, personal AI aesthetic of the app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD75dOXKJ5DjqKfL6l-mnpgSQy1K3GpxCXWHpE1RIjKbmM-oUQMQ1FElRmyhEKwFkYqMIq00PHgcerRxZ0crI2VR8xRn1-V6ATP45hw4OuYYKMVSzE69ilSdEw8xTZOoCL3DeVC1pmzeCGNSKFiX3Jl9GLg-QEc373NFQGdvoj3pAzLSUhE5Kp2kbGrMqa0W295N-DltsAb7UOB558JH4tTcXH80p-fN2qlcx7GSudPO9vpHKbZVxHtZPPll3_qKlCj0pHRY3ngpQ"/>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="px-margin-mobile pt-md flex flex-col gap-md">
+<!-- Category Tabs -->
+<div class="w-full overflow-x-auto no-scrollbar pb-xs -mx-margin-mobile px-margin-mobile">
+<div class="flex gap-xs w-max">
+<button class="px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-caps text-label-caps">All</button>
+<button class="px-4 py-1.5 rounded-full border border-surface-container-highest text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Work</button>
+<button class="px-4 py-1.5 rounded-full border border-surface-container-highest text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Personal</button>
+<button class="px-4 py-1.5 rounded-full border border-surface-container-highest text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Health</button>
+<button class="px-4 py-1.5 rounded-full border border-surface-container-highest text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Finance</button>
+<button class="px-4 py-1.5 rounded-full border border-surface-container-highest text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Learning</button>
+<button class="px-4 py-1.5 rounded-full border border-surface-container-highest text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Creative</button>
+<button class="px-4 py-1.5 rounded-full border border-surface-container-highest text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Home</button>
+</div>
+</div>
+<!-- Project Grid -->
+<div class="grid grid-cols-2 gap-sm">
+<!-- Card 1: Work -->
+<div class="bg-surface-container-low border border-surface-container-highest rounded-lg overflow-hidden flex flex-col hover:bg-surface-container transition-colors active:scale-95 duration-200">
+<div class="h-1 w-full bg-blue-500"></div>
+<div class="p-3 flex flex-col gap-2 h-full">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-title-md line-clamp-2">Q3 Roadmap</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">more_horiz</span>
+</div>
+<div class="mt-auto flex flex-col gap-2 pt-2">
+<span class="inline-flex w-max px-2 py-0.5 rounded-full bg-surface-variant text-on-surface font-label-caps text-label-caps text-[10px]">12 tasks</span>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary-container h-1.5 rounded-full" style="width: 75%"></div>
+</div>
+<p class="font-body-sm text-[10px] text-on-surface-variant leading-none">Updated 2h ago</p>
+</div>
+</div>
+</div>
+<!-- Card 2: Home -->
+<div class="bg-surface-container-low border border-surface-container-highest rounded-lg overflow-hidden flex flex-col hover:bg-surface-container transition-colors active:scale-95 duration-200">
+<div class="h-1 w-full bg-green-500"></div>
+<div class="p-3 flex flex-col gap-2 h-full">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-title-md line-clamp-2">Home Reno</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">more_horiz</span>
+</div>
+<div class="mt-auto flex flex-col gap-2 pt-2">
+<span class="inline-flex w-max px-2 py-0.5 rounded-full bg-surface-variant text-on-surface font-label-caps text-label-caps text-[10px]">34 tasks</span>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary-container h-1.5 rounded-full" style="width: 40%"></div>
+</div>
+<p class="font-body-sm text-[10px] text-on-surface-variant leading-none">Updated 1d ago</p>
+</div>
+</div>
+</div>
+<!-- Card 3: Personal -->
+<div class="bg-surface-container-low border border-surface-container-highest rounded-lg overflow-hidden flex flex-col hover:bg-surface-container transition-colors active:scale-95 duration-200">
+<div class="h-1 w-full bg-purple-500"></div>
+<div class="p-3 flex flex-col gap-2 h-full">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-title-md line-clamp-2">Daily Journal</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">more_horiz</span>
+</div>
+<div class="mt-auto flex flex-col gap-2 pt-2">
+<span class="inline-flex w-max px-2 py-0.5 rounded-full bg-surface-variant text-on-surface font-label-caps text-label-caps text-[10px]">1 task</span>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary-container h-1.5 rounded-full" style="width: 100%"></div>
+</div>
+<p class="font-body-sm text-[10px] text-on-surface-variant leading-none">Updated just now</p>
+</div>
+</div>
+</div>
+<!-- Card 4: Creative -->
+<div class="bg-surface-container-low border border-surface-container-highest rounded-lg overflow-hidden flex flex-col hover:bg-surface-container transition-colors active:scale-95 duration-200">
+<div class="h-1 w-full bg-pink-500"></div>
+<div class="p-3 flex flex-col gap-2 h-full">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-title-md line-clamp-2">Portfolio</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">more_horiz</span>
+</div>
+<div class="mt-auto flex flex-col gap-2 pt-2">
+<span class="inline-flex w-max px-2 py-0.5 rounded-full bg-surface-variant text-on-surface font-label-caps text-label-caps text-[10px]">8 tasks</span>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary-container h-1.5 rounded-full" style="width: 20%"></div>
+</div>
+<p class="font-body-sm text-[10px] text-on-surface-variant leading-none">Updated 3d ago</p>
+</div>
+</div>
+</div>
+<!-- Card 5: Health -->
+<div class="bg-surface-container-low border border-surface-container-highest rounded-lg overflow-hidden flex flex-col hover:bg-surface-container transition-colors active:scale-95 duration-200">
+<div class="h-1 w-full bg-red-500"></div>
+<div class="p-3 flex flex-col gap-2 h-full">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-title-md line-clamp-2">Fitness Plan</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">more_horiz</span>
+</div>
+<div class="mt-auto flex flex-col gap-2 pt-2">
+<span class="inline-flex w-max px-2 py-0.5 rounded-full bg-surface-variant text-on-surface font-label-caps text-label-caps text-[10px]">5 tasks</span>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary-container h-1.5 rounded-full" style="width: 60%"></div>
+</div>
+<p class="font-body-sm text-[10px] text-on-surface-variant leading-none">Updated 5h ago</p>
+</div>
+</div>
+</div>
+<!-- Card 6: Personal -->
+<div class="bg-surface-container-low border border-surface-container-highest rounded-lg overflow-hidden flex flex-col hover:bg-surface-container transition-colors active:scale-95 duration-200">
+<div class="h-1 w-full bg-yellow-500"></div>
+<div class="p-3 flex flex-col gap-2 h-full">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-title-md line-clamp-2">Travel Prep</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">more_horiz</span>
+</div>
+<div class="mt-auto flex flex-col gap-2 pt-2">
+<span class="inline-flex w-max px-2 py-0.5 rounded-full bg-surface-variant text-on-surface font-label-caps text-label-caps text-[10px]">21 tasks</span>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary-container h-1.5 rounded-full" style="width: 90%"></div>
+</div>
+<p class="font-body-sm text-[10px] text-on-surface-variant leading-none">Updated 1w ago</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB -->
+<button class="fixed bottom-[88px] right-margin-mobile w-14 h-14 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(255,101,53,0.3)] z-40 active:scale-90 transition-transform duration-200">
+<span class="material-symbols-outlined text-3xl font-medium">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-xs pb-safe pt-base bg-surface/70 dark:bg-surface/70 backdrop-blur-xl rounded-t-xl border-t border-white/10 shadow-lg">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors active:scale-90 transition-all duration-200 p-2 min-w-[64px]">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-caps text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors active:scale-90 transition-all duration-200 p-2 min-w-[64px]">
+<span class="material-symbols-outlined mb-1">checklist</span>
+<span class="font-label-caps text-[10px]">Tasks</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-8 after:h-1 after:bg-primary after:rounded-full hover:text-primary transition-colors active:scale-90 transition-all duration-200 p-2 min-w-[64px]">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">folder_open</span>
+<span class="font-label-caps text-[10px]">Projects</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors active:scale-90 transition-all duration-200 p-2 min-w-[64px]">
+<span class="material-symbols-outlined mb-1">payments</span>
+<span class="font-label-caps text-[10px]">Finance</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors active:scale-90 transition-all duration-200 p-2 min-w-[64px]">
+<span class="material-symbols-outlined mb-1">settings</span>
+<span class="font-label-caps text-[10px]">Settings</span>
+</button>
+</nav>
+</body></html>

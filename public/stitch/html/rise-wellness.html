@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RISE Wellness Habit Tracker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#d4e4fa",
+                        "on-surface-variant": "#e2bfb5",
+                        "error": "#ffb4ab",
+                        "on-primary": "#5f1600",
+                        "primary-container": "#ff6535",
+                        "secondary": "#bec6e0",
+                        "surface-container-low": "#0d1c2d",
+                        "on-tertiary-fixed-variant": "#004e5d",
+                        "on-primary-fixed": "#3a0a00",
+                        "surface-tint": "#ffb59f",
+                        "on-surface": "#d4e4fa",
+                        "secondary-container": "#41495e",
+                        "surface-container-high": "#1c2b3c",
+                        "surface-container-lowest": "#010f1f",
+                        "on-secondary-container": "#b0b8d1",
+                        "surface-container-highest": "#273647",
+                        "tertiary-fixed": "#afecff",
+                        "on-secondary": "#283044",
+                        "on-secondary-fixed-variant": "#3f465b",
+                        "on-secondary-fixed": "#131b2e",
+                        "surface-variant": "#273647",
+                        "on-primary-fixed-variant": "#862300",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "tertiary": "#5bd6f5",
+                        "primary-fixed": "#ffdbd1",
+                        "primary": "#ffb59f",
+                        "secondary-fixed": "#dae2fc",
+                        "primary-fixed-dim": "#ffb59f",
+                        "inverse-surface": "#d4e4fa",
+                        "on-tertiary-container": "#003540",
+                        "on-error-container": "#ffdad6",
+                        "on-error": "#690005",
+                        "inverse-primary": "#af3000",
+                        "surface-dim": "#051424",
+                        "tertiary-fixed-dim": "#5bd6f5",
+                        "on-primary-container": "#5d1500",
+                        "outline-variant": "#5a413a",
+                        "surface-bright": "#2c3a4c",
+                        "surface": "#051424",
+                        "on-tertiary": "#003641",
+                        "outline": "#a98a81",
+                        "tertiary-container": "#00a5c3",
+                        "inverse-on-surface": "#233143",
+                        "on-tertiary-fixed": "#001f27",
+                        "surface-container": "#122131",
+                        "background": "#051424",
+                        "brand-bg": "#0B1120",
+                        "brand-surface": "#131B2E",
+                        "brand-border": "#1E293B",
+                        "brand-accent": "#FF6535"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "2xl": "1rem"
+                    },
+                    "spacing": {
+                        "xs": "8px",
+                        "md": "16px",
+                        "gutter": "16px",
+                        "xl": "32px",
+                        "sm": "12px",
+                        "lg": "24px",
+                        "container-margin": "24px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "mono-label": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "title-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "mono-label": ["13px", { "lineHeight": "18px", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "title-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    },
+                    backgroundImage: {
+                        'grid-pattern': "linear-gradient(to right, rgba(255, 101, 53, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 101, 53, 0.05) 1px, transparent 1px)"
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0B1120;
+            background-size: 20px 20px;
+        }
+        .glass-panel {
+            background: rgba(19, 27, 46, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-brand-bg bg-grid-pattern text-on-background min-h-screen font-body-lg overflow-x-hidden flex flex-col pb-24 md:pb-0">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-gutter py-md w-full sticky top-0 z-50 glass-panel border-b border-brand-border md:hidden">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary cursor-pointer hover:opacity-80 transition-opacity">grid_view</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold tracking-tighter text-primary">RISE</h1>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:opacity-80 transition-opacity">calendar_today</span>
+</header>
+<!-- Desktop Sidebar/Nav (Hidden on Mobile) -->
+<aside class="hidden md:flex flex-col w-64 fixed left-0 top-0 h-screen glass-panel border-r border-brand-border py-lg px-md z-40">
+<h1 class="font-headline-lg text-headline-lg font-bold tracking-tighter text-primary mb-xl px-sm">RISE</h1>
+<nav class="flex-1 flex flex-col gap-sm">
+<a class="flex items-center gap-sm px-sm py-sm rounded-lg text-on-surface-variant/60 hover:text-primary hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">home_app_logo</span>
+<span class="font-body-lg text-body-lg">Dashboard</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-sm rounded-lg text-on-surface-variant/60 hover:text-primary hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">analytics</span>
+<span class="font-body-lg text-body-lg">Analytics</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-sm rounded-lg text-primary bg-surface-container relative group" href="#">
+<div class="absolute left-0 w-1 h-full bg-primary-container rounded-r-full shadow-[0_0_10px_rgba(255,101,53,0.4)]"></div>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<span class="font-body-lg text-body-lg font-semibold">Wellness</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-sm rounded-lg text-on-surface-variant/60 hover:text-primary hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">person</span>
+<span class="font-body-lg text-body-lg">Profile</span>
+</a>
+</nav>
+<button class="mt-auto flex items-center justify-center gap-sm w-full py-sm bg-primary-container text-white rounded-lg hover:shadow-[0_0_15px_rgba(255,101,53,0.3)] transition-all">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="font-label-caps text-label-caps">Log Activity</span>
+</button>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-[1200px] mx-auto md:ml-64 p-gutter md:p-container-margin pt-lg">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-xl gap-md">
+<div>
+<div class="flex items-center gap-sm mb-xs">
+<h2 class="font-display-lg text-display-lg text-on-surface">Wellness</h2>
+<div class="bg-surface-container px-sm py-1 rounded-full border border-brand-border mt-2">
+<span class="font-mono-label text-mono-label text-primary">OCT 24</span>
+</div>
+</div>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Daily Habit Tracker</p>
+</div>
+<!-- Progress Section -->
+<div class="w-full md:w-64 bg-brand-surface p-sm rounded-xl border border-brand-border">
+<div class="flex justify-between items-center mb-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Daily Progress</span>
+<span class="font-mono-label text-mono-label text-primary">3/6</span>
+</div>
+<div class="w-full bg-surface-container-low h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full w-1/2 shadow-[0_0_10px_rgba(255,101,53,0.4)]"></div>
+</div>
+</div>
+</div>
+<!-- Streak Banner -->
+<div class="bg-primary-container rounded-2xl p-md mb-xl flex items-center justify-between shadow-[0_0_20px_rgba(255,101,53,0.15)] relative overflow-hidden group cursor-pointer transition-transform hover:scale-[1.01]">
+<div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center gap-md relative z-10">
+<div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md">
+<span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<div>
+<h3 class="font-title-md text-title-md text-white">Current streak: 14 days</h3>
+<p class="font-body-sm text-body-sm text-white/80">You're on fire! Keep it up.</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-white/50 relative z-10 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+<!-- Habit List (Bento Grid Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
+<!-- Habit 1: Done -->
+<div class="bg-brand-surface rounded-2xl p-md border border-brand-border hover:border-primary/50 transition-colors cursor-pointer group flex flex-col justify-between min-h-[140px]">
+<div class="flex justify-between items-start mb-sm">
+<div class="bg-surface-container px-2 py-1 rounded text-xs font-mono-label text-primary">Morning</div>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface mb-1">Morning Run</h4>
+<div class="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">local_fire_department</span>
+<span>14 Day Streak</span>
+</div>
+</div>
+</div>
+<!-- Habit 2: Done -->
+<div class="bg-brand-surface rounded-2xl p-md border border-brand-border hover:border-primary/50 transition-colors cursor-pointer group flex flex-col justify-between min-h-[140px]">
+<div class="flex justify-between items-start mb-sm">
+<div class="bg-surface-container px-2 py-1 rounded text-xs font-mono-label text-primary">Morning</div>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface mb-1">Meditate</h4>
+<div class="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">local_fire_department</span>
+<span>14 Day Streak</span>
+</div>
+</div>
+</div>
+<!-- Habit 4: Done -->
+<div class="bg-brand-surface rounded-2xl p-md border border-brand-border hover:border-primary/50 transition-colors cursor-pointer group flex flex-col justify-between min-h-[140px]">
+<div class="flex justify-between items-start mb-sm">
+<div class="bg-surface-container px-2 py-1 rounded text-xs font-mono-label text-on-surface-variant">All Day</div>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface mb-1">Drink 2L Water</h4>
+<div class="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">local_fire_department</span>
+<span>14 Day Streak</span>
+</div>
+</div>
+</div>
+<!-- Habit 6: Pending -->
+<div class="bg-brand-surface rounded-2xl p-md border border-brand-border hover:border-primary/50 transition-colors cursor-pointer group flex flex-col justify-between min-h-[140px] opacity-80 hover:opacity-100">
+<div class="flex justify-between items-start mb-sm">
+<div class="bg-surface-container px-2 py-1 rounded text-xs font-mono-label text-on-surface-variant">Afternoon</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">radio_button_unchecked</span>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface mb-1">Workout</h4>
+<div class="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">local_fire_department</span>
+<span>3 Day Streak</span>
+</div>
+</div>
+</div>
+<!-- Habit 3: Pending -->
+<div class="bg-brand-surface rounded-2xl p-md border border-brand-border hover:border-primary/50 transition-colors cursor-pointer group flex flex-col justify-between min-h-[140px] opacity-80 hover:opacity-100">
+<div class="flex justify-between items-start mb-sm">
+<div class="bg-surface-container px-2 py-1 rounded text-xs font-mono-label text-on-surface-variant">Evening</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">radio_button_unchecked</span>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface mb-1">Read 30min</h4>
+<div class="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">local_fire_department</span>
+<span>13 Day Streak</span>
+</div>
+</div>
+</div>
+<!-- Habit 5: Pending -->
+<div class="bg-brand-surface rounded-2xl p-md border border-brand-border hover:border-primary/50 transition-colors cursor-pointer group flex flex-col justify-between min-h-[140px] opacity-80 hover:opacity-100">
+<div class="flex justify-between items-start mb-sm">
+<div class="bg-surface-container px-2 py-1 rounded text-xs font-mono-label text-on-surface-variant">Evening</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">radio_button_unchecked</span>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface mb-1">Journal</h4>
+<div class="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">local_fire_department</span>
+<span>12 Day Streak</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-xl pb-8 pt-4 bg-surface-container-low/70 dark:bg-surface-container-low/70 backdrop-blur-xl border-t border-outline-variant/20 shadow-[0_-4px_20px_rgba(255,101,53,0.1)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary/80 transition-colors group" href="#">
+<span class="material-symbols-outlined group-active:scale-90 duration-200">home_app_logo</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary/80 transition-colors group" href="#">
+<span class="material-symbols-outlined group-active:scale-90 duration-200">analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary/80 transition-colors group relative -top-3" href="#">
+<div class="bg-primary-container p-2 rounded-full shadow-[0_0_15px_rgba(255,101,53,0.3)]">
+<span class="material-symbols-outlined text-white">add_circle</span>
+</div>
+</a>
+<a class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-6 after:h-1 after:bg-primary-container after:rounded-full after:shadow-[0_0_10px_rgba(255,101,53,0.4)] group active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary/80 transition-colors group" href="#">
+<span class="material-symbols-outlined group-active:scale-90 duration-200">person</span>
+</a>
+</nav>
+</body></html>

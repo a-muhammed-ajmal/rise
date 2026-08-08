@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Log Financial Transaction</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .graph-paper-bg {
+            background-image: linear-gradient(to right, rgba(255, 101, 53, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 101, 53, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        /* Custom scrollbar for horizontal chips */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline": "#a98a81",
+                    "surface-container-low": "#151b2b",
+                    "surface-container-highest": "#2f3445",
+                    "primary-fixed": "#ffdbd1",
+                    "tertiary-fixed": "#afecff",
+                    "tertiary": "#5bd6f5",
+                    "on-tertiary-fixed": "#001f27",
+                    "surface-dim": "#0d1322",
+                    "on-secondary": "#283044",
+                    "on-error": "#690005",
+                    "on-primary-fixed": "#3a0a00",
+                    "surface-variant": "#2f3445",
+                    "tertiary-container": "#00a5c3",
+                    "inverse-on-surface": "#2a3040",
+                    "on-tertiary-fixed-variant": "#004e5d",
+                    "inverse-primary": "#af3000",
+                    "surface-container-lowest": "#080e1d",
+                    "error-container": "#93000a",
+                    "on-secondary-fixed-variant": "#3f465b",
+                    "on-background": "#dde2f8",
+                    "outline-variant": "#5a413a",
+                    "tertiary-fixed-dim": "#5bd6f5",
+                    "on-error-container": "#ffdad6",
+                    "surface-container-high": "#242a3a",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "on-secondary-container": "#b0b8d1",
+                    "secondary-fixed": "#dae2fc",
+                    "surface-tint": "#ffb59f",
+                    "surface": "#0d1322",
+                    "on-surface": "#dde2f8",
+                    "on-primary-fixed-variant": "#862300",
+                    "on-primary-container": "#5d1500",
+                    "surface-bright": "#33394a",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-tertiary-container": "#003540",
+                    "primary": "#ffb59f",
+                    "secondary-container": "#41495e",
+                    "on-tertiary": "#003641",
+                    "inverse-surface": "#dde2f8",
+                    "secondary": "#bec6e0",
+                    "surface-container": "#191f2f",
+                    "error": "#ffb4ab",
+                    "on-surface-variant": "#e2bfb5",
+                    "primary-fixed-dim": "#ffb59f",
+                    "primary-container": "#ff6535",
+                    "on-primary": "#5f1600",
+                    "background": "#0d1322"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xs": "8px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "sm": "12px",
+                    "xl": "32px",
+                    "base": "4px",
+                    "gutter": "12px",
+                    "edge-margin": "20px"
+            },
+            "fontFamily": {
+                    "display-lg": [
+                            "Inter"
+                    ],
+                    "label-caps": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "headline-md": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "title-sm": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "display-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "title-sm": [
+                            "18px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "600"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen relative overflow-hidden font-body-sm">
+<!-- Main Background Canvas -->
+<div class="absolute inset-0 bg-[#0B1120] graph-paper-bg z-0"></div>
+<!-- Dummy content to show background -->
+<div class="relative z-10 p-edge-margin flex flex-col gap-lg opacity-40">
+<div class="h-32 bg-surface-container-low rounded-xl border border-white/10 p-md">
+<div class="h-6 w-1/3 bg-surface-variant rounded mb-xs"></div>
+<div class="h-10 w-full bg-surface-variant rounded"></div>
+</div>
+<div class="h-48 bg-surface-container-low rounded-xl border border-white/10"></div>
+</div>
+<!-- Overlay -->
+<div class="absolute inset-0 bg-[#0B1120]/60 backdrop-blur-sm z-40 transition-opacity"></div>
+<!-- Bottom Sheet Modal -->
+<div class="absolute bottom-0 w-full bg-[#131B2E] rounded-t-[24px] shadow-[0_-8px_32px_rgba(0,0,0,0.5)] z-50 border-t border-white/10 pb-safe-bottom flex flex-col animate-[slideUp_0.3s_ease-out]">
+<!-- Drag Handle -->
+<div class="w-full flex justify-center py-xs">
+<div class="w-12 h-1 bg-white/20 rounded-full"></div>
+</div>
+<div class="px-edge-margin pb-xl pt-sm flex flex-col gap-lg h-full overflow-y-auto">
+<!-- Header Toggle -->
+<div class="flex bg-surface-container-highest p-base rounded-lg shadow-inner">
+<button class="flex-1 py-sm rounded-md bg-error-container text-on-error-container font-title-sm text-title-sm shadow-sm transition-colors border border-error/20">
+                    Expense
+                </button>
+<button class="flex-1 py-sm rounded-md text-on-surface-variant font-title-sm text-title-sm hover:text-on-surface transition-colors">
+                    Income
+                </button>
+</div>
+<!-- Amount Input -->
+<div class="flex flex-col items-center justify-center py-lg">
+<div class="flex items-baseline gap-xs text-error">
+<span class="font-headline-md text-headline-md opacity-80">AED</span>
+<input autofocus="" class="bg-transparent border-none p-0 m-0 text-center font-display-lg text-display-lg-mobile md:text-display-lg text-on-background focus:ring-0 w-32 outline-none caret-primary-container" inputmode="decimal" type="text" value="0.00"/>
+</div>
+<div class="w-3/4 h-[1px] bg-white/10 mt-xs rounded-full"></div>
+</div>
+<!-- Category Chips -->
+<div class="flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">CATEGORY</span>
+<div class="flex gap-sm overflow-x-auto hide-scrollbar pb-xs -mx-edge-margin px-edge-margin">
+<!-- Selected Chip -->
+<button class="flex items-center gap-base px-md py-xs rounded-full bg-primary-container/10 border border-primary-container/30 text-primary-fixed-dim whitespace-nowrap transition-all shadow-[0_0_12px_rgba(255,101,53,0.1)]">
+<span class="material-symbols-outlined text-[18px]">restaurant</span>
+<span class="font-body-md text-body-md font-semibold">Food</span>
+</button>
+<!-- Unselected Chips -->
+<button class="flex items-center gap-base px-md py-xs rounded-full bg-surface-container-highest border border-white/5 text-on-surface-variant hover:text-on-surface whitespace-nowrap transition-all">
+<span class="material-symbols-outlined text-[18px]">directions_car</span>
+<span class="font-body-md text-body-md">Transport</span>
+</button>
+<button class="flex items-center gap-base px-md py-xs rounded-full bg-surface-container-highest border border-white/5 text-on-surface-variant hover:text-on-surface whitespace-nowrap transition-all">
+<span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+<span class="font-body-md text-body-md">Shopping</span>
+</button>
+<button class="flex items-center gap-base px-md py-xs rounded-full bg-surface-container-highest border border-white/5 text-on-surface-variant hover:text-on-surface whitespace-nowrap transition-all">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+<span class="font-body-md text-body-md">Bills</span>
+</button>
+<button class="flex items-center gap-base px-md py-xs rounded-full bg-surface-container-highest border border-white/5 text-on-surface-variant hover:text-on-surface whitespace-nowrap transition-all">
+<span class="material-symbols-outlined text-[18px]">health_and_safety</span>
+<span class="font-body-md text-body-md">Health</span>
+</button>
+</div>
+</div>
+<!-- Date & Details Row -->
+<div class="flex gap-sm">
+<!-- Date Chip -->
+<button class="flex items-center gap-xs px-md py-sm rounded-lg bg-surface-container-highest border border-white/5 text-on-surface hover:bg-surface-variant transition-colors flex-shrink-0">
+<span class="material-symbols-outlined text-[18px] opacity-70">calendar_today</span>
+<span class="font-body-md text-body-md">Today, 6 Aug</span>
+</button>
+<!-- Description Field -->
+<div class="flex-1 bg-surface-container-highest rounded-lg border border-white/5 px-md flex items-center focus-within:border-primary-container/50 transition-colors">
+<span class="material-symbols-outlined text-[18px] opacity-50 mr-xs text-on-surface-variant">edit_note</span>
+<input class="bg-transparent border-none p-0 w-full text-on-surface font-body-md text-body-md focus:ring-0 placeholder:text-on-surface-variant/50" placeholder="Add a note..." type="text"/>
+</div>
+</div>
+<!-- Payment Method -->
+<div class="flex flex-col gap-xs mt-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">PAYMENT METHOD</span>
+<div class="flex gap-sm overflow-x-auto hide-scrollbar pb-xs">
+<button class="flex items-center gap-base px-md py-sm rounded-lg bg-surface-container-highest border border-white/5 text-on-surface-variant hover:text-on-surface whitespace-nowrap transition-all">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+<span class="font-body-md text-body-md">Cash</span>
+</button>
+<!-- Selected Method -->
+<button class="flex items-center gap-base px-md py-sm rounded-lg bg-[#1a233a] border border-primary-container/40 text-on-background whitespace-nowrap transition-all shadow-[inset_0_0_8px_rgba(255,101,53,0.05)]">
+<span class="material-symbols-outlined text-[18px] text-primary-fixed-dim">credit_card</span>
+<span class="font-body-md text-body-md">Card ending 4242</span>
+</button>
+</div>
+</div>
+<!-- Save Button -->
+<button class="w-full mt-sm py-md rounded-xl bg-gradient-to-r from-[#e53935] to-[#ff6535] text-white font-title-sm text-title-sm shadow-[0_4px_16px_rgba(255,101,53,0.3)] hover:opacity-90 active:scale-[0.98] transition-all">
+                Save Expense
+            </button>
+<!-- Spacer for Bottom Nav (since it's a fixed shell, we ensure modal content clears it if needed, though usually modals sit above) -->
+<div class="h-24"></div>
+</div>
+</div>
+<!-- BottomNavBar (Hidden on md screens as per semantic mapping rule, but requested in prompt so ensuring it exists as structural anchor) -->
+<nav class="bg-surface-container/85 dark:bg-surface-container/85 backdrop-blur-2xl font-label-caps text-label-caps font-display-lg text-display-lg text-primary fixed bottom-0 w-full rounded-t-xl z-[45] border-t border-white/5 shadow-[0_-4px_20px_rgba(0,0,0,0.4)] flex justify-around items-center h-20 px-4 pb-safe-bottom md:hidden pointer-events-none opacity-50">
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary opacity-60 hover:text-primary/80 transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">target</span>
+<span>Focus</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary opacity-60 hover:text-primary/80 transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span>Insights</span>
+</a>
+<!-- Assuming Home/Systems intent is active contextually behind modal -->
+<a class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-8 after:h-1 after:bg-primary after:rounded-full after:shadow-[0_0_8px_rgba(255,101,53,0.4)] hover:text-primary/80 transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<span>Ask</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary opacity-60 hover:text-primary/80 transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">history_edu</span>
+<span>Memory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary opacity-60 hover:text-primary/80 transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings_input_component</span>
+<span>Systems</span>
+</a>
+</nav>
+<style>
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+    </style>
+</body></html>

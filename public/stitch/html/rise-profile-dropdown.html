@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>User Profile Expanded - RISE AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed": "#131b2e",
+                      "tertiary-container": "#8c97ad",
+                      "on-tertiary": "#263143",
+                      "surface-container": "#191f2f",
+                      "surface-container-lowest": "#080e1d",
+                      "on-tertiary-fixed": "#111c2d",
+                      "surface-bright": "#33394a",
+                      "background": "#0d1322",
+                      "secondary": "#bec6e0",
+                      "on-primary-container": "#5d1500",
+                      "secondary-fixed": "#dae2fc",
+                      "inverse-surface": "#dde2f8",
+                      "inverse-primary": "#af3000",
+                      "surface-tint": "#ffb59f",
+                      "surface-variant": "#2f3445",
+                      "on-secondary": "#283044",
+                      "on-primary": "#5f1600",
+                      "on-surface": "#dde2f8",
+                      "on-primary-fixed-variant": "#862300",
+                      "on-error": "#690005",
+                      "secondary-container": "#41495e",
+                      "outline": "#a98a81",
+                      "tertiary": "#bcc7de",
+                      "primary-container": "#ff6535",
+                      "primary": "#ffb59f",
+                      "primary-fixed": "#ffdbd1",
+                      "tertiary-fixed-dim": "#bcc7de",
+                      "on-background": "#dde2f8",
+                      "surface-dim": "#0d1322",
+                      "tertiary-fixed": "#d8e3fb",
+                      "surface": "#0d1322",
+                      "outline-variant": "#5a413a",
+                      "error-container": "#93000a",
+                      "surface-container-low": "#151b2b",
+                      "on-surface-variant": "#e2bfb5",
+                      "on-error-container": "#ffdad6",
+                      "primary-fixed-dim": "#ffb59f",
+                      "surface-container-highest": "#2f3445",
+                      "on-tertiary-container": "#242f42",
+                      "surface-container-high": "#242a3a",
+                      "secondary-fixed-dim": "#bec6e0",
+                      "on-secondary-container": "#b0b8d1",
+                      "on-secondary-fixed-variant": "#3f465b",
+                      "on-tertiary-fixed-variant": "#3c475a",
+                      "inverse-on-surface": "#2a3040",
+                      "error": "#ffb4ab",
+                      "on-primary-fixed": "#3a0a00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "margin-desktop": "40px",
+                      "container-max-width": "1200px",
+                      "unit": "8px",
+                      "margin-mobile": "20px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "title-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "title-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #0B1120;
+            background-image: linear-gradient(rgba(255, 101, 53, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 101, 53, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .glass-panel {
+            background-color: rgba(19, 27, 46, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface min-h-screen font-body-md text-body-md overflow-x-hidden pt-16 pb-24">
+<!-- TopAppBar -->
+<header class="bg-surface/70 dark:bg-surface/70 backdrop-blur-xl border-b border-white/5 shadow-sm fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 text-primary dark:text-primary font-headline-lg-mobile text-headline-lg-mobile">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined hover:opacity-80 transition-opacity active:scale-95 transition-transform cursor-pointer" style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile tracking-tighter text-primary dark:text-primary">RISE</span>
+</div>
+<!-- Avatar Trigger -->
+<div class="relative">
+<button class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary ring-2 ring-primary/30 ring-offset-2 ring-offset-background transition-all hover:opacity-80 active:scale-95 z-50 relative">
+<span class="font-title-md text-title-md text-primary">MA</span>
+</button>
+<!-- Dropdown Menu -->
+<div class="absolute right-0 mt-3 w-64 rounded-xl bg-surface-container shadow-[0px_8px_24px_rgba(0,0,0,0.6)] border border-white/5 border-t-primary z-40 overflow-hidden transform origin-top-right transition-all">
+<!-- User Info -->
+<div class="p-4 flex flex-col items-center border-b border-white/10 bg-surface-container/50">
+<div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-3">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary">MA</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface">Muhammed Ajmal</h3>
+<p class="font-label-sm text-label-sm text-secondary mt-1">writeajmal@gmail.com</p>
+</div>
+<!-- Menu Items -->
+<div class="py-2">
+<a class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined text-secondary">settings</span>
+<span class="font-body-md text-body-md text-on-surface">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined text-secondary">notifications</span>
+<span class="font-body-md text-body-md text-on-surface">Notifications</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined text-secondary">dark_mode</span>
+<span class="font-body-md text-body-md text-on-surface">Appearance</span>
+</a>
+</div>
+<!-- Sign Out -->
+<div class="border-t border-white/10 py-2">
+<a class="flex items-center gap-3 px-4 py-3 hover:bg-error/10 transition-colors group" href="#">
+<span class="material-symbols-outlined text-error group-hover:text-error/80">logout</span>
+<span class="font-body-md text-body-md text-error group-hover:text-error/80">Sign Out</span>
+</a>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas (Empty for context) -->
+<main class="px-margin-mobile pt-8 flex flex-col gap-6 items-center justify-center opacity-50">
+<div class="w-full max-w-sm p-6 rounded-xl bg-surface-container border border-white/5 shadow-[0px_8px_24px_rgba(0,0,0,0.4)]">
+<h2 class="font-title-md text-title-md text-on-surface mb-2">Welcome Back</h2>
+<p class="text-secondary font-body-md text-body-md mb-4">Your AI operating system is ready.</p>
+<div class="h-32 rounded-lg bg-surface-container-high/50 border border-white/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-secondary/30">monitoring</span>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container/70 dark:bg-surface-container/70 backdrop-blur-xl fixed bottom-0 w-full z-50 rounded-t-xl border-t border-white/10 shadow-[0px_-8px_24px_rgba(0,0,0,0.4)] flex justify-around items-center h-20 px-gutter pb-4 md:hidden">
+<button class="flex flex-col items-center justify-center text-secondary hover:text-primary/80 transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined">home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:text-primary/80 transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:text-primary/80 transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary hover:text-primary/80 transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="relative flex flex-col items-center justify-center text-on-surface after:content-[''] after:absolute after:-bottom-1 after:w-6 after:h-[2px] after:bg-primary after:rounded-full after:shadow-[0_0_12px_rgba(255,101,53,0.3)] hover:text-primary/80 transition-colors active:scale-90 duration-200 text-primary dark:text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+</button>
+</nav>
+</body></html>

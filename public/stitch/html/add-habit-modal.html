@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RISE - Add Habit</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#0d1322",
+                        "on-primary": "#5f1600",
+                        "on-background": "#dde2f8",
+                        "on-tertiary": "#263143",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "surface-container-high": "#242a3a",
+                        "secondary": "#bec6e0",
+                        "primary": "#ffb59f",
+                        "outline-variant": "#5a413a",
+                        "primary-container": "#ff6535",
+                        "surface-variant": "#2f3445",
+                        "on-primary-container": "#5d1500",
+                        "tertiary": "#bcc7de",
+                        "on-primary-fixed": "#3a0a00",
+                        "on-secondary-fixed": "#131b2e",
+                        "on-tertiary-fixed": "#111c2d",
+                        "inverse-surface": "#dde2f8",
+                        "surface-container-lowest": "#080e1d",
+                        "on-secondary-fixed-variant": "#3f465b",
+                        "on-error-container": "#ffdad6",
+                        "secondary-container": "#41495e",
+                        "tertiary-fixed": "#d8e3fb",
+                        "on-surface": "#dde2f8",
+                        "error": "#ffb4ab",
+                        "inverse-primary": "#af3000",
+                        "on-error": "#690005",
+                        "surface": "#0d1322",
+                        "surface-container": "#191f2f",
+                        "on-tertiary-fixed-variant": "#3c475a",
+                        "surface-container-highest": "#2f3445",
+                        "primary-fixed-dim": "#ffb59f",
+                        "on-secondary-container": "#b0b8d1",
+                        "outline": "#a98a81",
+                        "inverse-on-surface": "#2a3040",
+                        "surface-tint": "#ffb59f",
+                        "on-primary-fixed-variant": "#862300",
+                        "secondary-fixed": "#dae2fc",
+                        "on-surface-variant": "#e2bfb5",
+                        "tertiary-fixed-dim": "#bcc7de",
+                        "tertiary-container": "#8c97ad",
+                        "on-tertiary-container": "#242f42",
+                        "error-container": "#93000a",
+                        "surface-container-low": "#151b2b",
+                        "surface-dim": "#0d1322",
+                        "on-secondary": "#283044",
+                        "surface-bright": "#33394a",
+                        "primary-fixed": "#ffdbd1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "12px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "margin-mobile": "20px",
+                        "base": "4px",
+                        "xs": "8px",
+                        "xl": "32px",
+                        "gutter-mobile": "12px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "mono-metric": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "mono-metric": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-xl": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .grid-bg {
+            background-image: 
+                linear-gradient(to right, rgba(255, 101, 53, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 101, 53, 0.04) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        
+        .modal-enter {
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        
+        .bg-card { background-color: #131B2E; }
+        .border-card { border-color: #1E293B; }
+        .bg-modal { background-color: #1E293B; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface antialiased min-h-screen relative overflow-hidden font-body-md">
+<!-- Background App State (Blurred) -->
+<div class="absolute inset-0 grid-bg blur-sm opacity-50 z-0"></div>
+<!-- TopAppBar (Simulated Background) -->
+<header class="fixed top-0 w-full backdrop-blur-xl bg-background/80 border-b border-surface-variant/10 flex justify-between items-center px-margin-mobile h-16 z-0 blur-sm opacity-50">
+<button class="text-primary hover:opacity-80 transition-opacity active:scale-95 duration-200">
+<span class="material-symbols-outlined">grid_view</span>
+</button>
+<h1 class="font-headline-lg text-headline-lg font-bold tracking-tighter text-primary">RISE</h1>
+<button class="w-8 h-8 rounded-full overflow-hidden border border-surface-variant/20 hover:opacity-80 transition-opacity active:scale-95 duration-200">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="A highly detailed close up portrait of a young professional in a futuristic modern dark-themed smart city environment. The lighting is cinematic with subtle orange rim light reflecting off the skin. The style is hyper-realistic and high-tech." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQIGTHlOTmIA-pLfbeZKQOJh0ea5OIH1NYeN62M1Y5Gz4Xx9lN7Qu6-QDiJEpWjKHLF7jmyNbOWOwb2nCgzlysHWUaHO-PVpI1iW7dEuedeRMHCBWRrSpADZCcyV8gFPpgxFNmDrrDndjIBWRzTSGszOaUShDGa9yMFpl-nTvneE-U0BAt9lA7BTcZAOfZhVAYio3IiNqfob9jWXM5Mk1yvzvfa9jsZW1qF6gc_LYpk8IXlIqjq0_HhNBwDZPlPQldXBcYchTjTw"/>
+</button>
+</header>
+<!-- Overlay -->
+<div class="fixed inset-0 bg-background/60 backdrop-blur-sm z-40"></div>
+<!-- Modal Bottom Sheet -->
+<div class="fixed bottom-0 left-0 right-0 z-50 bg-modal rounded-t-[24px] shadow-[0_-10px_40px_rgba(255,101,53,0.1)] border-t border-white/10 modal-enter flex flex-col max-h-[795px]">
+<!-- Drag Handle -->
+<div class="w-full flex justify-center pt-md pb-sm">
+<div class="w-12 h-1 bg-surface-variant rounded-full"></div>
+</div>
+<!-- Header -->
+<div class="flex justify-between items-center px-margin-mobile pb-md border-b border-card">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">New Habit</h2>
+<button class="w-8 h-8 rounded-full bg-card border border-card flex items-center justify-center text-secondary hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Scrollable Content -->
+<div class="overflow-y-auto px-margin-mobile py-lg space-y-xl">
+<!-- Habit Name Input -->
+<div class="space-y-sm">
+<label class="font-label-caps text-label-caps text-secondary uppercase">Habit Name</label>
+<input class="w-full bg-card border border-card rounded-xl px-md py-md text-on-surface placeholder:text-secondary-fixed-dim/50 focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all outline-none font-body-md text-body-md" placeholder="Enter habit name..." type="text"/>
+</div>
+<!-- Frequency -->
+<div class="space-y-sm">
+<label class="font-label-caps text-label-caps text-secondary uppercase">Frequency</label>
+<div class="flex flex-wrap gap-sm">
+<button class="px-md py-sm rounded-full bg-primary-container text-on-primary-fixed font-body-sm text-body-sm font-semibold active:scale-95 transition-transform">Daily</button>
+<button class="px-md py-sm rounded-full bg-transparent border border-card text-on-surface font-body-sm text-body-sm hover:border-primary/50 transition-colors active:scale-95">Weekdays</button>
+<button class="px-md py-sm rounded-full bg-transparent border border-card text-on-surface font-body-sm text-body-sm hover:border-primary/50 transition-colors active:scale-95">Custom</button>
+</div>
+</div>
+<!-- Time of Day -->
+<div class="space-y-sm">
+<label class="font-label-caps text-label-caps text-secondary uppercase">Time of Day</label>
+<div class="flex flex-wrap gap-sm">
+<button class="px-md py-sm rounded-full bg-primary-container/10 border border-primary-container text-primary font-body-sm text-body-sm font-semibold flex items-center gap-2 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[16px]">wb_sunny</span> Morning
+                    </button>
+<button class="px-md py-sm rounded-full bg-transparent border border-card text-on-surface font-body-sm text-body-sm hover:border-primary/50 transition-colors flex items-center gap-2 active:scale-95">
+<span class="material-symbols-outlined text-[16px]">sunny</span> Afternoon
+                    </button>
+<button class="px-md py-sm rounded-full bg-transparent border border-card text-on-surface font-body-sm text-body-sm hover:border-primary/50 transition-colors flex items-center gap-2 active:scale-95">
+<span class="material-symbols-outlined text-[16px]">dark_mode</span> Evening
+                    </button>
+</div>
+</div>
+<!-- Reminder -->
+<div class="space-y-sm">
+<label class="font-label-caps text-label-caps text-secondary uppercase">Reminder</label>
+<div class="bg-card border border-card rounded-xl p-md flex items-center justify-between">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">notifications</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Remind me</span>
+</div>
+<div class="flex items-center gap-md">
+<button class="px-sm py-xs rounded-lg bg-surface-variant text-secondary font-mono-metric text-mono-metric hover:text-primary transition-colors">
+                            07:00 AM
+                        </button>
+<!-- Custom Toggle -->
+<div class="w-12 h-6 rounded-full bg-primary-container relative cursor-pointer transition-colors">
+<div class="w-5 h-5 rounded-full bg-white absolute right-0.5 top-0.5 shadow-sm"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Color Picker -->
+<div class="space-y-sm pb-xl">
+<label class="font-label-caps text-label-caps text-secondary uppercase">Habit Color</label>
+<div class="flex justify-between items-center bg-card border border-card rounded-xl p-md">
+<button class="w-8 h-8 rounded-full bg-primary-container ring-2 ring-white/20 ring-offset-2 ring-offset-modal shadow-[0_0_12px_rgba(255,101,53,0.4)]"></button>
+<button class="w-8 h-8 rounded-full bg-[#3B82F6] hover:scale-110 transition-transform"></button>
+<button class="w-8 h-8 rounded-full bg-[#10B981] hover:scale-110 transition-transform"></button>
+<button class="w-8 h-8 rounded-full bg-[#8B5CF6] hover:scale-110 transition-transform"></button>
+<button class="w-8 h-8 rounded-full bg-[#EF4444] hover:scale-110 transition-transform"></button>
+<button class="w-8 h-8 rounded-full bg-[#14B8A6] hover:scale-110 transition-transform"></button>
+</div>
+</div>
+</div>
+<!-- Action Area (Sticky Bottom) -->
+<div class="p-margin-mobile border-t border-card bg-modal pb-safe">
+<button class="w-full py-md rounded-full bg-primary-container text-on-primary-fixed font-headline-lg text-[18px] font-bold active:scale-95 transition-transform hover:opacity-90 flex justify-center items-center gap-2">
+                Create Habit
+                <span class="material-symbols-outlined text-[20px]">check_circle</span>
+</button>
+</div>
+</div>
+<!-- BottomNavBar (Simulated Background) -->
+<nav class="fixed bottom-0 w-full h-20 flex justify-around items-center px-lg z-30 backdrop-blur-xl bg-surface/80 border-t border-surface-variant/20 shadow-[0_-4px_24px_rgba(255,101,53,0.05)] pb-safe blur-sm opacity-50">
+<button class="text-secondary-fixed-dim/60 hover:text-primary/80 transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined font-headline-xl text-[28px]">home</span>
+</button>
+<button class="relative text-primary after:content-[''] after:absolute after:-bottom-2 after:left-1/2 after:-translate-x-1/2 after:w-4 after:h-[2px] after:bg-primary after:rounded-full hover:text-primary/80 transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined font-headline-xl text-[28px]">task_alt</span>
+</button>
+<button class="text-secondary-fixed-dim/60 hover:text-primary/80 transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined font-headline-xl text-[28px]">search</span>
+</button>
+<button class="text-secondary-fixed-dim/60 hover:text-primary/80 transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined font-headline-xl text-[28px]">insights</span>
+</button>
+<button class="text-secondary-fixed-dim/60 hover:text-primary/80 transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined font-headline-xl text-[28px]">person</span>
+</button>
+</nav>
+</body></html>

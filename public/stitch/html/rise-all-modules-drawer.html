@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RISE OS - All Modules</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;family=Space+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed": "#001f27",
+                      "tertiary-fixed": "#afecff",
+                      "on-error": "#690005",
+                      "on-primary": "#5f1600",
+                      "on-background": "#dde2f8",
+                      "surface-variant": "#2f3445",
+                      "on-secondary": "#283044",
+                      "on-surface": "#dde2f8",
+                      "on-error-container": "#ffdad6",
+                      "secondary": "#bec6e0",
+                      "on-primary-container": "#5d1500",
+                      "secondary-fixed-dim": "#bec6e0",
+                      "surface-container-low": "#151b2b",
+                      "surface-container-highest": "#2f3445",
+                      "surface-tint": "#ffb59f",
+                      "on-primary-fixed": "#3a0a00",
+                      "tertiary-fixed-dim": "#5bd6f5",
+                      "outline": "#a98a81",
+                      "secondary-fixed": "#dae2fc",
+                      "tertiary-container": "#00a5c3",
+                      "primary-container": "#ff6535",
+                      "primary-fixed-dim": "#ffb59f",
+                      "primary-fixed": "#ffdbd1",
+                      "background": "#0d1322",
+                      "primary": "#ffb59f",
+                      "surface": "#0d1322",
+                      "on-secondary-fixed-variant": "#3f465b",
+                      "secondary-container": "#41495e",
+                      "on-tertiary": "#003641",
+                      "surface-container": "#191f2f",
+                      "surface-dim": "#0d1322",
+                      "on-tertiary-fixed-variant": "#004e5d",
+                      "inverse-primary": "#af3000",
+                      "surface-container-high": "#242a3a",
+                      "on-secondary-fixed": "#131b2e",
+                      "error": "#ffb4ab",
+                      "inverse-on-surface": "#2a3040",
+                      "inverse-surface": "#dde2f8",
+                      "on-tertiary-container": "#003540",
+                      "surface-bright": "#33394a",
+                      "surface-container-lowest": "#080e1d",
+                      "tertiary": "#5bd6f5",
+                      "on-surface-variant": "#e2bfb5",
+                      "on-primary-fixed-variant": "#862300",
+                      "on-secondary-container": "#b0b8d1",
+                      "outline-variant": "#5a413a",
+                      "error-container": "#93000a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "gutter": "20px",
+                      "lg": "24px",
+                      "md": "16px",
+                      "xs": "4px",
+                      "sm": "8px",
+                      "xl": "40px",
+                      "margin-desktop": "32px",
+                      "margin-mobile": "16px"
+              },
+              "fontFamily": {
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "mono-data": [
+                              "Space Mono"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.0",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "mono-data": [
+                              "13px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #0B1120;
+            background-image: 
+                linear-gradient(rgba(255, 101, 53, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 101, 53, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: center center;
+        }
+        
+        .glass-panel {
+            background: rgba(19, 27, 46, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(30, 41, 59, 0.8);
+        }
+
+        .module-tile {
+            background: rgba(19, 27, 46, 0.6);
+            border: 1px solid rgba(30, 41, 59, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .module-tile:active {
+            transform: scale(0.95);
+        }
+
+        .glow-active {
+            box-shadow: inset 0 0 8px rgba(255, 101, 53, 0.4);
+            border-color: rgba(255, 101, 53, 0.5);
+        }
+    </style>
+</head>
+<body class="text-on-surface min-h-screen relative overflow-hidden font-sans antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 bg-transparent flex justify-between items-center w-full px-margin-mobile pt-sm z-10 relative">
+<button class="w-10 h-10 flex items-center justify-center text-primary dark:text-primary hover:opacity-80 transition-all duration-300 ease-in-out">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bubble_chart</span>
+</button>
+<div class="flex items-center gap-2">
+<img alt="RISE Logo" class="w-8 h-8 rounded-full" src="https://lh3.googleusercontent.com/aida/AP1WRLtTwiMfFr4ZiUTYTkLIMRZnhlXkI3Rf6CNO3Yf-XoHHax7JZtLLx4WcYRcqQZbD-li6arDqtwBqBkkJa_RxRYPZOs_Ce0GsxKpd5ey96QGTUuWFwvaGFMG9dt9k06uN367c7iN3TwawqqaPWxmHBlzn6jsxYPyOkH29kSjlkLVwdNDfqiYashNWSbrqxTx2n7I5FM3-TmTUS6_Og4CWUGLXUdYAltzlQ79_uLim4iC81unZeAQd9oRzIQ"/>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-black tracking-tighter text-primary uppercase">RISE</h1>
+</div>
+<div class="w-10 h-10"></div> <!-- Spacer for balance -->
+</header>
+<!-- Main Content Canvas (dimmed due to drawer) -->
+<main class="pt-20 px-margin-mobile pb-32 h-screen opacity-30 pointer-events-none transition-opacity duration-300">
+<!-- Dashboard content would go here -->
+</main>
+<!-- Overlay backdrop -->
+<div class="fixed inset-0 bg-black/40 z-30 transition-opacity duration-300"></div>
+<!-- NavigationDrawer (Bottom Sheet) -->
+<div class="fixed bottom-0 w-full z-40 rounded-t-xl h-[60vh] bg-surface-container-high/80 backdrop-blur-2xl border-t border-white/10 shadow-xl flex flex-col items-center p-lg pb-32 translate-y-0 transition-transform duration-500">
+<!-- Grab Handle -->
+<div class="w-12 h-1.5 bg-on-surface-variant/30 rounded-full mb-6"></div>
+<div class="w-full max-w-md mx-auto">
+<h2 class="font-headline-md text-headline-md text-primary mb-6 text-center">All Modules</h2>
+<div class="grid grid-cols-3 gap-4">
+<!-- Tile 1: Goals -->
+<button class="module-tile rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-white/5 group">
+<div class="w-12 h-12 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">target</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">Goals</span>
+</button>
+<!-- Tile 2: CRM -->
+<button class="module-tile rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-white/5 group">
+<div class="w-12 h-12 rounded-full bg-teal-500/10 text-teal-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">group</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">CRM</span>
+</button>
+<!-- Tile 3: Knowledge -->
+<button class="module-tile rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-white/5 group">
+<div class="w-12 h-12 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">menu_book</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">Knowledge</span>
+</button>
+<!-- Tile 4: Analytics -->
+<button class="module-tile rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-white/5 group">
+<div class="w-12 h-12 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">monitoring</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">Analytics</span>
+</button>
+<!-- Tile 5: Projects -->
+<button class="module-tile rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-white/5 group">
+<div class="w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">dashboard</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">Projects</span>
+</button>
+<!-- Tile 6: Wellness -->
+<button class="module-tile rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-white/5 group">
+<div class="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">favorite</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">Wellness</span>
+</button>
+<!-- Tile 7: Settings -->
+<button class="module-tile rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-white/5 group">
+<div class="w-12 h-12 rounded-full bg-slate-500/10 text-slate-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">settings</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center">Settings</span>
+</button>
+<!-- Tile 8: AI Assistant (Active/Highlight) -->
+<button class="module-tile glow-active rounded-xl p-4 flex flex-col items-center justify-center gap-2 group relative overflow-hidden bg-primary-container text-on-primary-container">
+<div class="absolute inset-0 bg-primary/10 rounded-xl"></div>
+<div class="w-12 h-12 rounded-full flex items-center justify-center mb-1 relative z-10 text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<span class="font-label-caps text-label-caps text-primary text-center relative z-10">AI Assistant</span>
+</button>
+</div>
+</div>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-4 pb-safe bg-surface-container/60 backdrop-blur-xl border-t border-outline-variant/30 md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary/80 transition-colors scale-95 active:scale-90 w-16 h-12 group">
+<span class="material-symbols-outlined text-2xl mb-1 group-hover:-translate-y-1 transition-transform">home_app_logo</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary/80 transition-colors scale-95 active:scale-90 w-16 h-12 group">
+<span class="material-symbols-outlined text-2xl mb-1 group-hover:-translate-y-1 transition-transform">explore</span>
+</button>
+<!-- FAB Center (Add) -->
+<div class="relative -top-6">
+<button class="w-14 h-14 bg-surface-container border border-outline-variant rounded-full flex items-center justify-center text-primary shadow-lg hover:shadow-primary/20 transition-all active:scale-95 group">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-90 transition-transform duration-300">add_circle</span>
+</button>
+</div>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary/80 transition-colors scale-95 active:scale-90 w-16 h-12 group">
+<span class="material-symbols-outlined text-2xl mb-1 group-hover:-translate-y-1 transition-transform">auto_awesome</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-6 after:h-0.5 after:bg-primary after:rounded-full hover:opacity-80 transition-colors scale-95 active:scale-90 w-16 h-12">
+<span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings: 'FILL' 1;">more_horiz</span>
+</button>
+</nav>
+<!-- Scripts for micro-interactions -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Subtle touch feedback for tiles
+            const tiles = document.querySelectorAll('.module-tile');
+            tiles.forEach(tile => {
+                tile.addEventListener('touchstart', () => {
+                    tile.style.transform = 'scale(0.95)';
+                });
+                tile.addEventListener('touchend', () => {
+                    tile.style.transform = 'scale(1)';
+                });
+                tile.addEventListener('touchcancel', () => {
+                    tile.style.transform = 'scale(1)';
+                });
+            });
+        });
+    </script>
+</body></html>

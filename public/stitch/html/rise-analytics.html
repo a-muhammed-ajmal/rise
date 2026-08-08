@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RISE Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#3a0a00",
+                        "background": "#0d1322",
+                        "outline": "#a98a81",
+                        "inverse-primary": "#af3000",
+                        "on-primary-container": "#5d1500",
+                        "on-secondary-fixed-variant": "#3c475a",
+                        "surface-container": "#191f2f",
+                        "error": "#ffb4ab",
+                        "on-surface": "#dde2f8",
+                        "on-primary": "#5f1600",
+                        "on-background": "#dde2f8",
+                        "tertiary-fixed": "#d5e3fd",
+                        "surface-container-low": "#151b2b",
+                        "secondary-container": "#3e495d",
+                        "error-container": "#93000a",
+                        "tertiary-fixed-dim": "#b9c7e0",
+                        "secondary-fixed": "#d8e3fb",
+                        "on-error": "#690005",
+                        "surface": "#0d1322",
+                        "primary-container": "#ff6535",
+                        "on-tertiary-container": "#223043",
+                        "surface-variant": "#2f3445",
+                        "primary-fixed": "#ffdbd1",
+                        "on-tertiary-fixed-variant": "#3a485c",
+                        "tertiary": "#b9c7e0",
+                        "surface-container-high": "#242a3a",
+                        "primary": "#ffb59f",
+                        "surface-dim": "#0d1322",
+                        "inverse-surface": "#dde2f8",
+                        "surface-bright": "#33394a",
+                        "on-secondary-fixed": "#111c2d",
+                        "primary-fixed-dim": "#ffb59f",
+                        "surface-tint": "#ffb59f",
+                        "on-secondary-container": "#aeb9d0",
+                        "inverse-on-surface": "#2a3040",
+                        "secondary-fixed-dim": "#bcc7de",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary": "#263143",
+                        "on-surface-variant": "#e2bfb5",
+                        "on-tertiary-fixed": "#0d1c2f",
+                        "outline-variant": "#5a413a",
+                        "secondary": "#bcc7de",
+                        "on-primary-fixed-variant": "#862300",
+                        "on-tertiary": "#233144",
+                        "tertiary-container": "#8998af",
+                        "surface-container-lowest": "#080e1d",
+                        "surface-container-highest": "#2f3445",
+                        "card-surface": "#131b2e",
+                        "card-border": "#1e293b",
+                        "accent-orange": "#ff6535"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "card": "16px"
+                    },
+                    "spacing": {
+                        "xl": "64px",
+                        "base": "8px",
+                        "sm": "12px",
+                        "md": "24px",
+                        "gutter": "16px",
+                        "margin-mobile": "20px",
+                        "xs": "4px",
+                        "margin-desktop": "48px",
+                        "lg": "40px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "mono-label": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "500"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "mono-label": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    },
+                    "backgroundImage": {
+                        'grid-pattern': "url(\"data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M24 0v24H0V0h24zM1 1v22h22V1H1z' fill='%23ff6535' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E\")"
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0B1120;
+            background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M24 0v24H0V0h24zM1 1v22h22V1H1z' fill='%23ff6535' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+        .glass-nav {
+            background: rgba(19, 27, 46, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background min-h-screen pb-24 font-sans">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/70 dark:bg-surface/70 backdrop-blur-xl border-b border-outline-variant/20 flex justify-between items-center px-margin-mobile h-16">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary dark:text-primary active:scale-95 transition-transform hover:opacity-80 transition-opacity cursor-pointer">menu</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary dark:text-primary tracking-tight">Analytics</h1>
+</div>
+<button class="flex items-center gap-1 bg-surface-container-high px-3 py-1.5 rounded-full border border-card-border hover:border-accent-orange transition-colors">
+<span class="font-body-sm text-body-sm text-on-surface">This Month</span>
+<span class="material-symbols-outlined text-on-surface text-[18px]">expand_more</span>
+</button>
+</header>
+<main class="pt-24 px-gutter md:px-margin-desktop max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-gutter md:gap-md">
+<!-- Task Completion -->
+<section class="lg:col-span-8 bg-card-surface border border-card-border rounded-card p-md">
+<h2 class="font-title-md text-title-md text-on-surface mb-6">Task Completion</h2>
+<div class="flex items-end justify-between h-48 gap-2">
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-surface-container rounded-t-sm h-full relative overflow-hidden">
+<div class="absolute bottom-0 w-full bg-accent-orange bg-opacity-80 h-[45%] transition-all duration-300 group-hover:bg-opacity-100"></div>
+</div>
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim">MON</span>
+</div>
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-surface-container rounded-t-sm h-full relative overflow-hidden">
+<div class="absolute bottom-0 w-full bg-accent-orange bg-opacity-80 h-[60%] transition-all duration-300 group-hover:bg-opacity-100"></div>
+</div>
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim">TUE</span>
+</div>
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-surface-container rounded-t-sm h-full relative overflow-hidden">
+<div class="absolute bottom-0 w-full bg-accent-orange bg-opacity-80 h-[85%] transition-all duration-300 group-hover:bg-opacity-100"></div>
+</div>
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim">WED</span>
+</div>
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-surface-container rounded-t-sm h-full relative overflow-hidden">
+<div class="absolute bottom-0 w-full bg-accent-orange bg-opacity-80 h-[30%] transition-all duration-300 group-hover:bg-opacity-100"></div>
+</div>
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim">THU</span>
+</div>
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-surface-container rounded-t-sm h-full relative overflow-hidden">
+<div class="absolute bottom-0 w-full bg-accent-orange bg-opacity-80 h-[75%] transition-all duration-300 group-hover:bg-opacity-100"></div>
+</div>
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim">FRI</span>
+</div>
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-surface-container rounded-t-sm h-full relative overflow-hidden">
+<div class="absolute bottom-0 w-full bg-accent-orange bg-opacity-80 h-[90%] transition-all duration-300 group-hover:bg-opacity-100"></div>
+</div>
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim">SAT</span>
+</div>
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full bg-surface-container rounded-t-sm h-full relative overflow-hidden">
+<div class="absolute bottom-0 w-full bg-accent-orange bg-opacity-80 h-[50%] transition-all duration-300 group-hover:bg-opacity-100"></div>
+</div>
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim">SUN</span>
+</div>
+</div>
+</section>
+<!-- Finance Overview -->
+<section class="lg:col-span-4 bg-card-surface border border-card-border rounded-card p-md flex flex-col items-center justify-center relative">
+<h2 class="font-title-md text-title-md text-on-surface mb-6 w-full text-left">Finance Overview</h2>
+<div class="relative w-32 h-32 mb-6">
+<!-- CSS Donut approximation -->
+<div class="w-full h-full rounded-full border-[12px] border-surface-container border-t-accent-orange border-r-accent-orange border-b-accent-orange/50 transform rotate-45"></div>
+<div class="absolute inset-0 flex items-center justify-center -rotate-45">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">68%</span>
+</div>
+</div>
+<div class="w-full flex flex-col gap-2">
+<div class="flex justify-between items-center font-body-sm text-body-sm text-secondary">
+<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-accent-orange"></span> Housing</div>
+<span>$1,200</span>
+</div>
+<div class="flex justify-between items-center font-body-sm text-body-sm text-secondary">
+<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-accent-orange/50"></span> Food</div>
+<span>$450</span>
+</div>
+<div class="flex justify-between items-center font-body-sm text-body-sm text-secondary">
+<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-surface-container"></span> Transport</div>
+<span>$150</span>
+</div>
+</div>
+</section>
+<!-- Habit Consistency -->
+<section class="lg:col-span-6 bg-card-surface border border-card-border rounded-card p-md overflow-x-auto">
+<h2 class="font-title-md text-title-md text-on-surface mb-6">Habit Consistency</h2>
+<div class="grid grid-cols-7 gap-2 min-w-[280px]">
+<!-- W1 -->
+<div class="w-full aspect-square bg-accent-orange/20 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/80 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange rounded-sm"></div>
+<div class="w-full aspect-square bg-surface-container rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/60 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/40 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/90 rounded-sm"></div>
+<!-- W2 -->
+<div class="w-full aspect-square bg-surface-container rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/30 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/70 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/50 rounded-sm"></div>
+<div class="w-full aspect-square bg-surface-container rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/80 rounded-sm"></div>
+<!-- W3 -->
+<div class="w-full aspect-square bg-accent-orange/90 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange rounded-sm"></div>
+<div class="w-full aspect-square bg-surface-container rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/40 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/20 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/60 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/70 rounded-sm"></div>
+<!-- W4 -->
+<div class="w-full aspect-square bg-accent-orange/50 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/80 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/90 rounded-sm"></div>
+<div class="w-full aspect-square bg-surface-container rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/30 rounded-sm"></div>
+<div class="w-full aspect-square bg-accent-orange/60 rounded-sm"></div>
+</div>
+</section>
+<!-- Goals Progress -->
+<section class="lg:col-span-6 bg-card-surface border border-card-border rounded-card p-md flex flex-col justify-center gap-6">
+<h2 class="font-title-md text-title-md text-on-surface mb-2">Goals Progress</h2>
+<div>
+<div class="flex justify-between font-body-sm text-body-sm mb-2 text-on-surface">
+<span>Read 12 Books</span>
+<span class="text-accent-orange font-mono-label text-mono-label">75%</span>
+</div>
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-accent-orange h-full rounded-full" style="width: 75%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-body-sm text-body-sm mb-2 text-on-surface">
+<span>Save $10k</span>
+<span class="text-accent-orange font-mono-label text-mono-label">40%</span>
+</div>
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-accent-orange h-full rounded-full" style="width: 40%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-body-sm text-body-sm mb-2 text-on-surface">
+<span>Run Marathon</span>
+<span class="text-accent-orange font-mono-label text-mono-label">90%</span>
+</div>
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-accent-orange h-full rounded-full shadow-[0_0_8px_rgba(255,101,53,0.5)]" style="width: 90%"></div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-gutter pb-safe glass-nav rounded-t-xl md:hidden">
+<a class="flex flex-col items-center justify-center text-secondary-fixed-dim opacity-60 hover:text-primary/80 transition-colors active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full after:shadow-[0_0_12px_rgba(255,101,53,0.3)] hover:text-primary/80 transition-colors active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">insights</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary-fixed-dim opacity-60 hover:text-primary/80 transition-colors active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">bolt</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary-fixed-dim opacity-60 hover:text-primary/80 transition-colors active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">history</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary-fixed-dim opacity-60 hover:text-primary/80 transition-colors active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</a>
+</nav>
+</body></html>
