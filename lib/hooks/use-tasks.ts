@@ -27,6 +27,7 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
     let query = supabase
       .from('tasks')
       .select('*')
+      .is("deleted_at", null)
       .order('is_starred', { ascending: false })
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('due_time', { ascending: true, nullsFirst: false })

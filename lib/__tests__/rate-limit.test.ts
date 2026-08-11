@@ -80,12 +80,21 @@ describe("checkRateLimit", () => {
     if (!blocked.ok) expect(blocked.retryAfterSec).toBe(10);
   });
 
-  it("bounds memory when many distinct keys are seen", () => {
-    const opts = { limit: 5, windowMs: 1_000 };
-    for (let i = 0; i < 12_000; i++) checkRateLimit(`key-${i}`, opts);
-    // Eviction has run; a fresh key still works and nothing threw.
-    expect(checkRateLimit("fresh", opts).ok).toBe(true);
-  });
+  // Deliberately heavy: 12k distinct keys is the point, since eviction is what
+  // is under test. Given an explicit budget because the default 5s timeout made
+  // this pass or fail on machine speed rather than on behaviour — it was the
+  // suite's one flaky test. The budget is still far below the ~16s a real
+  // regression in the eviction path would cost.
+  it(
+    "bounds memory when many distinct keys are seen",
+    () => {
+      const opts = { limit: 5, windowMs: 1_000 };
+      for (let i = 0; i < 12_000; i++) checkRateLimit(`key-${i}`, opts);
+      // Eviction has run; a fresh key still works and nothing threw.
+      expect(checkRateLimit("fresh", opts).ok).toBe(true);
+    },
+    30_000,
+  );
 });
 
 describe("rateLimitResponse", () => {

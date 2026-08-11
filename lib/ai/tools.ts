@@ -1,4 +1,5 @@
 import { Type, type FunctionDeclaration } from '@google/genai'
+import { DELETABLE_ENTITIES } from '@/lib/ai/deletable'
 
 // Low-risk tools — auto-execute without approval
 export const AUTO_TOOLS: FunctionDeclaration[] = [
@@ -778,15 +779,52 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
       required: ['query'],
     },
   },
+
+  // ─── RECYCLE BIN ──────────────────────────────────────────────────────────────
+  {
+    name: 'list_deleted',
+    description: 'List soft-deleted records (the recycle bin). Use this to find the id of something the user wants restored, or to show them what has been deleted.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        entity: { type: Type.STRING, enum: DELETABLE_ENTITIES, description: 'Which entity type to list. Omit to search across every entity type.' },
+        limit: { type: Type.NUMBER, description: 'Maximum results per entity type (default 20)' },
+        offset: { type: Type.NUMBER, description: 'Skip this many results — use the offset reported when more results are available' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'restore_record',
+    description: 'Restore a soft-deleted record, bringing it back exactly as it was. Call list_deleted first to find the id.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        entity: { type: Type.STRING, enum: DELETABLE_ENTITIES, description: 'Which entity type the id belongs to' },
+        id: { type: Type.STRING, description: 'UUID of the deleted record' },
+        record_label: { type: Type.STRING, description: 'Name or title of the record, for confirmation display' },
+      },
+      required: ['entity', 'id'],
+    },
+  },
 ]
 
-// Approval-required tools — AI proposes, user must confirm
-export const APPROVAL_TOOLS: FunctionDeclaration[] = [
+// Reversible tools — soft delete.
+//
+// These sit between AUTO and APPROVAL. They are destructive from the user's
+// point of view, so the app chat still gates them behind ConfirmDialog (they
+// are folded into APPROVAL_TOOL_NAMES below). But because nothing they do is
+// permanent — every row stays in the table and restore_record brings it back —
+// they are safe to expose over MCP, where there is no confirmation UI. That is
+// what gives Claude a delete capability without giving it an irreversible one.
+//
+// Anything that destroys data for good belongs in APPROVAL_TOOLS instead.
+export const REVERSIBLE_TOOLS: FunctionDeclaration[] = [
 
   // ─── TASKS ───────────────────────────────────────────────────────────────────
   {
     name: 'delete_task',
-    description: 'Delete a task permanently (REQUIRES USER APPROVAL)',
+    description: 'Move a task to the recycle bin. Reversible with restore_record; any focus sessions on it are unlinked, not deleted. (REQUIRES USER APPROVAL in the app chat)',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -796,23 +834,11 @@ export const APPROVAL_TOOLS: FunctionDeclaration[] = [
       required: ['task_id', 'task_title'],
     },
   },
-  {
-    name: 'bulk_complete_tasks',
-    description: 'Mark multiple tasks as complete at once (REQUIRES USER APPROVAL)',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        task_ids: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Array of task IDs' },
-        summary: { type: Type.STRING, description: 'Human-readable summary of what will be completed' },
-      },
-      required: ['task_ids', 'summary'],
-    },
-  },
 
   // ─── PROJECTS ─────────────────────────────────────────────────────────────────
   {
     name: 'delete_project',
-    description: 'Delete a project permanently (REQUIRES USER APPROVAL). Tasks in the project will have their project unlinked.',
+    description: 'Move a project to the recycle bin. Reversible with restore_record. Its tasks are NOT deleted — they are unassigned from the project and stay live. (REQUIRES USER APPROVAL in the app chat)',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -867,24 +893,8 @@ export const APPROVAL_TOOLS: FunctionDeclaration[] = [
 
   // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
   {
-    name: 'update_transaction',
-    description: 'Update a transaction record — amount changes are high-risk (REQUIRES USER APPROVAL). Call list_transactions first to resolve the id.',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        transaction_id: { type: Type.STRING, description: 'Transaction UUID' },
-        summary: { type: Type.STRING, description: 'Human-readable description of the change for confirmation display' },
-        amount: { type: Type.NUMBER, description: 'New amount in AED' },
-        category: { type: Type.STRING },
-        description: { type: Type.STRING },
-        date: { type: Type.STRING, description: 'YYYY-MM-DD' },
-      },
-      required: ['transaction_id', 'summary'],
-    },
-  },
-  {
     name: 'delete_transaction',
-    description: 'Delete a transaction permanently (REQUIRES USER APPROVAL)',
+    description: 'Move a transaction to the recycle bin. Reversible with restore_record; the wallet balance is adjusted back on delete and re-applied on restore. (REQUIRES USER APPROVAL in the app chat)',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -911,25 +921,8 @@ export const APPROVAL_TOOLS: FunctionDeclaration[] = [
 
   // ─── DEBTS ────────────────────────────────────────────────────────────────────
   {
-    name: 'update_debt',
-    description: 'Update a debt record — amount changes require approval (REQUIRES USER APPROVAL). Includes marking a debt as paid. Call list_debts first to resolve the id.',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        debt_id: { type: Type.STRING, description: 'Debt UUID' },
-        summary: { type: Type.STRING, description: 'Human-readable description of the change for confirmation display' },
-        creditor: { type: Type.STRING },
-        amount: { type: Type.NUMBER, description: 'New amount in AED' },
-        description: { type: Type.STRING },
-        due_date: { type: Type.STRING, description: 'YYYY-MM-DD' },
-        mark_paid: { type: Type.BOOLEAN, description: 'Set to true to mark the debt as paid now' },
-      },
-      required: ['debt_id', 'summary'],
-    },
-  },
-  {
     name: 'delete_debt',
-    description: 'Delete a debt record permanently (REQUIRES USER APPROVAL)',
+    description: 'Move a debt record to the recycle bin. Reversible with restore_record. (REQUIRES USER APPROVAL in the app chat)',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -1056,7 +1049,7 @@ export const APPROVAL_TOOLS: FunctionDeclaration[] = [
   // ─── FOCUS SESSIONS ───────────────────────────────────────────────────────────
   {
     name: 'delete_focus_session',
-    description: 'Delete a focus session record permanently (REQUIRES USER APPROVAL)',
+    description: 'Move a focus session record to the recycle bin. Reversible with restore_record. (REQUIRES USER APPROVAL in the app chat)',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -1068,5 +1061,124 @@ export const APPROVAL_TOOLS: FunctionDeclaration[] = [
   },
 ]
 
-export const ALL_TOOLS: FunctionDeclaration[] = [...AUTO_TOOLS, ...APPROVAL_TOOLS]
-export const APPROVAL_TOOL_NAMES = new Set(APPROVAL_TOOLS.map((t) => t.name))
+// Approval-required tools — AI proposes, user must confirm. Never exposed over
+// MCP: everything here either destroys data for good or acts on many rows at
+// once, so there is nothing to fall back on if the model gets it wrong.
+export const APPROVAL_TOOLS: FunctionDeclaration[] = [
+
+  // ─── RECYCLE BIN ──────────────────────────────────────────────────────────────
+  {
+    name: 'purge_record',
+    description: 'PERMANENTLY destroy a soft-deleted record. This cannot be undone and child rows may be destroyed with it. Prefer delete_<entity>, which is reversible. (REQUIRES USER APPROVAL)',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        entity: { type: Type.STRING, enum: DELETABLE_ENTITIES, description: 'Which entity type the id belongs to' },
+        id: { type: Type.STRING, description: 'UUID of the record to destroy' },
+        record_label: { type: Type.STRING, description: 'Name or title of the record, for confirmation display' },
+        confirm: { type: Type.BOOLEAN, description: 'Must be exactly true. The tool refuses to run otherwise.' },
+      },
+      required: ['entity', 'id', 'record_label', 'confirm'],
+    },
+  },
+  {
+    name: 'bulk_delete_records',
+    description: 'Move many records of one type to the recycle bin at once. Reversible with restore_record. (REQUIRES USER APPROVAL)',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        entity: { type: Type.STRING, enum: DELETABLE_ENTITIES, description: 'Which entity type the ids belong to' },
+        ids: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'UUIDs to delete' },
+        summary: { type: Type.STRING, description: 'Human-readable summary of what will be deleted, for confirmation display' },
+        confirm: { type: Type.BOOLEAN, description: 'Must be exactly true. The tool refuses to run otherwise.' },
+      },
+      required: ['entity', 'ids', 'summary', 'confirm'],
+    },
+  },
+
+  // ─── PERSONAL MEMORY ──────────────────────────────────────────────────────────
+  {
+    name: 'forget_user_fact',
+    description: 'Permanently forget a stored fact about the user. Not reversible — facts have no recycle bin. (REQUIRES USER APPROVAL)',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        key: { type: Type.STRING, description: 'The fact key to forget, as shown by recall_memories' },
+        fact_summary: { type: Type.STRING, description: 'The fact being forgotten, for confirmation display' },
+      },
+      required: ['key', 'fact_summary'],
+    },
+  },
+
+  // ─── TASKS ───────────────────────────────────────────────────────────────────
+  {
+    name: 'bulk_complete_tasks',
+    description: 'Mark multiple tasks as complete at once (REQUIRES USER APPROVAL)',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        task_ids: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Array of task IDs' },
+        summary: { type: Type.STRING, description: 'Human-readable summary of what will be completed' },
+      },
+      required: ['task_ids', 'summary'],
+    },
+  },
+
+  // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
+  {
+    name: 'update_transaction',
+    description: 'Update a transaction record — amount changes are high-risk (REQUIRES USER APPROVAL). Call list_transactions first to resolve the id.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        transaction_id: { type: Type.STRING, description: 'Transaction UUID' },
+        summary: { type: Type.STRING, description: 'Human-readable description of the change for confirmation display' },
+        amount: { type: Type.NUMBER, description: 'New amount in AED' },
+        category: { type: Type.STRING },
+        description: { type: Type.STRING },
+        date: { type: Type.STRING, description: 'YYYY-MM-DD' },
+      },
+      required: ['transaction_id', 'summary'],
+    },
+  },
+
+  // ─── DEBTS ────────────────────────────────────────────────────────────────────
+  {
+    name: 'update_debt',
+    description: 'Update a debt record — amount changes require approval (REQUIRES USER APPROVAL). Includes marking a debt as paid. Call list_debts first to resolve the id.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        debt_id: { type: Type.STRING, description: 'Debt UUID' },
+        summary: { type: Type.STRING, description: 'Human-readable description of the change for confirmation display' },
+        creditor: { type: Type.STRING },
+        amount: { type: Type.NUMBER, description: 'New amount in AED' },
+        description: { type: Type.STRING },
+        due_date: { type: Type.STRING, description: 'YYYY-MM-DD' },
+        mark_paid: { type: Type.BOOLEAN, description: 'Set to true to mark the debt as paid now' },
+      },
+      required: ['debt_id', 'summary'],
+    },
+  },
+]
+
+export const ALL_TOOLS: FunctionDeclaration[] = [...AUTO_TOOLS, ...REVERSIBLE_TOOLS, ...APPROVAL_TOOLS]
+
+/**
+ * Tools the app chat must gate behind ConfirmDialog.
+ *
+ * Wider than APPROVAL_TOOLS: reversible deletes are confirmed in the app too,
+ * because a stray delete is still disruptive when there is a UI to ask in.
+ * What separates the two tiers is MCP reach, not the in-app gate — see
+ * MCP_TOOL_SOURCE below and isMcpAllowedTool in mcp.ts.
+ */
+export const APPROVAL_TOOL_NAMES = new Set(
+  [...REVERSIBLE_TOOLS, ...APPROVAL_TOOLS].map((t) => t.name)
+)
+
+/**
+ * Tools offered over MCP. Reversible deletes qualify: there is no confirmation
+ * UI on that transport, so the safety property has to be "nothing here is
+ * permanent" rather than "the user was asked".
+ */
+export const MCP_TOOL_SOURCE: FunctionDeclaration[] = [...AUTO_TOOLS, ...REVERSIBLE_TOOLS]

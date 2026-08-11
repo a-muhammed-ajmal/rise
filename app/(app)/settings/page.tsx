@@ -168,12 +168,18 @@ export default function SettingsPage() {
       { data: contacts },
       { data: notes },
     ] = await Promise.all([
-      supabase.from("tasks").select("*").neq("status", "done"),
-      supabase.from("transactions").select("*").order("date", { ascending: false }),
-      supabase.from("habits").select("*").eq("active", true),
-      supabase.from("goals").select("*"),
-      supabase.from("contacts").select("*").order("name"),
-      supabase.from("notes").select("*").order("updated_at", { ascending: false }),
+      supabase.from("tasks").select("*")
+      .is("deleted_at", null).neq("status", "done"),
+      supabase.from("transactions").select("*")
+      .is("deleted_at", null).order("date", { ascending: false }),
+      supabase.from("habits").select("*")
+      .is("deleted_at", null).eq("active", true),
+      supabase.from("goals").select("*")
+      .is("deleted_at", null),
+      supabase.from("contacts").select("*")
+      .is("deleted_at", null).order("name"),
+      supabase.from("notes").select("*")
+      .is("deleted_at", null).order("updated_at", { ascending: false }),
     ]);
 
     const blob = new Blob(

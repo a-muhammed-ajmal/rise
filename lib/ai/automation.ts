@@ -10,6 +10,10 @@ type QueryResult = { data?: unknown; error?: unknown };
 type QueryBuilder = {
   select: (...args: string[]) => QueryBuilder;
   eq: (column: string, value: unknown) => QueryBuilder;
+  // Required, not optional: every digest query must exclude soft-deleted rows,
+  // so a test double that omits it should fail to compile rather than silently
+  // report deleted tasks in the evening digest.
+  is: (column: string, value: unknown) => QueryBuilder;
   neq?: (column: string, value: unknown) => QueryBuilder;
   gte?: (column: string, value: string) => QueryBuilder;
   order?: (column: string, options?: { ascending?: boolean }) => QueryBuilder;
@@ -74,12 +78,18 @@ export async function runDailyDigestWorkflow({
 }: DailyDigestWorkflowArgs): Promise<DailyDigestResult> {
   const todayStr = toDubaiISODate(now);
 
-  const completedTasksQuery = db.from("tasks").select("title, priority, completed_at");
-  const todayHabitLogsQuery = db.from("habit_logs").select("habit_id, completed, logged_date");
-  const habitsQuery = db.from("habits").select("id, name, icon");
-  const todayTransactionsQuery = db.from("transactions").select("type, amount, category, description");
-  const pendingTasksQuery = db.from("tasks").select("title, priority, due_date");
-  const activeGoalsQuery = db.from("goals").select("title, progress, status");
+  const completedTasksQuery = db.from("tasks").select("title, priority, completed_at")
+    .is("deleted_at", null);
+  const todayHabitLogsQuery = db.from("habit_logs").select("habit_id, completed, logged_date")
+    .is("deleted_at", null);
+  const habitsQuery = db.from("habits").select("id, name, icon")
+    .is("deleted_at", null);
+  const todayTransactionsQuery = db.from("transactions").select("type, amount, category, description")
+    .is("deleted_at", null);
+  const pendingTasksQuery = db.from("tasks").select("title, priority, due_date")
+    .is("deleted_at", null);
+  const activeGoalsQuery = db.from("goals").select("title, progress, status")
+    .is("deleted_at", null);
 
   const [completedTasksResult, todayHabitLogsResult, habitsResult, todayTransactionsResult, pendingTasksResult, activeGoalsResult] = await Promise.all([
     completedTasksQuery.eq?.("user_id", userId).eq?.("status", "done").gte?.("completed_at", `${todayStr}T00:00:00`).order?.("completed_at", { ascending: false }),
@@ -238,6 +248,7 @@ async function writeDigestNote({
   const existingResult = await db
     .from("notes")
     .select("id")
+    .is("deleted_at", null)
     .eq("user_id", userId)
     .eq("title", noteTitle)
     .maybeSingle?.();

@@ -26,6 +26,7 @@ const baseTask: Task = {
   estimated_time: null,
   project_id: null,
   area: 'default',
+  deleted_at: null,
   created_at: '2026-06-20T08:00:00Z',
   updated_at: '2026-06-20T08:00:00Z',
   is_completed: false,

@@ -241,19 +241,32 @@ export default async function AnalyticsPage() {
     { data: links },
     { data: documents },
   ] = await Promise.all([
-    supabase.from("transactions").select("type,amount,category,date").gte("date", sixMonthsAgo).order("date"),
-    supabase.from("budgets").select("category,amount").eq("period", "monthly").gte("period_start", monthStart).lte("period_end", monthEnd),
-    supabase.from("habits").select("id,name,icon,target_days").eq("active", true),
-    supabase.from("habit_logs").select("habit_id,logged_date,completed").gte("logged_date", thirtyDaysAgo),
-    supabase.from("journal_entries").select("date,mood").gte("date", thirtyDaysAgo).not("mood", "is", null).order("date"),
-    supabase.from("focus_sessions").select("duration_minutes,started_at").gte("started_at", fourteenDaysAgo + "T00:00:00"),
-    supabase.from("goals").select("title,status,category,progress"),
-    supabase.from("tasks").select("status,priority,completed_at"),
-    supabase.from("contacts").select("type,stage,deal_value"),
-    supabase.from("interactions").select("date").gte("date", sixMonthsAgo),
-    supabase.from("notes").select("created_at,linked_to_type,tags").gte("created_at", fourteenDaysAgo + "T00:00:00"),
-    supabase.from("links").select("id"),
-    supabase.from("documents").select("id"),
+    supabase.from("transactions").select("type,amount,category,date")
+    .is("deleted_at", null).gte("date", sixMonthsAgo).order("date"),
+    supabase.from("budgets").select("category,amount")
+    .is("deleted_at", null).eq("period", "monthly").gte("period_start", monthStart).lte("period_end", monthEnd),
+    supabase.from("habits").select("id,name,icon,target_days")
+    .is("deleted_at", null).eq("active", true),
+    supabase.from("habit_logs").select("habit_id,logged_date,completed")
+    .is("deleted_at", null).gte("logged_date", thirtyDaysAgo),
+    supabase.from("journal_entries").select("date,mood")
+    .is("deleted_at", null).gte("date", thirtyDaysAgo).not("mood", "is", null).order("date"),
+    supabase.from("focus_sessions").select("duration_minutes,started_at")
+    .is("deleted_at", null).gte("started_at", fourteenDaysAgo + "T00:00:00"),
+    supabase.from("goals").select("title,status,category,progress")
+    .is("deleted_at", null),
+    supabase.from("tasks").select("status,priority,completed_at")
+    .is("deleted_at", null),
+    supabase.from("contacts").select("type,stage,deal_value")
+    .is("deleted_at", null),
+    supabase.from("interactions").select("date")
+    .is("deleted_at", null).gte("date", sixMonthsAgo),
+    supabase.from("notes").select("created_at,linked_to_type,tags")
+    .is("deleted_at", null).gte("created_at", fourteenDaysAgo + "T00:00:00"),
+    supabase.from("links").select("id")
+    .is("deleted_at", null),
+    supabase.from("documents").select("id")
+    .is("deleted_at", null),
   ])
 
   // Finance aggregations

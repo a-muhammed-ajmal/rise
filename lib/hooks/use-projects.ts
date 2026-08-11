@@ -15,6 +15,7 @@ export function useProjects() {
     const { data } = await supabase
       .from("projects")
       .select("*")
+      .is("deleted_at", null)
       .eq("status", "active")
       .order("name");
     setProjects(data ?? []);

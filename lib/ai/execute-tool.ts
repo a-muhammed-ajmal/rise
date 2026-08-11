@@ -8,7 +8,12 @@ import {
   retrieveUserFacts,
 } from "@/lib/ai/memory";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/types/database";
+import type { Database, Json } from "@/lib/types/database";
+import {
+  DELETABLE,
+  DELETABLE_ENTITIES,
+  type DeletableEntity,
+} from "@/lib/ai/deletable";
 
 // ─── Input schemas ────────────────────────────────────────────────────────────
 
@@ -478,6 +483,47 @@ const ListFocusSessionsInput = z.object({
   limit: z.number().int().positive().max(50).optional(),
 });
 
+// ─── Recycle bin ──────────────────────────────────────────────────────────────
+
+// z.enum needs a non-empty tuple; DELETABLE_ENTITIES is a plain array, so it is
+// widened here once rather than duplicating the 17 names.
+const deletableEntity = z.enum(
+  DELETABLE_ENTITIES as [DeletableEntity, ...DeletableEntity[]],
+);
+
+const ListDeletedInput = z.object({
+  entity: deletableEntity.optional(),
+  limit: z.number().int().positive().max(50).optional(),
+  offset: offsetInput,
+});
+
+const RestoreRecordInput = z.object({
+  entity: deletableEntity,
+  id: uuid,
+  record_label: z.string().optional(),
+});
+
+// `confirm` is z.literal(true), so an omitted or false flag fails validation and
+// the handler never reaches the database. Brief item 7.
+const PurgeRecordInput = z.object({
+  entity: deletableEntity,
+  id: uuid,
+  record_label: z.string().optional(),
+  confirm: z.literal(true),
+});
+
+const BulkDeleteRecordsInput = z.object({
+  entity: deletableEntity,
+  ids: z.array(uuid).min(1).max(100),
+  summary: z.string().optional(),
+  confirm: z.literal(true),
+});
+
+const ForgetUserFactInput = z.object({
+  key: z.string().min(1).max(100),
+  fact_summary: z.string().optional(),
+});
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 type ToolResult = { success: boolean; message: string; data?: unknown };
@@ -493,11 +539,7 @@ function badInput(): ToolResult {
 
 // Tables whose rows can be referenced as a parent by another tool's input.
 type OwnableTable =
-  | "goals"
-  | "contacts"
-  | "tasks"
-  | "projects"
-  | "payment_methods";
+  "goals" | "contacts" | "tasks" | "projects" | "payment_methods";
 
 /**
  * Confirms a foreign key taken from tool input belongs to the calling user.
@@ -555,6 +597,167 @@ function pagedResult<T>(noun: string, page: Page<T>): ToolResult {
 // Inclusive bounds covering limit + 1 rows, per PostgREST range semantics.
 function rangeFor(limit: number, offset: number): [number, number] {
   return [offset, offset + limit];
+}
+
+// ─── Soft delete ──────────────────────────────────────────────────────────────
+
+/**
+ * Reads one column off a row whose exact type is not known statically.
+ *
+ * The recycle-bin tools pick their table at runtime, so the row is a union of
+ * 17 Row types and `row[column]` will not typecheck. Object.entries keeps this
+ * honest without a type assertion (banned — see CLAUDE.md).
+ */
+function displayValue(row: unknown, column: string): string | null {
+  if (!row || typeof row !== "object") return null;
+  for (const [key, value] of Object.entries(row)) {
+    if (key !== column) continue;
+    if (value === null || value === undefined) return null;
+    return typeof value === "string" ? value : String(value);
+  }
+  return null;
+}
+
+/** "Task: \"Ship it\" (id 4f3a…)" — brief item 11: name plus id, every time. */
+function describeRecord(entity: DeletableEntity, row: unknown): string {
+  const meta = DELETABLE[entity];
+  const label = displayValue(row, meta.display);
+  const id = displayValue(row, "id");
+  const named = label ? `"${label}"` : meta.label.toLowerCase();
+  return id ? `${named} (id ${id})` : named;
+}
+
+/**
+ * Clears child pointers to a row about to be soft-deleted, and reports what it
+ * unlinked.
+ *
+ * The FKs are declared ON DELETE SET NULL, but a soft delete is an UPDATE, so
+ * the constraint never fires and the handler has to do it. Deliberately written
+ * out per relationship rather than driven off a table: a dynamic
+ * `.update({ [column]: null })` cannot be typed without an assertion, and there
+ * are only three of them.
+ *
+ * Children whose FK is NOT NULL (milestones→goals, habit_logs→habits,
+ * interactions→contacts) are left completely alone — history survives its
+ * parent, per the no-cascade rule.
+ */
+async function detachChildren(
+  supabase: SupabaseClient<Database>,
+  entity: DeletableEntity,
+  id: string,
+  userId: string,
+): Promise<string[]> {
+  switch (entity) {
+    case "project": {
+      const { count } = await supabase
+        .from("tasks")
+        .update({ project_id: null }, { count: "exact" })
+        .eq("project_id", id)
+        .eq("user_id", userId)
+        .is("deleted_at", null);
+      return count ? [`${count} task(s) unassigned, not deleted`] : [];
+    }
+    case "goal": {
+      const { count } = await supabase
+        .from("projects")
+        .update({ goal_id: null }, { count: "exact" })
+        .eq("goal_id", id)
+        .eq("user_id", userId)
+        .is("deleted_at", null);
+      return count ? [`${count} project(s) unlinked, not deleted`] : [];
+    }
+    case "task": {
+      const { count } = await supabase
+        .from("focus_sessions")
+        .update({ task_id: null }, { count: "exact" })
+        .eq("task_id", id)
+        .eq("user_id", userId)
+        .is("deleted_at", null);
+      return count ? [`${count} focus session(s) unlinked, not deleted`] : [];
+    }
+    default:
+      return [];
+  }
+}
+
+/**
+ * The one place a delete_* tool actually deletes.
+ *
+ * Sets deleted_at instead of removing the row, unlinks any children, and echoes
+ * back the stored display column plus the id — read from the database rather
+ * than from the caller's arguments, so the message always names the row that
+ * really went.
+ */
+async function softDeleteRecord(
+  supabase: SupabaseClient<Database>,
+  entity: DeletableEntity,
+  id: string,
+  userId: string,
+  toolName: string,
+): Promise<ToolResult> {
+  const meta = DELETABLE[entity];
+  const { data: existing } = await supabase
+    .from(meta.table)
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!existing) return { success: false, message: `${meta.label} not found` };
+
+  const detached = await detachChildren(supabase, entity, id, userId);
+
+  const { error } = await supabase
+    .from(meta.table)
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .is("deleted_at", null);
+  if (error) return dbErr(toolName, error);
+
+  const suffix = detached.length ? ` — ${detached.join(", ")}` : "";
+  return {
+    success: true,
+    message: `Deleted ${meta.label.toLowerCase()}: ${describeRecord(entity, existing)}${suffix}. Undo with restore_record.`,
+    data: existing,
+  };
+}
+
+/** Clears deleted_at, bringing a row back exactly as it was. */
+async function restoreRecord(
+  supabase: SupabaseClient<Database>,
+  entity: DeletableEntity,
+  id: string,
+  userId: string,
+): Promise<ToolResult> {
+  const meta = DELETABLE[entity];
+  const { data: existing } = await supabase
+    .from(meta.table)
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .not("deleted_at", "is", null)
+    .maybeSingle();
+  if (!existing)
+    return {
+      success: false,
+      message: `No deleted ${meta.label.toLowerCase()} found with that id`,
+    };
+
+  const { data, error } = await supabase
+    .from(meta.table)
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
+  if (error) return dbErr("restore_record", error);
+
+  return {
+    success: true,
+    message: `Restored ${meta.label.toLowerCase()}: ${describeRecord(entity, existing)}`,
+    data,
+  };
 }
 
 // ─── Executor ─────────────────────────────────────────────────────────────────
@@ -624,6 +827,7 @@ export async function executeTool(
         .from("tasks")
         .select("id, title, priority, due_date, status")
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .neq("status", "done");
       if (filter === "today")
         query = query.or(`due_date.eq.${today},due_date.lt.${today}`);
@@ -647,6 +851,7 @@ export async function executeTool(
         .update({ status: "done", completed_at: new Date().toISOString() })
         .eq("id", p.data.task_id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("title")
         .single();
       if (error) return dbErr("complete_task", error);
@@ -737,6 +942,7 @@ export async function executeTool(
         .from("habits")
         .select("id, name")
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .eq("active", true)
         .ilike("name", `%${p.data.habit_name}%`)
         .limit(1);
@@ -748,12 +954,18 @@ export async function executeTool(
       const habit = habits[0];
       // habit_logs has UNIQUE (habit_id, logged_date) — without onConflict the
       // second log of the day raises a conflict instead of updating.
+      //
+      // deleted_at: null is part of the payload because a soft-deleted log
+      // still occupies its slot in that unique index. Logging the habit again
+      // for the same day revives the row with the new value rather than
+      // silently writing into a record the user cannot see.
       const { error: logError } = await supabase.from("habit_logs").upsert(
         {
           user_id: userId,
           habit_id: habit.id,
           logged_date: today,
           completed: true,
+          deleted_at: null,
         },
         { onConflict: "habit_id,logged_date" },
       );
@@ -833,6 +1045,7 @@ export async function executeTool(
           .from("tasks")
           .select("title, priority")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .neq("status", "done")
           .eq("due_date", today)
           .limit(10),
@@ -840,6 +1053,7 @@ export async function executeTool(
           .from("tasks")
           .select("title, due_date")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .neq("status", "done")
           .lt("due_date", today)
           .limit(5),
@@ -847,35 +1061,45 @@ export async function executeTool(
           .from("habits")
           .select("id, name, icon")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .eq("active", true)
           .contains("target_days", [todayDOW()]),
         supabase
           .from("habit_logs")
           .select("habit_id")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .eq("logged_date", today)
           .eq("completed", true),
         supabase
           .from("goals")
           .select("title, progress")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .eq("status", "active")
           .limit(5),
         supabase
           .from("budgets")
           .select("category, amount")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .gte("period_end", today),
         supabase
           .from("transactions")
           .select("category, amount")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .eq("type", "expense")
           .gte("date", monthStart),
+        // !inner turns the embedded contact into a join filter, so a follow-up
+        // whose contact has been deleted drops out of the briefing entirely
+        // rather than surfacing with the deleted contact's name attached.
         supabase
           .from("interactions")
-          .select("contacts(name), follow_up_date")
+          .select("contacts!inner(name), follow_up_date")
           .eq("user_id", userId)
+          .is("deleted_at", null)
+          .is("contacts.deleted_at", null)
           .lte("follow_up_date", today)
           .not("follow_up_date", "is", null)
           .limit(5),
@@ -928,6 +1152,7 @@ export async function executeTool(
             .from("tasks")
             .select("id, title, status, priority")
             .eq("user_id", userId)
+            .is("deleted_at", null)
             .ilike("title", `%${query}%`)
             .limit(searchLimit)
             .then(({ data }) => {
@@ -939,12 +1164,14 @@ export async function executeTool(
               .from("notes")
               .select("id, title, content")
               .eq("user_id", userId)
+              .is("deleted_at", null)
               .ilike("title", `%${query}%`)
               .limit(searchLimit),
             supabase
               .from("notes")
               .select("id, title, content")
               .eq("user_id", userId)
+              .is("deleted_at", null)
               .ilike("content", `%${query}%`)
               .limit(searchLimit),
           ]).then(([byTitle, byContent]) => {
@@ -962,6 +1189,7 @@ export async function executeTool(
             .from("contacts")
             .select("id, name, company, email")
             .eq("user_id", userId)
+            .is("deleted_at", null)
             .ilike("name", `%${query}%`)
             .limit(searchLimit)
             .then(({ data }) => {
@@ -972,6 +1200,7 @@ export async function executeTool(
             .from("goals")
             .select("id, title, progress, status")
             .eq("user_id", userId)
+            .is("deleted_at", null)
             .ilike("title", `%${query}%`)
             .limit(searchLimit)
             .then(({ data }) => {
@@ -1004,25 +1233,33 @@ export async function executeTool(
             .from("transactions")
             .select("type,amount,category")
             .eq("user_id", userId)
+            .is("deleted_at", null)
             .gte("date", startDate),
           supabase
             .from("tasks")
             .select("id,status")
             .eq("user_id", userId)
+            .is("deleted_at", null)
             // created_at is timestamptz — anchor to the start of the Dubai day
             // rather than relying on an implicit midnight-UTC cast.
             .gte("created_at", `${startDate}T00:00:00+04:00`),
-          supabase.from("habits").select("id,name").eq("user_id", userId),
+          supabase
+            .from("habits")
+            .select("id,name")
+            .eq("user_id", userId)
+            .is("deleted_at", null),
           supabase
             .from("habit_logs")
             .select("habit_id,completed")
             .eq("user_id", userId)
+            .is("deleted_at", null)
             // Schema column is logged_date (001_schema.sql), not date.
             .gte("logged_date", startDate),
           supabase
             .from("goals")
             .select("id,status,progress")
-            .eq("user_id", userId),
+            .eq("user_id", userId)
+            .is("deleted_at", null),
         ]);
 
       // Reporting zeros for a failed query would look like a genuinely empty
@@ -1086,24 +1323,13 @@ export async function executeTool(
     case "delete_task": {
       const p = DeleteTaskInput.safeParse(input);
       if (!p.success) return badInput();
-      // Ownership preflight — defense in depth before RLS
-      const { data: existing } = await supabase
-        .from("tasks")
-        .select("id")
-        .eq("id", p.data.task_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Task not found" };
-      const { error } = await supabase
-        .from("tasks")
-        .delete()
-        .eq("id", p.data.task_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_task", error);
-      return {
-        success: true,
-        message: `Deleted task: "${p.data.task_title ?? "task"}"`,
-      };
+      return softDeleteRecord(
+        supabase,
+        "task",
+        p.data.task_id,
+        userId,
+        "delete_task",
+      );
     }
 
     case "bulk_complete_tasks": {
@@ -1113,7 +1339,8 @@ export async function executeTool(
         .from("tasks")
         .update({ status: "done", completed_at: new Date().toISOString() })
         .in("id", p.data.task_ids)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (error) return dbErr("bulk_complete_tasks", error);
       return {
         success: true,
@@ -1124,24 +1351,13 @@ export async function executeTool(
     case "delete_note": {
       const p = DeleteNoteInput.safeParse(input);
       if (!p.success) return badInput();
-      // Ownership preflight — defense in depth before RLS
-      const { data: existing } = await supabase
-        .from("notes")
-        .select("id")
-        .eq("id", p.data.note_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Note not found" };
-      const { error } = await supabase
-        .from("notes")
-        .delete()
-        .eq("id", p.data.note_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_note", error);
-      return {
-        success: true,
-        message: `Deleted note: "${p.data.note_title ?? "note"}"`,
-      };
+      return softDeleteRecord(
+        supabase,
+        "note",
+        p.data.note_id,
+        userId,
+        "delete_note",
+      );
     }
 
     // ─── TASKS ─────────────────────────────────────────────────────────────────
@@ -1160,6 +1376,7 @@ export async function executeTool(
         .update(updates)
         .eq("id", id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("title")
         .single();
       if (error) return dbErr("update_task", error);
@@ -1173,6 +1390,7 @@ export async function executeTool(
         .from("projects")
         .select("id, name, description, color, status")
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .order("name");
       if (error) return dbErr("list_projects", error);
       return {
@@ -1214,6 +1432,7 @@ export async function executeTool(
         .update(updates)
         .eq("id", id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("name")
         .single();
       if (error) return dbErr("update_project", error);
@@ -1223,20 +1442,13 @@ export async function executeTool(
     case "delete_project": {
       const p = DeleteProjectInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("projects")
-        .select("id, name")
-        .eq("id", p.data.project_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Project not found" };
-      const { error } = await supabase
-        .from("projects")
-        .delete()
-        .eq("id", p.data.project_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_project", error);
-      return { success: true, message: `Deleted project: "${existing.name}"` };
+      return softDeleteRecord(
+        supabase,
+        "project",
+        p.data.project_id,
+        userId,
+        "delete_project",
+      );
     }
 
     // ─── GOALS ─────────────────────────────────────────────────────────────────
@@ -1249,7 +1461,8 @@ export async function executeTool(
         .select(
           "id, title, description, category, target_date, progress, status",
         )
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (statusFilter !== "all") query = query.eq("status", statusFilter);
       const { data, error } = await query
         .order("created_at", { ascending: false })
@@ -1271,6 +1484,7 @@ export async function executeTool(
         .update(updates)
         .eq("id", id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("title")
         .single();
       if (error) return dbErr("update_goal", error);
@@ -1285,6 +1499,7 @@ export async function executeTool(
         .update({ status: "completed", progress: 100 })
         .eq("id", p.data.id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("title")
         .single();
       if (error) return dbErr("complete_goal", error);
@@ -1294,20 +1509,13 @@ export async function executeTool(
     case "delete_goal": {
       const p = DeleteGoalInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("goals")
-        .select("id, title")
-        .eq("id", p.data.goal_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Goal not found" };
-      const { error } = await supabase
-        .from("goals")
-        .delete()
-        .eq("id", p.data.goal_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_goal", error);
-      return { success: true, message: `Deleted goal: "${existing.title}"` };
+      return softDeleteRecord(
+        supabase,
+        "goal",
+        p.data.goal_id,
+        userId,
+        "delete_goal",
+      );
     }
 
     // ─── MILESTONES ────────────────────────────────────────────────────────────
@@ -1343,6 +1551,7 @@ export async function executeTool(
         .select("id, title, due_date, completed_at")
         .eq("goal_id", p.data.goal_id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .order("due_date", { ascending: true, nullsFirst: false });
       if (error) return dbErr("list_milestones", error);
       return {
@@ -1361,6 +1570,7 @@ export async function executeTool(
         .update(updates)
         .eq("id", id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("title")
         .single();
       if (error) return dbErr("update_milestone", error);
@@ -1375,6 +1585,7 @@ export async function executeTool(
         .update({ completed_at: new Date().toISOString() })
         .eq("id", p.data.id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("title")
         .single();
       if (error) return dbErr("complete_milestone", error);
@@ -1387,23 +1598,13 @@ export async function executeTool(
     case "delete_milestone": {
       const p = DeleteMilestoneInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("milestones")
-        .select("id, title")
-        .eq("id", p.data.milestone_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Milestone not found" };
-      const { error } = await supabase
-        .from("milestones")
-        .delete()
-        .eq("id", p.data.milestone_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_milestone", error);
-      return {
-        success: true,
-        message: `Deleted milestone: "${existing.title}"`,
-      };
+      return softDeleteRecord(
+        supabase,
+        "milestone",
+        p.data.milestone_id,
+        userId,
+        "delete_milestone",
+      );
     }
 
     // ─── HABITS ────────────────────────────────────────────────────────────────
@@ -1414,12 +1615,14 @@ export async function executeTool(
           .from("habits")
           .select("id, name, icon, color, frequency, active")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .eq("active", true)
           .order("name"),
         supabase
           .from("habit_logs")
           .select("habit_id")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .eq("logged_date", today)
           .eq("completed", true),
       ]);
@@ -1481,6 +1684,7 @@ export async function executeTool(
         .update(updates)
         .eq("id", id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("name")
         .single();
       if (error) return dbErr("update_habit", error);
@@ -1490,36 +1694,40 @@ export async function executeTool(
     case "delete_habit": {
       const p = DeleteHabitInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("habits")
-        .select("id, name")
-        .eq("id", p.data.habit_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Habit not found" };
-      const { error } = await supabase
-        .from("habits")
-        .delete()
-        .eq("id", p.data.habit_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_habit", error);
-      return { success: true, message: `Deleted habit: "${existing.name}"` };
+      return softDeleteRecord(
+        supabase,
+        "habit",
+        p.data.habit_id,
+        userId,
+        "delete_habit",
+      );
     }
 
+    // Addressed by (habit_id, logged_date) rather than by row id, so it
+    // resolves the row first and then hands off to the shared soft delete.
     case "delete_habit_log": {
       const p = DeleteHabitLogInput.safeParse(input);
       if (!p.success) return badInput();
-      const { error } = await supabase
+      const { data: log } = await supabase
         .from("habit_logs")
-        .delete()
+        .select("id")
         .eq("habit_id", p.data.habit_id)
         .eq("logged_date", p.data.logged_date)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_habit_log", error);
-      return {
-        success: true,
-        message: `Removed habit log for ${p.data.logged_date}`,
-      };
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (!log)
+        return {
+          success: false,
+          message: `No habit log found for ${p.data.logged_date}`,
+        };
+      return softDeleteRecord(
+        supabase,
+        "habit_log",
+        log.id,
+        userId,
+        "delete_habit_log",
+      );
     }
 
     // ─── TRANSACTIONS ──────────────────────────────────────────────────────────
@@ -1528,14 +1736,16 @@ export async function executeTool(
       const p = ListTransactionsInput.safeParse(input);
       const typeFilter = p.success ? p.data.type : "all";
       const startDate = p.success ? p.data.start_date : undefined;
-      const limitVal = p.success && p.data.limit ? p.data.limit : DEFAULT_PAGE_SIZE;
+      const limitVal =
+        p.success && p.data.limit ? p.data.limit : DEFAULT_PAGE_SIZE;
       const offsetVal = (p.success && p.data.offset) || 0;
       let query = supabase
         .from("transactions")
         .select(
           "id, type, amount, category, description, date, payment_method, payment_method_id, from_payment_method_id, to_payment_method_id",
         )
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (typeFilter && typeFilter !== "all")
         query = query.eq("type", typeFilter);
       if (startDate) query = query.gte("date", startDate);
@@ -1555,6 +1765,7 @@ export async function executeTool(
         .select("id")
         .eq("id", transaction_id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .maybeSingle();
       if (!existing)
         return { success: false, message: "Transaction not found" };
@@ -1562,7 +1773,8 @@ export async function executeTool(
         .from("transactions")
         .update(updates)
         .eq("id", transaction_id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (error) return dbErr("update_transaction", error);
       return { success: true, message: "Transaction updated." };
     }
@@ -1570,21 +1782,13 @@ export async function executeTool(
     case "delete_transaction": {
       const p = DeleteTransactionInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("transactions")
-        .select("id, category, amount")
-        .eq("id", p.data.transaction_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing)
-        return { success: false, message: "Transaction not found" };
-      const { error } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("id", p.data.transaction_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_transaction", error);
-      return { success: true, message: "Transaction deleted." };
+      return softDeleteRecord(
+        supabase,
+        "transaction",
+        p.data.transaction_id,
+        userId,
+        "delete_transaction",
+      );
     }
 
     // ─── BUDGETS ───────────────────────────────────────────────────────────────
@@ -1594,6 +1798,7 @@ export async function executeTool(
         .from("budgets")
         .select("id, category, amount, period, period_start, period_end")
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .order("period_end", { ascending: false });
       if (error) return dbErr("list_budgets", error);
       return {
@@ -1634,7 +1839,8 @@ export async function executeTool(
         .from("budgets")
         .update(updates)
         .eq("id", id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (error) return dbErr("update_budget", error);
       return { success: true, message: "Budget updated." };
     }
@@ -1642,20 +1848,13 @@ export async function executeTool(
     case "delete_budget": {
       const p = DeleteBudgetInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("budgets")
-        .select("id, category")
-        .eq("id", p.data.budget_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Budget not found" };
-      const { error } = await supabase
-        .from("budgets")
-        .delete()
-        .eq("id", p.data.budget_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_budget", error);
-      return { success: true, message: `Deleted budget: ${existing.category}` };
+      return softDeleteRecord(
+        supabase,
+        "budget",
+        p.data.budget_id,
+        userId,
+        "delete_budget",
+      );
     }
 
     // ─── DEBTS ─────────────────────────────────────────────────────────────────
@@ -1666,7 +1865,8 @@ export async function executeTool(
       let query = supabase
         .from("debts")
         .select("id, creditor, type, amount, description, due_date, paid_at")
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (filter === "i_owe") query = query.eq("type", "i_owe");
       else if (filter === "they_owe") query = query.eq("type", "they_owe");
       else if (filter === "unpaid") query = query.is("paid_at", null);
@@ -1714,6 +1914,7 @@ export async function executeTool(
         .select("id, creditor")
         .eq("id", debt_id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .maybeSingle();
       if (!existing) return { success: false, message: "Debt not found" };
       const payload = {
@@ -1724,7 +1925,8 @@ export async function executeTool(
         .from("debts")
         .update(payload)
         .eq("id", debt_id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (error) return dbErr("update_debt", error);
       return {
         success: true,
@@ -1737,23 +1939,13 @@ export async function executeTool(
     case "delete_debt": {
       const p = DeleteDebtInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("debts")
-        .select("id, creditor")
-        .eq("id", p.data.debt_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Debt not found" };
-      const { error } = await supabase
-        .from("debts")
-        .delete()
-        .eq("id", p.data.debt_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_debt", error);
-      return {
-        success: true,
-        message: `Deleted debt record for ${existing.creditor}`,
-      };
+      return softDeleteRecord(
+        supabase,
+        "debt",
+        p.data.debt_id,
+        userId,
+        "delete_debt",
+      );
     }
 
     // ─── CONTACTS ──────────────────────────────────────────────────────────────
@@ -1761,12 +1953,14 @@ export async function executeTool(
     case "list_contacts": {
       const p = ListContactsInput.safeParse(input);
       const typeFilter = p.success ? p.data.type : "all";
-      const limitVal = p.success && p.data.limit ? p.data.limit : DEFAULT_PAGE_SIZE;
+      const limitVal =
+        p.success && p.data.limit ? p.data.limit : DEFAULT_PAGE_SIZE;
       const offsetVal = (p.success && p.data.offset) || 0;
       let query = supabase
         .from("contacts")
         .select("id, name, email, phone, company, type, stage")
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (typeFilter && typeFilter !== "all")
         query = query.eq("type", typeFilter);
       const { data, error } = await query
@@ -1785,6 +1979,7 @@ export async function executeTool(
         .update(updates)
         .eq("id", id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("name")
         .single();
       if (error) return dbErr("update_contact", error);
@@ -1794,20 +1989,13 @@ export async function executeTool(
     case "delete_contact": {
       const p = DeleteContactInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("contacts")
-        .select("id, name")
-        .eq("id", p.data.contact_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Contact not found" };
-      const { error } = await supabase
-        .from("contacts")
-        .delete()
-        .eq("id", p.data.contact_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_contact", error);
-      return { success: true, message: `Deleted contact: "${existing.name}"` };
+      return softDeleteRecord(
+        supabase,
+        "contact",
+        p.data.contact_id,
+        userId,
+        "delete_contact",
+      );
     }
 
     // ─── INTERACTIONS ──────────────────────────────────────────────────────────
@@ -1845,6 +2033,7 @@ export async function executeTool(
         .select("id, type, notes, date, follow_up_date")
         .eq("contact_id", p.data.contact_id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .order("date", { ascending: false })
         .limit(20);
       if (error) return dbErr("list_interactions", error);
@@ -1863,7 +2052,8 @@ export async function executeTool(
         .from("interactions")
         .update(updates)
         .eq("id", id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (error) return dbErr("update_interaction", error);
       return { success: true, message: "Interaction updated." };
     }
@@ -1871,34 +2061,28 @@ export async function executeTool(
     case "delete_interaction": {
       const p = DeleteInteractionInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("interactions")
-        .select("id")
-        .eq("id", p.data.interaction_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing)
-        return { success: false, message: "Interaction not found" };
-      const { error } = await supabase
-        .from("interactions")
-        .delete()
-        .eq("id", p.data.interaction_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_interaction", error);
-      return { success: true, message: "Interaction deleted." };
+      return softDeleteRecord(
+        supabase,
+        "interaction",
+        p.data.interaction_id,
+        userId,
+        "delete_interaction",
+      );
     }
 
     // ─── NOTES ─────────────────────────────────────────────────────────────────
 
     case "list_notes": {
       const p = ListNotesInput.safeParse(input);
-      const limitVal = p.success && p.data.limit ? p.data.limit : DEFAULT_PAGE_SIZE;
+      const limitVal =
+        p.success && p.data.limit ? p.data.limit : DEFAULT_PAGE_SIZE;
       const offsetVal = (p.success && p.data.offset) || 0;
       const tagFilter = p.success ? p.data.tag : undefined;
       let query = supabase
         .from("notes")
         .select("id, title, tags, created_at")
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (tagFilter) query = query.contains("tags", [tagFilter]);
       const { data, error } = await query
         .order("created_at", { ascending: false })
@@ -1916,6 +2100,7 @@ export async function executeTool(
         .update(updates)
         .eq("id", id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("title")
         .single();
       if (error) return dbErr("update_note", error);
@@ -1933,6 +2118,7 @@ export async function executeTool(
         .from("documents")
         .select("id, name, file_type, file_size, tags, notes, created_at")
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(limitVal);
       if (error) return dbErr("list_documents", error);
@@ -1976,6 +2162,7 @@ export async function executeTool(
         .update(updates)
         .eq("id", id)
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .select("name")
         .single();
       if (error) return dbErr("update_document", error);
@@ -1985,20 +2172,13 @@ export async function executeTool(
     case "delete_document": {
       const p = DeleteDocumentInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("documents")
-        .select("id, name")
-        .eq("id", p.data.document_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Document not found" };
-      const { error } = await supabase
-        .from("documents")
-        .delete()
-        .eq("id", p.data.document_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_document", error);
-      return { success: true, message: `Deleted document: "${existing.name}"` };
+      return softDeleteRecord(
+        supabase,
+        "document",
+        p.data.document_id,
+        userId,
+        "delete_document",
+      );
     }
 
     // ─── LINKS ─────────────────────────────────────────────────────────────────
@@ -2012,6 +2192,7 @@ export async function executeTool(
         .from("links")
         .select("id, url, title, description, tags, created_at")
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(limitVal);
       if (error) return dbErr("list_links", error);
@@ -2052,7 +2233,8 @@ export async function executeTool(
         .from("links")
         .update(updates)
         .eq("id", id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (error) return dbErr("update_link", error);
       return { success: true, message: "Link updated." };
     }
@@ -2060,20 +2242,13 @@ export async function executeTool(
     case "delete_link": {
       const p = DeleteLinkInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("links")
-        .select("id")
-        .eq("id", p.data.id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Link not found" };
-      const { error } = await supabase
-        .from("links")
-        .delete()
-        .eq("id", p.data.id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_link", error);
-      return { success: true, message: "Link deleted." };
+      return softDeleteRecord(
+        supabase,
+        "link",
+        p.data.id,
+        userId,
+        "delete_link",
+      );
     }
 
     // ─── JOURNAL ENTRIES ───────────────────────────────────────────────────────
@@ -2087,6 +2262,7 @@ export async function executeTool(
         .from("journal_entries")
         .select("id, date, mood, energy, tags, created_at")
         .eq("user_id", userId)
+        .is("deleted_at", null)
         .order("date", { ascending: false })
         .limit(limitVal);
       if (error) return dbErr("list_journal_entries", error);
@@ -2100,6 +2276,10 @@ export async function executeTool(
     case "create_journal_entry": {
       const p = CreateJournalEntryInput.safeParse(input);
       if (!p.success) return badInput();
+      // journal_entries has UNIQUE (user_id, date). A soft-deleted entry still
+      // holds that day's slot, so deleted_at: null revives it — writing a new
+      // entry for a date the user deleted should give them a visible entry, not
+      // an invisible one.
       const { error, data } = await supabase
         .from("journal_entries")
         .upsert(
@@ -2110,6 +2290,7 @@ export async function executeTool(
             mood: p.data.mood ?? null,
             energy: p.data.energy ?? null,
             tags: p.data.tags ?? [],
+            deleted_at: null,
           },
           { onConflict: "user_id,date" },
         )
@@ -2131,7 +2312,8 @@ export async function executeTool(
         .from("journal_entries")
         .update(updates)
         .eq("id", id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (error) return dbErr("update_journal_entry", error);
       return { success: true, message: "Journal entry updated." };
     }
@@ -2139,24 +2321,13 @@ export async function executeTool(
     case "delete_journal_entry": {
       const p = DeleteJournalEntryInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("journal_entries")
-        .select("id, date")
-        .eq("id", p.data.entry_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing)
-        return { success: false, message: "Journal entry not found" };
-      const { error } = await supabase
-        .from("journal_entries")
-        .delete()
-        .eq("id", p.data.entry_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_journal_entry", error);
-      return {
-        success: true,
-        message: `Deleted journal entry for ${existing.date}`,
-      };
+      return softDeleteRecord(
+        supabase,
+        "journal_entry",
+        p.data.entry_id,
+        userId,
+        "delete_journal_entry",
+      );
     }
 
     // ─── REVIEWS ───────────────────────────────────────────────────────────────
@@ -2168,7 +2339,8 @@ export async function executeTool(
       let query = supabase
         .from("reviews")
         .select("id, type, period_start, period_end, mood, energy, created_at")
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (typeFilter && typeFilter !== "all")
         query = query.eq("type", typeFilter);
       const { data, error } = await query
@@ -2217,7 +2389,8 @@ export async function executeTool(
           ...(content !== undefined ? { content: { text: content } } : {}),
         })
         .eq("id", id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (error) return dbErr("update_review", error);
       return { success: true, message: "Review updated." };
     }
@@ -2225,23 +2398,13 @@ export async function executeTool(
     case "delete_review": {
       const p = DeleteReviewInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("reviews")
-        .select("id, type, period_start")
-        .eq("id", p.data.review_id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing) return { success: false, message: "Review not found" };
-      const { error } = await supabase
-        .from("reviews")
-        .delete()
-        .eq("id", p.data.review_id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_review", error);
-      return {
-        success: true,
-        message: `Deleted ${existing.type} review for ${existing.period_start}`,
-      };
+      return softDeleteRecord(
+        supabase,
+        "review",
+        p.data.review_id,
+        userId,
+        "delete_review",
+      );
     }
 
     // ─── FOCUS SESSIONS ────────────────────────────────────────────────────────
@@ -2253,7 +2416,8 @@ export async function executeTool(
       let query = supabase
         .from("focus_sessions")
         .select("id, duration_minutes, started_at, ended_at, notes, task_id")
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (taskFilter) query = query.eq("task_id", taskFilter);
       const { data, error } = await query
         .order("started_at", { ascending: false })
@@ -2303,7 +2467,8 @@ export async function executeTool(
         .from("focus_sessions")
         .update(updates)
         .eq("id", id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (error) return dbErr("update_focus_session", error);
       return { success: true, message: "Focus session updated." };
     }
@@ -2311,21 +2476,13 @@ export async function executeTool(
     case "delete_focus_session": {
       const p = ByIdInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data: existing } = await supabase
-        .from("focus_sessions")
-        .select("id")
-        .eq("id", p.data.id)
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (!existing)
-        return { success: false, message: "Focus session not found" };
-      const { error } = await supabase
-        .from("focus_sessions")
-        .delete()
-        .eq("id", p.data.id)
-        .eq("user_id", userId);
-      if (error) return dbErr("delete_focus_session", error);
-      return { success: true, message: "Focus session deleted." };
+      return softDeleteRecord(
+        supabase,
+        "focus_session",
+        p.data.id,
+        userId,
+        "delete_focus_session",
+      );
     }
 
     // ─── PERSONAL MEMORY ───────────────────────────────────────────────────────
@@ -2408,6 +2565,220 @@ export async function executeTool(
         success: true,
         message: `Found ${results.length} relevant memories`,
         data: results,
+      };
+    }
+
+    // ─── RECYCLE BIN ───────────────────────────────────────────────────────────
+
+    case "list_deleted": {
+      const p = ListDeletedInput.safeParse(input);
+      if (!p.success) return badInput();
+      const limitVal = p.data.limit ?? DEFAULT_PAGE_SIZE;
+      const offsetVal = p.data.offset ?? 0;
+
+      // A single entity pages properly. Without one we sample every entity so
+      // the user can see the whole bin at a glance.
+      if (p.data.entity) {
+        const meta = DELETABLE[p.data.entity];
+        const [from, to] = rangeFor(limitVal, offsetVal);
+        const { data, error } = await supabase
+          .from(meta.table)
+          .select("*")
+          .eq("user_id", userId)
+          .not("deleted_at", "is", null)
+          .order("deleted_at", { ascending: false })
+          .range(from, to);
+        if (error) return dbErr("list_deleted", error);
+        // Widened because the table is chosen at runtime: `data` is a union of
+        // 17 row-array types, which pageOf's single type parameter cannot infer.
+        const rows: unknown[] | null = data;
+        return pagedResult(
+          `deleted ${meta.plural}`,
+          pageOf(rows, limitVal, offsetVal),
+        );
+      }
+
+      const perEntity = await Promise.all(
+        DELETABLE_ENTITIES.map(async (entity) => {
+          const meta = DELETABLE[entity];
+          const { data, error } = await supabase
+            .from(meta.table)
+            .select("*")
+            .eq("user_id", userId)
+            .not("deleted_at", "is", null)
+            .order("deleted_at", { ascending: false })
+            .limit(limitVal);
+          return { entity, rows: error ? [] : (data ?? []) };
+        }),
+      );
+
+      const bin = perEntity.filter((e) => e.rows.length > 0);
+      const total = bin.reduce((sum, e) => sum + e.rows.length, 0);
+      if (!total)
+        return {
+          success: true,
+          message: "The recycle bin is empty.",
+          data: [],
+        };
+      return {
+        success: true,
+        message: `Found ${total} deleted record(s) across ${bin.length} entity type(s)`,
+        data: Object.fromEntries(bin.map((e) => [e.entity, e.rows])),
+      };
+    }
+
+    case "restore_record": {
+      const p = RestoreRecordInput.safeParse(input);
+      if (!p.success) return badInput();
+      return restoreRecord(supabase, p.data.entity, p.data.id, userId);
+    }
+
+    case "purge_record": {
+      // confirm is z.literal(true) — an unconfirmed call fails validation above
+      // and never reaches the database.
+      const p = PurgeRecordInput.safeParse(input);
+      if (!p.success)
+        return {
+          success: false,
+          message:
+            "Permanent deletion requires confirm: true and a valid entity and id.",
+        };
+      const meta = DELETABLE[p.data.entity];
+
+      // Only something already in the recycle bin can be purged, so a single
+      // mistaken call can never destroy live data.
+      const { data: existing } = await supabase
+        .from(meta.table)
+        .select("*")
+        .eq("id", p.data.id)
+        .eq("user_id", userId)
+        .not("deleted_at", "is", null)
+        .maybeSingle();
+      if (!existing)
+        return {
+          success: false,
+          message: `No deleted ${meta.label.toLowerCase()} found with that id. Delete it first — purge only removes what is already in the recycle bin.`,
+        };
+
+      const { error } = await supabase
+        .from(meta.table)
+        .delete()
+        .eq("id", p.data.id)
+        .eq("user_id", userId)
+        .not("deleted_at", "is", null);
+      if (error) return dbErr("purge_record", error);
+
+      // Say what the FK cascade took with it — this is the one irreversible path.
+      const alsoGone = meta.cascades.length
+        ? ` Its ${meta.cascades.join(" and ")} were destroyed with it.`
+        : "";
+      return {
+        success: true,
+        message: `Permanently destroyed ${meta.label.toLowerCase()}: ${describeRecord(p.data.entity, existing)}.${alsoGone} This cannot be undone.`,
+        data: existing,
+      };
+    }
+
+    case "bulk_delete_records": {
+      const p = BulkDeleteRecordsInput.safeParse(input);
+      if (!p.success)
+        return {
+          success: false,
+          message:
+            "Bulk delete requires confirm: true, a valid entity, and 1–100 ids.",
+        };
+      const meta = DELETABLE[p.data.entity];
+
+      const { data: matched, error: readError } = await supabase
+        .from(meta.table)
+        .select("*")
+        .eq("user_id", userId)
+        .in("id", p.data.ids)
+        .is("deleted_at", null);
+      if (readError) return dbErr("bulk_delete_records", readError);
+      if (!matched?.length)
+        return {
+          success: false,
+          message: `No live ${meta.plural} found for those ids`,
+        };
+
+      const matchedIds: string[] = [];
+      for (const row of matched) {
+        const id = displayValue(row, "id");
+        if (id) matchedIds.push(id);
+      }
+      for (const id of matchedIds) {
+        await detachChildren(supabase, p.data.entity, id, userId);
+      }
+
+      const { error } = await supabase
+        .from(meta.table)
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .in("id", matchedIds)
+        .is("deleted_at", null);
+      if (error) return dbErr("bulk_delete_records", error);
+
+      // Report the count actually affected, not the count requested — brief
+      // item 7. They differ whenever an id was already deleted or not owned.
+      const skipped = p.data.ids.length - matchedIds.length;
+      const note = skipped
+        ? ` ${skipped} id(s) were skipped — already deleted or not found.`
+        : "";
+      return {
+        success: true,
+        message: `Deleted ${matchedIds.length} ${meta.plural}.${note} Undo with restore_record.`,
+        data: { deleted_count: matchedIds.length, ids: matchedIds },
+      };
+    }
+
+    case "forget_user_fact": {
+      const p = ForgetUserFactInput.safeParse(input);
+      if (!p.success) return badInput();
+
+      // Facts live in two places — the JSONB map that builds profile context,
+      // and the vector store behind recall_memories. Both have to forget.
+      const { data: profile } = await supabase
+        .from("user_profile")
+        .select("facts")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const facts = profile?.facts;
+      if (!facts || typeof facts !== "object" || Array.isArray(facts))
+        return { success: false, message: "No stored facts to forget." };
+
+      const remaining: Record<string, Json> = {};
+      let found = false;
+      for (const [key, value] of Object.entries(facts)) {
+        if (key === p.data.key) {
+          found = true;
+          continue;
+        }
+        remaining[key] = value;
+      }
+      if (!found)
+        return {
+          success: false,
+          message: `No stored fact called "${p.data.key}".`,
+        };
+
+      const { error } = await supabase
+        .from("user_profile")
+        .update({ facts: remaining })
+        .eq("user_id", userId);
+      if (error) return dbErr("forget_user_fact", error);
+
+      await supabase
+        .from("ai_memory")
+        .delete()
+        .eq("user_id", userId)
+        .eq("memory_type", "user_fact")
+        .ilike("content", `${p.data.key}:%`);
+
+      return {
+        success: true,
+        message: `Forgot "${p.data.key}". This cannot be undone.`,
       };
     }
 

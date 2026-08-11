@@ -21,6 +21,7 @@ type ProjectRow = {
   color: string;
   category: ProjectCategory;
   goal_id: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -77,6 +78,7 @@ type TaskRow = {
   estimated_time: number | null;
   project_id: string | null;
   area: ProjectCategory;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -89,6 +91,7 @@ type GoalRow = {
   target_date: string | null;
   status: "active" | "completed" | "abandoned";
   progress: number;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -99,6 +102,7 @@ type MilestoneRow = {
   title: string;
   due_date: string | null;
   completed_at: string | null;
+  deleted_at: string | null;
   created_at: string;
 };
 type ReviewRow = {
@@ -110,6 +114,7 @@ type ReviewRow = {
   content: Json;
   mood: number | null;
   energy: number | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -121,6 +126,7 @@ type JournalEntryRow = {
   mood: number | null;
   energy: number | null;
   tags: string[];
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -155,6 +161,7 @@ type TransactionRow = {
   from_payment_method_id: string | null;
   to_payment_method_id: string | null;
   tags: string[];
+  deleted_at: string | null;
   created_at: string;
 };
 type BudgetRow = {
@@ -165,6 +172,7 @@ type BudgetRow = {
   period: "monthly" | "quarterly" | "yearly";
   period_start: string;
   period_end: string;
+  deleted_at: string | null;
   created_at: string;
 };
 type DebtRow = {
@@ -176,6 +184,7 @@ type DebtRow = {
   description: string | null;
   due_date: string | null;
   paid_at: string | null;
+  deleted_at: string | null;
   created_at: string;
 };
 type HabitRow = {
@@ -189,6 +198,7 @@ type HabitRow = {
   icon: string;
   reminder_time: string | null; // stored as "HH:MM:SS", nullable
   active: boolean;
+  deleted_at: string | null;
   created_at: string;
 };
 type HabitLogRow = {
@@ -198,6 +208,7 @@ type HabitLogRow = {
   logged_date: string;
   completed: boolean;
   note: string | null;
+  deleted_at: string | null;
   created_at: string;
 };
 type FocusSessionRow = {
@@ -208,6 +219,7 @@ type FocusSessionRow = {
   started_at: string;
   ended_at: string | null;
   notes: string | null;
+  deleted_at: string | null;
   created_at: string;
 };
 type ContactRow = {
@@ -224,6 +236,7 @@ type ContactRow = {
   notes: string | null;
   tags: string[];
   last_contacted_at: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -235,6 +248,7 @@ type InteractionRow = {
   notes: string;
   date: string;
   follow_up_date: string | null;
+  deleted_at: string | null;
   created_at: string;
 };
 type NoteRow = {
@@ -245,6 +259,7 @@ type NoteRow = {
   tags: string[];
   linked_to_type: "task" | "goal" | "contact" | null;
   linked_to_id: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -257,6 +272,7 @@ type DocumentRow = {
   file_size: number | null;
   tags: string[];
   notes: string | null;
+  deleted_at: string | null;
   created_at: string;
 };
 type LinkRow = {
@@ -266,6 +282,7 @@ type LinkRow = {
   title: string | null;
   description: string | null;
   tags: string[];
+  deleted_at: string | null;
   created_at: string;
 };
 type AiConversationRow = {

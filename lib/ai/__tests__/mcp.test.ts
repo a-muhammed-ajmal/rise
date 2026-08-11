@@ -5,18 +5,29 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 import { MCP_TOOLS, isMcpAllowedTool, verifyMcpAuth } from "../mcp";
-import { AUTO_TOOLS, APPROVAL_TOOLS, APPROVAL_TOOL_NAMES } from "../tools";
+import { AUTO_TOOLS, REVERSIBLE_TOOLS, APPROVAL_TOOLS } from "../tools";
 import { createClient } from "@supabase/supabase-js";
 
 describe("MCP_TOOLS", () => {
-  it("exposes exactly the AUTO_TOOLS set", () => {
-    expect(MCP_TOOLS).toHaveLength(AUTO_TOOLS.length);
+  it("exposes the auto tools plus the reversible deletes", () => {
+    expect(MCP_TOOLS).toHaveLength(AUTO_TOOLS.length + REVERSIBLE_TOOLS.length);
   });
 
-  it("contains no approval-gated tool", () => {
+  // The connector deliberately carries tools that prompt in the app chat: a
+  // soft delete is gated there but safe here, because it can be undone. What it
+  // must never carry is anything from APPROVAL_TOOLS, which is irreversible.
+  it("contains no irreversible tool", () => {
+    const approvalNames = new Set(APPROVAL_TOOLS.map((t) => t.name));
     for (const tool of MCP_TOOLS) {
-      expect(APPROVAL_TOOL_NAMES.has(tool.name)).toBe(false);
+      expect(approvalNames.has(tool.name)).toBe(false);
     }
+  });
+
+  it("carries the reversible deletes and their undo", () => {
+    const names = MCP_TOOLS.map((t) => t.name);
+    expect(names).toContain("delete_task");
+    expect(names).toContain("restore_record");
+    expect(names).toContain("list_deleted");
   });
 });
 

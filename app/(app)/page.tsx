@@ -40,28 +40,33 @@ export default async function HomePage() {
     supabase
       .from("habits")
       .select("*")
+      .is("deleted_at", null)
       .eq("active", true)
       .contains("target_days", [todayDOW()])
       .order("reminder_time", { ascending: true, nullsFirst: false }),
     supabase
       .from("habit_logs")
       .select("habit_id, completed, logged_date")
+      .is("deleted_at", null)
       .eq("logged_date", today),
     supabase
       .from("goals")
       .select("*")
+      .is("deleted_at", null)
       .eq("status", "active")
       .order("progress", { ascending: false })
       .limit(3),
     supabase
       .from("transactions")
       .select("*")
+      .is("deleted_at", null)
       .eq("date", today)
       .order("created_at", { ascending: false })
       .limit(3),
     supabase
       .from("contacts")
       .select("id, name, email, phone, company, stage, last_contacted_at")
+      .is("deleted_at", null)
       .neq("type", "personal")
       .or(`last_contacted_at.is.null,last_contacted_at.lte.${format(subDays(parseISO(today), 14), "yyyy-MM-dd")}`)
       .order("last_contacted_at", { ascending: true, nullsFirst: true })
@@ -70,18 +75,21 @@ export default async function HomePage() {
     supabase
       .from("tasks")
       .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
       .eq("due_date", today)
       .eq("status", "done"),
     // Pending today count
     supabase
       .from("tasks")
       .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
       .eq("due_date", today)
       .neq("status", "done"),
     // Exact overdue count
     supabase
       .from("tasks")
       .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
       .neq("status", "done")
       .lt("due_date", today),
   ]);

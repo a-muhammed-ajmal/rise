@@ -26,16 +26,16 @@ The AI isn't just a chatbot. It can create a task, log an expense, mark a habit 
 | **Goals** | Goal cards with % progress slider, milestone tracking, and journal entries with mood/energy ratings |
 | **CRM** | Contacts with pipeline stages, deal values, interaction logs (call/email/meeting), and follow-up tracking |
 | **Knowledge** | Rich-text notes (Tiptap), document metadata, and links — all searchable by the AI |
-| **AI Assistant** | Gemini 2.5 Flash chat with SSE streaming, pgvector memory, file/image uploads, and 77 executable tools |
+| **AI Assistant** | Gemini 2.5 Flash chat with SSE streaming, pgvector memory, file/image uploads, and 82 executable tools |
 | **Analytics** | Recharts dashboards aggregating cross-module data — finance has Monthly / Daily view toggle |
 
 ---
 
 ## AI Tool System
 
-The assistant runs 77 tools across every module — split into two tiers:
+The assistant runs 82 tools across every module — split into three tiers:
 
-**AUTO_TOOLS (57)** — execute immediately without user confirmation:
+**AUTO_TOOLS (59)** — execute immediately without user confirmation:
 
 | Group | Tools |
 | --- | --- |
@@ -57,12 +57,17 @@ The assistant runs 77 tools across every module — split into two tiers:
 | Focus Sessions | `list_focus_sessions` · `create_focus_session` · `update_focus_session` |
 | Memory | `remember_user_fact` · `recall_memories` |
 | Analytics | `get_daily_briefing` · `get_analytics` · `search_data` |
+| Recycle bin | `list_deleted` · `restore_record` |
 
-**APPROVAL_TOOLS (20)** — stream pauses, a confirmation banner appears, user approves before execution:
+**REVERSIBLE_TOOLS (17)** — soft deletes. Confirmed in the app chat, but exposed over MCP because every one of them can be undone with `restore_record`:
 
-`delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `delete_habit_log` · `update_transaction` · `delete_transaction` · `delete_budget` · `update_debt` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review` · `delete_link` · `delete_focus_session`
+`delete_task` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `delete_habit_log` · `delete_transaction` · `delete_budget` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_link` · `delete_journal_entry` · `delete_review` · `delete_focus_session`
 
-Every destructive operation sits in this tier, so none of them is reachable over MCP (`MCP_TOOLS` derives from `AUTO_TOOLS`).
+**APPROVAL_TOOLS (6)** — stream pauses, a confirmation banner appears, user approves before execution:
+
+`purge_record` · `bulk_delete_records` · `forget_user_fact` · `bulk_complete_tasks` · `update_transaction` · `update_debt`
+
+The tiers split on **MCP reach, not the in-app gate** — REVERSIBLE and APPROVAL both prompt via `ConfirmDialog` in chat. What separates them is that a soft delete is recoverable, which is what makes it safe on a transport with no confirmation UI. Everything irreversible stays in APPROVAL and is never reachable over MCP.
 
 `log_expense` and `log_income` are AUTO, but the chat route escalates them to the same signed-approval flow when the amount exceeds AED 500 or the payload is ambiguous — see `lib/ai/financial-safety.ts`.
 
@@ -94,7 +99,7 @@ At **11:59 PM Dubai time** every day, a Vercel cron job fires `POST /api/ai/dail
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (822 tests) |
+| Testing | Vitest 4 + Testing Library (924 tests) |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -115,7 +120,8 @@ RISE uses a locked light-first orange brand system (full spec in `.claude/skills
 
 ## Database Schema
 
-26 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–021:
+26 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–022. The 17 tables with a
+`delete_*` tool also carry `deleted_at` for soft delete (022):
 
 ```text
 projects · tasks · goals · milestones · reviews · journal_entries
@@ -157,8 +163,11 @@ Destructive tool calls halt streaming and emit `approval_required`. The client s
 ## Connect to Claude (MCP Connector)
 
 RISE ships a **remote MCP server** at `POST /api/mcp` so Claude can read and act on your
-RISE data directly. It exposes only the **60 `AUTO_TOOLS`** — the 17 destructive
-`APPROVAL_TOOLS` are never reachable over MCP. It accepts **two** kinds of auth — a static
+RISE data directly. It exposes **76 tools** — the 59 `AUTO_TOOLS` plus the 17
+`REVERSIBLE_TOOLS`, so Claude can delete as well as create, and undo any of it with
+`restore_record`. The 6 irreversible `APPROVAL_TOOLS` (`purge_record`,
+`bulk_delete_records`, `forget_user_fact`, `bulk_complete_tasks`, `update_transaction`,
+`update_debt`) are never reachable over MCP. It accepts **two** kinds of auth — a static
 **bearer token** (`MCP_ACCESS_TOKEN`, for Claude Code) or **OAuth 2.1** (for claude.ai web /
 Desktop). The endpoint returns `401` for any request without a valid one.
 
@@ -265,7 +274,7 @@ MCP_OAUTH_CLIENT_ID=       # OAuth client for claude.ai web / Desktop (any id)
 MCP_OAUTH_CLIENT_SECRET=   # OAuth client secret (long random string)
 ```
 
-Apply migrations 001–021 in your Supabase SQL editor (in order), then:
+Apply migrations 001–022 in your Supabase SQL editor (in order), then:
 
 ```bash
 npm run dev   # Turbopack dev server → http://localhost:3000
@@ -369,7 +378,7 @@ Optional: `VOYAGE_API_KEY` (keyword fallback without it), `VAPID_*` (push),
 `MCP_ACCESS_TOKEN` (Claude Code), `MCP_OAUTH_CLIENT_ID` / `MCP_OAUTH_CLIENT_SECRET`
 (claude.ai connector).
 
-**2. Migrations** — apply `001` … `021` in order in the Supabase SQL editor.
+**2. Migrations** — apply `001` … `022` in order in the Supabase SQL editor.
 Migrations are append-only; never edit an applied file.
 
 **3. Storage** — migration `020` creates both buckets and pins them private.
@@ -450,8 +459,8 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 822 passing |
+| Test count | 924 passing |
 | DB tables | 26 (RLS on all) |
-| AI tools | 77 (57 AUTO + 20 APPROVAL) |
-| Migrations | 21 (001–021) |
-| Last phase | Phase 19 — Security & correctness hardening: cron auth, digest/analytics fixes, all destructive tools gated behind approval, rate limiting, service-role isolation |
+| AI tools | 82 (59 AUTO + 17 REVERSIBLE + 6 APPROVAL) |
+| Migrations | 22 (001–022) |
+| Last phase | Phase 20 — Soft delete + recycle bin: deletes made reversible so they could be exposed over MCP, `restore_record` / `list_deleted` / `purge_record`, `deleted_at` on 17 tables |

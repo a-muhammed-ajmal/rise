@@ -35,6 +35,9 @@ function createMockQuery(
   chain.in = vi.fn().mockReturnValue(chain);
   chain.ilike = vi.fn().mockReturnValue(chain);
   chain.not = vi.fn().mockReturnValue(chain);
+  // Soft delete (022): every read filters `.is("deleted_at", null)`, and the
+  // recycle-bin tools invert it with `.not("deleted_at", "is", null)`.
+  chain.is = vi.fn().mockReturnValue(chain);
   chain.contains = vi.fn().mockReturnValue(chain);
   chain.order = vi.fn().mockReturnValue(chain);
   chain.limit = vi.fn().mockReturnValue(chain);
@@ -504,25 +507,73 @@ describe("executeTool", () => {
   });
 
   describe("delete_task", () => {
-    it("deletes a task", async () => {
-      const taskId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
-      // returnData non-null so maybeSingle() passes the ownership preflight
-      const query = createMockQuery({ id: taskId });
-      Object.defineProperty(query, "then", {
-        value: (resolve: (v: unknown) => void) =>
-          Promise.resolve({ data: null, error: null }).then(resolve),
-        writable: true,
-        configurable: true,
-      });
+    const taskId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
+
+    // Soft delete (022): the row stays in the table with deleted_at stamped, so
+    // restore_record can bring it back. A real .delete() here would be the bug.
+    it("stamps deleted_at instead of removing the row", async () => {
+      const query = createMockQuery({ id: taskId, title: "Old task" });
       setupMockSupabase({ queries: { tasks: query } });
 
       const result = await executeTool("delete_task", {
         task_id: taskId,
         task_title: "Old task",
       });
+
       expect(result.success).toBe(true);
-      expect(result.message).toContain("Old task");
-      expect(query.delete).toHaveBeenCalled();
+      expect(query.delete).not.toHaveBeenCalled();
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ deleted_at: expect.any(String) }),
+      );
+    });
+
+    // Brief item 11: the caller must be able to confirm the right thing went,
+    // and know it can be undone.
+    it("echoes the stored title and id, and points at the undo", async () => {
+      const query = createMockQuery({ id: taskId, title: "Stored title" });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("delete_task", {
+        task_id: taskId,
+        // Deliberately wrong: the message must come from the database row, not
+        // from what the model claimed the task was called.
+        task_title: "What the model guessed",
+      });
+
+      expect(result.message).toContain("Stored title");
+      expect(result.message).toContain(taskId);
+      expect(result.message).not.toContain("What the model guessed");
+      expect(result.message).toContain("restore_record");
+    });
+
+    it("refuses when the task is already deleted", async () => {
+      // maybeSingle() returns null: the preflight filters deleted_at IS NULL.
+      const query = createMockQuery(null);
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("delete_task", {
+        task_id: taskId,
+        task_title: "Gone",
+      });
+
+      expect(result).toEqual({ success: false, message: "Task not found" });
+      expect(query.update).not.toHaveBeenCalled();
+    });
+
+    // FK is ON DELETE SET NULL, but a soft delete is an UPDATE so the
+    // constraint never fires — the handler has to unlink the children itself.
+    it("unlinks focus sessions without deleting them", async () => {
+      const tasks = createMockQuery({ id: taskId, title: "Old task" });
+      const sessions = createMockQuery(null);
+      setupMockSupabase({ queries: { tasks, focus_sessions: sessions } });
+
+      await executeTool("delete_task", { task_id: taskId, task_title: "x" });
+
+      expect(sessions.update).toHaveBeenCalledWith(
+        { task_id: null },
+        { count: "exact" },
+      );
+      expect(sessions.delete).not.toHaveBeenCalled();
     });
   });
 
@@ -683,16 +734,11 @@ describe("executeTool", () => {
   });
 
   describe("delete_note", () => {
-    it("deletes a note", async () => {
-      const noteId = "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
+    const noteId = "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
+
+    it("soft-deletes a note and echoes its stored title", async () => {
       // returnData non-null so maybeSingle() passes the ownership preflight
-      const query = createMockQuery({ id: noteId });
-      Object.defineProperty(query, "then", {
-        value: (resolve: (v: unknown) => void) =>
-          Promise.resolve({ data: null, error: null }).then(resolve),
-        writable: true,
-        configurable: true,
-      });
+      const query = createMockQuery({ id: noteId, title: "Draft note" });
       setupMockSupabase({ queries: { notes: query } });
 
       const result = await executeTool("delete_note", {
@@ -701,6 +747,10 @@ describe("executeTool", () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain("Draft note");
+      expect(query.delete).not.toHaveBeenCalled();
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ deleted_at: expect.any(String) }),
+      );
     });
   });
 
@@ -1414,8 +1464,13 @@ describe("executeTool", () => {
   describe("delete_habit_log", () => {
     const habitId = "523e4567-e89b-12d3-a456-426614174004";
 
+    // Addressed by (habit_id, logged_date), so the handler resolves the row id
+    // first and then takes the shared soft-delete path.
     it("removes a habit log for a date", async () => {
-      const query = createMockQuery(null, null);
+      const query = createMockQuery({
+        id: "log-1",
+        logged_date: "2026-06-20",
+      });
       setupMockSupabase({ queries: { habit_logs: query } });
 
       const result = await executeTool("delete_habit_log", {
@@ -1424,6 +1479,19 @@ describe("executeTool", () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain("2026-06-20");
+      expect(query.delete).not.toHaveBeenCalled();
+    });
+
+    it("reports when no log exists for that date", async () => {
+      const query = createMockQuery(null, null);
+      setupMockSupabase({ queries: { habit_logs: query } });
+
+      const result = await executeTool("delete_habit_log", {
+        habit_id: habitId,
+        logged_date: "2026-06-20",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("No habit log found");
     });
 
     it("returns badInput for a malformed date", async () => {
@@ -1437,7 +1505,7 @@ describe("executeTool", () => {
     });
 
     it("returns error on Supabase failure", async () => {
-      const query = createMockQuery(null, { message: "boom" });
+      const query = createMockQuery({ id: "log-1" }, { message: "boom" });
       setupMockSupabase({ queries: { habit_logs: query } });
       const result = await executeTool("delete_habit_log", {
         habit_id: habitId,
@@ -1657,7 +1725,8 @@ describe("executeTool", () => {
         interaction_id: interactionId,
       });
       expect(result.success).toBe(true);
-      expect(result.message).toBe("Interaction deleted.");
+      expect(result.message).toContain("Deleted interaction");
+      expect(result.message).toContain("restore_record");
     });
 
     it("returns not found when interaction does not belong to user", async () => {
@@ -1928,7 +1997,8 @@ describe("executeTool", () => {
 
       const result = await executeTool("delete_link", { id: linkId });
       expect(result.success).toBe(true);
-      expect(result.message).toBe("Link deleted.");
+      expect(result.message).toContain("Deleted link");
+      expect(result.message).toContain("restore_record");
     });
 
     it("returns not found when link does not belong to user", async () => {
@@ -2291,7 +2361,8 @@ describe("executeTool", () => {
         id: sessionId,
       });
       expect(result.success).toBe(true);
-      expect(result.message).toBe("Focus session deleted.");
+      expect(result.message).toContain("Deleted focus session");
+      expect(result.message).toContain("restore_record");
     });
 
     it("returns not found when session does not belong to user", async () => {
@@ -2571,7 +2642,8 @@ describe("executeTool", () => {
         transaction_id: transactionId,
       });
       expect(result.success).toBe(true);
-      expect(result.message).toBe("Transaction deleted.");
+      expect(result.message).toContain("Deleted transaction");
+      expect(result.message).toContain("restore_record");
     });
 
     it("returns not found when transaction does not belong to user", async () => {
@@ -3069,7 +3141,7 @@ describe("executeTool with injected ToolContext", () => {
       expect(habitsQuery.eq).toHaveBeenCalledWith("user_id", "user-999");
     });
 
-    it("scopes the delete_task delete by user_id, not just the preflight", async () => {
+    it("scopes the delete_task soft delete by user_id, not just the preflight", async () => {
       const tasksQuery = createMockQuery({ id: "task-1" });
       const sb = injected({ tasks: tasksQuery });
 
@@ -3079,11 +3151,13 @@ describe("executeTool with injected ToolContext", () => {
         { supabase: sb as never, userId: "user-999" },
       );
 
-      expect(tasksQuery.delete).toHaveBeenCalled();
+      expect(tasksQuery.update).toHaveBeenCalledWith(
+        expect.objectContaining({ deleted_at: expect.any(String) }),
+      );
       expect(tasksQuery.eq).toHaveBeenCalledWith("user_id", "user-999");
     });
 
-    it("scopes the delete_note delete by user_id", async () => {
+    it("scopes the delete_note soft delete by user_id", async () => {
       const notesQuery = createMockQuery({ id: "note-1" });
       const sb = injected({ notes: notesQuery });
 
@@ -3093,7 +3167,9 @@ describe("executeTool with injected ToolContext", () => {
         { supabase: sb as never, userId: "user-999" },
       );
 
-      expect(notesQuery.delete).toHaveBeenCalled();
+      expect(notesQuery.update).toHaveBeenCalledWith(
+        expect.objectContaining({ deleted_at: expect.any(String) }),
+      );
       expect(notesQuery.eq).toHaveBeenCalledWith("user_id", "user-999");
     });
 
@@ -3195,6 +3271,449 @@ describe("executeTool with injected ToolContext", () => {
 
       expect(result).toEqual({ success: false, message: "Project not found" });
       expect(tasksQuery.update).not.toHaveBeenCalled();
+    });
+  });
+});
+
+// ─── Soft delete / recycle bin (migration 022) ────────────────────────────────
+//
+// The MCP connector is allowed to delete precisely because deleting is
+// reversible. These cover the two halves of that claim: nothing is destroyed,
+// and everything that reads has to hide what was deleted.
+
+describe("soft delete", () => {
+  const uuid = "123e4567-e89b-12d3-a456-426614174000";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-23T12:00:00Z"));
+  });
+
+  describe("read filters", () => {
+    // Regression guard for the whole feature: a read that forgets this filter
+    // makes deleted records reappear, which is what soft delete must not do.
+    it("list_tasks excludes deleted rows", async () => {
+      const tasks = createMockQuery([]);
+      setupMockSupabase({ queries: { tasks } });
+      await executeTool("list_tasks", {});
+      expect(tasks.is).toHaveBeenCalledWith("deleted_at", null);
+    });
+
+    it("get_daily_briefing excludes deleted rows from every source", async () => {
+      const queries = {
+        tasks: createMockQuery([]),
+        habits: createMockQuery([]),
+        habit_logs: createMockQuery([]),
+        goals: createMockQuery([]),
+        budgets: createMockQuery([]),
+        transactions: createMockQuery([]),
+        interactions: createMockQuery([]),
+      };
+      setupMockSupabase({ queries });
+      await executeTool("get_daily_briefing", {});
+      for (const [table, query] of Object.entries(queries)) {
+        expect(
+          query.is,
+          `${table} query is missing the deleted_at filter`,
+        ).toHaveBeenCalledWith("deleted_at", null);
+      }
+    });
+
+    it("get_analytics excludes deleted rows from every source", async () => {
+      const queries = {
+        transactions: createMockQuery([]),
+        tasks: createMockQuery([]),
+        habits: createMockQuery([]),
+        habit_logs: createMockQuery([]),
+        goals: createMockQuery([]),
+      };
+      setupMockSupabase({ queries });
+      await executeTool("get_analytics", { period: "month" });
+      for (const [table, query] of Object.entries(queries)) {
+        expect(
+          query.is,
+          `${table} query is missing the deleted_at filter`,
+        ).toHaveBeenCalledWith("deleted_at", null);
+      }
+    });
+
+    it("search_data excludes deleted rows", async () => {
+      const tasks = createMockQuery([]);
+      setupMockSupabase({ queries: { tasks } });
+      await executeTool("search_data", { query: "x", types: ["tasks"] });
+      expect(tasks.is).toHaveBeenCalledWith("deleted_at", null);
+    });
+
+    // Fuzzy name match — without the filter it silently logs against a habit
+    // the user deleted.
+    it("log_habit will not match a deleted habit", async () => {
+      const habits = createMockQuery([]);
+      setupMockSupabase({ queries: { habits } });
+      const result = await executeTool("log_habit", { habit_name: "Run" });
+      expect(habits.is).toHaveBeenCalledWith("deleted_at", null);
+      expect(result.success).toBe(false);
+    });
+
+    // A soft-deleted row still occupies its slot in the unique index, so the
+    // upsert has to revive it rather than write into a hidden record.
+    it("log_habit revives a soft-deleted log for the same day", async () => {
+      const habits = createMockQuery([{ id: "h-1", name: "Run" }]);
+      const habit_logs = createMockQuery(null);
+      setupMockSupabase({ queries: { habits, habit_logs } });
+      await executeTool("log_habit", { habit_name: "Run" });
+      expect(habit_logs.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ deleted_at: null }),
+        expect.anything(),
+      );
+    });
+
+    it("create_journal_entry revives a soft-deleted entry for the same date", async () => {
+      const journal_entries = createMockQuery({ id: "j-1" });
+      setupMockSupabase({ queries: { journal_entries } });
+      await executeTool("create_journal_entry", {
+        date: "2026-06-23",
+        content: "hello",
+      });
+      expect(journal_entries.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ deleted_at: null }),
+        expect.anything(),
+      );
+    });
+  });
+
+  // Brief items 8-10: deleting a parent never destroys child history.
+  describe("parent deletes keep child history", () => {
+    it("delete_project unassigns its tasks and says so", async () => {
+      const projects = createMockQuery({ id: uuid, name: "Website" });
+      const tasks = createMockQuery(null);
+      const detachChain = {
+        eq: vi.fn(() => detachChain),
+        is: vi.fn(() => Promise.resolve({ count: 4, error: null })),
+      };
+      tasks.update = vi.fn(() => detachChain);
+      setupMockSupabase({ queries: { projects, tasks } });
+
+      const result = await executeTool("delete_project", {
+        project_id: uuid,
+        project_name: "Website",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("4 task(s) unassigned, not deleted");
+      expect(tasks.delete).not.toHaveBeenCalled();
+    });
+
+    // milestones.goal_id is NOT NULL so it cannot be unlinked; the milestones
+    // simply stay put rather than being deleted alongside the goal.
+    it("delete_goal leaves milestones untouched", async () => {
+      const goals = createMockQuery({ id: uuid, title: "Ship v2" });
+      const milestones = createMockQuery(null);
+      setupMockSupabase({ queries: { goals, milestones } });
+
+      await executeTool("delete_goal", { goal_id: uuid, goal_title: "Ship v2" });
+
+      expect(milestones.delete).not.toHaveBeenCalled();
+      expect(milestones.update).not.toHaveBeenCalled();
+    });
+
+    it("delete_contact leaves interactions untouched", async () => {
+      const contacts = createMockQuery({ id: uuid, name: "Jane" });
+      const interactions = createMockQuery(null);
+      setupMockSupabase({ queries: { contacts, interactions } });
+
+      await executeTool("delete_contact", {
+        contact_id: uuid,
+        contact_name: "Jane",
+      });
+
+      expect(interactions.delete).not.toHaveBeenCalled();
+      expect(interactions.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("restore_record", () => {
+    it("clears deleted_at and returns the row", async () => {
+      const tasks = createMockQuery({ id: uuid, title: "Back again" });
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("restore_record", {
+        entity: "task",
+        id: uuid,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Back again");
+      expect(tasks.update).toHaveBeenCalledWith({ deleted_at: null });
+      // Only something already in the bin can be restored.
+      expect(tasks.not).toHaveBeenCalledWith("deleted_at", "is", null);
+    });
+
+    it("reports when nothing deleted matches that id", async () => {
+      const tasks = createMockQuery(null);
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("restore_record", {
+        entity: "task",
+        id: uuid,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("No deleted task found");
+    });
+
+    it("rejects an unknown entity", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("restore_record", {
+        entity: "not_a_thing",
+        id: uuid,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("scopes the restore by user_id", async () => {
+      const tasks = createMockQuery({ id: uuid, title: "T" });
+      const sb = { from: vi.fn(() => tasks) };
+      await executeTool(
+        "restore_record",
+        { entity: "task", id: uuid },
+        { supabase: sb as never, userId: "user-999" },
+      );
+      expect(tasks.eq).toHaveBeenCalledWith("user_id", "user-999");
+    });
+  });
+
+  describe("purge_record", () => {
+    // confirm is z.literal(true), so an unconfirmed call never reaches the DB.
+    it("refuses without confirm: true and touches nothing", async () => {
+      const tasks = createMockQuery({ id: uuid });
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("purge_record", {
+        entity: "task",
+        id: uuid,
+        record_label: "T",
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("confirm: true");
+      expect(tasks.delete).not.toHaveBeenCalled();
+      expect(tasks.select).not.toHaveBeenCalled();
+    });
+
+    it("refuses confirm: false", async () => {
+      const tasks = createMockQuery({ id: uuid });
+      setupMockSupabase({ queries: { tasks } });
+      const result = await executeTool("purge_record", {
+        entity: "task",
+        id: uuid,
+        record_label: "T",
+        confirm: false,
+      });
+      expect(result.success).toBe(false);
+      expect(tasks.delete).not.toHaveBeenCalled();
+    });
+
+    // Purging only ever applies to something already in the bin, so a single
+    // mistaken call can never destroy live data.
+    it("refuses to purge a row that is not already deleted", async () => {
+      const tasks = createMockQuery(null);
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("purge_record", {
+        entity: "task",
+        id: uuid,
+        record_label: "T",
+        confirm: true,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("purge only removes what is already");
+      expect(tasks.delete).not.toHaveBeenCalled();
+    });
+
+    it("hard-deletes a deleted row and warns it cannot be undone", async () => {
+      const tasks = createMockQuery({ id: uuid, title: "Gone for good" });
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("purge_record", {
+        entity: "task",
+        id: uuid,
+        record_label: "Gone for good",
+        confirm: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(tasks.delete).toHaveBeenCalled();
+      expect(result.message).toContain("Gone for good");
+      expect(result.message).toContain("cannot be undone");
+    });
+
+    // Purge is the one path where FK cascades really do destroy children, so
+    // the response has to name them.
+    it("names the child rows a cascade destroys", async () => {
+      const habits = createMockQuery({ id: uuid, name: "Run" });
+      setupMockSupabase({ queries: { habits } });
+
+      const result = await executeTool("purge_record", {
+        entity: "habit",
+        id: uuid,
+        record_label: "Run",
+        confirm: true,
+      });
+
+      expect(result.message).toContain("habit logs");
+    });
+  });
+
+  describe("bulk_delete_records", () => {
+    const ids = [
+      "123e4567-e89b-12d3-a456-426614174001",
+      "123e4567-e89b-12d3-a456-426614174002",
+    ];
+
+    it("refuses without confirm: true", async () => {
+      const tasks = createMockQuery([]);
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("bulk_delete_records", {
+        entity: "task",
+        ids,
+        summary: "two tasks",
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("confirm: true");
+      expect(tasks.update).not.toHaveBeenCalled();
+    });
+
+    // Brief item 7: report the count actually affected.
+    it("returns the number of rows deleted", async () => {
+      const tasks = createMockQuery(ids.map((id) => ({ id })));
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("bulk_delete_records", {
+        entity: "task",
+        ids,
+        summary: "two tasks",
+        confirm: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Deleted 2 tasks");
+      expect(result.data).toEqual({ deleted_count: 2, ids });
+    });
+
+    // The requested count and the affected count differ whenever an id was
+    // already deleted or belongs to someone else — say so rather than implying
+    // everything was deleted.
+    it("reports ids that were skipped", async () => {
+      const tasks = createMockQuery([{ id: ids[0] }]);
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("bulk_delete_records", {
+        entity: "task",
+        ids,
+        summary: "two tasks",
+        confirm: true,
+      });
+
+      expect(result.message).toContain("Deleted 1 tasks");
+      expect(result.message).toContain("1 id(s) were skipped");
+    });
+
+    it("reports when nothing matched", async () => {
+      const tasks = createMockQuery([]);
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("bulk_delete_records", {
+        entity: "task",
+        ids,
+        summary: "two tasks",
+        confirm: true,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("No live tasks found");
+    });
+  });
+
+  describe("list_deleted", () => {
+    it("pages a single entity from the bin", async () => {
+      const tasks = createMockQuery([{ id: "t-1", title: "Deleted task" }]);
+      setupMockSupabase({ queries: { tasks } });
+
+      const result = await executeTool("list_deleted", {
+        entity: "task",
+        limit: 5,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("deleted tasks");
+      expect(tasks.not).toHaveBeenCalledWith("deleted_at", "is", null);
+      // range() is inclusive, so [0, 5] fetches 6 rows for a page of 5.
+      expect(tasks.range).toHaveBeenCalledWith(0, 5);
+    });
+
+    it("reports an empty bin when no entity is given", async () => {
+      setupMockSupabase({ queries: {} });
+      const result = await executeTool("list_deleted", {});
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("recycle bin is empty");
+    });
+
+    it("groups results by entity when no entity is given", async () => {
+      const tasks = createMockQuery([{ id: "t-1" }]);
+      setupMockSupabase({ queries: { tasks } });
+      const result = await executeTool("list_deleted", {});
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveProperty("task");
+    });
+
+    it("rejects an unknown entity", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("list_deleted", { entity: "nope" });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+  });
+
+  describe("forget_user_fact", () => {
+    it("removes the key and purges the matching memory row", async () => {
+      const user_profile = createMockQuery({
+        facts: { pet: "cat", city: "Dubai" },
+      });
+      const ai_memory = createMockQuery(null);
+      setupMockSupabase({ queries: { user_profile, ai_memory } });
+
+      const result = await executeTool("forget_user_fact", { key: "pet" });
+
+      expect(result.success).toBe(true);
+      expect(user_profile.update).toHaveBeenCalledWith({
+        facts: { city: "Dubai" },
+      });
+      // Facts live in the vector store too, or recall_memories keeps surfacing it.
+      expect(ai_memory.delete).toHaveBeenCalled();
+    });
+
+    it("reports when the key is not stored", async () => {
+      const user_profile = createMockQuery({ facts: { pet: "cat" } });
+      setupMockSupabase({ queries: { user_profile } });
+
+      const result = await executeTool("forget_user_fact", { key: "car" });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("No stored fact");
+      expect(user_profile.update).not.toHaveBeenCalled();
+    });
+
+    it("reports when there are no facts at all", async () => {
+      const user_profile = createMockQuery(null);
+      setupMockSupabase({ queries: { user_profile } });
+      const result = await executeTool("forget_user_fact", { key: "pet" });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("No stored facts");
     });
   });
 });

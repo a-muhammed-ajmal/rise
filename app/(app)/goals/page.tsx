@@ -74,9 +74,12 @@ export default function GoalsPage() {
     const supabase = createClient();
     const today = todayISO();
     const [{ data: gs }, { data: es }, { data: te }] = await Promise.all([
-      supabase.from("goals").select("*").order("created_at", { ascending: false }),
-      supabase.from("journal_entries").select("*").order("date", { ascending: false }).limit(30),
-      supabase.from("journal_entries").select("*").eq("date", today).maybeSingle(),
+      supabase.from("goals").select("*")
+      .is("deleted_at", null).order("created_at", { ascending: false }),
+      supabase.from("journal_entries").select("*")
+      .is("deleted_at", null).order("date", { ascending: false }).limit(30),
+      supabase.from("journal_entries").select("*")
+      .is("deleted_at", null).eq("date", today).maybeSingle(),
     ]);
     setGoals(gs ?? []);
     setEntries(es ?? []);
@@ -524,6 +527,7 @@ function MilestonesDialog({
     const { data } = await supabase
       .from("milestones")
       .select("*")
+      .is("deleted_at", null)
       .eq("goal_id", goal.id)
       .order("due_date", { ascending: true });
     setMilestones(data ?? []);

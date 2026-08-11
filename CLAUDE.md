@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 822 tests, 95.99% lines — target met. Remaining gap is entirely `use-tasks.ts` (47%, pre-existing) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 924 tests, 96.14% lines — target met. Remaining gap is entirely `use-tasks.ts` (47%, pre-existing) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -71,20 +71,42 @@ These rules are enforced by the `frontend-design` skill and must be followed for
 
 ## AI Tool System
 
-The tool system has two tiers defined in `lib/ai/tools.ts`:
+The tool system has **three** tiers defined in `lib/ai/tools.ts`:
 
-- **AUTO_TOOLS:** All non-destructive CRUD. Executed directly in the SSE route.
-- **APPROVAL_TOOLS:** Destructive or high-risk operations. Gated by HMAC-signed approval token in `app/api/ai/chat/route.ts` — **the gate lives in the route, not in `execute-tool.ts`**. `executeTool()` runs unconditionally when called.
+- **AUTO_TOOLS:** All non-destructive CRUD, plus the read-only/undo half of the recycle bin (`list_deleted`, `restore_record`). Executed directly in the SSE route.
+- **REVERSIBLE_TOOLS:** The 17 `delete_*` tools. These are soft deletes — they stamp `deleted_at` and can be undone with `restore_record`.
+- **APPROVAL_TOOLS:** Irreversible or bulk operations only (`purge_record`, `bulk_delete_records`, `forget_user_fact`, `bulk_complete_tasks`, `update_transaction`, `update_debt`).
 
-**Tier rule:** every destructive operation is APPROVAL. `lib/ai/__tests__/tools.test.ts`
-asserts that no tool named `delete_*` or `bulk_*` appears in `AUTO_TOOLS`, and that
-`isMcpAllowedTool()` rejects every approval tool — so a new destructive tool filed
-into the wrong tier fails the suite rather than shipping auto-executable.
+Both REVERSIBLE and APPROVAL are gated by HMAC-signed approval token in
+`app/api/ai/chat/route.ts` — `APPROVAL_TOOL_NAMES` is the union of the two, and
+**the gate lives in the route, not in `execute-tool.ts`**. `executeTool()` runs
+unconditionally when called.
+
+**What separates the tiers is MCP reach, not the in-app gate.** A soft delete
+prompts via `ConfirmDialog` in the app but is exposed over MCP, where there is no
+confirmation UI — the safety property there is "nothing is permanent" rather than
+"the user was asked". `MCP_TOOLS` derives from `MCP_TOOL_SOURCE`
+(`AUTO_TOOLS + REVERSIBLE_TOOLS`), and `APPROVAL_TOOLS` is denied twice: absent
+from the source, and named explicitly in `MCP_DENIED_NAMES`.
+
+**Tier rule:** anything that destroys data for good, or acts on many rows at once,
+is APPROVAL. `lib/ai/__tests__/tools.test.ts` asserts that no `delete_*`, `bulk_*`
+or `purge_*` tool appears in `AUTO_TOOLS`, that `REVERSIBLE_TOOLS` contains nothing
+irreversible, that every irreversible tool requires an explicit `confirm` flag, and
+that every delete reachable over MCP is paired with an exposed `restore_record`.
+
+**Adding a new delete tool:** add it to `REVERSIBLE_TOOLS`, add its entity to
+`DELETABLE` and its name to `DELETE_TOOL_TARGETS` in `lib/ai/deletable.ts`, and add
+a `case` that delegates to `softDeleteRecord()`. The chat route's
+`APPROVAL_RESOURCES` and the ownership preflight derive from the registry
+automatically — there is no second list to update.
 
 **Non-obvious tier assignments:**
 
 - `update_transaction`, `update_debt` → APPROVAL (financial edits are high-risk)
 - `bulk_complete_tasks` → APPROVAL
+- `delete_*` → REVERSIBLE, **not** APPROVAL (they soft-delete, so they are safe on MCP)
+- `restore_record`, `list_deleted` → AUTO (undoing and reading are not destructive)
 - `log_expense`, `log_income` → AUTO, but the chat route escalates them to the
   same signed-approval flow when the amount exceeds `MATERIAL_AMOUNT_AED` (500)
   or the payload is ambiguous. The predicate lives in `lib/ai/financial-safety.ts`,
@@ -106,6 +128,30 @@ RLS entirely. Every query in `execute-tool.ts` must therefore carry `.eq("user_i
 itself, and every foreign key taken from tool input must pass `isOwnedBy()` before it is
 written (`goal_id`, `contact_id`, `task_id`, `project_id`, `payment_method_id`). RLS is a
 backstop here, not the boundary.
+
+**Soft delete (migration 022):** 17 tables carry `deleted_at timestamptz`. The registry
+in `lib/ai/deletable.ts` is the single source of truth for which entities are deletable,
+their table, and the column echoed back in responses.
+
+- **Every read must carry `.is("deleted_at", null)`.** This is not enforced by RLS —
+  folding it into the SELECT policies would make the recycle bin unreadable and would
+  not cover the service-role paths anyway. `execute-tool.test.ts` asserts the filter on
+  `list_*`, `get_daily_briefing`, `get_analytics` and `search_data`; a missing one makes
+  deleted records reappear.
+- **A soft delete is an `UPDATE`, so `ON DELETE SET NULL` never fires.** `detachChildren()`
+  unlinks `tasks.project_id`, `projects.goal_id` and `focus_sessions.task_id` in
+  application code. Children with a NOT NULL FK (`milestones`, `habit_logs`,
+  `interactions`) are deliberately left alone — history outlives its parent.
+- **A soft-deleted row still occupies its unique-index slot.** `log_habit`
+  (`habit_id, logged_date`) and `create_journal_entry` (`user_id, date`) pass
+  `deleted_at: null` in their upsert payloads so a rewrite revives the row instead of
+  writing into a hidden one.
+- **`update_payment_method_balance()` is soft-delete aware.** Both halves are gated on
+  the row being live; without that a soft-deleted transaction would keep counting toward
+  the wallet balance, because the UPDATE branch reverses OLD then re-applies NEW to a
+  net zero.
+- `supabase/functions/send-push/` is deployed separately and must filter by hand —
+  a migration does not reach it.
 
 **Pagination:** the paginated `list_*` tools fetch `limit + 1` rows via `.range()` and
 report `offset` for the next page in the result message, so a truncated list is never
@@ -194,8 +240,11 @@ components/
 
 lib/
   ai/
-    tools.ts                AUTO_TOOLS + APPROVAL_TOOLS + ALL_TOOLS + APPROVAL_TOOL_NAMES (Set)
+    tools.ts                AUTO_TOOLS + REVERSIBLE_TOOLS + APPROVAL_TOOLS + ALL_TOOLS
+                            + APPROVAL_TOOL_NAMES (chat gate) + MCP_TOOL_SOURCE (MCP surface)
+    deletable.ts            DELETABLE registry (17 soft-deletable entities) + DELETE_TOOL_TARGETS
     execute-tool.ts         executeTool(name, input, ctx?) — switch-case, returns ToolResult
+                            softDeleteRecord / restoreRecord / detachChildren live here
     memory.ts               Voyage AI (1024-dim pgvector) tracking logic with keyword fallback
     mcp.ts                  MCP tool registry (AUTO_TOOLS only), bearer-token auth guard, service-role ToolContext
     mcp-schema.ts           Gemini FunctionDeclaration → JSON Schema converter for MCP tools/list
@@ -219,7 +268,7 @@ lib/
   task-attachments.ts       Private-bucket attachment helpers: attachmentPath() recovers legacy object keys
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities
 
-supabase/migrations/        001 through 021 (append-only; execute via Supabase SQL editor)
+supabase/migrations/        001 through 022 (append-only; execute via Supabase SQL editor)
 supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
 proxy.ts                    Next.js 16 middleware entry point — calls lib/supabase/middleware.ts

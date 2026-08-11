@@ -3,7 +3,7 @@ import {
   createClient as createAdminClient,
   type SupabaseClient,
 } from "@supabase/supabase-js";
-import { AUTO_TOOLS, APPROVAL_TOOL_NAMES } from "@/lib/ai/tools";
+import { MCP_TOOL_SOURCE, APPROVAL_TOOLS } from "@/lib/ai/tools";
 import {
   toMcpToolDefinitions,
   type McpToolDefinition,
@@ -11,14 +11,23 @@ import {
 import type { ToolContext } from "@/lib/ai/execute-tool";
 import type { Database } from "@/lib/types/database";
 
-// Only auto-safe tools are exposed over MCP; APPROVAL_TOOLS stay behind the
-// in-app ConfirmDialog gate (see CLAUDE.md guardrails)
-export const MCP_TOOLS: McpToolDefinition[] = toMcpToolDefinitions(AUTO_TOOLS);
+// Auto-safe tools plus the reversible ones (soft delete / restore). There is no
+// ConfirmDialog on this transport, so the safety property here is "nothing is
+// permanent" rather than "the user was asked" — everything a caller can do over
+// MCP is undoable with restore_record.
+//
+// APPROVAL_TOOLS are the irreversible and bulk operations. They stay behind the
+// in-app gate and are denied twice below: absent from MCP_TOOL_NAMES, and named
+// explicitly in MCP_DENIED_NAMES so a future edit to MCP_TOOL_SOURCE cannot
+// quietly let one through. (See CLAUDE.md guardrails.)
+export const MCP_TOOLS: McpToolDefinition[] =
+  toMcpToolDefinitions(MCP_TOOL_SOURCE);
 
 const MCP_TOOL_NAMES = new Set(MCP_TOOLS.map((t) => t.name));
+const MCP_DENIED_NAMES = new Set(APPROVAL_TOOLS.map((t) => t.name));
 
 export function isMcpAllowedTool(name: string): boolean {
-  return MCP_TOOL_NAMES.has(name) && !APPROVAL_TOOL_NAMES.has(name);
+  return MCP_TOOL_NAMES.has(name) && !MCP_DENIED_NAMES.has(name);
 }
 
 // ─── Static token (Claude Code path) ──────────────────────────────────────────

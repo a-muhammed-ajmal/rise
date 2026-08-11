@@ -156,12 +156,15 @@ export default function FinancePage() {
       supabase
         .from("transactions")
         .select("*")
+        .is("deleted_at", null)
         .order("date", { ascending: false })
         .limit(500),
-      supabase.from("budgets").select("*").gte("period_end", todayISO()),
+      supabase.from("budgets").select("*")
+      .is("deleted_at", null).gte("period_end", todayISO()),
       supabase
         .from("debts")
         .select("*")
+        .is("deleted_at", null)
         .is("paid_at", null)
         .order("created_at", { ascending: false }),
     ]);

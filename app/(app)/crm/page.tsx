@@ -69,7 +69,8 @@ export default function CRMPage() {
 
   const fetchContacts = useCallback(async () => {
     const supabase = createClient();
-    const { data } = await supabase.from("contacts").select("*").order("name");
+    const { data } = await supabase.from("contacts").select("*")
+    .is("deleted_at", null).order("name");
     setContacts(data ?? []);
     setLoading(false);
   }, []);
@@ -436,6 +437,7 @@ function ContactDetail({
     const { data } = await supabase
       .from("interactions")
       .select("*")
+      .is("deleted_at", null)
       .eq("contact_id", contact.id)
       .order("date", { ascending: false });
     setInteractions(data ?? []);
@@ -488,6 +490,7 @@ function ContactDetail({
       .update({ stage: newStage })
       .eq("id", contact.id)
       .select()
+      .is("deleted_at", null)
       .single();
     setStageSaving(false);
     if (data) {

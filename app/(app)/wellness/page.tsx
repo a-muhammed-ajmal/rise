@@ -95,8 +95,10 @@ export default function WellnessPage() {
     const supabase = createClient();
     const last30 = format(subDays(parseISO(today), 30), "yyyy-MM-dd");
     const [{ data: hs }, { data: ls }] = await Promise.all([
-      supabase.from("habits").select("*").eq("active", true).order("reminder_time", { ascending: true, nullsFirst: false }),
-      supabase.from("habit_logs").select("*").gte("logged_date", last30),
+      supabase.from("habits").select("*")
+      .is("deleted_at", null).eq("active", true).order("reminder_time", { ascending: true, nullsFirst: false }),
+      supabase.from("habit_logs").select("*")
+      .is("deleted_at", null).gte("logged_date", last30),
     ]);
     setHabits(hs ?? []);
     setLogs(ls ?? []);

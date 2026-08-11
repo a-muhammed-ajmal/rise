@@ -61,6 +61,10 @@ type PendingAttachment = {
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const TOOL_LABELS: Record<string, string> = {
+  restore_record: "Restore deleted record",
+  purge_record: "Permanently destroy record",
+  bulk_delete_records: "Delete multiple records",
+  forget_user_fact: "Forget a stored fact",
   delete_task: "Delete task",
   bulk_complete_tasks: "Complete multiple tasks",
   delete_project: "Delete project",

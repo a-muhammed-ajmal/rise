@@ -118,10 +118,14 @@ Deno.serve(async (_req) => {
 
     // ── Habit nudges ──────────────────────────────────────────────────────
     if (types.includes("habit_nudge")) {
+      // This function runs on the service-role key, which bypasses RLS, so the
+      // soft-delete predicate has to be written out here — nothing upstream
+      // applies it. Without it, deleted habits keep sending reminders.
       const { data: habits } = await supabase
         .from("habits")
         .select("id, name, frequency, target_days, reminder_time")
         .eq("user_id", sub.user_id)
+        .is("deleted_at", null)
         .eq("active", true);
 
       const todayDow = new Date().getDay(); // 0=Sun … 6=Sat
@@ -141,11 +145,13 @@ Deno.serve(async (_req) => {
           if (currentHour !== reminderHour) continue;
         }
 
-        // Check if already logged today
+        // Check if already logged today. A soft-deleted log must not count as
+        // logged, or the user gets no nudge for a habit they have not done.
         const { data: logged } = await supabase
           .from("habit_logs")
           .select("id")
           .eq("habit_id", habit.id)
+          .is("deleted_at", null)
           .eq("logged_date", today)
           .eq("completed", true)
           .maybeSingle();
@@ -163,10 +169,14 @@ Deno.serve(async (_req) => {
 
     // ── CRM follow-ups ────────────────────────────────────────────────────
     if (types.includes("crm_followup")) {
+      // !inner makes the contact a join filter, so a follow-up whose contact
+      // was deleted stops nudging instead of nudging about a deleted person.
       const { data: interactions } = await supabase
         .from("interactions")
-        .select("id, notes, contacts(name)")
+        .select("id, notes, contacts!inner(name)")
         .eq("user_id", sub.user_id)
+        .is("deleted_at", null)
+        .is("contacts.deleted_at", null)
         .eq("follow_up_date", today);
 
       for (const interaction of interactions ?? []) {

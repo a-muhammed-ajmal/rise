@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 822 passing |
-| Line coverage | 95.99% on `lib/**` |
-| Migrations | 21 (001–021) |
-| DB tables | 26 (across 21 migrations) |
-| AI tools | 57 AUTO + 20 APPROVAL = 77 total |
-| Last feature shipped | Phase 19 — Security & correctness hardening: cron auth, digest/analytics fixes, all destructive tools gated, rate limiting, service-role isolation (2026-08-08) |
+| Test count | 924 passing |
+| Line coverage | 96.14% on `lib/**` |
+| Migrations | 22 (001–022) |
+| DB tables | 26 (across 22 migrations) |
+| AI tools | 59 AUTO + 17 REVERSIBLE + 6 APPROVAL = 82 total |
+| Last feature shipped | Phase 20 — Soft delete + recycle bin: reversible deletes reachable over MCP, `restore_record` / `list_deleted` / `purge_record`, `deleted_at` on 17 tables (2026-08-11) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -162,7 +162,7 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 
 ### AI tool set
 
-**AUTO_TOOLS** (execute immediately, 57 total):
+**AUTO_TOOLS** (execute immediately, 59 total):
 
 | Group | Tools |
 | --- | --- |
@@ -184,15 +184,27 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 | Focus sessions (3) | `list_focus_sessions` · `create_focus_session` · `update_focus_session` |
 | Analytics & Search (3) | `get_daily_briefing` · `get_analytics` · `search_data` |
 | Personal Memory (2) | `remember_user_fact` · `recall_memories` |
+| Recycle bin (2) | `list_deleted` · `restore_record` |
 
-**APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes, 20 total):
-`delete_task` · `bulk_complete_tasks` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `delete_habit_log` · `update_transaction` · `delete_transaction` · `delete_budget` · `update_debt` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_journal_entry` · `delete_review` · `delete_link` · `delete_focus_session`
+**REVERSIBLE_TOOLS** (soft delete — confirmed in the app chat, but exposed over MCP, 17 total):
+`delete_task` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `delete_habit_log` · `delete_transaction` · `delete_budget` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_link` · `delete_journal_entry` · `delete_review` · `delete_focus_session`
 
-Every destructive operation lives in this tier, so none is reachable over MCP (`MCP_TOOLS` derives from `AUTO_TOOLS`). `log_expense` / `log_income` stay AUTO but the chat route escalates them to the same signed-approval flow above AED 500 or on an ambiguous payload (`lib/ai/financial-safety.ts`).
+**APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes, 6 total):
+`purge_record` · `bulk_delete_records` · `forget_user_fact` · `bulk_complete_tasks` · `update_transaction` · `update_debt`
+
+The tier split is about **MCP reach, not the in-app gate** — both REVERSIBLE and APPROVAL prompt via `ConfirmDialog` in chat (`APPROVAL_TOOL_NAMES` is the union of the two). What separates them is that everything in REVERSIBLE can be undone with `restore_record`, which is what makes it safe on a transport with no confirmation UI. `MCP_TOOLS` derives from `MCP_TOOL_SOURCE` = `AUTO_TOOLS + REVERSIBLE_TOOLS`; `APPROVAL_TOOLS` is denied twice (absent from the source _and_ named in `MCP_DENIED_NAMES`).
+
+`log_expense` / `log_income` stay AUTO but the chat route escalates them to the same signed-approval flow above AED 500 or on an ambiguous payload (`lib/ai/financial-safety.ts`).
 
 > Tool schemas use Google GenAI's `FunctionDeclaration` format (`Type.OBJECT`, `Type.STRING`, etc.) from `@google/genai` — not the Anthropic `input_schema` format.
 
-### Data model (26 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–021)
+### Data model (26 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–022)
+
+> **Soft delete (022).** 17 of the 26 tables carry `deleted_at timestamptz DEFAULT NULL` — every table with a `delete_*` tool: `tasks`, `projects`, `goals`, `milestones`, `habits`, `habit_logs`, `transactions`, `budgets`, `debts`, `contacts`, `interactions`, `notes`, `documents`, `links`, `journal_entries`, `reviews`, `focus_sessions`. Excluded: `payment_methods` (no delete tool), `categories`, `task_labels`, `user_profile`, `ai_memory`, `ai_conversations`, `oauth_*`, and `push_subscriptions` (which has no UPDATE policy, so an in-place soft delete would be blocked).
+>
+> `deleted_at IS NULL` is **not** folded into the RLS SELECT policies — that would make the recycle bin and restore unreadable, and would not cover the service-role paths (MCP, daily digest, `send-push`) that bypass RLS anyway. Filtering is explicit at the query layer and guarded by tests in `execute-tool.test.ts`.
+>
+> Two consequences worth knowing: a soft-deleted row still occupies its slot in a unique index, so `log_habit` and `create_journal_entry` write `deleted_at: null` in their upsert payloads to revive rather than write into a hidden row; and because a soft delete is an `UPDATE`, the `ON DELETE SET NULL` FKs never fire, so `delete_project` / `delete_goal` / `delete_task` unlink their children in application code (`detachChildren`).
 
 ```text
 projects            id, name, description, status(active|completed|archived), color,
@@ -259,6 +271,8 @@ Hooks subscribe to Supabase Realtime channels for live UI updates without pollin
 | --- | --- | --- |
 | `use-tasks.ts` | `tasks` | `postgres_changes` on `public.tasks` (INSERT / UPDATE / DELETE) |
 | `use-projects.ts` | `projects` | `postgres_changes` on `public.projects` |
+
+Both subscribe with `event: '*'` and respond with a full refetch, so a soft delete — which arrives as an UPDATE, not a DELETE — still removes the row from the UI, because the refetch query filters `deleted_at IS NULL`.
 
 All channels scope to `public` schema. RLS ensures only the authenticated user's rows fire events. Hooks call `supabase.removeChannel(channel)` on unmount to prevent leaks.
 
@@ -342,6 +356,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 | 2026-06-30 | Multimodal chat attachments added (migration 008) | `chat-attachments` Supabase Storage bucket created; `ChatAttachment` type defined in `lib/types/database.ts`; image download and injection wired into `/api/ai/chat` for Gemini vision. |
 | 2026-07-01 | `reminder_time` column added to `habits` table (migration 009) | Enables time-based habit reminders. Stored as `"HH:MM:SS"` or `null`. Habit cards and form overhauled; cards now sort by `reminder_time` ascending, nulls last. |
 | 2026-07-01 | `payment_methods` table added (migrations 010, 011) | Wallet/balance tracking for the finance module. `transactions` extended with `payment_method_id`, `from_payment_method_id`, `to_payment_method_id` FK columns and two new types: `transfer` and `adjustment`. |
+| 2026-08-11 | Deletes made reversible so they could cross the MCP boundary (migration 022) | The connector had no delete capability at all: `delete_*` lived in `APPROVAL_TOOLS` and `MCP_TOOLS` derived from `AUTO_TOOLS`, so every delete was unreachable by design. Rather than widen the guardrail, deletion itself was made recoverable — `deleted_at` on 17 tables, `restore_record` to undo. A third tier (`REVERSIBLE_TOOLS`) now separates "gated in the app chat" from "reachable over MCP", so soft deletes keep their `ConfirmDialog` in the UI while being safe on a transport with no confirmation UI. Irreversible operations (`purge_record`, `bulk_delete_records`, `forget_user_fact`) stay chat-only. Deleting a parent never destroys child history: tasks are unassigned from a deleted project, and habit logs / interactions / milestones outlive their parent. |
 | 2026-07-04 | Light-first orange design system replaces the Phase 5 dark-first system app-wide | Dark/purple/Lexend cockpit aesthetic → light/orange/Inter. Inter is the single typeface (`font-bold` 700 and weight 800 now permitted). Brand `#FF6535` with visible-border standard and graph-paper signature. Two resolved decisions: (1) AI elements folded into the standard card treatment — glassmorphism removed, `aiPulse`/`glow-pulse` recolored to an orange `brand-pulse` built on `--shadow-brand`, `mod-ai` retired in favour of `--brand`/`--brand-tint`; (2) module accent tokens kept as light-mode text+tint pairs (`--mod-*` / `--mod-*-tint`): Tasks `#2563EB`/`#EFF6FF`, Finance `#059669`/`#ECFDF5`, Wellness `#BE123C`/`#FFF1F2`, Goals `#7C3AED`/`#F5F3FF`, Knowledge `#D97706`/`#FFFBEB`, CRM `#0891B2`/`#ECFEFF`. Dark mode retained as an opt-in navy-family theme rebuilt to dark-UI best practice: elevation ladder `#0B1120`→`#232338`, off-white `#E9EAF2` text, neutral white/12 hairlines with orange only on interactive emphasis, desaturated 400-series accents — light is the default. |
 
 ---
@@ -383,3 +398,4 @@ Candidate areas (not prioritized):
 | 17 | Task card area colors + attachment and deadline fixes | 2026-07-30 | `app/globals.css` (8 `--area-*` token pairs, light + dark), `lib/area-colors.ts` (new; `AREA_META` / `areaTint`, CSS-token only), `components/productivity/task-card.tsx` (area tint + area left border, `.card-hover`, one meta row with due date left and truncated project name right, 44px tap target), `lib/format.ts` (**fix:** `isPastDeadline` built an invalid Date from Postgres `HH:MM:SS`, so timed tasks never turned red; adds `truncateLabel`), `lib/task-attachments.ts` (new; **fix:** uploads stored `getPublicUrl()` links against a private bucket and never opened — now stores `storage_path`, signs at read time, recovers legacy keys from the dead URLs), `components/productivity/task-popup.tsx` (`AttachmentRow` with signed view + download URLs, sanitized object keys, closes on save), `app/(app)/productivity/page.tsx` + `app/(app)/projects/page.tsx` + `components/dashboard/{focus,tasks}-*-section.tsx` (`detailTask` snapshot replaces derived id lookup — stops the popup unmounting mid-save and re-opening on the next tab switch) |
 | 19 | Security & correctness hardening | 2026-08-08 | `lib/ai/cron-auth.ts` (new; CRON_SECRET bearer only — the caller-controlled `x-vercel-cron` header is no longer accepted, and the route fails closed without a secret), `app/api/ai/daily-digest/route.ts` (auth before any service-role/Gemini work, GET handler removed), `lib/rate-limit.ts` (new; in-process sliding window on chat/upload/oauth-token/digest), `lib/ai/financial-safety.ts` (new; escalates `log_expense`/`log_income` to approval above AED 500 or on ambiguous input), `lib/ai/automation.ts` (**fix:** Dubai date came from `+4h` then host-local `format()`; **fix:** the digest note upserted on a non-existent constraint with a non-existent `source` column and an invalid `linked_to_type`, discarded the error and reported success — so it had never persisted), `lib/ai/execute-tool.ts` (**fix:** `get_analytics` filtered `habit_logs.date`, which does not exist — now `logged_date`, with query errors surfaced instead of reported as zeros; **fix:** `get_daily_briefing` matched a habit-id set against habit _names_, so every habit read as not-done; **fix:** `log_habit` upserted without `onConflict` and swallowed the resulting error; 9 unscoped queries now carry `user_id`; `isOwnedBy()` guards 5 foreign keys taken from tool input; paginated `list_*`), `lib/ai/tools.ts` (`delete_link`, `delete_focus_session`, `delete_habit_log` moved AUTO → APPROVAL, which also removes them from MCP), `app/api/ai/chat/route.ts` (14-branch ownership chain → `APPROVAL_RESOURCES` table, `jti` nonce + 2-min TTL, generic error + correlation id), `app/api/ai/upload/route.ts` (path-safe `session_id`, pre-read size check, object cleanup on failed extraction/transcription), `lib/ai/mcp-oauth.ts` (mcp-scope check, refresh-reuse family revocation), `supabase/migrations/020_storage_buckets_and_policies.sql` + `021_rls_and_function_hardening.sql` (bucket privacy; `SET search_path` and per-user ownership on the SECURITY DEFINER balance trigger; `TO authenticated` on `user_profile`/`categories`; pagination indexes), `app/(app)/assistant/page.tsx` (last 3 production `any` removed) |
 | 18 | Motivational quotes rotator + performance hardening | 2026-08-01 | `components/dashboard/motivational-quote.tsx` (new; 78-quote Fisher-Yates shuffle, 5-min rotation, fade transition), `app/(app)/page.tsx` (quote inserted above Today's Focus; habit_logs query scoped to today only — 30× reduction), `next.config.ts` (staleTimes: dynamic 30s — fixes slow tab switching; removeConsole in prod), `lib/supabase/server.ts` (React.cache() wrapper — deduplicates cookie reads per request), `app/(app)/productivity/page.tsx` (removed tasks from focus-count effect deps — stops cascade query on every task mutation), `app/(app)/finance/page.tsx` (.limit(500) on transactions), `components/productivity/task-card.tsx` (React.memo), `lib/hooks/use-projects.ts` (Realtime postgres_changes subscription) |
+| 20 | Soft delete + recycle bin (MCP delete capability) | 2026-08-11 | `supabase/migrations/022_soft_delete.sql` (`deleted_at` on 17 tables, partial live/dead indexes, **fix:** `update_payment_method_balance()` treated a soft delete as an ordinary UPDATE — reversing OLD then re-applying NEW to a net zero — so a deleted transaction kept counting toward the wallet balance; both halves are now gated on the row being live), `lib/ai/deletable.ts` (new; single registry of the 17 deletable entities, consumed by the handlers, the chat route's `APPROVAL_RESOURCES`, and the tests), `lib/ai/tools.ts` (new `REVERSIBLE_TOOLS` tier + `MCP_TOOL_SOURCE`; `list_deleted` / `restore_record` AUTO; `purge_record` / `bulk_delete_records` / `forget_user_fact` APPROVAL), `lib/ai/mcp.ts` (MCP surface = AUTO + REVERSIBLE, `APPROVAL_TOOLS` denied explicitly), `lib/ai/execute-tool.ts` (`softDeleteRecord` / `restoreRecord` / `detachChildren` / `describeRecord` replace 17 duplicated hard-delete handlers; 64 reads filter `deleted_at IS NULL`; upserts revive rather than write into hidden rows; `contacts!inner` join filter in `get_daily_briefing`), `app/api/ai/chat/route.ts` (`APPROVAL_RESOURCES` derived from the registry with a live/deleted state check; approval-tool list in the system prompt now generated instead of hand-listed), `lib/ai/automation.ts` + `supabase/functions/send-push/index.ts` (service-role paths bypass RLS, so both filter explicitly), `lib/hooks/use-tasks.ts` + `use-projects.ts` + all module pages (read filters), `lib/ai/__tests__/deletable.test.ts` (new; **fix:** `isDeletableEntity` used `in`, so `"toString"` passed the guard and resolved to a meta object with an undefined table) |

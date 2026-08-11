@@ -7,6 +7,7 @@ const mockQueryChain = {
   update: vi.fn().mockReturnThis(),
   delete: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
+  is: vi.fn().mockReturnThis(),
   order: vi.fn().mockReturnThis(),
 };
 

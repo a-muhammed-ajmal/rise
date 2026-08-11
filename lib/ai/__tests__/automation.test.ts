@@ -8,6 +8,7 @@ type Result = { data: unknown; error: unknown };
 type MockQuery = {
   select: (...args: string[]) => MockQuery;
   eq: (column: string, value: unknown) => MockQuery;
+  is: (column: string, value: unknown) => MockQuery;
   neq: (column: string, value: unknown) => MockQuery;
   gte: (column: string, value: string) => MockQuery;
   order: (column: string, options?: { ascending?: boolean }) => MockQuery;
@@ -22,6 +23,7 @@ function createQuery(result: Result): MockQuery {
   const query: MockQuery = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
+    is: vi.fn(() => query),
     neq: vi.fn(() => query),
     gte: vi.fn(() => query),
     order: vi.fn(() => query),

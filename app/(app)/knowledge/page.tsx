@@ -60,8 +60,10 @@ export default function KnowledgePage() {
   const fetchData = useCallback(async () => {
     const supabase = createClient();
     const [{ data: ns }, { data: ls }] = await Promise.all([
-      supabase.from("notes").select("*").order("updated_at", { ascending: false }),
-      supabase.from("links").select("*").order("created_at", { ascending: false }),
+      supabase.from("notes").select("*")
+      .is("deleted_at", null).order("updated_at", { ascending: false }),
+      supabase.from("links").select("*")
+      .is("deleted_at", null).order("created_at", { ascending: false }),
     ]);
     setNotes(ns ?? []);
     setLinks(ls ?? []);

@@ -15,6 +15,11 @@ import { format, parseISO } from "date-fns";
 import { todayISO, todayDOW } from "@/lib/format";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { evaluateFinancialGate, isMoneyTool } from "@/lib/ai/financial-safety";
+import {
+  DELETABLE,
+  DELETE_TOOL_TARGETS,
+  isDeletableEntity,
+} from "@/lib/ai/deletable";
 import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { z } from "zod";
 
@@ -128,32 +133,51 @@ function verifyApprovalToken(
 // Which table and argument identify the resource each approval tool acts on, so
 // the confirmation prompt can never name a row the user does not own. One table
 // drives one query instead of a per-tool if/else chain.
+//
+// `state` is what soft delete adds: a delete tool must find a LIVE row, while
+// restore and purge must find an already-deleted one. Confirming "restore X"
+// for a row that was never deleted would be as wrong as naming a row the user
+// does not own.
 type ApprovalResource = {
   table: keyof Database["public"]["Tables"];
   idArg: string;
   label: string;
+  state: "live" | "deleted";
 };
 
+// The 17 delete_* tools are derived from the shared registry rather than
+// re-listed here — the two lists drifting apart is exactly how a tool ends up
+// with no ownership check at all.
+const DELETE_APPROVAL_RESOURCES: Record<string, ApprovalResource> =
+  Object.fromEntries(
+    Object.entries(DELETE_TOOL_TARGETS).map(([tool, target]) => {
+      const meta = DELETABLE[target.ownershipEntity ?? target.entity];
+      return [
+        tool,
+        {
+          table: meta.table,
+          idArg: target.idArg,
+          label: meta.label,
+          state: "live" as const,
+        },
+      ];
+    }),
+  );
+
 const APPROVAL_RESOURCES: Record<string, ApprovalResource> = {
-  delete_task: { table: "tasks", idArg: "task_id", label: "Task" },
-  delete_note: { table: "notes", idArg: "note_id", label: "Note" },
-  delete_project: { table: "projects", idArg: "project_id", label: "Project" },
-  delete_goal: { table: "goals", idArg: "goal_id", label: "Goal" },
-  delete_milestone: { table: "milestones", idArg: "milestone_id", label: "Milestone" },
-  delete_habit: { table: "habits", idArg: "habit_id", label: "Habit" },
-  delete_habit_log: { table: "habits", idArg: "habit_id", label: "Habit" },
-  delete_transaction: { table: "transactions", idArg: "transaction_id", label: "Transaction" },
-  update_transaction: { table: "transactions", idArg: "transaction_id", label: "Transaction" },
-  delete_budget: { table: "budgets", idArg: "budget_id", label: "Budget" },
-  delete_debt: { table: "debts", idArg: "debt_id", label: "Debt" },
-  update_debt: { table: "debts", idArg: "debt_id", label: "Debt" },
-  delete_contact: { table: "contacts", idArg: "contact_id", label: "Contact" },
-  delete_interaction: { table: "interactions", idArg: "interaction_id", label: "Interaction" },
-  delete_document: { table: "documents", idArg: "document_id", label: "Document" },
-  delete_journal_entry: { table: "journal_entries", idArg: "entry_id", label: "Journal entry" },
-  delete_review: { table: "reviews", idArg: "review_id", label: "Review" },
-  delete_link: { table: "links", idArg: "id", label: "Link" },
-  delete_focus_session: { table: "focus_sessions", idArg: "id", label: "Focus session" },
+  ...DELETE_APPROVAL_RESOURCES,
+  update_transaction: {
+    table: "transactions",
+    idArg: "transaction_id",
+    label: "Transaction",
+    state: "live",
+  },
+  update_debt: {
+    table: "debts",
+    idArg: "debt_id",
+    label: "Debt",
+    state: "live",
+  },
 };
 
 async function countActivePaymentMethods(
@@ -168,26 +192,54 @@ async function countActivePaymentMethods(
   return count ?? 0;
 }
 
+/**
+ * Resolves the resource for tools that pick their entity at call time
+ * (restore_record, purge_record), where a static table map cannot.
+ */
+function dynamicApprovalResource(
+  toolName: string,
+  args: Record<string, unknown>,
+): ApprovalResource | null {
+  if (toolName !== "restore_record" && toolName !== "purge_record") return null;
+  if (!isDeletableEntity(args.entity)) return null;
+  const meta = DELETABLE[args.entity];
+  // Both act on something already in the recycle bin.
+  return { table: meta.table, idArg: "id", label: meta.label, state: "deleted" };
+}
+
 async function approvalResourceExists(
   supabase: Awaited<ReturnType<typeof createClient>>,
   toolName: string,
   args: Record<string, unknown>,
   userId: string,
 ): Promise<boolean> {
-  const resource = APPROVAL_RESOURCES[toolName];
-  if (!resource) return true; // e.g. bulk_complete_tasks — no single row to check
+  const resource =
+    APPROVAL_RESOURCES[toolName] ?? dynamicApprovalResource(toolName, args);
+  // e.g. bulk_complete_tasks / bulk_delete_records — no single row to check
+  if (!resource) return true;
   const id = args[resource.idArg];
   if (typeof id !== "string") return true; // let the tool's own zod schema reject it
-  const { data } = await supabase
+  const query = supabase
     .from(resource.table)
     .select("id")
     .eq("id", id)
-    .eq("user_id", userId)
-    .maybeSingle();
+    .eq("user_id", userId);
+  const scoped =
+    resource.state === "deleted"
+      ? query.not("deleted_at", "is", null)
+      : query.is("deleted_at", null);
+  const { data } = await scoped.maybeSingle();
   return !!data;
 }
 
 // ─── System prompt ────────────────────────────────────────────────────────────
+
+// Generated from the tier definition rather than hand-listed. The previous
+// hard-coded list had to be edited by hand every time a tool changed tier, and
+// a stale list teaches the model the wrong thing about what needs approval.
+const GATED_TOOL_LIST = [...APPROVAL_TOOL_NAMES]
+  .filter((name): name is string => typeof name === "string")
+  .join(", ");
 
 const SYSTEM_PROMPT = `You are RISE, the personal AI assistant of {NAME}.
 You have full access to their tasks, goals, finances (AED), habits, contacts, notes, and journal.
@@ -201,7 +253,10 @@ Key rules:
 - Always use AED for money amounts in UAE Dirham format.
 - Use DD/MM/YYYY for dates when displaying to the user.
 - When creating tasks from natural language, extract the due date intelligently (e.g. "tomorrow" → correct date).
-- For approval-required tools (delete_task, bulk_complete_tasks, delete_project, delete_goal, delete_milestone, delete_habit, delete_habit_log, update_transaction, delete_transaction, delete_budget, update_debt, delete_debt, delete_contact, delete_interaction, delete_note, delete_document, delete_journal_entry, delete_review, delete_link, delete_focus_session): always call the tool — the system will intercept it and ask the user for approval before executing.
+- For approval-required tools (${GATED_TOOL_LIST}): always call the tool — the system will intercept it and ask the user for approval before executing.
+- Deleting is reversible: delete_* moves a record to the recycle bin rather than destroying it. Say so when you delete something, and mention restore_record. Use list_deleted to find something the user wants back, and restore_record to bring it back.
+- purge_record destroys a record for good and only works on something already deleted. Never call it unless the user has clearly asked for permanent deletion, and tell them it cannot be undone.
+- Deleting a parent never deletes its history: a deleted project keeps its tasks (they are just unassigned), and a deleted habit or contact keeps its logs and interactions.
 - Logging money (log_expense, log_income) runs immediately for small, fully-specified amounts, but the system will ask the user to confirm large or ambiguous amounts. Always include a category, and call list_payment_methods first when the user has more than one wallet.
 - When updating or deleting by name (e.g. "delete my dentist contact"), always call the relevant list_* or search_data tool first to resolve the name to an id. Never guess an id.
 - After using tools, report back clearly: what was created/updated/found.
@@ -236,17 +291,20 @@ async function buildContext(
     supabase
       .from("tasks")
       .select("title, priority, due_date, status")
+      .is("deleted_at", null)
       .neq("status", "done")
       .or(`due_date.eq.${today},status.eq.inbox`)
       .limit(10),
     supabase
       .from("habits")
       .select("id, name")
+      .is("deleted_at", null)
       .eq("active", true)
       .contains("target_days", [dow]),
     supabase
       .from("goals")
       .select("title, progress")
+      .is("deleted_at", null)
       .eq("status", "active")
       .limit(5),
     supabase

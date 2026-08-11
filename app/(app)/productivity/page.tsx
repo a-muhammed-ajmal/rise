@@ -192,6 +192,7 @@ export default function ProductivityPage() {
     supabase
       .from("tasks")
       .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
       .eq("status", "done")
       .eq("is_focus", true)
       .eq("focus_date", today)
