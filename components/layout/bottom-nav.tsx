@@ -15,15 +15,11 @@ import {
   Users,
   Settings,
   MoreHorizontal,
+  X,
 } from "lucide-react";
 import { RiseLogo } from "@/components/brand/rise-logo";
 import { useState } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 
 // 5-slot layout: [Home][Tasks][AI-FAB (center)][Finance][More]
 const LEFT_ITEMS = [
@@ -33,15 +29,23 @@ const LEFT_ITEMS = [
 
 const RIGHT_ITEM = { href: "/finance", label: "Finance", icon: DollarSign };
 
-const MORE_ITEMS = [
-  { href: "/projects", label: "Projects", icon: FolderOpen },
-  { href: "/wellness", label: "Wellness", icon: Heart },
-  { href: "/goals", label: "Goals", icon: Target },
-  { href: "/analytics", label: "Analytics", icon: BarChart2 },
-  { href: "/knowledge", label: "Knowledge", icon: BookOpen },
-  { href: "/crm", label: "CRM", icon: Users },
-  { href: "/settings", label: "Settings", icon: Settings },
-] as const;
+type MoreItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  badgeBg: string;
+  badgeColor: string;
+};
+
+const MORE_ITEMS: MoreItem[] = [
+  { href: "/projects",  label: "Projects",  icon: FolderOpen, badgeBg: "var(--mod-tasks-tint)",     badgeColor: "var(--mod-tasks)"     },
+  { href: "/wellness",  label: "Wellness",  icon: Heart,      badgeBg: "var(--mod-wellness-tint)",  badgeColor: "var(--mod-wellness)"  },
+  { href: "/goals",     label: "Goals",     icon: Target,     badgeBg: "var(--mod-goals-tint)",     badgeColor: "var(--mod-goals)"     },
+  { href: "/analytics", label: "Analytics", icon: BarChart2,  badgeBg: "var(--brand-tint)",         badgeColor: "var(--brand-text)"    },
+  { href: "/knowledge", label: "Knowledge", icon: BookOpen,   badgeBg: "var(--mod-knowledge-tint)", badgeColor: "var(--mod-knowledge)" },
+  { href: "/crm",       label: "CRM",       icon: Users,      badgeBg: "var(--mod-crm-tint)",       badgeColor: "var(--mod-crm)"       },
+  { href: "/settings",  label: "Settings",  icon: Settings,   badgeBg: "var(--surface-paper)",      badgeColor: "var(--text-muted)"    },
+];
 
 function NavItem({
   href,
@@ -123,36 +127,66 @@ export function BottomNav() {
         </button>
       </nav>
 
-      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="nav-drawer h-auto">
-          <SheetHeader className="mb-4">
-            <SheetTitle className="text-[length:var(--text-label)] font-medium text-[var(--text-muted)]">
-              All Modules
-            </SheetTitle>
-          </SheetHeader>
-          <div className="grid grid-cols-3 gap-2">
-            {MORE_ITEMS.map(({ href, label, icon: Icon }) => {
-              const active = isActive(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setMoreOpen(false)}
-                  className={cn(
-                    "nav-drawer__item flex flex-col items-center justify-center gap-2 rounded-2xl p-4 min-h-[80px] tappable",
-                    active && "nav-drawer__item--active",
-                  )}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-center leading-tight text-truncate w-full">
-                    {label}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Floating card More menu */}
+      <DialogPrimitive.Root open={moreOpen} onOpenChange={setMoreOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Backdrop
+            className="fixed inset-0 z-50 bg-[var(--surface-overlay)] supports-backdrop-filter:backdrop-blur-xs transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0"
+          />
+          <DialogPrimitive.Popup
+            aria-label="All modules"
+            className="more-menu-popup fixed left-3 right-3 z-50 rounded-2xl border border-border bg-popover shadow-popup overflow-hidden transition duration-200 ease-in-out data-ending-style:translate-y-4 data-ending-style:opacity-0 data-starting-style:translate-y-4 data-starting-style:opacity-0"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+              <DialogPrimitive.Title className="font-semibold text-sm text-foreground">
+                All Modules
+              </DialogPrimitive.Title>
+              <DialogPrimitive.Close
+                render={
+                  <button
+                    aria-label="Close"
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                  />
+                }
+              >
+                <X className="w-4 h-4" />
+              </DialogPrimitive.Close>
+            </div>
+
+            {/* 4-column module grid */}
+            <div className="grid grid-cols-4 gap-1.5 px-3 pb-3">
+              {MORE_ITEMS.map(({ href, label, icon: Icon, badgeBg, badgeColor }) => {
+                const active = isActive(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMoreOpen(false)}
+                    className={cn(
+                      "nav-drawer__item flex flex-col items-center justify-center gap-1.5 rounded-xl py-2.5 px-1 h-[68px] tappable",
+                      active && "nav-drawer__item--active",
+                    )}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={active ? undefined : { background: badgeBg }}
+                    >
+                      <Icon
+                        className="w-[17px] h-[17px]"
+                        style={active ? undefined : { color: badgeColor }}
+                      />
+                    </div>
+                    <span className="text-center leading-tight w-full text-[length:var(--text-micro)]">
+                      {label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </>
   );
 }

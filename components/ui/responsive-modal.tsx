@@ -58,7 +58,7 @@ export function ResponsiveModal({
         aria-label={ariaLabel}
         showCloseButton={false}
         className={cn(
-          'max-h-[92vh] flex flex-col overflow-hidden p-0 gap-0',
+          'max-h-[85vh] flex flex-col overflow-hidden p-0 gap-0',
           className
         )}
       >
@@ -67,6 +67,7 @@ export function ResponsiveModal({
           aria-hidden="true"
         />
         {children}
+        <div className="shrink-0" style={{ height: 'env(safe-area-inset-bottom)' }} aria-hidden="true" />
       </SheetContent>
     </Sheet>
   )

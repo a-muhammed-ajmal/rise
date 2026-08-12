@@ -681,9 +681,18 @@
   box-shadow: var(--shadow-brand), var(--glow-focus);
 }
 
+/* Floating bottom sheets always clear the home indicator */
+[data-slot="sheet-content"][data-side="bottom"] {
+  bottom: max(0.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+}
+
+/* More-menu floating card sits above the home indicator */
+.more-menu-popup {
+  bottom: max(0.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+}
+
 .nav-drawer {
   background: var(--popover);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
 }
 
 .nav-drawer__item {
