@@ -89,7 +89,7 @@ At **11:59 PM Dubai time** every day, a Vercel cron job fires `POST /api/ai/dail
 
 | Layer | Technology |
 | --- | --- |
-| Framework | Next.js 16.2.9 (App Router) |
+| Framework | Next.js 16.3.0 (App Router) |
 | Language | TypeScript strict — no `any`, no type assertions |
 | Styling | Tailwind CSS v4 + shadcn/ui (`@base-ui/react`) + Lucide icons |
 | AI | Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) |

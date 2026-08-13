@@ -31,7 +31,7 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 | Concern | Constraint |
 | --- | --- |
-| Framework | Next.js 16.2.9 (App Router) — `proxy.ts` replaces `middleware.ts` at the project root |
+| Framework | Next.js 16.3.0 (App Router) — `proxy.ts` replaces `middleware.ts` at the project root |
 | Language | TypeScript strict — no `any`, no type assertions |
 | Styling | Tailwind CSS v4 + shadcn/ui built on `@base-ui/react` |
 | AI provider | Google Gemini 2.5 Flash (`@google/genai ^2.10.0`) — function calling via `FunctionDeclaration` / `Type.*` schema format |
