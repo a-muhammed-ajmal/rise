@@ -554,7 +554,7 @@ export default function ProductivityPage() {
         <button
           type="button"
           onClick={() => setCreatingTask(true)}
-          className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
+          className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand-action text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
           aria-label="Add task"
         >
           <Plus className="w-6 h-6" aria-hidden="true" />

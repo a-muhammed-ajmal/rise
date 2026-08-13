@@ -120,7 +120,7 @@ export function RepeatEditor({ value, dueDate, onChange, onClose }: RepeatEditor
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <span className="text-sm font-semibold">Repeats</span>
-        <button type="button" onClick={handleDone} className="text-xs font-bold uppercase tracking-wide text-brand">
+        <button type="button" onClick={handleDone} className="text-xs font-bold uppercase tracking-wide text-brand-text">
           Done
         </button>
       </div>
@@ -136,7 +136,7 @@ export function RepeatEditor({ value, dueDate, onChange, onClose }: RepeatEditor
               className={cn(
                 'px-2.5 py-1 rounded-full text-xs border transition-colors',
                 activePresetKey === p.key
-                  ? 'border-brand/50 text-brand bg-brand-tint'
+                  ? 'border-brand/50 text-brand-text bg-brand-tint'
                   : 'border-border text-muted-foreground hover:border-ring'
               )}
             >
@@ -187,7 +187,7 @@ export function RepeatEditor({ value, dueDate, onChange, onClose }: RepeatEditor
                     className={cn(
                       'w-8 h-8 rounded-full text-xs flex items-center justify-center border transition-colors',
                       byday.includes(d)
-                        ? 'border-brand bg-brand text-white'
+                        ? 'border-brand bg-brand-action text-white'
                         : 'border-border text-muted-foreground hover:border-ring'
                     )}
                   >

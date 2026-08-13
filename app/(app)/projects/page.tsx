@@ -287,7 +287,7 @@ export default function ProjectsPage() {
               <button
                 type="button"
                 onClick={() => openAddProject("default")}
-                className="flex flex-col items-center justify-start gap-2 w-[200px] shrink-0 rounded-xl border-2 border-dashed border-border/40 text-muted-foreground hover:border-brand hover:text-brand transition-all self-start py-5 min-h-[80px]"
+                className="flex flex-col items-center justify-start gap-2 w-[200px] shrink-0 rounded-xl border-2 border-dashed border-border/40 text-muted-foreground hover:border-brand hover:text-brand-text transition-all self-start py-5 min-h-[80px]"
                 aria-label="Add new project"
               >
                 <FolderPlus className="w-5 h-5" />
@@ -336,7 +336,7 @@ export default function ProjectsPage() {
         onClick={() =>
           selectedProject ? setCreatingTask(true) : openAddProject("default")
         }
-        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand-action text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label={selectedProject ? "Add task" : "Add project"}
       >
         <Plus className="w-6 h-6" />

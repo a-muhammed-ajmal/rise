@@ -389,7 +389,7 @@ export default function WellnessPage() {
       <button
         type="button"
         onClick={() => { setEditHabit(null); setHabitDialogOpen(true); }}
-        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand-action text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label="Add habit"
       >
         <Plus className="w-6 h-6" />
@@ -575,7 +575,7 @@ function HabitDialog({
                       onClick={() => toggleDay(dow)}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         targetDays.includes(dow)
-                          ? "bg-brand text-white"
+                          ? "bg-brand-action text-white"
                           : "bg-accent text-accent-foreground"
                       }`}
                     >
@@ -740,7 +740,7 @@ function FocusTimerDialog({
                   key={m}
                   type="button"
                   onClick={() => { setMinutes(m); setSecondsLeft(m * 60); }}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${minutes === m ? "bg-brand text-white" : "bg-accent"}`}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${minutes === m ? "bg-brand-action text-white" : "bg-accent"}`}
                 >
                   {m}m
                 </button>

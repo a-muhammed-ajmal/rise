@@ -23,7 +23,7 @@
 <div style={{ color: 'var(--brand-text)', background: 'var(--brand-tint)' }}>
 
 // Wrong — hardcoded hex
-<div style={{ color: '#D6450F', background: '#FFF0EB' }}>
+<div style={{ color: '#CC4400', background: '#FFF0EB' }}>
 ```
 
 ## Priority Color Pattern

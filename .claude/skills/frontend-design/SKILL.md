@@ -57,9 +57,10 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 | Token                | Hex            | Role |
 |----------------------|----------------|------|
-| `--brand`            | `#FF6535`      | Primary CTA, accents, focus rings |
+| `--brand`            | `#FF6535`      | Accents, borders, icon fills, focus rings — NOT filled-surface text |
+| `--brand-action`     | `#C2410C`      | Filled button/FAB surfaces — white text AA (5.2:1) |
 | `--brand-hover`      | `#FF8159`      | Hover states |
-| `--brand-text`       | `#D6450F`      | Orange text on light (AA 4.5:1) |
+| `--brand-text`       | `#CC4400`      | Orange text on light (AA 4.8:1) |
 | `--brand-tint`       | `#FFF0EB`      | Badges, chips, icon containers |
 | `--surface-base`     | `#FFFFFF`      | Main background |
 | `--surface-paper`    | `#F9FAFB`      | Alternating sections |
@@ -68,22 +69,30 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 | `--surface-footer`   | `#0B1120`      | Footer |
 | `--text-strong`      | `#1A1A2E`      | Headings |
 | `--text-body`        | `rgba(26,26,46,0.70)` | Body copy |
-| `--text-muted`       | `rgba(26,26,46,0.50)` | Captions |
+| `--text-muted`       | `rgba(26,26,46,0.62)` | Captions |
 | `--text-on-dark`     | `#FFFFFF`      | Text on dark backgrounds |
-| `--color-success`    | `#10B981`      | Success |
-| `--color-danger`     | `#E11D48`      | Error |
-| `--color-warning`    | `#F59E0B`      | Warning |
+| `--color-success`    | `#047857`      | Success (text on success-tint, AA 4.8:1) |
+| `--color-danger`     | `#B91C1C`      | Error (text on danger-tint, AA 5.3:1) |
+| `--color-warning`    | `#92400E`      | Warning (text on warning-tint, AA 6.4:1) |
+| `--color-info`       | `#1D4ED8`      | Info (text on info-tint, AA 4.8:1) |
+
+Button/FAB fills use `--brand-action`, never raw `--brand` — white text on
+`#FF6535` is only 2.93:1 (fails AA). Orange text/icons on light backgrounds use
+`--brand-text`, never raw `--brand`, for the same reason.
 
 ### Priority Config
 
 ```ts
 export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bgColor: string }> = {
   P1: { label: 'P1 Urgent',  color: '#EF4444', bgColor: '#FEF2F2' },
-  P2: { label: 'P2 High',    color: '#FF6535', bgColor: '#FFF0EB' },
+  P2: { label: 'P2 High',    color: '#CC4400', bgColor: '#FFF0EB' },
   P3: { label: 'P3 Medium',  color: '#3B82F6', bgColor: '#EFF6FF' },
   P4: { label: 'P4 Low',     color: '#9CA3AF', bgColor: '#F9FAFB' },
 };
 ```
+
+P2 uses `--brand-text` (`#CC4400`), not raw `--brand` (`#FF6535`) — the raw
+brand hex is only 2.93:1 against white, which fails AA even for small icons.
 
 ### Module Accent Tokens
 

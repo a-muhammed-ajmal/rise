@@ -51,7 +51,7 @@ export function DurationPicker({ value, onChange, onClose }: DurationPickerProps
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
     >
       {/* Header band — matches DateTimePicker style exactly */}
-      <div className="bg-brand text-white px-4 py-4">
+      <div className="bg-brand-action text-white px-4 py-4">
         <p className="text-xs text-white/70 font-medium uppercase tracking-wide">Duration</p>
         <p className="text-3xl font-bold mt-0.5">{headerLabel}</p>
       </div>
@@ -114,14 +114,14 @@ export function DurationPicker({ value, onChange, onClose }: DurationPickerProps
         <button
           type="button"
           onClick={onClose}
-          className="text-xs font-bold uppercase tracking-wide text-brand"
+          className="text-xs font-bold uppercase tracking-wide text-brand-text"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleSave}
-          className="text-xs font-bold uppercase tracking-wide text-brand"
+          className="text-xs font-bold uppercase tracking-wide text-brand-text"
         >
           Save
         </button>

@@ -108,7 +108,7 @@ At **11:59 PM Dubai time** every day, a Vercel cron job fires `POST /api/ai/dail
 
 RISE uses a locked light-first orange brand system (full spec in `.claude/skills/frontend-design/`):
 
-- **Brand:** `#FF6535` orange — CTAs, accents, focus rings; `#D6450F` for orange text on white (AA); `#FFF0EB` tint for chips/badges
+- **Brand:** `#FF6535` orange — accents, borders, icon fills, focus rings; `#C2410C` for filled button/FAB surfaces with white text (raw `#FF6535` is only 2.93:1 there — fails AA); `#CC4400` for orange text on white (AA 4.8:1); `#FFF0EB` tint for chips/badges
 - **Surfaces:** light-first — `#FFFFFF` base · `#F9FAFB` paper · navy `#1A1A2E` for dark sections; opt-in dark mode uses the navy family (`#0B1120` / `#1A1A2E`)
 - **Typography:** Inter only (400–800); page titles 700, headings 600; 11px eyebrow labels in brand orange
 - **Borders:** always visible at rest — `1.5px rgba(26,26,46,0.16)` on cards, orange `rgba(255,101,53,0.50)` on hover; graph-paper background signature (40×40px grid)
@@ -463,4 +463,4 @@ curl -s https://<your-app>/api/mcp \
 | DB tables | 26 (RLS on all) |
 | AI tools | 82 (59 AUTO + 17 REVERSIBLE + 6 APPROVAL) |
 | Migrations | 22 (001–022) |
-| Last phase | Phase 20 — Soft delete + recycle bin: deletes made reversible so they could be exposed over MCP, `restore_record` / `list_deleted` / `purge_record`, `deleted_at` on 17 tables |
+| Last phase | Phase 21 — WCAG AA contrast pass: `--brand-action` fill token, darkened status/priority/brand-text tokens, P2 color-source unification across 20 files |

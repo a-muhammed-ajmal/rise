@@ -794,7 +794,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       dueDate
-                        ? 'border-brand/50 text-brand bg-brand-tint pr-8'
+                        ? 'border-brand/50 text-brand-text bg-brand-tint pr-8'
                         : 'border-border text-muted-foreground hover:border-ring'
                     )}
                     aria-label={dueDate ? `Change time: ${dueSummary}` : 'Set time'}
@@ -829,7 +829,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       repeat !== 'none'
-                        ? 'border-brand/50 text-brand bg-brand-tint pr-7'
+                        ? 'border-brand/50 text-brand-text bg-brand-tint pr-7'
                         : 'border-border text-muted-foreground hover:border-ring'
                     )}
                     aria-label={repeat !== 'none' ? `Repeat: ${describeRecurrence(repeat)}` : 'Set repeat'}
@@ -859,7 +859,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       reminderDate
-                        ? 'border-brand/50 text-brand bg-brand-tint pr-8'
+                        ? 'border-brand/50 text-brand-text bg-brand-tint pr-8'
                         : 'border-border text-muted-foreground hover:border-ring'
                     )}
                     aria-label={reminderDate ? `Change reminder: ${reminderSummary}` : 'Set reminder'}
@@ -889,7 +889,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                     className={cn(
                       'w-full h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                       estimatedMinutes
-                        ? 'border-brand/50 text-brand bg-brand-tint pr-8'
+                        ? 'border-brand/50 text-brand-text bg-brand-tint pr-8'
                         : 'border-border text-muted-foreground hover:border-ring'
                     )}
                     aria-label={estimatedMinutes ? `Change duration: ${durationLabel()}` : 'Set duration'}
@@ -986,7 +986,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                       className={cn(
                         'flex-1 h-9 flex items-center gap-1.5 px-3 rounded-lg border text-xs transition-colors',
                         labels.length > 0
-                          ? 'border-brand/50 text-brand bg-brand-tint'
+                          ? 'border-brand/50 text-brand-text bg-brand-tint'
                           : 'border-border text-muted-foreground hover:border-ring'
                       )}
                       aria-label="Labels"
@@ -1031,7 +1031,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                           <button
                             type="button"
                             onClick={addNewLabel}
-                            className="text-[11px] font-semibold text-brand shrink-0"
+                            className="text-[11px] font-semibold text-brand-text shrink-0"
                           >
                             Add
                           </button>
@@ -1053,7 +1053,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                     className={cn(
                       'flex items-center gap-1.5 px-3 h-9 rounded-lg border text-xs cursor-pointer transition-colors',
                       attachments.length > 0
-                        ? 'border-brand/50 text-brand bg-brand-tint'
+                        ? 'border-brand/50 text-brand-text bg-brand-tint'
                         : 'border-border text-muted-foreground hover:border-ring'
                     )}
                     aria-label="Attach file"
@@ -1115,7 +1115,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 <button
                   type="submit"
                   disabled={saving || !title.trim()}
-                  className="min-h-[44px] px-4 text-xs rounded-md font-semibold bg-brand text-white hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="min-h-[44px] px-4 text-xs rounded-md font-semibold bg-brand-action text-white hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Adding…' : 'Add task'}
                 </button>
@@ -1124,7 +1124,7 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                   type="button"
                   onClick={handleSave}
                   disabled={saving || !title.trim()}
-                  className="min-h-[44px] px-4 text-xs rounded-md font-semibold bg-brand text-white hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="min-h-[44px] px-4 text-xs rounded-md font-semibold bg-brand-action text-white hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Saving…' : 'Save'}
                 </button>

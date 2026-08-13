@@ -74,7 +74,7 @@ export function QuickAddFab() {
           setMenuOpen(true);
         }}
         aria-label="Quick add"
-        className="tap-target fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 md:bottom-6"
+        className="tap-target fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand-action text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 md:bottom-6"
       >
         <Plus className="h-6 w-6" aria-hidden="true" />
       </button>

@@ -309,7 +309,7 @@ export default function KnowledgePage() {
       <button
         type="button"
         onClick={() => { setEditNote(null); setNoteOpen(true); }}
-        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand-action text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
         aria-label="Add note"
       >
         <Plus className="w-6 h-6" />

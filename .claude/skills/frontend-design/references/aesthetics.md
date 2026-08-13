@@ -7,7 +7,7 @@
 - **No fluid `clamp()` scaling** unless a specific breakpoint won't handle it — prefer the fixed type scale tokens.
 
 ## Color Aesthetic
-- **Orange is the only brand accent.** `--brand` (`#FF6535`) for fills, `--brand-hover` (`#FF8159`) on hover, `--brand-text` (`#D6450F`) for colored text on white.
+- **Orange is the only brand accent.** `--brand` (`#FF6535`) for accents/borders/icon fills, `--brand-action` (`#C2410C`) for filled button/FAB surfaces with white text (raw `--brand` fails AA there — 2.93:1), `--brand-hover` (`#FF8159`) on hover, `--brand-text` (`#CC4400`) for colored text on white.
 - **Dark sections use navy** (`#1A1A2E`), not black. The brand is charcoal-navy + orange — not monochrome.
 - **No decorative gradients** except the orange CTA glow shadow (`--shadow-brand`) and the graph-paper overlay. No rainbow gradients, no purple, no AI pulse effects.
 

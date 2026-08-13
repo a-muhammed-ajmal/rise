@@ -10,15 +10,18 @@
   /* ── Brand Palette ──────────────────────────────────────── */
   --color-navy:         #1A1A2E;   /* Primary text & dark surfaces */
   --color-navy-deep:    #0B1120;   /* Footer & deepest backgrounds */
-  --color-orange:       #FF6535;   /* Brand primary */
-  --color-orange-hover: #FF8159;   /* Hover / gradient end */
-  --color-orange-ink:   #D6450F;   /* Orange text on light bg (AA compliant) */
-  --color-orange-tint:  #FFF0EB;   /* Light orange for chips, icons, tints */
+  --color-orange:        #FF6535;   /* Brand primary — accents/borders/icons, NOT filled-surface text */
+  --color-orange-action: #C2410C;   /* Filled button/FAB surfaces — white text AA (5.2:1) */
+  --color-orange-hover:  #FF8159;   /* Hover / gradient end */
+  --color-orange-ink:    #CC4400;   /* Orange text on light bg (AA compliant, 4.8:1) */
+  --color-orange-tint:   #FFF0EB;   /* Light orange for chips, icons, tints */
 
   --color-ivory:        #FFFFFF;
   --color-paper:        #F9FAFB;
-  --color-crimson:      #E11D48;
-  --color-emerald:      #10B981;
+  --color-crimson:      #B91C1C;
+  --color-emerald:      #047857;
+  --color-amber:        #92400E;
+  --color-blue:         #1D4ED8;
   --color-slate:        #6B6B6B;
   --color-line:         #E5E5E5;
 
@@ -40,6 +43,7 @@
 
   /* ── Brand Semantic ─────────────────────────────────────── */
   --brand:              var(--color-orange);
+  --brand-action:       var(--color-orange-action);
   --brand-hover:        var(--color-orange-hover);
   --brand-text:         var(--color-orange-ink);
   --brand-tint:         var(--color-orange-tint);
@@ -51,17 +55,19 @@
   --border-brand:       rgba(255, 101, 53, 0.30);
   --border-on-dark:     rgba(255, 101, 53, 0.20);
 
-  /* ── Status Colors ──────────────────────────────────────── */
+  /* ── Status Colors ── text darkened to clear AA on their own tint ───── */
   --color-success:      var(--color-emerald);
   --color-success-tint: #D1FAE5;
   --color-danger:       var(--color-crimson);
   --color-danger-tint:  #FEE2E2;
-  --color-warning:      #F59E0B;
+  --color-warning:      var(--color-amber);
   --color-warning-tint: #FEF3C7;
+  --color-info:         var(--color-blue);
+  --color-info-tint:    #EFF6FF;
 
   /* ── Priority Tokens ────────────────────────────────────── */
   --color-p1:           #EF4444;
-  --color-p2:           var(--color-orange);
+  --color-p2:           var(--color-orange-ink);
   --color-p3:           #3B82F6;
   --color-p4:           #9CA3AF;
 
@@ -203,7 +209,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: var(--fw-bold);
   letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
-  color: var(--brand);
+  color: var(--brand-text);
 }
 
 .content-rail {

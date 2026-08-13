@@ -50,6 +50,7 @@
 
   /* Brand palette — orange system */
   --color-brand: var(--brand);
+  --color-brand-action: var(--brand-action);
   --color-brand-hover: var(--brand-hover);
   --color-brand-text: var(--brand-text);
   --color-brand-tint: var(--brand-tint);
@@ -100,12 +101,12 @@
   --card-foreground: #1A1A2E;
   --popover: #FFFFFF;
   --popover-foreground: #1A1A2E;
-  --primary: #FF6535;
+  --primary: var(--brand-action);
   --primary-foreground: #FFFFFF;
   --secondary: #F9FAFB;
   --secondary-foreground: #1A1A2E;
   --muted: #F9FAFB;
-  --muted-foreground: rgba(26, 26, 46, 0.50);
+  --muted-foreground: rgba(26, 26, 46, 0.62);
   --accent: #FFF0EB;
   --accent-foreground: #D6450F;
   --destructive: #E11D48;
@@ -128,10 +129,11 @@
   --sidebar-ring: #FF6535;
 
   /* ── Brand semantic ─────────────────────────────────────────────────────── */
-  --brand:       #FF6535;   /* primary CTA, accents, focus */
-  --brand-hover: #FF8159;   /* hover / gradient end        */
-  --brand-text:  #D6450F;   /* orange text on white — AA   */
-  --brand-tint:  #FFF0EB;   /* chip / badge backgrounds    */
+  --brand:        #FF6535;   /* accents, borders, icon fills, focus — NOT text/filled-surface-text */
+  --brand-action:  #C2410C;   /* filled button/FAB surfaces — white text AA (5.2:1)     */
+  --brand-hover:  #FF8159;   /* hover / gradient end        */
+  --brand-text:   #CC4400;   /* orange text on white — AA (4.8:1) */
+  --brand-tint:   #FFF0EB;   /* chip / badge backgrounds    */
 
   /* ── Module accent tokens — text/icon color + tint pair ────────────────── */
   --mod-tasks: #2563EB;          --mod-tasks-tint: #EFF6FF;
@@ -165,7 +167,7 @@
   /* ── Text ───────────────────────────────────────────────────────────────── */
   --text-strong:       #1A1A2E;
   --text-body:         rgba(26, 26, 46, 0.70);
-  --text-muted:        rgba(26, 26, 46, 0.50);
+  --text-muted:        rgba(26, 26, 46, 0.62);
   --text-on-dark:      #FFFFFF;
   --text-on-dark-soft: rgba(255, 255, 255, 0.70);
   --text-on-brand:     #FFFFFF;
@@ -177,11 +179,13 @@
   --border-on-dark: rgba(255, 101, 53, 0.20);
   --border-focus:   #FF6535;
 
-  /* ── Semantic status ────────────────────────────────────────────────────── */
-  --color-success:      #10B981;
-  --color-warning:      #F59E0B;
-  --color-danger:       #E11D48;
-  --color-info:         #3B82F6;
+  /* ── Semantic status ─────────────────────────────────────────────────────
+     Text tokens darkened from the original 500-level Tailwind hues, which
+     failed AA (1.9–3.8:1) against their own tints. Tints unchanged. ────── */
+  --color-success:      #047857;
+  --color-warning:      #92400E;
+  --color-danger:       #B91C1C;
+  --color-info:         #1D4ED8;
   --color-success-tint: #D1FAE5;
   --color-warning-tint: #FEF3C7;
   --color-danger-tint:  #FEE2E2;
@@ -189,7 +193,7 @@
 
   /* ── Priority tokens ────────────────────────────────────────────────────── */
   --color-p1: #EF4444;  --color-p1-tint: #FEF2F2;
-  --color-p2: #22C55E;  --color-p2-tint: #F0FDF4;
+  --color-p2: #CC4400;  --color-p2-tint: #FFF0EB;
   --color-p3: #3B82F6;  --color-p3-tint: #EFF6FF;
   --color-p4: #9CA3AF;  --color-p4-tint: #F9FAFB;
 
@@ -253,7 +257,7 @@
   --card-foreground: #E9EAF2;
   --popover: #232338;
   --popover-foreground: #E9EAF2;
-  --primary: #FF6535;
+  --primary: var(--brand-action);
   --primary-foreground: #FFFFFF;
   --secondary: rgba(255, 255, 255, 0.06);
   --secondary-foreground: #E9EAF2;
@@ -281,10 +285,11 @@
   --sidebar-ring: #FF8159;
 
   /* ── Brand (dark) ───────────────────────────────────────────────────────── */
-  --brand:       #FF6535;
-  --brand-hover: #FF8159;
-  --brand-text:  #FF8159;
-  --brand-tint:  rgba(255, 101, 53, 0.15);
+  --brand:        #FF6535;
+  --brand-action:  #C2410C;
+  --brand-hover:  #FF8159;
+  --brand-text:   #FF8159;
+  --brand-tint:   rgba(255, 101, 53, 0.15);
 
   /* ── Module accents (dark) — lightened for navy surfaces ───────────────── */
   --mod-tasks: #60A5FA;          --mod-tasks-tint: rgba(96, 165, 250, 0.15);
@@ -340,7 +345,7 @@
 
   /* ── Priority (dark) ────────────────────────────────────────────────────── */
   --color-p1: #F87171;  --color-p1-tint: rgba(248, 113, 113, 0.15);
-  --color-p2: #4ADE80;  --color-p2-tint: rgba(74, 222, 128, 0.15);
+  --color-p2: #FF8159;  --color-p2-tint: rgba(255, 101, 53, 0.15);
   --color-p3: #60A5FA;  --color-p3-tint: rgba(96, 165, 250, 0.15);
   --color-p4: #9CA3AF;  --color-p4-tint: rgba(156, 163, 175, 0.15);
 
@@ -711,7 +716,7 @@
 }
 
 .nav-drawer__item--active {
-  background: var(--brand);
+  background: var(--brand-action);
   border-color: rgba(255, 101, 53, 0.20);
   color: var(--text-on-brand);
   box-shadow: var(--shadow-brand);
@@ -734,7 +739,7 @@
 .stage-new         { background: var(--surface-paper);       color: var(--text-body); }
 .stage-qualified   { background: var(--color-info-tint);     color: var(--color-info); }
 .stage-proposal    { background: var(--color-warning-tint);  color: var(--color-warning); }
-.stage-negotiation { background: rgba(245, 158, 11, 0.22);   color: var(--color-warning); }
+.stage-negotiation { background: var(--color-warning-tint);  color: var(--color-warning); }
 .stage-won         { background: var(--color-success-tint);  color: var(--color-success); }
 .stage-lost        { background: var(--color-danger-tint);   color: var(--color-danger); }
 

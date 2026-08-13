@@ -64,9 +64,10 @@ Never hardcode hex in components. Use these tokens:
 
 ```css
 :root {
-  --brand:           #FF6535;   /* primary CTA, accents */
+  --brand:           #FF6535;   /* accents/borders/icons — NOT filled-surface text */
+  --brand-action:    #C2410C;   /* filled button/FAB surfaces — white text AA 5.2:1 */
   --brand-hover:     #FF8159;   /* hover / gradient end */
-  --brand-text:      #D6450F;   /* orange text on white — AA 4.5:1 */
+  --brand-text:      #CC4400;   /* orange text on white — AA 4.8:1 */
   --brand-tint:      #FFF0EB;   /* chip/badge backgrounds */
   --surface-base:    #FFFFFF;
   --surface-paper:   #F9FAFB;
@@ -75,12 +76,13 @@ Never hardcode hex in components. Use these tokens:
   --surface-footer:  #0B1120;
   --text-strong:     #1A1A2E;
   --text-body:       rgba(26,26,46,0.70);
-  --text-muted:      rgba(26,26,46,0.50);
+  --text-muted:      rgba(26,26,46,0.62);
   --text-on-dark:    #FFFFFF;
-  --text-on-brand:   #FFFFFF;   /* white text ON orange fill */
-  --color-success:   #10B981;
-  --color-danger:    #E11D48;
-  --color-warning:   #F59E0B;
+  --text-on-brand:   #FFFFFF;   /* white text ON --brand-action fill, never raw --brand */
+  --color-success:   #047857;
+  --color-danger:    #B91C1C;
+  --color-warning:   #92400E;
+  --color-info:      #1D4ED8;
   --border-focus:    #FF6535;
 }
 ```
@@ -89,7 +91,7 @@ Never hardcode hex in components. Use these tokens:
 ```js
 const PRIORITY_CONFIG = {
   P1: { color: '#EF4444', bgColor: '#FEF2F2', label: 'P1 Urgent'  },
-  P2: { color: '#FF6535', bgColor: '#FFF0EB', label: 'P2 High'    },
+  P2: { color: '#CC4400', bgColor: '#FFF0EB', label: 'P2 High'    },
   P3: { color: '#3B82F6', bgColor: '#EFF6FF', label: 'P3 Medium'  },
   P4: { color: '#9CA3AF', bgColor: '#F9FAFB', label: 'P4 Low'     },
 };
@@ -346,8 +348,8 @@ Uniform gaps:
 
 ### 13. Anti-patterns — Never Do
 
-- `color: #FF6535` on white background for text → use `#D6450F` (`--brand-text`)
-- White text on orange button → ✓ correct; navy text on orange → ✗ wrong
+- `color: #FF6535` on white background for text → use `#CC4400` (`--brand-text`)
+- White text on orange fill → ✓ correct, but the fill must be `--brand-action` (`#C2410C`), not raw `--brand` (`#FF6535`, only 2.93:1 with white text); navy text on orange → ✗ wrong
 - Emoji for UI icons → use Lucide SVG
 - Hover-only interactive feedback → always add `:active` for mobile
 - Transparent border at rest → always visible border (`rgba(26,26,46,0.16)`)
@@ -480,9 +482,10 @@ All colors live as CSS custom properties in `tokens.css`. **Never hardcode hex i
 
 | Token                  | Hex       | Role                                                   |
 |------------------------|-----------|--------------------------------------------------------|
-| `--brand`              | `#FF6535` | Primary CTA, active states, accents, focus rings       |
+| `--brand`              | `#FF6535` | Accents, active-state borders, icon fills, focus rings — NOT filled-surface text |
+| `--brand-action`       | `#C2410C` | Filled button/FAB surfaces — white text AA (5.2:1)     |
 | `--brand-hover`        | `#FF8159` | Hover / gradient end for orange elements               |
-| `--brand-text`         | `#D6450F` | Orange text on white (AA 4.5:1 contrast)               |
+| `--brand-text`         | `#CC4400` | Orange text on white (AA 4.8:1 contrast)               |
 | `--brand-tint`         | `#FFF0EB` | Badge/chip backgrounds, tinted fills                   |
 | `--surface-base`       | `#FFFFFF` | Page background                                        |
 | `--surface-paper`      | `#F9FAFB` | Alternating light sections                             |
@@ -491,20 +494,24 @@ All colors live as CSS custom properties in `tokens.css`. **Never hardcode hex i
 | `--surface-footer`     | `#0B1120` | Footer                                                 |
 | `--text-strong`        | `#1A1A2E` | Primary headings / strong body text                    |
 | `--text-body`          | `navy/70` | Paragraph copy                                         |
-| `--text-muted`         | `navy/50` | Captions, disabled                                     |
+| `--text-muted`         | `navy/62` | Captions, disabled                                     |
 | `--text-on-dark`       | `#FFFFFF` | Text on navy sections                                  |
-| `--color-success`      | `#10B981` | Completed, done, positive                              |
-| `--color-danger`       | `#E11D48` | Error, blocked, delete                                 |
-| `--color-warning`      | `#F59E0B` | On hold, overdue                                       |
+| `--color-success`      | `#047857` | Completed, done, positive                              |
+| `--color-danger`       | `#B91C1C` | Error, blocked, delete                                 |
+| `--color-warning`      | `#92400E` | On hold, overdue                                       |
+| `--color-info`         | `#1D4ED8` | Informational                                          |
 | `--border-subtle`      | `navy/10` | Default card borders                                   |
 | `--border-focus`       | `#FF6535` | Focus rings                                            |
+
+Filled surfaces (buttons, FABs) with white text use `--brand-action`, never raw
+`--brand` — white text on `#FF6535` is only 2.93:1 against the 4.5:1 AA floor.
 
 ### Priority Tokens — Do Not Change
 
 | Token        | Hex       | Priority   |
 |--------------|-----------|------------|
 | `--color-p1` | `#EF4444` | P1 Urgent  |
-| `--color-p2` | `#FF6535` | P2 High (brand orange) |
+| `--color-p2` | `#CC4400` | P2 High (brand orange, AA-safe — not raw `#FF6535`) |
 | `--color-p3` | `#3B82F6` | P3 Medium  |
 | `--color-p4` | `#9CA3AF` | P4 Low     |
 
@@ -513,7 +520,7 @@ Always read priority colors from `PRIORITY_CONFIG[task.priority]`:
 ```ts
 export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bgColor: string }> = {
   P1: { label: 'P1', color: '#EF4444', bgColor: '#FEF2F2' },
-  P2: { label: 'P2', color: '#FF6535', bgColor: '#FFF0EB' },
+  P2: { label: 'P2', color: '#CC4400', bgColor: '#FFF0EB' },
   P3: { label: 'P3', color: '#3B82F6', bgColor: '#EFF6FF' },
   P4: { label: 'P4', color: '#9CA3AF', bgColor: '#F9FAFB' },
 };
@@ -760,14 +767,15 @@ style={{ borderColor: color + '40' }}       // ~25% opacity
   /* ── Brand palette ──────────────────────────────────────── */
   --color-navy:         #1A1A2E;   /* charcoal — primary text & dark sections */
   --color-navy-deep:    #0B1120;   /* deepest navy — footer */
-  --color-orange:       #FF6535;   /* brand orange — CTAs, accents, primary */
-  --color-orange-hover: #FF8159;   /* lighter orange — hover / gradient end */
-  --color-orange-ink:   #D6450F;   /* deep orange — text on white (AA 4.5:1) */
-  --color-orange-tint:  #FFF0EB;   /* 6% orange — badge/chip backgrounds */
+  --color-orange:        #FF6535;   /* brand orange — accents, borders, icons (NOT filled-surface text) */
+  --color-orange-action: #C2410C;   /* filled button/FAB surfaces — white text AA 5.2:1 */
+  --color-orange-hover:  #FF8159;   /* lighter orange — hover / gradient end */
+  --color-orange-ink:    #CC4400;   /* deep orange — text on white (AA 4.8:1) */
+  --color-orange-tint:   #FFF0EB;   /* 6% orange — badge/chip backgrounds */
   --color-ivory:        #FFFFFF;   /* white base */
   --color-paper:        #F9FAFB;   /* gray-50 — alternating light sections */
-  --color-crimson:      #E11D48;   /* error / danger */
-  --color-emerald:      #10B981;   /* success / positive */
+  --color-crimson:      #B91C1C;   /* error / danger — text on danger-tint, AA 5.3:1 */
+  --color-emerald:      #047857;   /* success / positive — text on success-tint, AA 4.8:1 */
   --color-slate:        #6B6B6B;   /* secondary text */
   --color-line:         #E5E5E5;   /* borders / dividers */
 
@@ -788,7 +796,8 @@ style={{ borderColor: color + '40' }}       // ~25% opacity
   --text-on-brand:      #FFFFFF;                   /* text on orange fill */
 
   /* ── Brand semantic ─────────────────────────────────────── */
-  --brand:              var(--color-orange);
+  --brand:              var(--color-orange);        /* accents/borders/icons — NOT filled-surface text */
+  --brand-action:       var(--color-orange-action); /* filled button/FAB surfaces — white text AA 5.2:1 */
   --brand-hover:        var(--color-orange-hover);
   --brand-text:         var(--color-orange-ink);   /* orange text on white */
   --brand-tint:         var(--color-orange-tint);
@@ -800,17 +809,19 @@ style={{ borderColor: color + '40' }}       // ~25% opacity
   --border-on-dark:     rgba(255, 101, 53, 0.20);  /* borders in dark sections */
   --border-focus:       var(--color-orange);        /* focus ring */
 
-  /* ── Semantic status ────────────────────────────────────── */
+  /* ── Semantic status ── text darkened to clear AA on its own tint ─ */
   --color-success:      var(--color-emerald);
   --color-success-tint: #D1FAE5;
   --color-danger:       var(--color-crimson);
   --color-danger-tint:  #FEE2E2;
-  --color-warning:      #F59E0B;
+  --color-warning:      #92400E;
   --color-warning-tint: #FEF3C7;
+  --color-info:         #1D4ED8;
+  --color-info-tint:    #EFF6FF;
 
   /* ── Priority tokens ─────────────────────────────────────  */
   --color-p1:           #EF4444;   /* P1 Urgent */
-  --color-p2:           var(--color-orange);   /* P2 High — brand orange */
+  --color-p2:           var(--color-orange-ink);   /* P2 High — brand orange, AA-safe */
   --color-p3:           #3B82F6;   /* P3 Medium */
   --color-p4:           #9CA3AF;   /* P4 Low */
 
@@ -2440,7 +2451,7 @@ h1, h2, h3, h4, h5, h6 {
 - **Semantic HTML**: Use appropriate tags (`<main>`, `<nav>`, `<section>`, `<article>`) instead of generic `<div>` wrappers for screen reader compatibility.
 - **Interactive Elements**: Every interactive element must be keyboard-accessible. Never remove the focus ring (`outline`) without providing a visible replacement using `--border-focus` (`#FF6535`).
 - **ARIA Labels**: All icon-only buttons or interactive elements without visible text must have descriptive `aria-label` attributes.
-- **Color Contrast**: Minimum 4.5:1 for body text, 3.0:1 for large text/UI elements. Note: `--brand-text` (`#D6450F`) is the correct token for orange text on white — not `--brand` (`#FF6535`), which fails AA at small sizes.
+- **Color Contrast**: Minimum 4.5:1 for body text, 3.0:1 for large text/UI elements. Note: `--brand-text` (`#CC4400`) is the correct token for orange text on white — not `--brand` (`#FF6535`), which fails AA at small sizes. Likewise, filled button/FAB surfaces use `--brand-action` (`#C2410C`) with white text, not raw `--brand` — white on `#FF6535` is only 2.93:1.
 - **Form Labels**: Every input must have a programmatically associated `<label>` or `aria-labelledby`.
 
 ## Focus Ring — Mandatory
@@ -2458,7 +2469,8 @@ Never override this to `outline: none` without adding a replacement.
 - [ ] All images have an `alt` attribute; decorative images use `alt=""`.
 - [ ] Status messages (e.g. "Task Saved") announced via `aria-live` regions.
 - [ ] All icon-only buttons use `.tap-target` (44×44px minimum).
-- [ ] Use `--brand-text` (`#D6450F`) for orange text on white, never raw `--brand`.
+- [ ] Use `--brand-text` (`#CC4400`) for orange text on white, never raw `--brand`.
+- [ ] Use `--brand-action` (`#C2410C`) for filled button/FAB surfaces with white text, never raw `--brand`.
 - [ ] `prefers-reduced-motion` respected — tokens.css handles this globally.
 
 
@@ -2475,7 +2487,7 @@ Never override this to `outline: none` without adding a replacement.
 - **No fluid `clamp()` scaling** unless a specific breakpoint won't handle it — prefer the fixed type scale tokens.
 
 ## Color Aesthetic
-- **Orange is the only brand accent.** `--brand` (`#FF6535`) for fills, `--brand-hover` (`#FF8159`) on hover, `--brand-text` (`#D6450F`) for colored text on white.
+- **Orange is the only brand accent.** `--brand` (`#FF6535`) for accents/borders/icon fills, `--brand-action` (`#C2410C`) for filled button/FAB surfaces with white text (raw `--brand` fails AA there — 2.93:1), `--brand-hover` (`#FF8159`) on hover, `--brand-text` (`#CC4400`) for colored text on white.
 - **Dark sections use navy** (`#1A1A2E`), not black. The brand is charcoal-navy + orange — not monochrome.
 - **No decorative gradients** except the orange CTA glow shadow (`--shadow-brand`) and the graph-paper overlay. No rainbow gradients, no purple, no AI pulse effects.
 
@@ -2532,7 +2544,7 @@ Apply on every section. Light sections: faint navy lines. Dark sections: faint o
 <div style={{ color: 'var(--brand-text)', background: 'var(--brand-tint)' }}>
 
 // Wrong — hardcoded hex
-<div style={{ color: '#D6450F', background: '#FFF0EB' }}>
+<div style={{ color: '#CC4400', background: '#FFF0EB' }}>
 ```
 
 ## Priority Color Pattern

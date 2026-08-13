@@ -46,9 +46,10 @@ Never hardcode hex values. Always use CSS custom properties.
 
 ```css
 :root {
-  --brand:           #FF6535;
+  --brand:           #FF6535;   /* accents/borders/icons — NOT filled-surface text */
+  --brand-action:    #C2410C;   /* filled button/FAB surfaces — white text AA 5.2:1 */
   --brand-hover:     #FF8159;
-  --brand-text:      #D6450F;   /* AA 4.5:1 on white */
+  --brand-text:      #CC4400;   /* AA 4.8:1 on white */
   --brand-tint:      #FFF0EB;
 
   --surface-base:    #FFFFFF;
@@ -59,23 +60,27 @@ Never hardcode hex values. Always use CSS custom properties.
 
   --text-strong:     #1A1A2E;
   --text-body:       rgba(26,26,46,0.70);
-  --text-muted:      rgba(26,26,46,0.50);
+  --text-muted:      rgba(26,26,46,0.62);
   --text-on-dark:    #FFFFFF;
   --text-on-brand:   #FFFFFF;
 
-  --color-success:   #10B981;
-  --color-danger:    #E11D48;
-  --color-warning:   #F59E0B;
+  --color-success:   #047857;
+  --color-danger:    #B91C1C;
+  --color-warning:   #92400E;
+  --color-info:      #1D4ED8;
   --border-focus:    #FF6535;
 }
 ```
+
+Button/FAB fills use `--brand-action`, never raw `--brand` — white text on
+`#FF6535` is only 2.93:1 (fails AA).
 
 **Priority Colors**
 
 ```ts
 export const PRIORITY_CONFIG = {
   P1: { color: '#EF4444', bgColor: '#FEF2F2', label: 'P1 Urgent'  },
-  P2: { color: '#FF6535', bgColor: '#FFF0EB', label: 'P2 High'    },
+  P2: { color: '#CC4400', bgColor: '#FFF0EB', label: 'P2 High'    },
   P3: { color: '#3B82F6', bgColor: '#EFF6FF', label: 'P3 Medium'  },
   P4: { color: '#9CA3AF', bgColor: '#F9FAFB', label: 'P4 Low'     },
 };

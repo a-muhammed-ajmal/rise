@@ -19,13 +19,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Task } from '@/lib/types/database'
 import { TaskCard } from './task-card'
-
-const PRIORITY_DOT: Record<Task['priority'], string> = {
-  P1: 'priority-dot-urgent',
-  P2: 'priority-dot-high',
-  P3: 'priority-dot-medium',
-  P4: 'priority-dot-low',
-}
+import { PRIORITY_DOT } from './task-constants'
 
 interface TaskCalendarProps {
   tasks: Task[]
