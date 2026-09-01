@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { generateDigestWithClaude, DIGEST_UNAVAILABLE } from "@/lib/ai/digest-model";
 import { addDaysISO, toDubaiISODate } from "@/lib/format";
 
 type QueryResult = { data?: unknown; error?: unknown };
@@ -28,11 +28,9 @@ export interface DailyDigestWorkflowArgs {
   db: {
     from: (table: string) => QueryBuilder;
   };
-  ai?: {
-    models: {
-      generateContent: (input: unknown) => Promise<unknown>;
-    };
-  };
+  // Provider-agnostic seam so the workflow can be tested without a network
+  // call. Production leaves it unset and gets Claude via digest-model.ts.
+  generateDigest?: (prompt: string) => Promise<string>;
   now?: Date;
   source?: string;
 }
@@ -72,7 +70,7 @@ function rowsOf(result: unknown): {
 export async function runDailyDigestWorkflow({
   userId,
   db,
-  ai,
+  generateDigest,
   now = new Date(),
   source = "scheduled",
 }: DailyDigestWorkflowArgs): Promise<DailyDigestResult> {
@@ -169,15 +167,7 @@ ACTIVE GOALS (top 5):
 ${activeGoals.map((goal) => `- ${goal.title}: ${goal.progress}%`).join("\n") || "None"}
 `.trim();
 
-  const genAI = ai ?? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const response = await genAI.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: `You are RISE, a personal AI operating system. Generate a concise, encouraging daily digest for ${todayStr}. Use markdown. Keep it under 300 words. Structure:
+  const prompt = `You are RISE, a personal AI operating system. Generate a concise, encouraging daily digest for ${todayStr}. Use markdown. Keep it under 300 words. Structure:
 
 ## Daily Digest — ${todayStr}
 
@@ -197,14 +187,10 @@ ${activeGoals.map((goal) => `- ${goal.title}: ${goal.progress}%`).join("\n") || 
 (one motivational or actionable observation based on the data)
 
 Data:
-${context}`,
-          },
-        ],
-      },
-    ],
-  });
+${context}`;
 
-  const digestText = (response as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates?.[0]?.content?.parts?.[0]?.text ?? "Daily digest unavailable.";
+  const generate = generateDigest ?? generateDigestWithClaude;
+  const digestText = (await generate(prompt)) || DIGEST_UNAVAILABLE;
 
   const noteTitle = `Daily Digest — ${todayStr}`;
 

@@ -34,7 +34,7 @@ describe("POST /api/ai/daily-digest", () => {
     process.env.CRON_SECRET = CRON_SECRET;
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
-    process.env.GEMINI_API_KEY = "gemini-key";
+    process.env.ANTHROPIC_API_KEY = "anthropic-key";
     process.env.ALLOWED_USER_EMAIL = "owner@example.com";
 
     mockCreateSupabaseClient.mockReturnValue({
@@ -57,7 +57,7 @@ describe("POST /api/ai/daily-digest", () => {
     delete process.env.CRON_SECRET;
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    delete process.env.GEMINI_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
     delete process.env.ALLOWED_USER_EMAIL;
   });
 
@@ -99,12 +99,12 @@ describe("POST /api/ai/daily-digest", () => {
     });
 
     it("returns 503 without naming the missing env var", async () => {
-      delete process.env.GEMINI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
       const res = await POST(request({ authorization: `Bearer ${CRON_SECRET}` }));
       expect(res.status).toBe(503);
       const body = await res.text();
       expect(body).toBe(JSON.stringify({ error: "Service unavailable" }));
-      expect(body).not.toContain("GEMINI");
+      expect(body).not.toContain("ANTHROPIC");
     });
   });
 
