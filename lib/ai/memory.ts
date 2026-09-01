@@ -11,7 +11,13 @@ type MemoryMetadata = {
   [key: string]: Json | undefined;
 };
 
-export async function embedText(text: string): Promise<number[] | null> {
+// Voyage scores a search query against stored documents asymmetrically, so the
+// two sides must be embedded with different input_type values. Embedding a
+// query as a "document" measurably degrades retrieval.
+export async function embedText(
+  text: string,
+  inputType: "document" | "query" = "document",
+): Promise<number[] | null> {
   const apiKey = process.env.VOYAGE_API_KEY;
   if (!apiKey) return null;
 
@@ -24,7 +30,7 @@ export async function embedText(text: string): Promise<number[] | null> {
     body: JSON.stringify({
       model: VOYAGE_MODEL,
       input: [text],
-      input_type: "document",
+      input_type: inputType,
     }),
   });
 
@@ -79,7 +85,7 @@ export async function retrieveMemories(
   client?: SupabaseClient<Database>,
 ): Promise<{ content: string; metadata: Json; similarity: number }[]> {
   const supabase = client ?? (await createClient());
-  const queryEmbedding = await embedText(queryText);
+  const queryEmbedding = await embedText(queryText, "query");
 
   if (queryEmbedding) {
     const { data } = await supabase.rpc("match_memories", {
