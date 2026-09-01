@@ -115,6 +115,18 @@ describe("updateSession", () => {
     expect(createServerClient).not.toHaveBeenCalled();
   });
 
+  it("passes through the daily-digest cron POST without a session", async () => {
+    // The Vercel cron carries `Authorization: Bearer $CRON_SECRET` and no
+    // Supabase cookie. Redirecting it to /login makes the digest silently never
+    // run — Vercel records a 307, not a failure. The route enforces its own
+    // CRON_SECRET check and fails closed at 503.
+    setupMockAuth(null);
+    const response = await updateSession(makeRequest("/api/ai/daily-digest"));
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.status).toBe(200);
+    expect(createServerClient).not.toHaveBeenCalled();
+  });
+
   it("still redirects unauthenticated requests on other /api paths", async () => {
     setupMockAuth(null);
     const response = await updateSession(makeRequest("/api/push/subscribe"));

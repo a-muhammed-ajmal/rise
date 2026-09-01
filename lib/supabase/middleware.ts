@@ -9,11 +9,17 @@ export async function updateSession(request: NextRequest) {
   //   /.well-known/oauth-*  — public OAuth discovery metadata (RFC 9728 / 8414)
   //   /api/oauth/token      — OAuth token endpoint (client secret + PKCE)
   //   /api/oauth/authorize  — runs its own Supabase session check + returnTo
+  //   /api/ai/daily-digest  — cron POST carrying CRON_SECRET, never a session.
+  //     Without this the scheduled run is redirected to /login and the digest
+  //     silently never executes: Vercel records a 307, not a failure. The route
+  //     rate-limits, requires `Authorization: Bearer $CRON_SECRET`, fails closed
+  //     with 503 when the secret is unset, and exposes no GET handler.
   const authFreePath = request.nextUrl.pathname;
   if (
     authFreePath.startsWith("/api/mcp") ||
     authFreePath.startsWith("/.well-known/oauth-") ||
-    authFreePath.startsWith("/api/oauth/")
+    authFreePath.startsWith("/api/oauth/") ||
+    authFreePath.startsWith("/api/ai/daily-digest")
   ) {
     return NextResponse.next({ request });
   }
