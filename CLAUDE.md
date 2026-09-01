@@ -18,19 +18,18 @@ RISE is a single-user personal AI operating system that consolidates task manage
 ## Tech Stack & Core Constraints
 
 - **Core Architecture:** Next.js 16.2.9 (App Router) · TypeScript Strict · Tailwind CSS v4 · shadcn/ui (`@base-ui/react`) · Supabase (Postgres + pgvector + RLS) · Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) · Vitest + Testing Library · Vercel.
-- **AI SDKs — two providers, split on purpose.** `@google/genai` drives the chat
-  assistant (SSE streaming + function calling). **Do not swap the chat route to
-  another provider.** Three things are load-bearing there: the 84 tool schemas
-  are `@google/genai` `FunctionDeclaration`s, `lib/ai/mcp-schema.ts` converts
-  that exact shape into JSON Schema for the MCP `tools/list`, and chat sends
-  every tool definition on every request — roughly 15k tokens that a premium
-  model would bill at ~30x with little to show for it, since chat is tool
-  dispatch rather than reasoning.
-  `@anthropic-ai/sdk` (no longer dormant) drives **only** the daily digest via
-  `lib/ai/digest-model.ts` — one call per day, zero tool definitions, and the
-  one genuinely synthetic task in the app. That is the boundary: reasoning-heavy
-  and tool-free goes to Claude, tool dispatch stays on Gemini. Audio
-  transcription in `upload-helpers.ts` also stays on Gemini.
+- **AI SDKs — Gemini only, and it must stay that way.** `@google/genai` drives
+  the chat assistant, the daily digest, and audio transcription. **Do not swap
+  any of them to another provider.** Cost is the binding constraint: this is a
+  free-tier project and the Anthropic API bills per token with no free
+  allowance. Three further things are load-bearing in chat specifically: the 84
+  tool schemas are `@google/genai` `FunctionDeclaration`s, `lib/ai/mcp-schema.ts`
+  converts that exact shape into JSON Schema for the MCP `tools/list`, and chat
+  resends every tool definition on every request.
+  `@anthropic-ai/sdk` is present in `package.json` but dormant (imported
+  nowhere). A digest-on-Claude version was built and reverted in 7d4687d — the
+  API account has no credit balance, so it failed closed. Do not reintroduce it
+  without an explicit decision to start paying for API usage.
   The MCP server endpoint (`/api/mcp`) uses `mcp-handler` + `@modelcontextprotocol/sdk`.
 - **State Management:** Zustand v5 with `persist` middleware. Not React context, not useState for cross-component state.
 - **Middleware Infrastructure:** Routing rules live exclusively within `proxy.ts` (Next.js 16 naming — equivalent to `middleware.ts` in older versions). It calls `updateSession()` from `lib/supabase/middleware.ts`, which is where the `ALLOWED_USER_EMAIL` restriction and token refresh logic actually live.

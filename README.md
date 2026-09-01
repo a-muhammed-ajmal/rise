@@ -79,7 +79,7 @@ The tiers split on **MCP reach, not the in-app gate** — REVERSIBLE and APPROVA
 At **11:59 PM Dubai time** every day, a Vercel cron job fires `POST /api/ai/daily-digest`. The route:
 
 1. Fetches the day's completed tasks, habit logs, transactions, pending tasks, and active goals via the Supabase service-role client
-2. Calls **Claude Opus 5** to generate a structured markdown digest (wins, finance, goals pulse, upcoming tasks, one insight). The digest is the one reasoning-heavy, tool-free call in RISE, so it runs on a stronger model than chat; it needs `ANTHROPIC_API_KEY`
+2. Calls Gemini 2.5 Flash to generate a structured markdown digest (wins, finance, goals pulse, upcoming tasks, one insight)
 3. Saves the result as a note tagged `daily-digest` in the Knowledge module (inserted, or updated in place if the day's digest already exists)
 
 `CRON_SECRET` is required — the route authenticates on `Authorization: Bearer $CRON_SECRET` only, and returns `503` when the secret is missing. The `x-vercel-cron` header is never accepted as proof of a cron run: it is caller-controlled, so trusting it would let anyone trigger service-role reads and Gemini spend.
@@ -121,8 +121,7 @@ Not scheduled through `pg_cron`: set the cadence under
 | Framework | Next.js 16.3.0 (App Router) |
 | Language | TypeScript strict — no `any`, no type assertions |
 | Styling | Tailwind CSS v4 + shadcn/ui (`@base-ui/react`) + Lucide icons |
-| AI (chat) | Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) |
-| AI (daily digest) | Claude Opus 5 via `@anthropic-ai/sdk` — adaptive thinking, `effort: medium` |
+| AI | Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) |
 | Embeddings | Voyage AI `voyage-3` (1024-dim pgvector) — keyword ILIKE fallback when key absent |
 | Database | Supabase — Postgres + pgvector + Row Level Security (26 tables) |
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
@@ -283,8 +282,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
 # AI
-GEMINI_API_KEY=        # chat assistant + audio transcription
-ANTHROPIC_API_KEY=     # daily digest only (Claude Opus 5)
+GEMINI_API_KEY=
 VOYAGE_API_KEY=        # optional — keyword fallback activates when absent
 
 # Web Push
@@ -377,7 +375,7 @@ npm run test:coverage  # Coverage report for lib/**
 - **AI memory** — user messages embedded via Voyage AI and stored in `ai_memory` (pgvector). Top-10 memories retrieved by cosine similarity (`threshold: 0.7`) and injected into each system prompt. ILIKE keyword fallback activates when `VOYAGE_API_KEY` is absent.
 - **Realtime** — `use-tasks.ts` and `use-projects.ts` subscribe to Supabase Realtime channels for live UI updates; channels are cleaned up on unmount.
 - **PWA** — installable; service worker uses stale-while-revalidate for assets, network-only for `/api/**`, and `/offline` fallback for navigation. Push notifications delivered hourly via Supabase Edge Function.
-- **Security** — HMAC-signed, user-bound approval tokens (2-minute expiry, single-use nonce) gate every destructive tool call. In-memory sliding-window rate limits cap `/api/ai/chat`, `/api/ai/upload`, `/api/oauth/token` and the digest cron. AI routes return a stable generic message plus a correlation id; the detail stays in the server log. All server secrets (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`) are never exposed to client components.
+- **Security** — HMAC-signed, user-bound approval tokens (2-minute expiry, single-use nonce) gate every destructive tool call. In-memory sliding-window rate limits cap `/api/ai/chat`, `/api/ai/upload`, `/api/oauth/token` and the digest cron. AI routes return a stable generic message plus a correlation id; the detail stays in the server log. All server secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`) are never exposed to client components.
 - **Locale** — AED currency throughout (`Intl.NumberFormat('en-AE', { currency: 'AED' })`), DD/MM/YYYY dates, 12-hour time — all via `lib/format.ts`. Timezone and format preferences stored in Supabase user_metadata and configurable in Settings.
 - **Profile** — Display name and avatar photo stored in Supabase auth `user_metadata` (`full_name`, `avatar_url`). Google OAuth photo is used by default; custom photos can be uploaded to the `avatars` storage bucket.
 
@@ -397,7 +395,7 @@ nothing depends on remembering an undocumented dashboard click.
 **1. Environment variables** — all of the following must be set in Vercel:
 
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `APPROVAL_HMAC_SECRET`,
+`SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `APPROVAL_HMAC_SECRET`,
 `ALLOWED_USER_EMAIL`, `CRON_SECRET`.
 
 > `CRON_SECRET` is **required**, not optional. The daily-digest route fails
