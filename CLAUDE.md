@@ -18,7 +18,20 @@ RISE is a single-user personal AI operating system that consolidates task manage
 ## Tech Stack & Core Constraints
 
 - **Core Architecture:** Next.js 16.2.9 (App Router) · TypeScript Strict · Tailwind CSS v4 · shadcn/ui (`@base-ui/react`) · Supabase (Postgres + pgvector + RLS) · Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) · Vitest + Testing Library · Vercel.
-- **AI SDKs:** `@google/genai` drives the chat assistant (SSE streaming + function calling) — do not swap it for another provider's SDK. The MCP server endpoint (`/api/mcp`) uses `mcp-handler` + `@modelcontextprotocol/sdk`. `@anthropic-ai/sdk` is present in `package.json` but currently dormant (imported nowhere).
+- **AI SDKs — two providers, split on purpose.** `@google/genai` drives the chat
+  assistant (SSE streaming + function calling). **Do not swap the chat route to
+  another provider.** Three things are load-bearing there: the 84 tool schemas
+  are `@google/genai` `FunctionDeclaration`s, `lib/ai/mcp-schema.ts` converts
+  that exact shape into JSON Schema for the MCP `tools/list`, and chat sends
+  every tool definition on every request — roughly 15k tokens that a premium
+  model would bill at ~30x with little to show for it, since chat is tool
+  dispatch rather than reasoning.
+  `@anthropic-ai/sdk` (no longer dormant) drives **only** the daily digest via
+  `lib/ai/digest-model.ts` — one call per day, zero tool definitions, and the
+  one genuinely synthetic task in the app. That is the boundary: reasoning-heavy
+  and tool-free goes to Claude, tool dispatch stays on Gemini. Audio
+  transcription in `upload-helpers.ts` also stays on Gemini.
+  The MCP server endpoint (`/api/mcp`) uses `mcp-handler` + `@modelcontextprotocol/sdk`.
 - **State Management:** Zustand v5 with `persist` middleware. Not React context, not useState for cross-component state.
 - **Middleware Infrastructure:** Routing rules live exclusively within `proxy.ts` (Next.js 16 naming — equivalent to `middleware.ts` in older versions). It calls `updateSession()` from `lib/supabase/middleware.ts`, which is where the `ALLOWED_USER_EMAIL` restriction and token refresh logic actually live.
 - **Component Paradigm:** Prioritize React Server Components (RSC) for initial page layouts and base data extraction. Restrict `'use client'` tags to low-level leaf components requiring stateful client operations or interface triggers.
@@ -153,6 +166,36 @@ their table, and the column echoed back in responses.
 - `supabase/functions/send-push/` is deployed separately and must filter by hand —
   a migration does not reach it.
 
+**WhatsApp reminders (migration 023):** `supabase/functions/send-whatsapp/`
+delivers habit nudges, CRM follow-ups and task-due reminders hourly over the Meta
+Cloud API. Two rules govern anything touching it:
+
+- **Every send is claimed before it is sent.** The function inserts a `pending`
+  row into `whatsapp_log` first; the unique index on
+  `(user_id, reminder_type, coalesce(entity_id, sentinel), dedup_key)` makes that
+  atomic, and a `23505` means the window is already taken so the send is skipped.
+  This is what stops an hourly cron re-sending the same task-due reminder 24
+  times. Never bypass the claim to "just send" — and never widen `dedup_key`
+  without deciding what the new repeat interval should be.
+- **Meta fails silently.** A template mismatch returns `200` with the message
+  dropped. Treat a clean run with zero deliveries as unproven, and check
+  `whatsapp_log.status` / `list_whatsapp_reminders` rather than the HTTP result.
+
+**Edge functions must compute Dubai time themselves.** They are deployed
+separately and cannot import `lib/format.ts`, so `todayISO()` and its
+`toDubaiISODate()` helper are unavailable. Writing `new Date().getUTCHours()` or
+`toISOString().slice(0, 10)` there is wrong twice over: reminder times are
+entered in Dubai local time (UTC+4), and between 20:00 and 24:00 UTC the UTC
+date is already the previous day in Dubai. Both `send-whatsapp` and `send-push` shift by a
+fixed `DUBAI_OFFSET_MS` before reading either. `send-push` carried both bugs
+until migration 023 landed and fired habit reminders four hours late; do not
+reintroduce the pattern in a new function.
+
+**Voyage embeddings are asymmetric.** `embedText()` takes an `inputType` —
+stored memories are embedded as `"document"`, search queries as `"query"`.
+Embedding a query as a document measurably degrades retrieval, which is what
+`retrieveMemories()` did before it passed the argument explicitly.
+
 **Pagination:** the paginated `list_*` tools fetch `limit + 1` rows via `.range()` and
 report `offset` for the next page in the result message, so a truncated list is never
 mistaken for a complete one. Helpers: `pageOf` / `pagedResult` / `rangeFor`.
@@ -262,15 +305,16 @@ lib/
     server.ts               Server-side isolated client handlers
     middleware.ts           Session lifecycle handlers, ALLOWED_USER_EMAIL enforcement, token refresh
   types/
-    database.ts             Single Source of Truth — 26 Supabase tables with Row/Insert/Update types
+    database.ts             Single Source of Truth — 28 Supabase tables with Row/Insert/Update types
   format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + isPastDeadline, truncateLabel
   area-colors.ts            AREA_META / AREA_LIST / areaTint() — life-area colors as --area-* CSS tokens
   task-attachments.ts       Private-bucket attachment helpers: attachmentPath() recovers legacy object keys
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities
 
-supabase/migrations/        001 through 022 (append-only; execute via Supabase SQL editor)
+supabase/migrations/        001 through 023 (append-only; execute via Supabase SQL editor)
 supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
+  send-whatsapp/            Deno edge function — WhatsApp Cloud API reminders (hourly cron)
 proxy.ts                    Next.js 16 middleware entry point — calls lib/supabase/middleware.ts
 public/sw.js                Service worker script managing stale-while-revalidate data paths
 

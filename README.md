@@ -33,9 +33,9 @@ The AI isn't just a chatbot. It can create a task, log an expense, mark a habit 
 
 ## AI Tool System
 
-The assistant runs 82 tools across every module — split into three tiers:
+The assistant runs 84 tools across every module — split into three tiers:
 
-**AUTO_TOOLS (59)** — execute immediately without user confirmation:
+**AUTO_TOOLS (61)** — execute immediately without user confirmation:
 
 | Group | Tools |
 | --- | --- |
@@ -57,6 +57,7 @@ The assistant runs 82 tools across every module — split into three tiers:
 | Focus Sessions | `list_focus_sessions` · `create_focus_session` · `update_focus_session` |
 | Memory | `remember_user_fact` · `recall_memories` |
 | Analytics | `get_daily_briefing` · `get_analytics` · `search_data` |
+| WhatsApp | `set_whatsapp_reminders` · `list_whatsapp_reminders` |
 | Recycle bin | `list_deleted` · `restore_record` |
 
 **REVERSIBLE_TOOLS (17)** — soft deletes. Confirmed in the app chat, but exposed over MCP because every one of them can be undone with `restore_record`:
@@ -78,12 +79,40 @@ The tiers split on **MCP reach, not the in-app gate** — REVERSIBLE and APPROVA
 At **11:59 PM Dubai time** every day, a Vercel cron job fires `POST /api/ai/daily-digest`. The route:
 
 1. Fetches the day's completed tasks, habit logs, transactions, pending tasks, and active goals via the Supabase service-role client
-2. Calls Gemini 2.5 Flash to generate a structured markdown digest (wins, finance, goals pulse, upcoming tasks, one insight)
+2. Calls **Claude Opus 5** to generate a structured markdown digest (wins, finance, goals pulse, upcoming tasks, one insight). The digest is the one reasoning-heavy, tool-free call in RISE, so it runs on a stronger model than chat; it needs `ANTHROPIC_API_KEY`
 3. Saves the result as a note tagged `daily-digest` in the Knowledge module (inserted, or updated in place if the day's digest already exists)
 
 `CRON_SECRET` is required — the route authenticates on `Authorization: Bearer $CRON_SECRET` only, and returns `503` when the secret is missing. The `x-vercel-cron` header is never accepted as proof of a cron run: it is caller-controlled, so trusting it would let anyone trigger service-role reads and Gemini spend.
 
 ---
+
+## WhatsApp Reminders
+
+An hourly Supabase Edge Function (`supabase/functions/send-whatsapp/`) delivers
+habit nudges, CRM follow-ups and task-due reminders over the Meta WhatsApp Cloud
+API. Configure recipients from chat with `set_whatsapp_reminders`; inspect
+delivery with `list_whatsapp_reminders`.
+
+**Business-initiated messages require an approved template.** A reminder is
+business-initiated by definition, so this needs a Meta developer account, a
+WhatsApp Business Account, a permanent system-user token
+(`whatsapp_business_messaging` + `whatsapp_business_management` +
+`business_management`) and an approved template with exactly one body variable.
+Meta answers `200` and silently drops a message whose template does not match,
+which is why every attempt is recorded in `whatsapp_log`.
+
+**Idempotency.** The function runs hourly, but a task due today matches on every
+run. Before calling Meta it claims a slot in `whatsapp_log`, guarded by a unique
+index on `(user_id, reminder_type, coalesce(entity_id, sentinel), dedup_key)`.
+A `23505` means the reminder already went out for that window, so it is skipped.
+Without the claim you would get the same reminder 24 times a day.
+
+**Scheduling is on Supabase, not Vercel** — Vercel Hobby cron is limited to
+roughly once a day, which is useless for hourly reminders.
+
+Not scheduled through `pg_cron`: set the cadence under
+**Dashboard → Edge Functions → send-whatsapp → Schedule**.
+
 
 ## Stack
 
@@ -92,7 +121,8 @@ At **11:59 PM Dubai time** every day, a Vercel cron job fires `POST /api/ai/dail
 | Framework | Next.js 16.3.0 (App Router) |
 | Language | TypeScript strict — no `any`, no type assertions |
 | Styling | Tailwind CSS v4 + shadcn/ui (`@base-ui/react`) + Lucide icons |
-| AI | Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) |
+| AI (chat) | Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) |
+| AI (daily digest) | Claude Opus 5 via `@anthropic-ai/sdk` — adaptive thinking, `effort: medium` |
 | Embeddings | Voyage AI `voyage-3` (1024-dim pgvector) — keyword ILIKE fallback when key absent |
 | Database | Supabase — Postgres + pgvector + Row Level Security (26 tables) |
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
@@ -163,7 +193,7 @@ Destructive tool calls halt streaming and emit `approval_required`. The client s
 ## Connect to Claude (MCP Connector)
 
 RISE ships a **remote MCP server** at `POST /api/mcp` so Claude can read and act on your
-RISE data directly. It exposes **76 tools** — the 59 `AUTO_TOOLS` plus the 17
+RISE data directly. It exposes **78 tools** — the 61 `AUTO_TOOLS` plus the 17
 `REVERSIBLE_TOOLS`, so Claude can delete as well as create, and undo any of it with
 `restore_record`. The 6 irreversible `APPROVAL_TOOLS` (`purge_record`,
 `bulk_delete_records`, `forget_user_fact`, `bulk_complete_tasks`, `update_transaction`,
@@ -253,7 +283,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
 # AI
-GEMINI_API_KEY=
+GEMINI_API_KEY=        # chat assistant + audio transcription
+ANTHROPIC_API_KEY=     # daily digest only (Claude Opus 5)
 VOYAGE_API_KEY=        # optional — keyword fallback activates when absent
 
 # Web Push
@@ -346,7 +377,7 @@ npm run test:coverage  # Coverage report for lib/**
 - **AI memory** — user messages embedded via Voyage AI and stored in `ai_memory` (pgvector). Top-10 memories retrieved by cosine similarity (`threshold: 0.7`) and injected into each system prompt. ILIKE keyword fallback activates when `VOYAGE_API_KEY` is absent.
 - **Realtime** — `use-tasks.ts` and `use-projects.ts` subscribe to Supabase Realtime channels for live UI updates; channels are cleaned up on unmount.
 - **PWA** — installable; service worker uses stale-while-revalidate for assets, network-only for `/api/**`, and `/offline` fallback for navigation. Push notifications delivered hourly via Supabase Edge Function.
-- **Security** — HMAC-signed, user-bound approval tokens (2-minute expiry, single-use nonce) gate every destructive tool call. In-memory sliding-window rate limits cap `/api/ai/chat`, `/api/ai/upload`, `/api/oauth/token` and the digest cron. AI routes return a stable generic message plus a correlation id; the detail stays in the server log. All server secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`) are never exposed to client components.
+- **Security** — HMAC-signed, user-bound approval tokens (2-minute expiry, single-use nonce) gate every destructive tool call. In-memory sliding-window rate limits cap `/api/ai/chat`, `/api/ai/upload`, `/api/oauth/token` and the digest cron. AI routes return a stable generic message plus a correlation id; the detail stays in the server log. All server secrets (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`) are never exposed to client components.
 - **Locale** — AED currency throughout (`Intl.NumberFormat('en-AE', { currency: 'AED' })`), DD/MM/YYYY dates, 12-hour time — all via `lib/format.ts`. Timezone and format preferences stored in Supabase user_metadata and configurable in Settings.
 - **Profile** — Display name and avatar photo stored in Supabase auth `user_metadata` (`full_name`, `avatar_url`). Google OAuth photo is used by default; custom photos can be uploaded to the `avatars` storage bucket.
 
@@ -366,7 +397,7 @@ nothing depends on remembering an undocumented dashboard click.
 **1. Environment variables** — all of the following must be set in Vercel:
 
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `APPROVAL_HMAC_SECRET`,
+`SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `APPROVAL_HMAC_SECRET`,
 `ALLOWED_USER_EMAIL`, `CRON_SECRET`.
 
 > `CRON_SECRET` is **required**, not optional. The daily-digest route fails
@@ -460,7 +491,7 @@ curl -s https://<your-app>/api/mcp \
 | Metric | Value |
 | --- | --- |
 | Test count | 924 passing |
-| DB tables | 26 (RLS on all) |
-| AI tools | 82 (59 AUTO + 17 REVERSIBLE + 6 APPROVAL) |
-| Migrations | 22 (001–022) |
+| DB tables | 28 (RLS on all) |
+| AI tools | 84 (61 AUTO + 17 REVERSIBLE + 6 APPROVAL) |
+| Migrations | 23 (001–023) |
 | Last phase | Phase 21 — WCAG AA contrast pass: `--brand-action` fill token, darkened status/priority/brand-text tokens, P2 color-source unification across 20 files |

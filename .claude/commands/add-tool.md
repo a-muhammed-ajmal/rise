@@ -15,19 +15,24 @@ Ask: "Is this tool destructive (delete, bulk-update, bulk-delete)?"
 - No → `AUTO_TOOLS` in `lib/ai/tools.ts`
 
 ### 2. Add tool definition to lib/ai/tools.ts
+
+Validate input with a zod schema next to the others in `execute-tool.ts`, then
+`safeParse` it in the handler and return `badInput()` on failure.
 ```ts
+// Gemini FunctionDeclaration — NOT Anthropic input_schema, NOT OpenAI format.
+// Import { Type } from '@google/genai'.
 {
-  name: "$TOOL_NAME",
-  description: "One sentence — exactly what this tool does. Be specific so Claude uses it correctly.",
-  input_schema: {
-    type: "object" as const,
+  name: '$TOOL_NAME',
+  description: 'One sentence — exactly what this tool does. Be specific so the model calls it at the right time.',
+  parameters: {
+    type: Type.OBJECT,
     properties: {
       // required fields first
-      field: { type: "string", description: "What this field means" },
+      field: { type: Type.STRING, description: 'What this field means' },
       // optional fields with default
-      date: { type: "string", description: "ISO date YYYY-MM-DD, defaults to today" },
+      date: { type: Type.STRING, description: 'ISO date YYYY-MM-DD, defaults to today' },
     },
-    required: ["field"],
+    required: ['field'],
   },
 }
 ```
@@ -70,4 +75,5 @@ All 3 gates must pass before done.
 - [ ] Handler calls `getUser()` and returns early if no user
 - [ ] All queries filter by `user_id`
 - [ ] Tests written before handler (TDD)
-- [ ] `/verify` passes (138+ tests, ≥85% coverage, 0 lint warnings, build clean)
+- [ ] Tool count assertion in `lib/ai/__tests__/tools.test.ts` updated
+- [ ] `/verify` passes (≥85% coverage, 0 lint warnings, build clean)
