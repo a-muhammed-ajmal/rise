@@ -79,8 +79,8 @@ describe("updateSession", () => {
   });
 
   it("allows user with matching ALLOWED_USER_EMAIL", async () => {
-    process.env.ALLOWED_USER_EMAIL = "writeajmal@gmail.com";
-    setupMockAuth({ id: "user-123", email: "writeajmal@gmail.com" });
+    process.env.ALLOWED_USER_EMAIL = "owner@example.com";
+    setupMockAuth({ id: "user-123", email: "owner@example.com" });
     const response = await updateSession(makeRequest("/productivity"));
     expect(response.headers.get("location")).toBeNull();
     delete process.env.ALLOWED_USER_EMAIL;
