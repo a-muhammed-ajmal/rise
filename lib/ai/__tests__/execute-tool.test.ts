@@ -3717,3 +3717,173 @@ describe("soft delete", () => {
     });
   });
 });
+
+// ─── WHATSAPP REMINDERS (023) ─────────────────────────────────────────────────
+
+describe("whatsapp reminder tools", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.setSystemTime(new Date("2026-06-23T12:00:00Z"));
+  });
+
+  describe("set_whatsapp_reminders", () => {
+    it("upserts a recipient with all reminder types by default", async () => {
+      const whatsapp_recipients = createMockQuery({
+        id: "wr-1",
+        phone_e164: "+971500000000",
+        reminder_types: ["habit_nudge", "crm_followup", "task_due"],
+        active: true,
+      });
+      setupMockSupabase({ queries: { whatsapp_recipients } });
+
+      const result = await executeTool("set_whatsapp_reminders", {
+        phone: "+971500000000",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("+971500000000");
+      expect(whatsapp_recipients.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: "user-123",
+          phone_e164: "+971500000000",
+          reminder_types: ["habit_nudge", "crm_followup", "task_due"],
+          active: true,
+        }),
+        { onConflict: "user_id,phone_e164" },
+      );
+    });
+
+    it("honours an explicit reminder_types subset and active=false", async () => {
+      const whatsapp_recipients = createMockQuery({
+        id: "wr-1",
+        phone_e164: "+971500000000",
+        reminder_types: ["task_due"],
+        active: false,
+      });
+      setupMockSupabase({ queries: { whatsapp_recipients } });
+
+      const result = await executeTool("set_whatsapp_reminders", {
+        phone: "+971500000000",
+        reminder_types: ["task_due"],
+        active: false,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("disabled");
+      expect(whatsapp_recipients.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ reminder_types: ["task_due"], active: false }),
+        { onConflict: "user_id,phone_e164" },
+      );
+    });
+
+    it("rejects a phone number that is not E.164", async () => {
+      const whatsapp_recipients = createMockQuery(null);
+      setupMockSupabase({ queries: { whatsapp_recipients } });
+
+      const result = await executeTool("set_whatsapp_reminders", {
+        phone: "0500000000",
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Invalid input for this action.");
+      // Must never reach the database — the column CHECK would reject it, but
+      // the tool should fail before spending a round trip.
+      expect(whatsapp_recipients.upsert).not.toHaveBeenCalled();
+    });
+
+    it("rejects an empty reminder_types array", async () => {
+      const whatsapp_recipients = createMockQuery(null);
+      setupMockSupabase({ queries: { whatsapp_recipients } });
+
+      const result = await executeTool("set_whatsapp_reminders", {
+        phone: "+971500000000",
+        reminder_types: [],
+      });
+
+      expect(result.success).toBe(false);
+      expect(whatsapp_recipients.upsert).not.toHaveBeenCalled();
+    });
+
+    it("returns not-authenticated when there is no user", async () => {
+      setupMockSupabase({ user: null });
+      const result = await executeTool("set_whatsapp_reminders", {
+        phone: "+971500000000",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Not authenticated");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const whatsapp_recipients = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { whatsapp_recipients } });
+
+      const result = await executeTool("set_whatsapp_reminders", {
+        phone: "+971500000000",
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  describe("list_whatsapp_reminders", () => {
+    it("lists recipients scoped to the user", async () => {
+      const whatsapp_recipients = createMockQuery([
+        { id: "wr-1", phone_e164: "+971500000000", active: true },
+      ]);
+      const whatsapp_log = createMockQuery([]);
+      setupMockSupabase({ queries: { whatsapp_recipients, whatsapp_log } });
+
+      const result = await executeTool("list_whatsapp_reminders", {});
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("1 WhatsApp recipients");
+      expect(whatsapp_recipients.eq).toHaveBeenCalledWith("user_id", "user-123");
+    });
+
+    it("surfaces recent failed sends, since Meta drops them silently", async () => {
+      const whatsapp_recipients = createMockQuery([
+        { id: "wr-1", phone_e164: "+971500000000", active: true },
+      ]);
+      const whatsapp_log = createMockQuery([
+        { id: "log-1", reminder_type: "task_due", error: "template not found" },
+        { id: "log-2", reminder_type: "habit_nudge", error: "template not found" },
+      ]);
+      setupMockSupabase({ queries: { whatsapp_recipients, whatsapp_log } });
+
+      const result = await executeTool("list_whatsapp_reminders", {});
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("2 failed sends");
+      expect(whatsapp_log.eq).toHaveBeenCalledWith("status", "failed");
+      // 7-day window measured from the Dubai date, not the UTC one.
+      expect(whatsapp_log.gte).toHaveBeenCalledWith("created_at", "2026-06-16");
+    });
+
+    it("omits the failure clause when there are none", async () => {
+      const whatsapp_recipients = createMockQuery([]);
+      const whatsapp_log = createMockQuery([]);
+      setupMockSupabase({ queries: { whatsapp_recipients, whatsapp_log } });
+
+      const result = await executeTool("list_whatsapp_reminders", {});
+
+      expect(result.success).toBe(true);
+      expect(result.message).not.toContain("failed sends");
+    });
+
+    it("returns not-authenticated when there is no user", async () => {
+      setupMockSupabase({ user: null });
+      const result = await executeTool("list_whatsapp_reminders", {});
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Not authenticated");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const whatsapp_recipients = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { whatsapp_recipients } });
+      const result = await executeTool("list_whatsapp_reminders", {});
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+});

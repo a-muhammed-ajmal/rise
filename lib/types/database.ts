@@ -321,6 +321,35 @@ type PushSubscriptionRow = {
   reminder_types: ("habit_nudge" | "crm_followup")[];
   created_at: string;
 };
+
+export type WhatsappReminderType = "habit_nudge" | "crm_followup" | "task_due";
+
+type WhatsappRecipientRow = {
+  id: string;
+  user_id: string;
+  phone_e164: string;
+  reminder_types: WhatsappReminderType[];
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+type WhatsappLogRow = {
+  id: string;
+  user_id: string;
+  recipient_id: string | null;
+  phone_e164: string;
+  reminder_type: WhatsappReminderType;
+  entity_id: string | null;
+  // Window a send belongs to: YYYY-MM-DD daily, YYYY-MM-DDTHH if hourly.
+  dedup_key: string;
+  body: string;
+  status: "pending" | "sent" | "failed";
+  http_status: number | null;
+  wa_message_id: string | null;
+  error: string | null;
+  created_at: string;
+  sent_at: string | null;
+};
 type OAuthAuthorizationCodeRow = {
   id: string;
   code_hash: string;
@@ -480,6 +509,16 @@ export interface Database {
         OAuthTokenRow,
         Insertable<OAuthTokenRow>,
         Partial<Insertable<OAuthTokenRow>>
+      >;
+      whatsapp_recipients: T<
+        WhatsappRecipientRow,
+        Insertable<WhatsappRecipientRow>,
+        Partial<Insertable<WhatsappRecipientRow>>
+      >;
+      whatsapp_log: T<
+        WhatsappLogRow,
+        Insertable<WhatsappLogRow>,
+        Partial<Insertable<WhatsappLogRow>>
       >;
     };
     Views: Record<string, never>;

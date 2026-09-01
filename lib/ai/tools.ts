@@ -807,6 +807,30 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
       required: ['entity', 'id'],
     },
   },
+
+  // ─── WHATSAPP REMINDERS ──────────────────────────────────────────────────────
+  {
+    name: 'set_whatsapp_reminders',
+    description: 'Turn WhatsApp reminder delivery on or off for a phone number and choose which reminder types it receives. Use when the user asks to be reminded on WhatsApp.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        phone: { type: Type.STRING, description: 'Recipient number in E.164 format, e.g. +971500000000' },
+        reminder_types: { type: Type.ARRAY, items: { type: Type.STRING, enum: ['habit_nudge', 'crm_followup', 'task_due'] }, description: 'Which reminders to deliver; defaults to all three' },
+        active: { type: Type.BOOLEAN, description: 'Set false to pause delivery without removing the number; defaults to true' },
+      },
+      required: ['phone'],
+    },
+  },
+  {
+    name: 'list_whatsapp_reminders',
+    description: 'Show which phone numbers receive WhatsApp reminders, plus any sends that failed in the last 7 days.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+      required: [],
+    },
+  },
 ]
 
 // Reversible tools — soft delete.

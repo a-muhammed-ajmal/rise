@@ -31,8 +31,8 @@ describe("AUTO_TOOLS", () => {
     expect(names).toContain("search_data");
   });
 
-  it("has 59 auto-execute tools", () => {
-    expect(AUTO_TOOLS).toHaveLength(59);
+  it("has 61 auto-execute tools", () => {
+    expect(AUTO_TOOLS).toHaveLength(61);
   });
 
   // Reading the bin and undoing a delete are both non-destructive, so they
