@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseServerClient } from "@supabase/supabase-js";
+import { GoogleGenAI } from "@google/genai";
 import { runDailyDigestWorkflow } from "@/lib/ai/automation";
 import { authorizeCronRequest } from "@/lib/ai/cron-auth";
 import { checkRateLimit, clientIpFrom, rateLimitResponse } from "@/lib/rate-limit";
@@ -10,8 +11,7 @@ import { checkRateLimit, clientIpFrom, rateLimitResponse } from "@/lib/rate-limi
 // scheduled invocation. The caller-controlled `x-vercel-cron` header is never
 // treated as proof of anything (see lib/ai/cron-auth.ts). There is deliberately
 // no GET handler: an unauthenticated test door on a route that spends money on
-// the Claude API and reads with the service-role key is not worth the
-// convenience.
+// Gemini and reads with the service-role key is not worth the convenience.
 
 const RATE_LIMIT = { limit: 2, windowMs: 60_000 };
 
@@ -34,17 +34,15 @@ export async function POST(request: Request) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  // The digest runs on Claude (lib/ai/digest-model.ts); chat and audio
-  // transcription still use GEMINI_API_KEY elsewhere.
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
   const allowedEmail = process.env.ALLOWED_USER_EMAIL;
 
-  if (!supabaseUrl || !serviceRoleKey || !anthropicKey || !allowedEmail) {
+  if (!supabaseUrl || !serviceRoleKey || !geminiKey || !allowedEmail) {
     // Name the gap in the server log only — never in the response body.
     const missing = [
       !supabaseUrl && "NEXT_PUBLIC_SUPABASE_URL",
       !serviceRoleKey && "SUPABASE_SERVICE_ROLE_KEY",
-      !anthropicKey && "ANTHROPIC_API_KEY",
+      !geminiKey && "GEMINI_API_KEY",
       !allowedEmail && "ALLOWED_USER_EMAIL",
     ].filter(Boolean);
     console.error("[ai/daily-digest] missing configuration:", missing.join(", "));
@@ -64,9 +62,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
     const result = await runDailyDigestWorkflow({
       userId: user.id,
       db: adminDb as never,
+      ai: ai as never,
       now: new Date(),
       source: "cron",
     });

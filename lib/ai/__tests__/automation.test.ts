@@ -103,10 +103,17 @@ function createAi(text = "Digest ready") {
   const capturedPrompts: string[] = [];
   return {
     capturedPrompts,
-    generateDigest: vi.fn(async (prompt: string) => {
-      capturedPrompts.push(prompt);
-      return text;
-    }),
+    ai: {
+      models: {
+        generateContent: vi.fn(async (input: unknown) => {
+          const req = input as {
+            contents: Array<{ parts: Array<{ text: string }> }>;
+          };
+          capturedPrompts.push(req.contents[0].parts[0].text);
+          return { candidates: [{ content: { parts: [{ text }] } }] };
+        }),
+      },
+    },
   };
 }
 
@@ -141,12 +148,12 @@ describe("runDailyDigestWorkflow", () => {
         error: null,
       },
     });
-    const { generateDigest } = createAi();
+    const { ai } = createAi();
 
     const result = await runDailyDigestWorkflow({
       userId: "user-1",
       db,
-      generateDigest,
+      ai,
       now: new Date("2026-06-23T12:00:00Z"),
       source: "test",
     });
@@ -163,19 +170,19 @@ describe("runDailyDigestWorkflow", () => {
     });
     // `source` is not a column on notes — it must not reach the insert payload.
     expect(inserted[0]).not.toHaveProperty("source");
-    expect(generateDigest).toHaveBeenCalled();
+    expect(ai.models.generateContent).toHaveBeenCalled();
   });
 
   it("updates the existing note instead of inserting a duplicate", async () => {
     const { db, inserted, updated } = createDb({
       existingNote: { data: { id: "note-1" }, error: null },
     });
-    const { generateDigest } = createAi("Refreshed digest");
+    const { ai } = createAi("Refreshed digest");
 
     const result = await runDailyDigestWorkflow({
       userId: "user-1",
       db,
-      generateDigest,
+      ai,
       now: new Date("2026-06-23T12:00:00Z"),
     });
 
@@ -191,12 +198,12 @@ describe("runDailyDigestWorkflow", () => {
         habitLogs: { data: [{ habit_id: "habit-1", completed: true }], error: null },
         habits: { data: [{ id: "habit-1", name: "Meditate" }], error: null },
       });
-      const { generateDigest, capturedPrompts } = createAi();
+      const { ai, capturedPrompts } = createAi();
 
       await runDailyDigestWorkflow({
         userId: "user-1",
         db,
-        generateDigest,
+        ai,
         now: new Date("2026-06-23T12:00:00Z"),
       });
 
@@ -221,12 +228,12 @@ describe("runDailyDigestWorkflow", () => {
           error: null,
         },
       });
-      const { generateDigest, capturedPrompts } = createAi();
+      const { ai, capturedPrompts } = createAi();
 
       await runDailyDigestWorkflow({
         userId: "user-1",
         db,
-        generateDigest,
+        ai,
         now: new Date("2026-06-23T12:00:00Z"),
       });
 
@@ -239,12 +246,12 @@ describe("runDailyDigestWorkflow", () => {
         habitLogs: { data: [{ habit_id: "orphan", completed: true }], error: null },
         habits: { data: [{ id: "habit-1", name: "Meditate" }], error: null },
       });
-      const { generateDigest, capturedPrompts } = createAi();
+      const { ai, capturedPrompts } = createAi();
 
       const result = await runDailyDigestWorkflow({
         userId: "user-1",
         db,
-        generateDigest,
+        ai,
         now: new Date("2026-06-23T12:00:00Z"),
       });
 
@@ -256,13 +263,13 @@ describe("runDailyDigestWorkflow", () => {
   describe("Dubai date handling", () => {
     it("uses the Dubai calendar date, not the UTC date", async () => {
       const { db, inserted } = createDb();
-      const { generateDigest } = createAi();
+      const { ai } = createAi();
 
       // 21:30 UTC on the 23rd is already 01:30 on the 24th in Dubai (UTC+4).
       const result = await runDailyDigestWorkflow({
         userId: "user-1",
         db,
-        generateDigest,
+        ai,
         now: new Date("2026-06-23T21:30:00Z"),
       });
 
@@ -272,12 +279,12 @@ describe("runDailyDigestWorkflow", () => {
 
     it("keeps the same date earlier in the UTC day", async () => {
       const { db } = createDb();
-      const { generateDigest } = createAi();
+      const { ai } = createAi();
 
       const result = await runDailyDigestWorkflow({
         userId: "user-1",
         db,
-        generateDigest,
+        ai,
         now: new Date("2026-06-23T12:00:00Z"),
       });
 
@@ -298,12 +305,12 @@ describe("runDailyDigestWorkflow", () => {
           error: null,
         },
       });
-      const { generateDigest, capturedPrompts } = createAi();
+      const { ai, capturedPrompts } = createAi();
 
       await runDailyDigestWorkflow({
         userId: "user-1",
         db,
-        generateDigest,
+        ai,
         now: new Date("2026-06-23T12:00:00Z"),
       });
 
@@ -326,29 +333,29 @@ describe("runDailyDigestWorkflow", () => {
       const { db } = createDb({
         habitLogs: { data: null, error: { message: "boom" } },
       });
-      const { generateDigest } = createAi();
+      const { ai } = createAi();
 
       const result = await runDailyDigestWorkflow({
         userId: "user-1",
         db,
-        generateDigest,
+        ai,
         now: new Date("2026-06-23T12:00:00Z"),
       });
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("Failed to read digest data");
       // Gemini is never called for a digest we already know is wrong.
-      expect(generateDigest).not.toHaveBeenCalled();
+      expect(ai.models.generateContent).not.toHaveBeenCalled();
     });
 
     it("fails when the note write errors", async () => {
       const { db } = createDb({ noteWriteError: { message: "no such column" } });
-      const { generateDigest } = createAi();
+      const { ai } = createAi();
 
       const result = await runDailyDigestWorkflow({
         userId: "user-1",
         db,
-        generateDigest,
+        ai,
         now: new Date("2026-06-23T12:00:00Z"),
       });
 
