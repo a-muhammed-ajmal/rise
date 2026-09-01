@@ -12,7 +12,24 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:writeajmal@gmail.com";
+const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:ajmalconsults@gmail.com";
+
+// Dubai is UTC+4 year round (no DST). Edge functions deploy separately and
+// cannot import lib/format.ts, so todayISO() / toDubaiISODate() are out of
+// reach and the shift has to be done here. Reading getUTCHours() or
+// toISOString() raw is wrong twice over: reminder_time is entered in Dubai
+// local time, and between 20:00 and 24:00 UTC the UTC date is already the
+// previous day in Dubai.
+const DUBAI_OFFSET_MS = 4 * 60 * 60 * 1000;
+
+function dubaiNow(): { date: string; hour: number; dow: number } {
+  const shifted = new Date(Date.now() + DUBAI_OFFSET_MS);
+  return {
+    date: shifted.toISOString().slice(0, 10),
+    hour: shifted.getUTCHours(),
+    dow: shifted.getUTCDay(),
+  };
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -98,7 +115,7 @@ async function sendPush(
 
 Deno.serve(async (_req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const today = new Date().toISOString().slice(0, 10);
+  const { date: today, hour: currentHour, dow: todayDow } = dubaiNow();
 
   // 1. Load all push subscriptions
   const { data: subs, error: subErr } = await supabase
@@ -127,9 +144,6 @@ Deno.serve(async (_req) => {
         .eq("user_id", sub.user_id)
         .is("deleted_at", null)
         .eq("active", true);
-
-      const todayDow = new Date().getDay(); // 0=Sun … 6=Sat
-      const currentHour = new Date().getUTCHours();
 
       for (const habit of habits ?? []) {
         const isDueToday =
