@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 924 tests, 96.14% lines — target met. Remaining gap is entirely `use-tasks.ts` (47%, pre-existing) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1022 tests, 96.43% lines — target met. Remaining gap is entirely `use-tasks.ts` (47%, pre-existing) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -22,7 +22,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
   the chat assistant, the daily digest, and audio transcription. **Do not swap
   any of them to another provider.** Cost is the binding constraint: this is a
   free-tier project and the Anthropic API bills per token with no free
-  allowance. Three further things are load-bearing in chat specifically: the 84
+  allowance. Three further things are load-bearing in chat specifically: the 91
   tool schemas are `@google/genai` `FunctionDeclaration`s, `lib/ai/mcp-schema.ts`
   converts that exact shape into JSON Schema for the MCP `tools/list`, and chat
   resends every tool definition on every request.
@@ -87,7 +87,7 @@ The tool system has **three** tiers defined in `lib/ai/tools.ts`:
 
 - **AUTO_TOOLS:** All non-destructive CRUD, plus the read-only/undo half of the recycle bin (`list_deleted`, `restore_record`). Executed directly in the SSE route.
 - **REVERSIBLE_TOOLS:** The 17 `delete_*` tools. These are soft deletes — they stamp `deleted_at` and can be undone with `restore_record`.
-- **APPROVAL_TOOLS:** Irreversible or bulk operations only (`purge_record`, `bulk_delete_records`, `forget_user_fact`, `bulk_complete_tasks`, `update_transaction`, `update_debt`).
+- **APPROVAL_TOOLS:** Irreversible or bulk operations only (`purge_record`, `bulk_delete_records`, `forget_user_fact`, `bulk_complete_tasks`, `bulk_update_task_priority`, `update_transaction`, `update_debt`, `create_transfer`, `create_adjustment`).
 
 Both REVERSIBLE and APPROVAL are gated by HMAC-signed approval token in
 `app/api/ai/chat/route.ts` — `APPROVAL_TOOL_NAMES` is the union of the two, and
@@ -123,6 +123,14 @@ automatically — there is no second list to update.
   same signed-approval flow when the amount exceeds `MATERIAL_AMOUNT_AED` (500)
   or the payload is ambiguous. The predicate lives in `lib/ai/financial-safety.ts`,
   **not** in the tier arrays.
+- `create_transfer`, `create_adjustment` → APPROVAL unconditionally, **not**
+  routed through `financial-safety.ts`'s amount-based gate. Unlike `log_expense`/
+  `log_income` (high-frequency, gated only above AED 500), a wallet-to-wallet
+  transfer or a manual balance override is a deliberate, comparatively rare edit —
+  same risk class as `update_transaction`/`update_debt`, so it stays APPROVAL at
+  any amount rather than adding a second escalation path.
+- `bulk_update_task_priority` → APPROVAL, same "acts on many rows at once" rule
+  as `bulk_complete_tasks`.
 
 **Approval token:** HMAC-signed, user-bound, `jti` nonce, 2-minute expiry, single-use
 within the serving instance. Ownership of the referenced row is verified *before*
@@ -201,10 +209,14 @@ mistaken for a complete one. Helpers: `pageOf` / `pagedResult` / `rangeFor`.
 
 **Non-obvious behaviors in `execute-tool.ts`:**
 
-- `log_habit`: Uses fuzzy `ilike` name match, not ID lookup. First result wins — can silently log the wrong habit if names are similar. Upserts on `(habit_id, logged_date)`.
+- `log_habit`: Uses fuzzy `ilike` name match, not ID lookup. First result wins — can silently log the wrong habit if names are similar. Upserts on `(habit_id, logged_date)`; accepts an optional `logged_date` (backdating), `note`, and `completed: false` for logging an explicit miss.
 - `create_journal_entry`: Upserts on `(user_id, date)` — one entry per day. Calling it twice on the same date updates, never duplicates.
 - `remember_user_fact`: Writes to both `user_profile.facts` (JSONB column, drives profile context) AND `ai_memory` vector store via `storeMemory()` (drives semantic `recall_memories()`).
 - `recall_memories`: Merges `user_profile.facts` (all entries returned with `similarity: 1`, highest priority) and semantic `ai_memory` vector results — profile facts always rank first regardless of actual relevance.
+- `update_task`'s `is_focus` param ports the UI's exact Today's Focus rule server-side (`task-popup.tsx`'s `handleToggleFocus`): turning it on is rejected if the task's effective `due_date` is in the future, or if 3 tasks are already focused today (`is_focus=true AND focus_date=today`); turning it off is unconditional. The dead `is_starred` param was removed from the schema — the DB column and `use-tasks.ts` sort still reference it, but nothing in the UI sets it.
+- `duplicate_task`: copies due date/time, project, area, priority, labels and estimated time; resets `status` (done→todo), `recurrence`, `reminder`, `is_focus`/`focus_date`, and `subtasks` on the copy.
+- `update_habit_log` is the only handler that branches on a Postgres error code: a `23505` on a `logged_date` move (colliding with another live log for the same habit/day) returns a friendly message instead of the generic `dbErr()`.
+- `create_transfer`/`create_adjustment` insert into `transactions` with the exact shape the wallet UI already writes (`transfer-form.tsx`, `use-payment-methods.ts`'s `adjustBalance`) — `type: "transfer"` moves a positive `amount` between two owned `payment_methods` (self-transfer rejected by a zod `.refine()`); `type: "adjustment"` writes a signed delta with a required `reason` as `description`.
 
 **`executeTool` contract:** Always returns `{ success: boolean; message: string; data?: unknown }`. Every handler calls `getUser()` and returns early if no user. Every query filters by `user_id`.
 

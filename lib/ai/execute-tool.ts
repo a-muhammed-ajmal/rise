@@ -14,19 +14,61 @@ import {
   DELETABLE_ENTITIES,
   type DeletableEntity,
 } from "@/lib/ai/deletable";
+import { parseRule } from "@/lib/recurrence";
 
 // ─── Input schemas ────────────────────────────────────────────────────────────
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
+const taskAreas = [
+  "personal",
+  "professional",
+  "financial",
+  "wellness",
+  "relationship",
+  "vision",
+  "legal",
+  "default",
+] as const;
+
+const SubtaskInput = z.object({
+  id: z.string().uuid().optional(),
+  title: z.string().min(1).max(300),
+  done: z.boolean().optional(),
+});
+
+const dueTime = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/)
+  .optional()
+  .nullable();
+
+const recurrenceRule = z
+  .string()
+  .max(200)
+  .refine((v) => parseRule(v) !== null, { message: "Invalid recurrence rule" })
+  .optional()
+  .nullable();
+
 const CreateTaskInput = z.object({
   title: z.string().min(1).max(500),
   priority: z.enum(["P1", "P2", "P3", "P4"]).optional(),
   due_date: dateStr.optional().nullable(),
+  due_time: dueTime,
   status: z
     .enum(["todo", "in_progress", "blocked", "on_hold", "done"])
     .optional(),
   description: z.string().max(5000).optional().nullable(),
+  estimated_time: z.number().int().min(0).max(1440).optional().nullable(),
+  recurrence: recurrenceRule,
+  reminder: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]+)?$/)
+    .optional()
+    .nullable(),
+  area: z.enum(taskAreas).optional(),
+  project_id: z.string().uuid().optional().nullable(),
+  subtasks: z.array(SubtaskInput).max(50).optional(),
 });
 
 const CompleteTaskInput = z.object({
@@ -39,10 +81,14 @@ const LogMoneyInput = z.object({
   description: z.string().max(500).optional().nullable(),
   date: dateStr.optional(),
   payment_method_id: z.string().uuid().optional().nullable(),
+  tags: z.array(z.string().max(50)).optional(),
 });
 
 const LogHabitInput = z.object({
   habit_name: z.string().min(1).max(200),
+  logged_date: dateStr.optional(),
+  note: z.string().max(500).optional().nullable(),
+  completed: z.boolean().optional(),
 });
 
 const CreateGoalInput = z.object({
@@ -54,20 +100,35 @@ const CreateGoalInput = z.object({
   target_date: dateStr.optional().nullable(),
 });
 
-const AddNoteInput = z.object({
-  title: z.string().min(1).max(300),
-  content: z.string().max(50_000),
-  tags: z.array(z.string().max(50)).max(20).optional(),
-});
+const linkedToType = z.enum(["task", "goal", "contact"]);
+
+const AddNoteInput = z
+  .object({
+    title: z.string().min(1).max(300),
+    content: z.string().max(50_000),
+    tags: z.array(z.string().max(50)).max(20).optional(),
+    linked_to_type: linkedToType.optional().nullable(),
+    linked_to_id: z.string().uuid().optional().nullable(),
+  })
+  .refine((d) => (d.linked_to_type == null) === (d.linked_to_id == null), {
+    message: "linked_to_type and linked_to_id must be provided together",
+  });
 
 const AddContactInput = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email().optional().nullable(),
   phone: z.string().max(30).optional().nullable(),
   company: z.string().max(200).optional().nullable(),
+  role: z.string().max(200).optional().nullable(),
   type: z
     .enum(["personal", "lead", "prospect", "client", "network"])
     .optional(),
+  stage: z
+    .enum(["new", "qualified", "proposal", "negotiation", "won", "lost"])
+    .optional(),
+  deal_value: z.number().positive().optional().nullable(),
+  notes: z.string().max(5000).optional().nullable(),
+  tags: z.array(z.string().max(50)).optional(),
 });
 
 const SearchDataInput = z.object({
@@ -113,17 +174,34 @@ const UpdateTaskInput = z.object({
     .enum(["todo", "in_progress", "blocked", "on_hold", "done"])
     .optional(),
   due_date: dateStr.optional().nullable(),
+  due_time: dueTime,
   description: z.string().max(5000).optional().nullable(),
+  estimated_time: z.number().int().min(0).max(1440).optional().nullable(),
+  recurrence: recurrenceRule,
+  reminder: isoDatetime.optional().nullable(),
+  area: z.enum(taskAreas).optional(),
   project_id: uuid.optional().nullable(),
-  is_starred: z.boolean().optional(),
+  is_focus: z.boolean().optional(),
   labels: z.array(z.string().max(100)).optional(),
+  subtasks: z.array(SubtaskInput).max(50).optional(),
+});
+
+const DuplicateTaskInput = z.object({ task_id: uuid });
+
+const BulkUpdatePriorityInput = z.object({
+  task_ids: z.array(uuid).min(1).max(100),
+  priority: z.enum(["P1", "P2", "P3", "P4"]),
 });
 
 // Projects
+const projectCategory = z.enum(taskAreas);
+
 const CreateProjectInput = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(1000).optional().nullable(),
   color: z.string().max(20).optional(),
+  category: projectCategory.optional(),
+  goal_id: uuid.optional().nullable(),
 });
 
 const UpdateProjectInput = z.object({
@@ -132,6 +210,8 @@ const UpdateProjectInput = z.object({
   description: z.string().max(1000).optional().nullable(),
   color: z.string().max(20).optional(),
   status: z.enum(["active", "completed", "archived"]).optional(),
+  category: projectCategory.optional(),
+  goal_id: uuid.optional().nullable(),
 });
 
 const DeleteProjectInput = z.object({
@@ -176,6 +256,7 @@ const UpdateMilestoneInput = z.object({
   id: uuid,
   title: z.string().min(1).max(300).optional(),
   due_date: dateStr.optional().nullable(),
+  goal_id: uuid.optional(),
 });
 
 const DeleteMilestoneInput = z.object({
@@ -190,6 +271,7 @@ const CreateHabitInput = z.object({
   frequency: z.enum(["daily", "weekly", "custom"]).optional(),
   target_days: z.array(z.number().int().min(0).max(6)).optional(),
   color: z.string().max(20).optional(),
+  icon: z.string().max(10).optional(),
   reminder_time: z
     .string()
     .regex(/^\d{2}:\d{2}$/)
@@ -204,6 +286,7 @@ const UpdateHabitInput = z.object({
   frequency: z.enum(["daily", "weekly", "custom"]).optional(),
   target_days: z.array(z.number().int().min(0).max(6)).optional(),
   color: z.string().max(20).optional(),
+  icon: z.string().max(10).optional(),
   reminder_time: z
     .string()
     .regex(/^\d{2}:\d{2}$/)
@@ -222,8 +305,23 @@ const DeleteHabitLogInput = z.object({
   logged_date: dateStr,
 });
 
+const UpdateHabitLogInput = z.object({
+  id: uuid,
+  logged_date: dateStr.optional(),
+  note: z.string().max(500).optional().nullable(),
+  completed: z.boolean().optional(),
+});
+
 // Transactions
 const offsetInput = z.number().int().nonnegative().max(10_000).optional();
+
+const ListHabitLogsInput = z.object({
+  habit_id: uuid.optional(),
+  start_date: dateStr.optional(),
+  end_date: dateStr.optional(),
+  limit: z.number().int().positive().max(100).optional(),
+  offset: offsetInput,
+});
 
 const ListTransactionsInput = z.object({
   type: z
@@ -241,6 +339,32 @@ const UpdateTransactionInput = z.object({
   category: z.string().max(100).optional(),
   description: z.string().max(500).optional().nullable(),
   date: dateStr.optional(),
+  tags: z.array(z.string().max(50)).optional(),
+});
+
+const CreateTransferInput = z
+  .object({
+    from_payment_method_id: uuid,
+    to_payment_method_id: uuid,
+    amount: z.number().positive().max(10_000_000),
+    date: dateStr.optional(),
+    description: z.string().max(500).optional().nullable(),
+    summary: z.string().max(500),
+  })
+  .refine((d) => d.from_payment_method_id !== d.to_payment_method_id, {
+    message: "Source and destination wallet must be different",
+  });
+
+const CreateAdjustmentInput = z.object({
+  payment_method_id: uuid,
+  amount: z
+    .number()
+    .refine((n) => Number.isFinite(n) && n !== 0 && Math.abs(n) <= 10_000_000, {
+      message: "Amount must be a nonzero number",
+    }),
+  reason: z.string().min(1).max(500),
+  date: dateStr.optional(),
+  summary: z.string().max(500),
 });
 
 const DeleteTransactionInput = z.object({
@@ -288,6 +412,7 @@ const UpdateDebtInput = z.object({
   debt_id: uuid,
   summary: z.string().max(500),
   creditor: z.string().max(200).optional(),
+  type: z.enum(["i_owe", "they_owe"]).optional(),
   amount: z.number().positive().max(10_000_000).optional(),
   description: z.string().max(500).optional().nullable(),
   due_date: dateStr.optional().nullable(),
@@ -340,7 +465,11 @@ const CreateInteractionInput = z.object({
   follow_up_date: dateStr.optional().nullable(),
 });
 
-const ListInteractionsInput = z.object({ contact_id: uuid });
+const ListInteractionsInput = z.object({
+  contact_id: uuid.optional(),
+  limit: z.number().int().positive().max(100).optional(),
+  offset: offsetInput,
+});
 
 const UpdateInteractionInput = z.object({
   id: uuid,
@@ -348,6 +477,7 @@ const UpdateInteractionInput = z.object({
   notes: z.string().min(1).max(5000).optional(),
   date: dateStr.optional(),
   follow_up_date: dateStr.optional().nullable(),
+  contact_id: uuid.optional(),
 });
 
 const DeleteInteractionInput = z.object({
@@ -362,12 +492,18 @@ const ListNotesInput = z.object({
   offset: offsetInput,
 });
 
-const UpdateNoteInput = z.object({
-  id: uuid,
-  title: z.string().min(1).max(300).optional(),
-  content: z.string().max(50_000).optional(),
-  tags: z.array(z.string().max(50)).max(20).optional(),
-});
+const UpdateNoteInput = z
+  .object({
+    id: uuid,
+    title: z.string().min(1).max(300).optional(),
+    content: z.string().max(50_000).optional(),
+    tags: z.array(z.string().max(50)).max(20).optional(),
+    linked_to_type: linkedToType.optional().nullable(),
+    linked_to_id: uuid.optional().nullable(),
+  })
+  .refine((d) => (d.linked_to_type == null) === (d.linked_to_id == null), {
+    message: "linked_to_type and linked_to_id must be provided together",
+  });
 
 // Documents
 const CreateDocumentInput = z.object({
@@ -382,7 +518,9 @@ const CreateDocumentInput = z.object({
 const UpdateDocumentInput = z.object({
   id: uuid,
   name: z.string().min(1).max(300).optional(),
+  file_path: z.string().min(1).max(2000).optional(),
   file_type: z.string().max(100).optional().nullable(),
+  file_size: z.number().int().positive().optional().nullable(),
   tags: z.array(z.string().max(50)).optional(),
   notes: z.string().max(2000).optional().nullable(),
 });
@@ -447,6 +585,9 @@ const UpdateReviewInput = z.object({
   content: z.string().max(50_000).optional().nullable(),
   mood: rating1to5.optional().nullable(),
   energy: rating1to5.optional().nullable(),
+  type: z.enum(["daily", "weekly", "monthly", "quarterly", "yearly"]).optional(),
+  period_start: dateStr.optional(),
+  period_end: dateStr.optional(),
 });
 
 const ListReviewsInput = z.object({
@@ -473,6 +614,7 @@ const CreateFocusSessionInput = z.object({
 const UpdateFocusSessionInput = z.object({
   id: uuid,
   duration_minutes: z.number().int().positive().max(1440).optional(),
+  started_at: isoDatetime.optional(),
   ended_at: isoDatetime.optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
   task_id: uuid.optional().nullable(),
@@ -578,6 +720,13 @@ async function isOwnedBy(
 function notOwned(entity: string): ToolResult {
   return { success: false, message: `${entity} not found` };
 }
+
+// Which table + display entity a note's linked_to_type points at.
+const LINK_TABLE = {
+  task: { table: "tasks", entity: "Task" },
+  goal: { table: "goals", entity: "Goal" },
+  contact: { table: "contacts", entity: "Contact" },
+} as const satisfies Record<string, { table: OwnableTable; entity: string }>;
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
@@ -805,6 +954,11 @@ export async function executeTool(
     case "create_task": {
       const p = CreateTaskInput.safeParse(input);
       if (!p.success) return badInput();
+      if (
+        p.data.project_id &&
+        !(await isOwnedBy(supabase, "projects", p.data.project_id, userId))
+      )
+        return notOwned("Project");
       const { error, data } = await supabase
         .from("tasks")
         .insert({
@@ -812,14 +966,23 @@ export async function executeTool(
           title: p.data.title,
           priority: p.data.priority ?? "P3",
           due_date: p.data.due_date ?? null,
+          due_time: p.data.due_time ?? null,
           status: p.data.status ?? "todo",
           description: p.data.description ?? null,
+          estimated_time: p.data.estimated_time ?? null,
+          recurrence: p.data.recurrence ?? null,
+          reminder: p.data.reminder ?? null,
+          project_id: p.data.project_id ?? null,
           is_starred: false,
           is_focus: false,
           labels: [],
-          subtasks: [],
+          subtasks: (p.data.subtasks ?? []).map((s) => ({
+            id: s.id ?? crypto.randomUUID(),
+            title: s.title,
+            done: s.done ?? false,
+          })),
           attachments: [],
-          area: "default" as const,
+          area: p.data.area ?? "default",
         })
         .select()
         .single();
@@ -869,6 +1032,49 @@ export async function executeTool(
       return { success: true, message: `Completed task: "${data?.title}"` };
     }
 
+    case "duplicate_task": {
+      const p = DuplicateTaskInput.safeParse(input);
+      if (!p.success) return badInput();
+      const { data: existing } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("id", p.data.task_id)
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (!existing) return { success: false, message: "Task not found" };
+      const { error, data } = await supabase
+        .from("tasks")
+        .insert({
+          user_id: userId,
+          title: `${existing.title} (copy)`,
+          description: existing.description,
+          status: existing.status === "done" ? "todo" : existing.status,
+          priority: existing.priority,
+          due_date: existing.due_date,
+          due_time: existing.due_time,
+          project_id: existing.project_id,
+          area: existing.area ?? "default",
+          recurrence: null,
+          reminder: null,
+          is_starred: false,
+          is_focus: false,
+          focus_date: null,
+          labels: existing.labels,
+          subtasks: [],
+          estimated_time: existing.estimated_time,
+          attachments: [],
+        })
+        .select("id, title")
+        .single();
+      if (error) return dbErr("duplicate_task", error);
+      return {
+        success: true,
+        message: `Duplicated task: "${existing.title}" as "${data?.title}"`,
+        data,
+      };
+    }
+
     case "list_payment_methods": {
       const { data, error } = await supabase
         .from("payment_methods")
@@ -907,7 +1113,7 @@ export async function executeTool(
         description: p.data.description ?? null,
         date: p.data.date ?? today,
         payment_method_id: p.data.payment_method_id ?? null,
-        tags: [],
+        tags: p.data.tags ?? [],
       });
       if (error) return dbErr("log_expense", error);
       return {
@@ -937,7 +1143,7 @@ export async function executeTool(
         description: p.data.description ?? null,
         date: p.data.date ?? today,
         payment_method_id: p.data.payment_method_id ?? null,
-        tags: [],
+        tags: p.data.tags ?? [],
       });
       if (error) return dbErr("log_income", error);
       return {
@@ -974,8 +1180,9 @@ export async function executeTool(
         {
           user_id: userId,
           habit_id: habit.id,
-          logged_date: today,
-          completed: true,
+          logged_date: p.data.logged_date ?? today,
+          completed: p.data.completed ?? true,
+          note: p.data.note ?? null,
           deleted_at: null,
         },
         { onConflict: "habit_id,logged_date" },
@@ -1011,13 +1218,18 @@ export async function executeTool(
     case "add_note": {
       const p = AddNoteInput.safeParse(input);
       if (!p.success) return badInput();
+      if (p.data.linked_to_type && p.data.linked_to_id) {
+        const link = LINK_TABLE[p.data.linked_to_type];
+        if (!(await isOwnedBy(supabase, link.table, p.data.linked_to_id, userId)))
+          return notOwned(link.entity);
+      }
       const { error } = await supabase.from("notes").insert({
         user_id: userId,
         title: p.data.title,
         content: p.data.content,
         tags: p.data.tags ?? [],
-        linked_to_type: null,
-        linked_to_id: null,
+        linked_to_type: p.data.linked_to_type ?? null,
+        linked_to_id: p.data.linked_to_id ?? null,
       });
       if (error) return dbErr("add_note", error);
       return { success: true, message: `Saved note: "${p.data.title}"` };
@@ -1032,9 +1244,12 @@ export async function executeTool(
         email: p.data.email ?? null,
         phone: p.data.phone ?? null,
         company: p.data.company ?? null,
+        role: p.data.role ?? null,
         type: p.data.type ?? "network",
-        stage: "new",
-        tags: [],
+        stage: p.data.stage ?? "new",
+        deal_value: p.data.deal_value ?? null,
+        notes: p.data.notes ?? null,
+        tags: p.data.tags ?? [],
       });
       if (error) return dbErr("add_contact", error);
       return { success: true, message: `Saved contact: "${p.data.name}"` };
@@ -1359,6 +1574,23 @@ export async function executeTool(
       };
     }
 
+    case "bulk_update_task_priority": {
+      const p = BulkUpdatePriorityInput.safeParse(input);
+      if (!p.success) return badInput();
+      const { error, data } = await supabase
+        .from("tasks")
+        .update({ priority: p.data.priority })
+        .in("id", p.data.task_ids)
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .select("id");
+      if (error) return dbErr("bulk_update_task_priority", error);
+      return {
+        success: true,
+        message: `Updated priority to ${p.data.priority} for ${data?.length ?? 0} task(s)`,
+      };
+    }
+
     case "delete_note": {
       const p = DeleteNoteInput.safeParse(input);
       if (!p.success) return badInput();
@@ -1376,12 +1608,58 @@ export async function executeTool(
     case "update_task": {
       const p = UpdateTaskInput.safeParse(input);
       if (!p.success) return badInput();
-      const { id, ...updates } = p.data;
+      const { id, is_focus, subtasks, ...rest } = p.data;
+      const updates: Database["public"]["Tables"]["tasks"]["Update"] = {
+        ...rest,
+      };
+      if (subtasks) {
+        updates.subtasks = subtasks.map((s) => ({
+          id: s.id ?? crypto.randomUUID(),
+          title: s.title,
+          done: s.done ?? false,
+        }));
+      }
       if (
-        updates.project_id &&
-        !(await isOwnedBy(supabase, "projects", updates.project_id, userId))
+        rest.project_id &&
+        !(await isOwnedBy(supabase, "projects", rest.project_id, userId))
       )
         return notOwned("Project");
+
+      if (is_focus === true) {
+        const { data: current } = await supabase
+          .from("tasks")
+          .select("due_date")
+          .eq("id", id)
+          .eq("user_id", userId)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (!current) return { success: false, message: "Task not found" };
+        const effectiveDueDate =
+          rest.due_date !== undefined ? rest.due_date : current.due_date;
+        if (effectiveDueDate && effectiveDueDate > today)
+          return {
+            success: false,
+            message: "Can only focus on tasks due today or with no due date",
+          };
+        const { count } = await supabase
+          .from("tasks")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("is_focus", true)
+          .eq("focus_date", today)
+          .is("deleted_at", null);
+        if ((count ?? 0) >= 3)
+          return {
+            success: false,
+            message: "You can only focus on 3 tasks a day",
+          };
+        updates.is_focus = true;
+        updates.focus_date = today;
+      } else if (is_focus === false) {
+        updates.is_focus = false;
+        updates.focus_date = null;
+      }
+
       const { error, data } = await supabase
         .from("tasks")
         .update(updates)
@@ -1414,6 +1692,11 @@ export async function executeTool(
     case "create_project": {
       const p = CreateProjectInput.safeParse(input);
       if (!p.success) return badInput();
+      if (
+        p.data.goal_id &&
+        !(await isOwnedBy(supabase, "goals", p.data.goal_id, userId))
+      )
+        return notOwned("Goal");
       const { error, data } = await supabase
         .from("projects")
         .insert({
@@ -1422,7 +1705,8 @@ export async function executeTool(
           description: p.data.description ?? null,
           color: p.data.color ?? "#6366f1",
           status: "active",
-          category: "default" as const,
+          category: p.data.category ?? "default",
+          goal_id: p.data.goal_id ?? null,
         })
         .select()
         .single();
@@ -1438,6 +1722,11 @@ export async function executeTool(
       const p = UpdateProjectInput.safeParse(input);
       if (!p.success) return badInput();
       const { id, ...updates } = p.data;
+      if (
+        updates.goal_id &&
+        !(await isOwnedBy(supabase, "goals", updates.goal_id, userId))
+      )
+        return notOwned("Goal");
       const { error, data } = await supabase
         .from("projects")
         .update(updates)
@@ -1576,6 +1865,11 @@ export async function executeTool(
       const p = UpdateMilestoneInput.safeParse(input);
       if (!p.success) return badInput();
       const { id, ...updates } = p.data;
+      if (
+        updates.goal_id &&
+        !(await isOwnedBy(supabase, "goals", updates.goal_id, userId))
+      )
+        return notOwned("Goal");
       const { error, data } = await supabase
         .from("milestones")
         .update(updates)
@@ -1604,6 +1898,21 @@ export async function executeTool(
         success: true,
         message: `Completed milestone: "${data?.title}"`,
       };
+    }
+
+    case "reopen_milestone": {
+      const p = ByIdInput.safeParse(input);
+      if (!p.success) return badInput();
+      const { error, data } = await supabase
+        .from("milestones")
+        .update({ completed_at: null })
+        .eq("id", p.data.id)
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .select("title")
+        .single();
+      if (error) return dbErr("reopen_milestone", error);
+      return { success: true, message: `Reopened milestone: "${data?.title}"` };
     }
 
     case "delete_milestone": {
@@ -1672,7 +1981,7 @@ export async function executeTool(
           frequency: p.data.frequency ?? "daily",
           target_days: p.data.target_days ?? [0, 1, 2, 3, 4, 5, 6],
           color: p.data.color ?? "#6366f1",
-          icon: "⭐",
+          icon: p.data.icon ?? "⭐",
           reminder_time: p.data.reminder_time ?? null,
           active: true,
         })
@@ -1741,6 +2050,55 @@ export async function executeTool(
       );
     }
 
+    case "update_habit_log": {
+      const p = UpdateHabitLogInput.safeParse(input);
+      if (!p.success) return badInput();
+      const { id, ...updates } = p.data;
+      const { data: existing } = await supabase
+        .from("habit_logs")
+        .select("id")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (!existing) return { success: false, message: "Habit log not found" };
+      const { error } = await supabase
+        .from("habit_logs")
+        .update(updates)
+        .eq("id", id)
+        .eq("user_id", userId)
+        .is("deleted_at", null);
+      if (error) {
+        if (error.code === "23505")
+          return {
+            success: false,
+            message: "A log already exists for that date.",
+          };
+        return dbErr("update_habit_log", error);
+      }
+      return { success: true, message: "Habit log updated." };
+    }
+
+    case "list_habit_logs": {
+      const p = ListHabitLogsInput.safeParse(input);
+      if (!p.success) return badInput();
+      const limitVal = p.data.limit ?? DEFAULT_PAGE_SIZE;
+      const offsetVal = p.data.offset ?? 0;
+      let query = supabase
+        .from("habit_logs")
+        .select("id, habit_id, logged_date, completed, note")
+        .eq("user_id", userId)
+        .is("deleted_at", null);
+      if (p.data.habit_id) query = query.eq("habit_id", p.data.habit_id);
+      if (p.data.start_date) query = query.gte("logged_date", p.data.start_date);
+      if (p.data.end_date) query = query.lte("logged_date", p.data.end_date);
+      const { data, error } = await query
+        .order("logged_date", { ascending: false })
+        .range(...rangeFor(limitVal, offsetVal));
+      if (error) return dbErr("list_habit_logs", error);
+      return pagedResult("habit logs", pageOf(data, limitVal, offsetVal));
+    }
+
     // ─── TRANSACTIONS ──────────────────────────────────────────────────────────
 
     case "list_transactions": {
@@ -1800,6 +2158,79 @@ export async function executeTool(
         userId,
         "delete_transaction",
       );
+    }
+
+    case "create_transfer": {
+      const p = CreateTransferInput.safeParse(input);
+      if (!p.success) return badInput();
+      const [fromOwned, toOwned] = await Promise.all([
+        isOwnedBy(
+          supabase,
+          "payment_methods",
+          p.data.from_payment_method_id,
+          userId,
+        ),
+        isOwnedBy(
+          supabase,
+          "payment_methods",
+          p.data.to_payment_method_id,
+          userId,
+        ),
+      ]);
+      if (!fromOwned) return notOwned("Source payment method");
+      if (!toOwned) return notOwned("Destination payment method");
+      const { error, data } = await supabase
+        .from("transactions")
+        .insert({
+          user_id: userId,
+          type: "transfer",
+          amount: p.data.amount,
+          category: "Transfer",
+          description: p.data.description ?? null,
+          date: p.data.date ?? today,
+          from_payment_method_id: p.data.from_payment_method_id,
+          to_payment_method_id: p.data.to_payment_method_id,
+          payment_method_id: null,
+          tags: [],
+        })
+        .select()
+        .single();
+      if (error) return dbErr("create_transfer", error);
+      return { success: true, message: `Transferred AED ${p.data.amount}`, data };
+    }
+
+    case "create_adjustment": {
+      const p = CreateAdjustmentInput.safeParse(input);
+      if (!p.success) return badInput();
+      if (
+        !(await isOwnedBy(
+          supabase,
+          "payment_methods",
+          p.data.payment_method_id,
+          userId,
+        ))
+      )
+        return notOwned("Payment method");
+      const { error, data } = await supabase
+        .from("transactions")
+        .insert({
+          user_id: userId,
+          type: "adjustment",
+          amount: p.data.amount,
+          category: "Balance Adjustment",
+          description: p.data.reason,
+          date: p.data.date ?? today,
+          payment_method_id: p.data.payment_method_id,
+          tags: [],
+        })
+        .select()
+        .single();
+      if (error) return dbErr("create_adjustment", error);
+      return {
+        success: true,
+        message: `Adjusted balance by AED ${p.data.amount}`,
+        data,
+      };
     }
 
     // ─── BUDGETS ───────────────────────────────────────────────────────────────
@@ -2039,26 +2470,30 @@ export async function executeTool(
     case "list_interactions": {
       const p = ListInteractionsInput.safeParse(input);
       if (!p.success) return badInput();
-      const { data, error } = await supabase
+      const limitVal = p.data.limit ?? DEFAULT_PAGE_SIZE;
+      const offsetVal = p.data.offset ?? 0;
+      let query = supabase
         .from("interactions")
-        .select("id, type, notes, date, follow_up_date")
-        .eq("contact_id", p.data.contact_id)
+        .select("id, contact_id, type, notes, date, follow_up_date")
         .eq("user_id", userId)
-        .is("deleted_at", null)
+        .is("deleted_at", null);
+      if (p.data.contact_id) query = query.eq("contact_id", p.data.contact_id);
+      const { data, error } = await query
         .order("date", { ascending: false })
-        .limit(20);
+        .range(...rangeFor(limitVal, offsetVal));
       if (error) return dbErr("list_interactions", error);
-      return {
-        success: true,
-        message: `Found ${data?.length ?? 0} interactions`,
-        data,
-      };
+      return pagedResult("interactions", pageOf(data, limitVal, offsetVal));
     }
 
     case "update_interaction": {
       const p = UpdateInteractionInput.safeParse(input);
       if (!p.success) return badInput();
       const { id, ...updates } = p.data;
+      if (
+        updates.contact_id &&
+        !(await isOwnedBy(supabase, "contacts", updates.contact_id, userId))
+      )
+        return notOwned("Contact");
       const { error } = await supabase
         .from("interactions")
         .update(updates)
@@ -2106,6 +2541,11 @@ export async function executeTool(
       const p = UpdateNoteInput.safeParse(input);
       if (!p.success) return badInput();
       const { id, ...updates } = p.data;
+      if (updates.linked_to_type && updates.linked_to_id) {
+        const link = LINK_TABLE[updates.linked_to_type];
+        if (!(await isOwnedBy(supabase, link.table, updates.linked_to_id, userId)))
+          return notOwned(link.entity);
+      }
       const { error, data } = await supabase
         .from("notes")
         .update(updates)

@@ -26,24 +26,24 @@ The AI isn't just a chatbot. It can create a task, log an expense, mark a habit 
 | **Goals** | Goal cards with % progress slider, milestone tracking, and journal entries with mood/energy ratings |
 | **CRM** | Contacts with pipeline stages, deal values, interaction logs (call/email/meeting), and follow-up tracking |
 | **Knowledge** | Rich-text notes (Tiptap), document metadata, and links — all searchable by the AI |
-| **AI Assistant** | Gemini 2.5 Flash chat with SSE streaming, pgvector memory, file/image uploads, and 82 executable tools |
+| **AI Assistant** | Gemini 2.5 Flash chat with SSE streaming, pgvector memory, file/image uploads, and 91 executable tools |
 | **Analytics** | Recharts dashboards aggregating cross-module data — finance has Monthly / Daily view toggle |
 
 ---
 
 ## AI Tool System
 
-The assistant runs 84 tools across every module — split into three tiers:
+The assistant runs 91 tools across every module — split into three tiers:
 
-**AUTO_TOOLS (61)** — execute immediately without user confirmation:
+**AUTO_TOOLS (65)** — execute immediately without user confirmation:
 
 | Group | Tools |
 | --- | --- |
-| Tasks | `create_task` · `list_tasks` · `update_task` · `complete_task` |
+| Tasks | `create_task` · `list_tasks` · `update_task` · `complete_task` · `duplicate_task` |
 | Projects | `list_projects` · `create_project` · `update_project` |
 | Goals | `list_goals` · `create_goal` · `update_goal` · `complete_goal` |
-| Milestones | `list_milestones` · `create_milestone` · `update_milestone` · `complete_milestone` |
-| Habits | `create_habit` · `list_habits` · `log_habit` · `update_habit` |
+| Milestones | `list_milestones` · `create_milestone` · `update_milestone` · `complete_milestone` · `reopen_milestone` |
+| Habits | `create_habit` · `list_habits` · `log_habit` · `update_habit` · `update_habit_log` · `list_habit_logs` |
 | Finance | `log_expense` · `log_income` · `list_transactions` · `list_payment_methods` |
 | Budgets | `list_budgets` · `create_budget` · `update_budget` |
 | Debts | `list_debts` · `create_debt` |
@@ -64,9 +64,9 @@ The assistant runs 84 tools across every module — split into three tiers:
 
 `delete_task` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `delete_habit_log` · `delete_transaction` · `delete_budget` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_link` · `delete_journal_entry` · `delete_review` · `delete_focus_session`
 
-**APPROVAL_TOOLS (6)** — stream pauses, a confirmation banner appears, user approves before execution:
+**APPROVAL_TOOLS (9)** — stream pauses, a confirmation banner appears, user approves before execution:
 
-`purge_record` · `bulk_delete_records` · `forget_user_fact` · `bulk_complete_tasks` · `update_transaction` · `update_debt`
+`purge_record` · `bulk_delete_records` · `forget_user_fact` · `bulk_complete_tasks` · `bulk_update_task_priority` · `update_transaction` · `update_debt` · `create_transfer` · `create_adjustment`
 
 The tiers split on **MCP reach, not the in-app gate** — REVERSIBLE and APPROVAL both prompt via `ConfirmDialog` in chat. What separates them is that a soft delete is recoverable, which is what makes it safe on a transport with no confirmation UI. Everything irreversible stays in APPROVAL and is never reachable over MCP.
 
@@ -123,12 +123,12 @@ Not scheduled through `pg_cron`: set the cadence under
 | Styling | Tailwind CSS v4 + shadcn/ui (`@base-ui/react`) + Lucide icons |
 | AI | Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) |
 | Embeddings | Voyage AI `voyage-3` (1024-dim pgvector) — keyword ILIKE fallback when key absent |
-| Database | Supabase — Postgres + pgvector + Row Level Security (26 tables) |
+| Database | Supabase — Postgres + pgvector + Row Level Security (28 tables) |
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (924 tests) |
+| Testing | Vitest 4 + Testing Library (1022 tests) |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -488,8 +488,8 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 924 passing |
+| Test count | 1022 passing |
 | DB tables | 28 (RLS on all) |
-| AI tools | 84 (61 AUTO + 17 REVERSIBLE + 6 APPROVAL) |
+| AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
 | Migrations | 23 (001–023) |
-| Last phase | Phase 21 — WCAG AA contrast pass: `--brand-action` fill token, darkened status/priority/brand-text tokens, P2 color-source unification across 20 files |
+| Last phase | Phase 22 — AI tool expansion: task due-time/duration/recurrence/reminder/area plus cross-app gap closure across wellness, goals, CRM, knowledge, projects and finance |

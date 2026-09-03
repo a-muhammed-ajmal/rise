@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 924 passing |
-| Line coverage | 96.14% on `lib/**` |
-| Migrations | 22 (001–022) |
-| DB tables | 26 (across 22 migrations) |
-| AI tools | 59 AUTO + 17 REVERSIBLE + 6 APPROVAL = 82 total |
-| Last feature shipped | Phase 21 — WCAG AA contrast pass across the token system: `--brand-action` fill token, darkened status/priority/brand-text tokens, P2 color-source unification (2026-08-13) |
+| Test count | 1022 passing |
+| Line coverage | 96.43% on `lib/**` |
+| Migrations | 23 (001–023) |
+| DB tables | 28 (across 23 migrations) |
+| AI tools | 65 AUTO + 17 REVERSIBLE + 9 APPROVAL = 91 total |
+| Last feature shipped | Phase 22 — AI tool expansion: task due-time/duration/recurrence/reminder/area plus cross-app gap closure across wellness, goals, CRM, knowledge, projects and finance (2026-09-03) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -162,15 +162,15 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 
 ### AI tool set
 
-**AUTO_TOOLS** (execute immediately, 59 total):
+**AUTO_TOOLS** (execute immediately, 65 total):
 
 | Group | Tools |
 | --- | --- |
-| Tasks (4) | `create_task` · `list_tasks` · `update_task` · `complete_task` |
+| Tasks (5) | `create_task` · `list_tasks` · `update_task` · `complete_task` · `duplicate_task` |
 | Projects (3) | `list_projects` · `create_project` · `update_project` |
 | Goals (4) | `list_goals` · `create_goal` · `update_goal` · `complete_goal` |
-| Milestones (4) | `create_milestone` · `list_milestones` · `update_milestone` · `complete_milestone` |
-| Habits (4) | `log_habit` · `list_habits` · `create_habit` · `update_habit` |
+| Milestones (5) | `create_milestone` · `list_milestones` · `update_milestone` · `complete_milestone` · `reopen_milestone` |
+| Habits (6) | `log_habit` · `list_habits` · `create_habit` · `update_habit` · `update_habit_log` · `list_habit_logs` |
 | Finance (4) | `list_payment_methods` · `log_expense` · `log_income` · `list_transactions` |
 | Budgets (3) | `list_budgets` · `create_budget` · `update_budget` |
 | Debts (2) | `list_debts` · `create_debt` |
@@ -189,8 +189,8 @@ Second leg for approved tools: same endpoint with `approvedTool` set, returns `R
 **REVERSIBLE_TOOLS** (soft delete — confirmed in the app chat, but exposed over MCP, 17 total):
 `delete_task` · `delete_project` · `delete_goal` · `delete_milestone` · `delete_habit` · `delete_habit_log` · `delete_transaction` · `delete_budget` · `delete_debt` · `delete_contact` · `delete_interaction` · `delete_note` · `delete_document` · `delete_link` · `delete_journal_entry` · `delete_review` · `delete_focus_session`
 
-**APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes, 6 total):
-`purge_record` · `bulk_delete_records` · `forget_user_fact` · `bulk_complete_tasks` · `update_transaction` · `update_debt`
+**APPROVAL_TOOLS** (SSE pauses, user clicks Approve, second POST executes, 9 total):
+`purge_record` · `bulk_delete_records` · `forget_user_fact` · `bulk_complete_tasks` · `bulk_update_task_priority` · `update_transaction` · `update_debt` · `create_transfer` · `create_adjustment`
 
 The tier split is about **MCP reach, not the in-app gate** — both REVERSIBLE and APPROVAL prompt via `ConfirmDialog` in chat (`APPROVAL_TOOL_NAMES` is the union of the two). What separates them is that everything in REVERSIBLE can be undone with `restore_record`, which is what makes it safe on a transport with no confirmation UI. `MCP_TOOLS` derives from `MCP_TOOL_SOURCE` = `AUTO_TOOLS + REVERSIBLE_TOOLS`; `APPROVAL_TOOLS` is denied twice (absent from the source _and_ named in `MCP_DENIED_NAMES`).
 
@@ -400,3 +400,4 @@ Candidate areas (not prioritized):
 | 18 | Motivational quotes rotator + performance hardening | 2026-08-01 | `components/dashboard/motivational-quote.tsx` (new; 78-quote Fisher-Yates shuffle, 5-min rotation, fade transition), `app/(app)/page.tsx` (quote inserted above Today's Focus; habit_logs query scoped to today only — 30× reduction), `next.config.ts` (staleTimes: dynamic 30s — fixes slow tab switching; removeConsole in prod), `lib/supabase/server.ts` (React.cache() wrapper — deduplicates cookie reads per request), `app/(app)/productivity/page.tsx` (removed tasks from focus-count effect deps — stops cascade query on every task mutation), `app/(app)/finance/page.tsx` (.limit(500) on transactions), `components/productivity/task-card.tsx` (React.memo), `lib/hooks/use-projects.ts` (Realtime postgres_changes subscription) |
 | 20 | Soft delete + recycle bin (MCP delete capability) | 2026-08-11 | `supabase/migrations/022_soft_delete.sql` (`deleted_at` on 17 tables, partial live/dead indexes, **fix:** `update_payment_method_balance()` treated a soft delete as an ordinary UPDATE — reversing OLD then re-applying NEW to a net zero — so a deleted transaction kept counting toward the wallet balance; both halves are now gated on the row being live), `lib/ai/deletable.ts` (new; single registry of the 17 deletable entities, consumed by the handlers, the chat route's `APPROVAL_RESOURCES`, and the tests), `lib/ai/tools.ts` (new `REVERSIBLE_TOOLS` tier + `MCP_TOOL_SOURCE`; `list_deleted` / `restore_record` AUTO; `purge_record` / `bulk_delete_records` / `forget_user_fact` APPROVAL), `lib/ai/mcp.ts` (MCP surface = AUTO + REVERSIBLE, `APPROVAL_TOOLS` denied explicitly), `lib/ai/execute-tool.ts` (`softDeleteRecord` / `restoreRecord` / `detachChildren` / `describeRecord` replace 17 duplicated hard-delete handlers; 64 reads filter `deleted_at IS NULL`; upserts revive rather than write into hidden rows; `contacts!inner` join filter in `get_daily_briefing`), `app/api/ai/chat/route.ts` (`APPROVAL_RESOURCES` derived from the registry with a live/deleted state check; approval-tool list in the system prompt now generated instead of hand-listed), `lib/ai/automation.ts` + `supabase/functions/send-push/index.ts` (service-role paths bypass RLS, so both filter explicitly), `lib/hooks/use-tasks.ts` + `use-projects.ts` + all module pages (read filters), `lib/ai/__tests__/deletable.test.ts` (new; **fix:** `isDeletableEntity` used `in`, so `"toString"` passed the guard and resolved to a meta object with an undefined table) |
 | 21 | WCAG AA contrast pass across the token system | 2026-08-13 | `app/globals.css` (new `--brand-action: #C2410C` for filled button/FAB surfaces — raw `--brand` at 2.93:1 with white text failed AA; `--brand-text` #D6450F→#CC4400; `--muted-foreground`/`--text-muted` alpha 0.50→0.62; `--color-success/warning/danger/info` darkened to clear AA on their own tint; `--color-p2` #22C55E→#CC4400 light, dark equivalent; `.stage-negotiation` hardcoded rgba → `--color-warning-tint`), `components/productivity/task-constants.ts` (**fix:** `PRIORITY_CONFIG.P2.color` disagreed with the `--color-p2` CSS var it also fed — task-popup.tsx and task-calendar.tsx rendered P2 green while task-card.tsx and task-toolbar.tsx rendered it orange, for the same task; unified), `components/productivity/task-calendar.tsx` (dropped a locally-duplicated `PRIORITY_DOT` map in favor of the shared one from task-constants.ts), 13 files across every module page + `quick-add-fab.tsx` + `DurationPicker.tsx` + `RepeatEditor.tsx` + `task-popup.tsx` (`bg-brand`→`bg-brand-action` on filled button/FAB surfaces; `text-brand`→`text-brand-text` on 7 foreground-text usages), `.claude/skills/frontend-design/` (SKILL.md, DESIGN_SYSTEM.md, AGENT_PROMPT.md, assets/tokens.css, references/{accessibility,aesthetics,components}.md — token tables and rule prose resynced to the corrected values) |
+| 22 | AI tool expansion: task time/duration/format + cross-app gap closure | 2026-09-03 | `lib/ai/tools.ts` (task tools gain `due_time`/`estimated_time`/`recurrence`/`reminder`/`area`/`project_id`/`subtasks`; **fix:** dead `is_starred` param on `update_task` replaced with a working `is_focus` toggle; 7 new tools — `duplicate_task`, `reopen_milestone`, `update_habit_log`, `list_habit_logs` AUTO, `bulk_update_task_priority`, `create_transfer`, `create_adjustment` APPROVAL), `lib/ai/execute-tool.ts` (matching Zod schemas and handlers; `update_task`'s `is_focus` branch ports the UI's exact today/no-due-date + 3-per-day eligibility rule server-side; `create_transfer`/`create_adjustment` mirror the wallet UI's exact DB write shape; ownership guards added for every new foreign key — `project_id` on create_task, `goal_id` on milestones/projects, `contact_id` on interactions, `linked_to_id` on notes), `app/(app)/assistant/page.tsx` (`TOOL_LABELS` entries for the 3 new APPROVAL tools), `lib/ai/__tests__/tools.test.ts` + `lib/ai/__tests__/execute-tool.test.ts` (tier-count assertions updated, ~140 new test cases covering every new field and tool) |

@@ -31,8 +31,8 @@ describe("AUTO_TOOLS", () => {
     expect(names).toContain("search_data");
   });
 
-  it("has 61 auto-execute tools", () => {
-    expect(AUTO_TOOLS).toHaveLength(61);
+  it("has 65 auto-execute tools", () => {
+    expect(AUTO_TOOLS).toHaveLength(65);
   });
 
   // Reading the bin and undoing a delete are both non-destructive, so they
@@ -105,8 +105,8 @@ describe("APPROVAL_TOOLS", () => {
     expect(names).toContain("forget_user_fact");
   });
 
-  it("has 6 approval-required tools", () => {
-    expect(APPROVAL_TOOLS).toHaveLength(6);
+  it("has 9 approval-required tools", () => {
+    expect(APPROVAL_TOOLS).toHaveLength(9);
   });
 
   // Soft deletes moved out to REVERSIBLE_TOOLS so they could reach MCP. If one
@@ -273,11 +273,12 @@ describe("task tools advertise validator-aligned enums", () => {
     expect(enumOf("list_tasks", "filter")).toEqual(["all", "today"]);
   });
 
-  it("create_task does not advertise fields its handler ignores", () => {
-    // The handler hardcodes labels:[] and never reads project_id, so advertising
-    // them misled the assistant into passing values that were silently dropped.
+  it("create_task advertises project_id and subtasks, matching the handler", () => {
+    // The handler now resolves project_id ownership and writes subtasks, so
+    // advertising them is correct — unlike the old dead-param case this guards.
     const props = toolByName("create_task").parameters?.properties ?? {};
-    expect(props).not.toHaveProperty("project_id");
+    expect(props).toHaveProperty("project_id");
+    expect(props).toHaveProperty("subtasks");
     expect(props).not.toHaveProperty("tags");
   });
 
@@ -285,5 +286,11 @@ describe("task tools advertise validator-aligned enums", () => {
     const props = toolByName("update_task").parameters?.properties ?? {};
     expect(props).toHaveProperty("labels");
     expect(props).not.toHaveProperty("tags");
+  });
+
+  it("update_task replaces is_starred (dead in the UI) with is_focus", () => {
+    const props = toolByName("update_task").parameters?.properties ?? {};
+    expect(props).not.toHaveProperty("is_starred");
+    expect(props).toHaveProperty("is_focus");
   });
 });

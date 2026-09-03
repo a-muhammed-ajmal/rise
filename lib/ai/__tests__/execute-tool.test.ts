@@ -176,6 +176,214 @@ describe("executeTool", () => {
         expect.objectContaining({ priority: "P1", status: "blocked" }),
       );
     });
+
+    it("persists due_time, estimated_time, recurrence, reminder and area", async () => {
+      const query = createMockQuery();
+      query.single = vi
+        .fn()
+        .mockResolvedValue({ data: { id: "t2", title: "Full task" }, error: null });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("create_task", {
+        title: "Full task",
+        due_date: "2026-06-25",
+        due_time: "15:00",
+        estimated_time: 45,
+        recurrence: "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+        reminder: "2026-06-25T08:00:00Z",
+        area: "professional",
+      });
+
+      expect(result.success).toBe(true);
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          due_time: "15:00",
+          estimated_time: 45,
+          recurrence: "FREQ=WEEKLY;BYDAY=MO,WE,FR",
+          reminder: "2026-06-25T08:00:00Z",
+          area: "professional",
+        }),
+      );
+    });
+
+    it("normalizes subtasks and backfills missing ids", async () => {
+      const query = createMockQuery();
+      query.single = vi
+        .fn()
+        .mockResolvedValue({ data: { id: "t3", title: "With checklist" }, error: null });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("create_task", {
+        title: "With checklist",
+        subtasks: [{ title: "Step 1" }, { title: "Step 2", done: true }],
+      });
+
+      expect(result.success).toBe(true);
+      const insertArg = query.insert.mock.calls[0][0] as {
+        subtasks: { id: string; title: string; done: boolean }[];
+      };
+      expect(insertArg.subtasks).toHaveLength(2);
+      expect(insertArg.subtasks[0].id).toBeTruthy();
+      expect(insertArg.subtasks[0].done).toBe(false);
+      expect(insertArg.subtasks[1].done).toBe(true);
+    });
+
+    it("rejects an unparseable recurrence rule", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("create_task", {
+        title: "Bad rule",
+        recurrence: "NOT_A_RULE",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("rejects a project_id not owned by the caller", async () => {
+      const tasksQuery = createMockQuery();
+      const projectsQuery = createMockQuery(null); // lookup finds nothing
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "projects" ? projectsQuery : tasksQuery,
+      );
+
+      const result = await executeTool("create_task", {
+        title: "Orphan task",
+        project_id: "223e4567-e89b-12d3-a456-426614174099",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Project not found");
+      expect(tasksQuery.insert).not.toHaveBeenCalled();
+    });
+
+    it("accepts a project_id owned by the caller", async () => {
+      const tasksQuery = createMockQuery();
+      tasksQuery.single = vi
+        .fn()
+        .mockResolvedValue({ data: { id: "t4", title: "Linked task" }, error: null });
+      const projectsQuery = createMockQuery({ id: "323e4567-e89b-12d3-a456-426614174100" });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "projects" ? projectsQuery : tasksQuery,
+      );
+
+      const result = await executeTool("create_task", {
+        title: "Linked task",
+        project_id: "323e4567-e89b-12d3-a456-426614174100",
+      });
+      expect(result.success).toBe(true);
+      expect(tasksQuery.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ project_id: "323e4567-e89b-12d3-a456-426614174100" }),
+      );
+    });
+  });
+
+  describe("duplicate_task", () => {
+    const taskId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
+    const existingTask = {
+      id: taskId,
+      title: "Original",
+      description: "desc",
+      status: "done",
+      priority: "P2",
+      due_date: "2026-06-25",
+      due_time: "09:00",
+      project_id: "323e4567-e89b-12d3-a456-426614174100",
+      area: "personal",
+      labels: ["work"],
+      estimated_time: 30,
+    };
+
+    it("copies the task, resetting status, recurrence and focus", async () => {
+      const query = createMockQuery(existingTask);
+      query.maybeSingle = vi
+        .fn()
+        .mockResolvedValue({ data: existingTask, error: null });
+      query.single = vi.fn().mockResolvedValue({
+        data: { id: "copy-1", title: "Original (copy)" },
+        error: null,
+      });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("duplicate_task", { task_id: taskId });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Original (copy)");
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Original (copy)",
+          status: "todo",
+          is_focus: false,
+          recurrence: null,
+          subtasks: [],
+        }),
+      );
+    });
+
+    it("returns not found when the task does not exist", async () => {
+      const query = createMockQuery(null);
+      query.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("duplicate_task", { task_id: taskId });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("not found");
+    });
+
+    it("returns error on Supabase insert failure", async () => {
+      const query = createMockQuery(existingTask);
+      query.maybeSingle = vi
+        .fn()
+        .mockResolvedValue({ data: existingTask, error: null });
+      query.single = vi
+        .fn()
+        .mockResolvedValue({ data: null, error: { message: "boom" } });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("duplicate_task", { task_id: taskId });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  describe("bulk_update_task_priority", () => {
+    it("updates priority for multiple tasks", async () => {
+      const query = createMockQuery();
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ data: [{ id: "1" }, { id: "2" }], error: null }).then(
+            resolve,
+          ),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("bulk_update_task_priority", {
+        task_ids: ["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"],
+        priority: "P1",
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("P1");
+      expect(query.update).toHaveBeenCalledWith({ priority: "P1" });
+    });
+
+    it("returns badInput for an invalid priority", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("bulk_update_task_priority", {
+        task_ids: ["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"],
+        priority: "P9",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns badInput for an empty task_ids array", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("bulk_update_task_priority", {
+        task_ids: [],
+        priority: "P1",
+      });
+      expect(result.success).toBe(false);
+    });
   });
 
   describe("list_tasks", () => {
@@ -278,6 +486,26 @@ describe("executeTool", () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe("Something went wrong. Please try again.");
     });
+
+    it("persists tags on the transaction", async () => {
+      const query = createMockQuery();
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ data: null, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { transactions: query } });
+
+      await executeTool("log_expense", {
+        amount: 20,
+        category: "Food",
+        tags: ["work-lunch"],
+      });
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: ["work-lunch"] }),
+      );
+    });
   });
 
   describe("log_income", () => {
@@ -317,6 +545,26 @@ describe("executeTool", () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe("Something went wrong. Please try again.");
     });
+
+    it("persists tags on the transaction", async () => {
+      const query = createMockQuery();
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ data: null, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { transactions: query } });
+
+      await executeTool("log_income", {
+        amount: 100,
+        category: "Salary",
+        tags: ["bonus"],
+      });
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: ["bonus"] }),
+      );
+    });
   });
 
   describe("log_habit", () => {
@@ -349,6 +597,49 @@ describe("executeTool", () => {
       const result = await executeTool("log_habit", { habit_name: "Exercise" });
       expect(result.success).toBe(true);
       expect(result.message).toContain("Exercise");
+    });
+
+    it("logs a habit with a backdated date, note, and explicit miss", async () => {
+      const habitsQuery = createMockQuery();
+      Object.defineProperty(habitsQuery, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({
+            data: [{ id: "h-1", name: "Exercise" }],
+            error: null,
+          }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      const logsQuery = createMockQuery();
+      Object.defineProperty(logsQuery, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ data: null, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) => {
+        if (table === "habits") return habitsQuery;
+        if (table === "habit_logs") return logsQuery;
+        return createMockQuery();
+      });
+
+      const result = await executeTool("log_habit", {
+        habit_name: "Exercise",
+        logged_date: "2026-06-20",
+        completed: false,
+        note: "Skipped, was sick",
+      });
+      expect(result.success).toBe(true);
+      expect(logsQuery.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          logged_date: "2026-06-20",
+          completed: false,
+          note: "Skipped, was sick",
+        }),
+        expect.anything(),
+      );
     });
 
     it("returns error when habit not found", async () => {
@@ -415,6 +706,25 @@ describe("executeTool", () => {
       >;
       expect(insertArg.reminder_time).toBeNull();
     });
+
+    it("uses the star default icon when omitted, and a custom one when given", async () => {
+      const query = createMockQuery();
+      query.single = vi.fn().mockResolvedValue({
+        data: { id: "h-3", name: "Meditate" },
+        error: null,
+      });
+      setupMockSupabase({ queries: { habits: query } });
+
+      await executeTool("create_habit", { name: "Meditate" });
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ icon: "⭐" }),
+      );
+
+      await executeTool("create_habit", { name: "Meditate", icon: "🧘" });
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ icon: "🧘" }),
+      );
+    });
   });
 
   describe("update_habit", () => {
@@ -443,6 +753,165 @@ describe("executeTool", () => {
         reminder_time: "7am",
       });
       expect(result.success).toBe(false);
+    });
+
+    it("updates the habit icon", async () => {
+      const query = createMockQuery();
+      query.single = vi.fn().mockResolvedValue({
+        data: { name: "Read" },
+        error: null,
+      });
+      setupMockSupabase({ queries: { habits: query } });
+
+      const result = await executeTool("update_habit", {
+        id: validHabitId,
+        icon: "📚",
+      });
+      expect(result.success).toBe(true);
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ icon: "📚" }),
+      );
+    });
+  });
+
+  describe("update_habit_log", () => {
+    const logId = "34567890-1234-4234-8234-123456789012";
+
+    it("updates note, date and completed status", async () => {
+      const query = createMockQuery({ id: logId });
+      query.maybeSingle = vi
+        .fn()
+        .mockResolvedValue({ data: { id: logId }, error: null });
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ data: null, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { habit_logs: query } });
+
+      const result = await executeTool("update_habit_log", {
+        id: logId,
+        note: "Felt great",
+        completed: true,
+      });
+      expect(result.success).toBe(true);
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ note: "Felt great", completed: true }),
+      );
+    });
+
+    it("returns not found when the log does not exist", async () => {
+      const query = createMockQuery(null);
+      query.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      setupMockSupabase({ queries: { habit_logs: query } });
+
+      const result = await executeTool("update_habit_log", {
+        id: logId,
+        note: "x",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("not found");
+    });
+
+    it("returns a friendly message on a date conflict", async () => {
+      const query = createMockQuery({ id: logId });
+      query.maybeSingle = vi
+        .fn()
+        .mockResolvedValue({ data: { id: logId }, error: null });
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({
+            data: null,
+            error: { code: "23505", message: "duplicate key" },
+          }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { habit_logs: query } });
+
+      const result = await executeTool("update_habit_log", {
+        id: logId,
+        logged_date: "2026-06-20",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("already exists");
+    });
+
+    it("returns a generic error on other Supabase failures", async () => {
+      const query = createMockQuery({ id: logId });
+      query.maybeSingle = vi
+        .fn()
+        .mockResolvedValue({ data: { id: logId }, error: null });
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({
+            data: null,
+            error: { message: "boom" },
+          }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { habit_logs: query } });
+
+      const result = await executeTool("update_habit_log", {
+        id: logId,
+        note: "x",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  describe("list_habit_logs", () => {
+    it("lists logs with default pagination", async () => {
+      const query = createMockQuery();
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({
+            data: [{ id: "l1", logged_date: "2026-06-20" }],
+            error: null,
+          }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { habit_logs: query } });
+
+      const result = await executeTool("list_habit_logs", {});
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("1 habit logs");
+    });
+
+    it("filters by habit_id and date range", async () => {
+      const query = createMockQuery();
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ data: [], error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { habit_logs: query } });
+
+      await executeTool("list_habit_logs", {
+        habit_id: "12345678-1234-4234-8234-123456789012",
+        start_date: "2026-06-01",
+        end_date: "2026-06-30",
+      });
+      expect(query.eq).toHaveBeenCalledWith(
+        "habit_id",
+        "12345678-1234-4234-8234-123456789012",
+      );
+      expect(query.gte).toHaveBeenCalledWith("logged_date", "2026-06-01");
+      expect(query.lte).toHaveBeenCalledWith("logged_date", "2026-06-30");
+    });
+
+    it("returns badInput for an invalid habit_id", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("list_habit_logs", {
+        habit_id: "not-a-uuid",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
     });
   });
 
@@ -483,6 +952,63 @@ describe("executeTool", () => {
       expect(result.success).toBe(true);
       expect(result.message).toContain("My Note");
     });
+
+    it("links to an owned task", async () => {
+      const notesQuery = createMockQuery();
+      Object.defineProperty(notesQuery, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ data: null, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      const linkedTaskId = "423e4567-e89b-12d3-a456-426614174101";
+      const tasksQuery = createMockQuery({ id: linkedTaskId });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "tasks" ? tasksQuery : notesQuery,
+      );
+
+      const result = await executeTool("add_note", {
+        title: "Linked",
+        content: "content",
+        linked_to_type: "task",
+        linked_to_id: linkedTaskId,
+      });
+      expect(result.success).toBe(true);
+      expect(notesQuery.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ linked_to_type: "task", linked_to_id: linkedTaskId }),
+      );
+    });
+
+    it("rejects linking to a record not owned by the caller", async () => {
+      const notesQuery = createMockQuery();
+      const goalsQuery = createMockQuery(null);
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "goals" ? goalsQuery : notesQuery,
+      );
+
+      const result = await executeTool("add_note", {
+        title: "Linked",
+        content: "content",
+        linked_to_type: "goal",
+        linked_to_id: "223e4567-e89b-12d3-a456-426614174099",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Goal not found");
+      expect(notesQuery.insert).not.toHaveBeenCalled();
+    });
+
+    it("rejects linked_to_type without linked_to_id", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("add_note", {
+        title: "Linked",
+        content: "content",
+        linked_to_type: "task",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
   });
 
   describe("add_contact", () => {
@@ -503,6 +1029,51 @@ describe("executeTool", () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain("John Doe");
+    });
+
+    it("persists role, stage, deal_value, notes and tags at creation", async () => {
+      const query = createMockQuery();
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ data: null, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { contacts: query } });
+
+      await executeTool("add_contact", {
+        name: "Jane Roe",
+        role: "CTO",
+        stage: "qualified",
+        deal_value: 5000,
+        notes: "Met at conference",
+        tags: ["vip"],
+      });
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: "CTO",
+          stage: "qualified",
+          deal_value: 5000,
+          notes: "Met at conference",
+          tags: ["vip"],
+        }),
+      );
+    });
+
+    it("defaults stage to new when omitted", async () => {
+      const query = createMockQuery();
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ data: null, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { contacts: query } });
+
+      await executeTool("add_contact", { name: "No Stage" });
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: "new" }),
+      );
     });
   });
 
@@ -997,6 +1568,185 @@ describe("executeTool", () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe("Something went wrong. Please try again.");
     });
+
+    it("persists due_time, estimated_time, recurrence, reminder and area", async () => {
+      const query = createMockQuery({ title: "Full task" });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("update_task", {
+        id: taskId,
+        due_time: "14:30",
+        estimated_time: 60,
+        recurrence: "FREQ=DAILY",
+        reminder: "2026-06-24T08:00:00Z",
+        area: "financial",
+      });
+      expect(result.success).toBe(true);
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          due_time: "14:30",
+          estimated_time: 60,
+          recurrence: "FREQ=DAILY",
+          reminder: "2026-06-24T08:00:00Z",
+          area: "financial",
+        }),
+      );
+    });
+
+    it("rejects an unparseable recurrence rule", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("update_task", {
+        id: taskId,
+        recurrence: "GARBAGE",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("normalizes subtasks and backfills missing ids", async () => {
+      const query = createMockQuery({ title: "Checklist task" });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      await executeTool("update_task", {
+        id: taskId,
+        subtasks: [{ id: "523e4567-e89b-12d3-a456-426614174102", title: "Keep", done: true }, { title: "New" }],
+      });
+      const updateArg = query.update.mock.calls[0][0] as {
+        subtasks: { id: string; title: string; done: boolean }[];
+      };
+      expect(updateArg.subtasks[0]).toEqual({
+        id: "523e4567-e89b-12d3-a456-426614174102",
+        title: "Keep",
+        done: true,
+      });
+      expect(updateArg.subtasks[1].id).toBeTruthy();
+      expect(updateArg.subtasks[1].done).toBe(false);
+    });
+
+    it("silently ignores a legacy is_starred param", async () => {
+      const query = createMockQuery({ title: "Star task" });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("update_task", {
+        id: taskId,
+        is_starred: true,
+      });
+      expect(result.success).toBe(true);
+      const updateArg = query.update.mock.calls[0][0] as Record<string, unknown>;
+      expect(updateArg).not.toHaveProperty("is_starred");
+    });
+
+    it("turns on today's focus for a task due today", async () => {
+      const query = createMockQuery({ due_date: "2026-06-23", title: "Focus task" });
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ count: 1, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("update_task", {
+        id: taskId,
+        is_focus: true,
+      });
+      expect(result.success).toBe(true);
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ is_focus: true, focus_date: "2026-06-23" }),
+      );
+    });
+
+    it("turns on today's focus for a task with no due date", async () => {
+      const query = createMockQuery({ due_date: null, title: "Focus task" });
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ count: 0, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("update_task", {
+        id: taskId,
+        is_focus: true,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects focusing a task due in the future", async () => {
+      const query = createMockQuery({ due_date: "2026-07-01", title: "Future task" });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("update_task", {
+        id: taskId,
+        is_focus: true,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("due today");
+      expect(query.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects focusing a 4th task when 3 are already focused today", async () => {
+      const query = createMockQuery({ due_date: "2026-06-23", title: "Task 4" });
+      Object.defineProperty(query, "then", {
+        value: (resolve: (v: unknown) => void) =>
+          Promise.resolve({ count: 3, error: null }).then(resolve),
+        writable: true,
+        configurable: true,
+      });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("update_task", {
+        id: taskId,
+        is_focus: true,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("3 tasks a day");
+      expect(query.update).not.toHaveBeenCalled();
+    });
+
+    it("returns not found when focusing a task that doesn't exist", async () => {
+      const query = createMockQuery(null);
+      query.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("update_task", {
+        id: taskId,
+        is_focus: true,
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("not found");
+    });
+
+    it("turns off focus unconditionally", async () => {
+      const query = createMockQuery({ title: "Unfocused task" });
+      setupMockSupabase({ queries: { tasks: query } });
+
+      const result = await executeTool("update_task", {
+        id: taskId,
+        is_focus: false,
+      });
+      expect(result.success).toBe(true);
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ is_focus: false, focus_date: null }),
+      );
+    });
+
+    it("rejects a project_id not owned by the caller", async () => {
+      const tasksQuery = createMockQuery();
+      const projectsQuery = createMockQuery(null);
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "projects" ? projectsQuery : tasksQuery,
+      );
+
+      const result = await executeTool("update_task", {
+        id: taskId,
+        project_id: "223e4567-e89b-12d3-a456-426614174099",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Project not found");
+    });
   });
 
   // ─── PROJECTS ───────────────────────────────────────────────────────────────
@@ -1052,6 +1802,42 @@ describe("executeTool", () => {
       const result = await executeTool("create_project", { name: "X" });
       expect(result.success).toBe(false);
     });
+
+    it("persists category and an owned goal_id", async () => {
+      const projectsQuery = createMockQuery({ id: "p2", name: "Linked" });
+      const goalsQuery = createMockQuery({ id: "623e4567-e89b-12d3-a456-426614174103" });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "goals" ? goalsQuery : projectsQuery,
+      );
+
+      const result = await executeTool("create_project", {
+        name: "Linked",
+        category: "wellness",
+        goal_id: "623e4567-e89b-12d3-a456-426614174103",
+      });
+      expect(result.success).toBe(true);
+      expect(projectsQuery.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "wellness", goal_id: "623e4567-e89b-12d3-a456-426614174103" }),
+      );
+    });
+
+    it("rejects a goal_id not owned by the caller", async () => {
+      const projectsQuery = createMockQuery();
+      const goalsQuery = createMockQuery(null);
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "goals" ? goalsQuery : projectsQuery,
+      );
+
+      const result = await executeTool("create_project", {
+        name: "Orphan",
+        goal_id: "223e4567-e89b-12d3-a456-426614174099",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Goal not found");
+      expect(projectsQuery.insert).not.toHaveBeenCalled();
+    });
   });
 
   describe("update_project", () => {
@@ -1077,6 +1863,42 @@ describe("executeTool", () => {
         name: "X",
       });
       expect(result.success).toBe(false);
+    });
+
+    it("updates category and an owned goal_id", async () => {
+      const projectsQuery = createMockQuery({ name: "Recategorized" });
+      const goalsQuery = createMockQuery({ id: "623e4567-e89b-12d3-a456-426614174103" });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "goals" ? goalsQuery : projectsQuery,
+      );
+
+      const result = await executeTool("update_project", {
+        id: projectId,
+        category: "financial",
+        goal_id: "623e4567-e89b-12d3-a456-426614174103",
+      });
+      expect(result.success).toBe(true);
+      expect(projectsQuery.update).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "financial", goal_id: "623e4567-e89b-12d3-a456-426614174103" }),
+      );
+    });
+
+    it("rejects reassigning to a goal_id not owned by the caller", async () => {
+      const projectsQuery = createMockQuery();
+      const goalsQuery = createMockQuery(null);
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "goals" ? goalsQuery : projectsQuery,
+      );
+
+      const result = await executeTool("update_project", {
+        id: projectId,
+        goal_id: "223e4567-e89b-12d3-a456-426614174099",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Goal not found");
+      expect(projectsQuery.update).not.toHaveBeenCalled();
     });
   });
 
@@ -1334,6 +2156,41 @@ describe("executeTool", () => {
       });
       expect(result.success).toBe(false);
     });
+
+    it("reassigns to an owned goal", async () => {
+      const milestonesQuery = createMockQuery({ title: "Moved" });
+      const goalsQuery = createMockQuery({ id: "623e4567-e89b-12d3-a456-426614174103" });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "goals" ? goalsQuery : milestonesQuery,
+      );
+
+      const result = await executeTool("update_milestone", {
+        id: milestoneId,
+        goal_id: "623e4567-e89b-12d3-a456-426614174103",
+      });
+      expect(result.success).toBe(true);
+      expect(milestonesQuery.update).toHaveBeenCalledWith(
+        expect.objectContaining({ goal_id: "623e4567-e89b-12d3-a456-426614174103" }),
+      );
+    });
+
+    it("rejects reassigning to a goal not owned by the caller", async () => {
+      const milestonesQuery = createMockQuery();
+      const goalsQuery = createMockQuery(null);
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "goals" ? goalsQuery : milestonesQuery,
+      );
+
+      const result = await executeTool("update_milestone", {
+        id: milestoneId,
+        goal_id: "223e4567-e89b-12d3-a456-426614174099",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Goal not found");
+      expect(milestonesQuery.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("complete_milestone", () => {
@@ -1354,6 +2211,31 @@ describe("executeTool", () => {
       const query = createMockQuery(null, { message: "boom" });
       setupMockSupabase({ queries: { milestones: query } });
       const result = await executeTool("complete_milestone", {
+        id: milestoneId,
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("reopen_milestone", () => {
+    const milestoneId = "423e4567-e89b-12d3-a456-426614174003";
+
+    it("clears the completion date", async () => {
+      const query = createMockQuery({ title: "Run 10km" });
+      setupMockSupabase({ queries: { milestones: query } });
+
+      const result = await executeTool("reopen_milestone", {
+        id: milestoneId,
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Run 10km");
+      expect(query.update).toHaveBeenCalledWith({ completed_at: null });
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const query = createMockQuery(null, { message: "boom" });
+      setupMockSupabase({ queries: { milestones: query } });
+      const result = await executeTool("reopen_milestone", {
         id: milestoneId,
       });
       expect(result.success).toBe(false);
@@ -1672,9 +2554,24 @@ describe("executeTool", () => {
       expect(result.message).toContain("1 interactions");
     });
 
-    it("returns badInput for missing contact_id", async () => {
-      setupMockSupabase({});
+    it("lists interactions across all contacts when contact_id is omitted", async () => {
+      const query = createMockQuery([
+        { id: "i1", type: "call" },
+        { id: "i2", type: "email" },
+      ]);
+      setupMockSupabase({ queries: { interactions: query } });
+
       const result = await executeTool("list_interactions", {});
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("2 interactions");
+      expect(query.eq).not.toHaveBeenCalledWith("contact_id", expect.anything());
+    });
+
+    it("returns badInput for an invalid contact_id", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("list_interactions", {
+        contact_id: "not-a-uuid",
+      });
       expect(result.success).toBe(false);
       expect(result.message).toContain("Invalid input");
     });
@@ -1711,6 +2608,41 @@ describe("executeTool", () => {
         id: interactionId,
       });
       expect(result.success).toBe(false);
+    });
+
+    it("reassigns to an owned contact", async () => {
+      const interactionsQuery = createMockQuery(null, null);
+      const contactsQuery = createMockQuery({ id: "723e4567-e89b-12d3-a456-426614174104" });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "contacts" ? contactsQuery : interactionsQuery,
+      );
+
+      const result = await executeTool("update_interaction", {
+        id: interactionId,
+        contact_id: "723e4567-e89b-12d3-a456-426614174104",
+      });
+      expect(result.success).toBe(true);
+      expect(interactionsQuery.update).toHaveBeenCalledWith(
+        expect.objectContaining({ contact_id: "723e4567-e89b-12d3-a456-426614174104" }),
+      );
+    });
+
+    it("rejects reassigning to a contact not owned by the caller", async () => {
+      const interactionsQuery = createMockQuery();
+      const contactsQuery = createMockQuery(null);
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "contacts" ? contactsQuery : interactionsQuery,
+      );
+
+      const result = await executeTool("update_interaction", {
+        id: interactionId,
+        contact_id: "223e4567-e89b-12d3-a456-426614174099",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Contact not found");
+      expect(interactionsQuery.update).not.toHaveBeenCalled();
     });
   });
 
@@ -1799,6 +2731,46 @@ describe("executeTool", () => {
       const result = await executeTool("update_note", { id: noteId });
       expect(result.success).toBe(false);
     });
+
+    it("links to an owned contact", async () => {
+      const notesQuery = createMockQuery({ title: "Linked note" });
+      const contactsQuery = createMockQuery({ id: "723e4567-e89b-12d3-a456-426614174104" });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "contacts" ? contactsQuery : notesQuery,
+      );
+
+      const result = await executeTool("update_note", {
+        id: noteId,
+        linked_to_type: "contact",
+        linked_to_id: "723e4567-e89b-12d3-a456-426614174104",
+      });
+      expect(result.success).toBe(true);
+      expect(notesQuery.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          linked_to_type: "contact",
+          linked_to_id: "723e4567-e89b-12d3-a456-426614174104",
+        }),
+      );
+    });
+
+    it("rejects linking to a record not owned by the caller", async () => {
+      const notesQuery = createMockQuery();
+      const tasksQuery = createMockQuery(null);
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "tasks" ? tasksQuery : notesQuery,
+      );
+
+      const result = await executeTool("update_note", {
+        id: noteId,
+        linked_to_type: "task",
+        linked_to_id: "223e4567-e89b-12d3-a456-426614174099",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Task not found");
+      expect(notesQuery.update).not.toHaveBeenCalled();
+    });
   });
 
   // ─── DOCUMENTS ──────────────────────────────────────────────────────────────
@@ -1874,6 +2846,23 @@ describe("executeTool", () => {
       setupMockSupabase({ queries: { documents: query } });
       const result = await executeTool("update_document", { id: documentId });
       expect(result.success).toBe(false);
+    });
+
+    it("persists file_path and file_size", async () => {
+      const query = createMockQuery({ name: "Moved.pdf" });
+      setupMockSupabase({ queries: { documents: query } });
+
+      await executeTool("update_document", {
+        id: documentId,
+        file_path: "/uploads/moved.pdf",
+        file_size: 2048,
+      });
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          file_path: "/uploads/moved.pdf",
+          file_size: 2048,
+        }),
+      );
     });
   });
 
@@ -2231,6 +3220,25 @@ describe("executeTool", () => {
       const result = await executeTool("update_review", { id: reviewId });
       expect(result.success).toBe(false);
     });
+
+    it("persists type, period_start and period_end", async () => {
+      const query = createMockQuery(null, null);
+      setupMockSupabase({ queries: { reviews: query } });
+
+      await executeTool("update_review", {
+        id: reviewId,
+        type: "monthly",
+        period_start: "2026-06-01",
+        period_end: "2026-06-30",
+      });
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "monthly",
+          period_start: "2026-06-01",
+          period_end: "2026-06-30",
+        }),
+      );
+    });
   });
 
   describe("delete_review", () => {
@@ -2347,6 +3355,19 @@ describe("executeTool", () => {
         id: sessionId,
       });
       expect(result.success).toBe(false);
+    });
+
+    it("persists started_at", async () => {
+      const query = createMockQuery(null, null);
+      setupMockSupabase({ queries: { focus_sessions: query } });
+
+      await executeTool("update_focus_session", {
+        id: sessionId,
+        started_at: "2026-06-23T09:00:00Z",
+      });
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ started_at: "2026-06-23T09:00:00Z" }),
+      );
     });
   });
 
@@ -2626,6 +3647,20 @@ describe("executeTool", () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe("Something went wrong. Please try again.");
     });
+
+    it("persists tags", async () => {
+      const query = createMockQuery({ id: transactionId }, null);
+      setupMockSupabase({ queries: { transactions: query } });
+
+      await executeTool("update_transaction", {
+        transaction_id: transactionId,
+        summary: "Retag",
+        tags: ["reimbursable"],
+      });
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: ["reimbursable"] }),
+      );
+    });
   });
 
   describe("delete_transaction", () => {
@@ -2667,6 +3702,192 @@ describe("executeTool", () => {
       });
       expect(result.success).toBe(false);
       expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  describe("create_transfer", () => {
+    const fromId = "f23e4567-e89b-12d3-a456-426614174014";
+    const toId = "f33e4567-e89b-12d3-a456-426614174015";
+
+    it("moves money between two owned wallets", async () => {
+      const txQuery = createMockQuery({ id: "tx-1" });
+      const pmQuery = createMockQuery({ id: "pm" }); // owns both wallets
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "payment_methods" ? pmQuery : txQuery,
+      );
+
+      const result = await executeTool("create_transfer", {
+        from_payment_method_id: fromId,
+        to_payment_method_id: toId,
+        amount: 500,
+        summary: "Transfer AED 500",
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("500");
+      expect(txQuery.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "transfer",
+          amount: 500,
+          category: "Transfer",
+          from_payment_method_id: fromId,
+          to_payment_method_id: toId,
+          payment_method_id: null,
+        }),
+      );
+    });
+
+    it("rejects a self-transfer", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("create_transfer", {
+        from_payment_method_id: fromId,
+        to_payment_method_id: fromId,
+        amount: 100,
+        summary: "Bad transfer",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("rejects when the source wallet is not owned by the caller", async () => {
+      const txQuery = createMockQuery();
+      const pmQuery = createMockQuery(null);
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "payment_methods" ? pmQuery : txQuery,
+      );
+
+      const result = await executeTool("create_transfer", {
+        from_payment_method_id: fromId,
+        to_payment_method_id: toId,
+        amount: 100,
+        summary: "Transfer",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Source payment method not found");
+      expect(txQuery.insert).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-positive amount", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("create_transfer", {
+        from_payment_method_id: fromId,
+        to_payment_method_id: toId,
+        amount: 0,
+        summary: "Transfer",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns error on Supabase failure", async () => {
+      const txQuery = createMockQuery(null, { message: "boom" });
+      const pmQuery = createMockQuery({ id: "pm" });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "payment_methods" ? pmQuery : txQuery,
+      );
+
+      const result = await executeTool("create_transfer", {
+        from_payment_method_id: fromId,
+        to_payment_method_id: toId,
+        amount: 100,
+        summary: "Transfer",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+  });
+
+  describe("create_adjustment", () => {
+    const pmId = "f43e4567-e89b-12d3-a456-426614174016";
+
+    it("applies a positive balance correction", async () => {
+      const txQuery = createMockQuery({ id: "tx-1" });
+      const pmQuery = createMockQuery({ id: pmId });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "payment_methods" ? pmQuery : txQuery,
+      );
+
+      const result = await executeTool("create_adjustment", {
+        payment_method_id: pmId,
+        amount: 25,
+        reason: "Found extra cash",
+        summary: "Adjust +25",
+      });
+      expect(result.success).toBe(true);
+      expect(txQuery.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "adjustment",
+          amount: 25,
+          category: "Balance Adjustment",
+          description: "Found extra cash",
+          payment_method_id: pmId,
+        }),
+      );
+    });
+
+    it("applies a negative balance correction", async () => {
+      const txQuery = createMockQuery({ id: "tx-1" });
+      const pmQuery = createMockQuery({ id: pmId });
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "payment_methods" ? pmQuery : txQuery,
+      );
+
+      const result = await executeTool("create_adjustment", {
+        payment_method_id: pmId,
+        amount: -25,
+        reason: "Bank fee",
+        summary: "Adjust -25",
+      });
+      expect(result.success).toBe(true);
+      expect(txQuery.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: -25 }),
+      );
+    });
+
+    it("rejects a wallet not owned by the caller", async () => {
+      const txQuery = createMockQuery();
+      const pmQuery = createMockQuery(null);
+      const mock = setupMockSupabase({});
+      mock.from = vi.fn((table: string) =>
+        table === "payment_methods" ? pmQuery : txQuery,
+      );
+
+      const result = await executeTool("create_adjustment", {
+        payment_method_id: pmId,
+        amount: 10,
+        reason: "x",
+        summary: "Adjust",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Payment method not found");
+      expect(txQuery.insert).not.toHaveBeenCalled();
+    });
+
+    it("returns badInput for a missing reason", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("create_adjustment", {
+        payment_method_id: pmId,
+        amount: 10,
+        summary: "Adjust",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
+    });
+
+    it("returns badInput for a zero amount", async () => {
+      setupMockSupabase({});
+      const result = await executeTool("create_adjustment", {
+        payment_method_id: pmId,
+        amount: 0,
+        reason: "x",
+        summary: "Adjust",
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid input");
     });
   });
 
@@ -2941,6 +4162,20 @@ describe("executeTool", () => {
       });
       expect(result.success).toBe(false);
       expect(result.message).toBe("Something went wrong. Please try again.");
+    });
+
+    it("flips the debt direction", async () => {
+      const query = createMockQuery({ id: debtId, creditor: "Bank" }, null);
+      setupMockSupabase({ queries: { debts: query } });
+
+      await executeTool("update_debt", {
+        debt_id: debtId,
+        summary: "Loan",
+        type: "they_owe",
+      });
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "they_owe" }),
+      );
     });
   });
 

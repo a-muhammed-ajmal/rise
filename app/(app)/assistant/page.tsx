@@ -87,6 +87,9 @@ const TOOL_LABELS: Record<string, string> = {
   delete_focus_session: "Delete focus session",
   log_expense: "Log expense",
   log_income: "Log income",
+  bulk_update_task_priority: "Change priority on multiple tasks",
+  create_transfer: "Transfer between wallets",
+  create_adjustment: "Adjust wallet balance",
 };
 
 const ACCEPTED_TYPES =
