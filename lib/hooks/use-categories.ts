@@ -10,10 +10,15 @@ export function useCategories() {
 
   const fetchCategories = useCallback(async () => {
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("categories")
       .select("*")
       .order("name", { ascending: true });
+    if (error) {
+      console.error("[use-categories] fetch failed", error.message);
+      setLoading(false);
+      return;
+    }
     setCategories(data ?? []);
     setLoading(false);
   }, []);
@@ -43,16 +48,18 @@ export function useCategories() {
 
   async function updateCategory(id: string, name: string): Promise<void> {
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("categories")
       .update({ name: name.trim() })
       .eq("id", id);
+    if (error) throw new Error(error.message);
     await fetchCategories();
   }
 
   async function deleteCategory(id: string): Promise<void> {
     const supabase = createClient();
-    await supabase.from("categories").delete().eq("id", id);
+    const { error } = await supabase.from("categories").delete().eq("id", id);
+    if (error) throw new Error(error.message);
     await fetchCategories();
   }
 

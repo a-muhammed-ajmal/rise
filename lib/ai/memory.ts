@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/types/database";
+import { z } from "zod";
 
 const VOYAGE_API_URL = "https://api.voyageai.com/v1/embeddings";
 const VOYAGE_MODEL = "voyage-3";
@@ -10,6 +11,18 @@ type MemoryMetadata = {
   summary?: boolean;
   [key: string]: Json | undefined;
 };
+
+const VoyageResponseSchema = z.object({
+  data: z.array(z.object({ embedding: z.array(z.number()) })),
+});
+
+function metadataToJson(metadata: MemoryMetadata): Json {
+  const result: { [key: string]: Json } = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (value !== undefined) result[key] = value;
+  }
+  return result;
+}
 
 // Voyage scores a search query against stored documents asymmetrically, so the
 // two sides must be embedded with different input_type values. Embedding a
@@ -36,10 +49,8 @@ export async function embedText(
 
   if (!res.ok) return null;
 
-  const data = (await res.json()) as {
-    data: { embedding: number[] }[];
-  };
-  return data.data[0]?.embedding ?? null;
+  const data = VoyageResponseSchema.safeParse(await res.json());
+  return data.success ? (data.data.data[0]?.embedding ?? null) : null;
 }
 
 export async function storeMemory(
@@ -53,13 +64,14 @@ export async function storeMemory(
   const supabase = client ?? (await createClient());
   const embedding = await embedText(content);
 
-  await supabase.from("ai_memory").insert({
+  const { error } = await supabase.from("ai_memory").insert({
     user_id: userId,
     content,
-    metadata: metadata as unknown as Json,
+    metadata: metadataToJson(metadata),
     memory_type: memoryType,
     embedding: embedding ?? null,
   });
+  if (error) throw new Error(`Could not store memory: ${error.message}`);
 }
 
 // Always-loaded personal facts — retrieved by type, not by similarity
@@ -88,22 +100,15 @@ export async function retrieveMemories(
   const queryEmbedding = await embedText(queryText, "query");
 
   if (queryEmbedding) {
-    const { data } = await supabase.rpc("match_memories", {
+    const { data, error } = await supabase.rpc("match_memories", {
       query_embedding: queryEmbedding,
       match_user_id: userId,
       match_count: count,
       match_threshold: 0.7,
     });
-    if (data?.length) {
+    if (!error && data?.length) {
       // Filter out user_fact type — those are loaded separately via retrieveUserFacts
-      const filtered = (
-        data as {
-          content: string;
-          metadata: Json;
-          similarity: number;
-          memory_type?: string;
-        }[]
-      ).filter((m) => m.memory_type !== "user_fact");
+      const filtered = data.filter((memory) => memory.memory_type !== "user_fact");
       if (filtered.length) return filtered;
     }
   }

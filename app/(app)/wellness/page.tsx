@@ -71,6 +71,15 @@ const COLOR_SWATCHES = [
 
 type RepeatMode = "daily" | "weekdays" | "weekends" | "specific";
 
+function isRepeatMode(value: unknown): value is RepeatMode {
+  return (
+    value === "daily" ||
+    value === "weekdays" ||
+    value === "weekends" ||
+    value === "specific"
+  );
+}
+
 function detectRepeatMode(h: Habit): RepeatMode {
   const sorted = [...h.target_days].sort((a, b) => a - b).join(",");
   if (sorted === "0,1,2,3,4,5,6") return "daily";
@@ -124,10 +133,21 @@ export default function WellnessPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("habit_logs").upsert(
-      { user_id: user.id, habit_id: habitId, logged_date: today, completed: true },
+    const { error } = await supabase.from("habit_logs").upsert(
+      {
+        user_id: user.id,
+        habit_id: habitId,
+        logged_date: today,
+        completed: true,
+        deleted_at: null,
+      },
       { onConflict: "habit_id,logged_date" },
     );
+    if (error) {
+      console.error("[wellness] mark done failed:", error.message);
+      toast.error("Could not mark this habit done. Please try again.");
+      return;
+    }
     await fetchData();
   }
 
@@ -135,33 +155,71 @@ export default function WellnessPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("habit_logs").upsert(
-      { user_id: user.id, habit_id: habitId, logged_date: today, completed: false },
+    const { error } = await supabase.from("habit_logs").upsert(
+      {
+        user_id: user.id,
+        habit_id: habitId,
+        logged_date: today,
+        completed: false,
+        deleted_at: null,
+      },
       { onConflict: "habit_id,logged_date" },
     );
+    if (error) {
+      console.error("[wellness] mark not done failed:", error.message);
+      toast.error("Could not update this habit. Please try again.");
+      return;
+    }
     await fetchData();
   }
 
   async function undoMark(habitId: string) {
     const supabase = createClient();
-    await supabase.from("habit_logs").delete().eq("habit_id", habitId).eq("logged_date", today);
+    const { error } = await supabase
+      .from("habit_logs")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("habit_id", habitId)
+      .eq("logged_date", today)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[wellness] undo mark failed:", error.message);
+      toast.error("Could not undo this habit mark. Please try again.");
+      return;
+    }
     await fetchData();
   }
 
   async function handleArchiveHabit(id: string) {
     const supabase = createClient();
-    await supabase.from("habits").update({ active: false }).eq("id", id);
+    const { error } = await supabase
+      .from("habits")
+      .update({ active: false })
+      .eq("id", id);
+    if (error) {
+      console.error("[wellness] archive failed:", error.message);
+      toast.error("Could not archive the habit. Please try again.");
+      return;
+    }
     toast.success("Habit archived");
-    fetchData();
+    await fetchData();
   }
 
   async function handleDeleteHabit() {
     if (!deleteHabitId) return;
     const supabase = createClient();
-    await supabase.from("habits").delete().eq("id", deleteHabitId);
+    const { error } = await supabase
+      .from("habits")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteHabitId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[wellness] habit soft delete failed:", error.message);
+      toast.error("Could not delete the habit. Please try again.");
+      return;
+    }
     setDeleteHabitId(null);
-    toast.success("Habit deleted");
-    fetchData();
+    toast.success("Habit moved to the recycle bin");
+    await fetchData();
   }
 
   // Streak counts consecutive completed scheduled days backward from yesterday.
@@ -408,7 +466,7 @@ export default function WellnessPage() {
         open={!!deleteHabitId}
         onOpenChange={(v) => { if (!v) setDeleteHabitId(null); }}
         title="Delete habit?"
-        description="This habit and all its logs will be permanently deleted."
+        description="This habit will move to the recycle bin. Its history stays intact and can be restored."
         onConfirm={handleDeleteHabit}
       />
     </div>
@@ -502,12 +560,26 @@ function HabitDialog({
       reminder_time: reminderTime || null,
     };
 
+    let errorMessage: string | null = null;
     if (habit) {
-      await supabase.from("habits").update(payload).eq("id", habit.id);
+      const { error } = await supabase
+        .from("habits")
+        .update(payload)
+        .eq("id", habit.id);
+      errorMessage = error?.message ?? null;
     } else {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSaving(false); return; }
-      await supabase.from("habits").insert({ ...payload, user_id: user.id, active: true, icon: "⭐" });
+      const { error } = await supabase
+        .from("habits")
+        .insert({ ...payload, user_id: user.id, active: true, icon: "⭐" });
+      errorMessage = error?.message ?? null;
+    }
+    if (errorMessage) {
+      console.error("[wellness] habit save failed:", errorMessage);
+      toast.error("Could not save the habit. Please try again.");
+      setSaving(false);
+      return;
     }
 
     setSaving(false);
@@ -517,7 +589,7 @@ function HabitDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle>{habit ? "Edit Habit" : "New Habit"}</DialogTitle>
         </DialogHeader>
@@ -552,7 +624,12 @@ function HabitDialog({
           {/* 3. Repeat */}
           <div className="space-y-2">
             <Label>Repeat</Label>
-            <Select value={repeatMode} onValueChange={(v) => handleRepeatModeChange(v as RepeatMode)}>
+            <Select
+              value={repeatMode}
+              onValueChange={(value) => {
+                if (isRepeatMode(value)) handleRepeatModeChange(value);
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -666,13 +743,18 @@ function FocusTimerDialog({
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("focus_sessions").insert({
+    const { error } = await supabase.from("focus_sessions").insert({
       user_id: user.id,
       duration_minutes: minutes,
       started_at: startedAt.toISOString(),
       ended_at: new Date().toISOString(),
       notes: null,
     });
+    if (error) {
+      console.error("[wellness] focus session save failed:", error.message);
+      toast.error("Could not save the focus session. Please try again.");
+      return;
+    }
     toast.success(`${minutes}min focus session saved!`);
   }
 
@@ -712,7 +794,7 @@ function FocusTimerDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="sm:max-w-xs text-center">
+      <DialogContent className="md:max-w-xs text-center">
         <DialogHeader>
           <DialogTitle>Focus Timer</DialogTitle>
         </DialogHeader>

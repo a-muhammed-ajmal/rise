@@ -88,6 +88,9 @@ function validate(
     return { kind: "redirect", redirectUri, error: "invalid_target", state };
   }
   const scope = p.get("scope") ?? OAUTH_SCOPE;
+  if (scope !== OAUTH_SCOPE) {
+    return { kind: "redirect", redirectUri, error: "invalid_scope", state };
+  }
   return {
     kind: "ok",
     params: { clientId, redirectUri, state, codeChallenge, scope, resource },
@@ -139,16 +142,15 @@ export async function GET(req: Request): Promise<Response> {
   const host = new URL(v.params.redirectUri).host;
 
   const body = `
-    <p class="lead">Claude wants to connect to your RISE data.</p>
-    <p class="muted">It will be able to read and update your tasks, finances, habits,
-    goals, notes and more (the same non-destructive tools available in chat).</p>
+    <p class="lead">An AI client wants to connect to your RISE data.</p>
+    <p class="muted">The connection is read-only unless MCP writes are explicitly enabled on the server.</p>
     <p class="muted">Redirects to <strong>${escapeHtml(host)}</strong></p>
     <form method="post" action="${escapeHtml(action)}">
       <button type="submit" class="approve">Approve</button>
     </form>
     <a class="deny" href="${escapeHtml(denyUrl.toString())}">Cancel</a>
   `;
-  return new Response(consentShell("Connect RISE to Claude", body), {
+  return new Response(consentShell("Connect to RISE", body), {
     status: 200,
     headers: { "content-type": "text/html; charset=utf-8" },
   });
@@ -157,9 +159,10 @@ export async function GET(req: Request): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   const origin = getPublicOrigin(req);
 
-  // Lenient same-origin (CSRF) check: reject only a present-and-mismatched Origin.
+  // Browser form submissions always carry Origin. Requiring an exact match
+  // prevents a cross-site POST from minting a code through the user's session.
   const reqOrigin = req.headers.get("origin");
-  if (reqOrigin && reqOrigin !== origin) {
+  if (reqOrigin !== origin) {
     return htmlError("Cross-origin request rejected.", 403);
   }
 

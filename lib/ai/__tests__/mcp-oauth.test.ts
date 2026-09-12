@@ -82,7 +82,30 @@ function createInMemorySupabase() {
     };
     return builder;
   }
-  return { from };
+  async function rpc(name: string, args: Record<string, unknown>) {
+    if (name === "consume_oauth_authorization_code") {
+      const store = tables.oauth_authorization_codes ?? [];
+      const index = store.findIndex((row) => row.code_hash === args.p_code_hash && new Date(String(row.expires_at)).getTime() >= Date.now());
+      if (index < 0) return { data: [], error: null };
+      const [row] = store.splice(index, 1);
+      return { data: [row], error: null };
+    }
+    if (name === "rotate_oauth_refresh_token") {
+      const store = tables.oauth_tokens ?? [];
+      const row = store.find((candidate) => candidate.refresh_token_hash === args.p_refresh_token_hash);
+      if (!row || row.client_id !== args.p_client_id) return { data: [{ rotation_status: "invalid" }], error: null };
+      if (row.revoked) {
+        store.filter((candidate) => candidate.user_id === row.user_id && candidate.client_id === row.client_id).forEach((candidate) => { candidate.revoked = true; });
+        return { data: [{ rotation_status: "reuse" }], error: null };
+      }
+      if (new Date(String(row.refresh_expires_at)).getTime() < Date.now()) return { data: [{ rotation_status: "expired" }], error: null };
+      row.revoked = true;
+      store.push({ access_token_hash: args.p_access_token_hash, refresh_token_hash: args.p_new_refresh_token_hash, user_id: row.user_id, client_id: row.client_id, scope: row.scope, resource: row.resource, access_expires_at: args.p_access_expires_at, refresh_expires_at: args.p_refresh_expires_at, revoked: false });
+      return { data: [{ rotation_status: "rotated", scope: row.scope }], error: null };
+    }
+    return { data: null, error: { message: "unknown rpc" } };
+  }
+  return { from, rpc };
 }
 
 describe("mcp-oauth pure helpers", () => {
@@ -116,7 +139,7 @@ describe("mcp-oauth pure helpers", () => {
 
   it("isAllowedRedirectUri allows Claude hosts and rejects others", () => {
     expect(isAllowedRedirectUri("https://claude.ai/api/mcp/auth_callback")).toBe(true);
-    expect(isAllowedRedirectUri("https://claude.com/anything")).toBe(true);
+    expect(isAllowedRedirectUri("https://claude.com/api/mcp/auth_callback")).toBe(true);
     expect(isAllowedRedirectUri("https://evil.example.com/cb")).toBe(false);
     expect(isAllowedRedirectUri("http://claude.ai/cb")).toBe(false); // non-https
     expect(isAllowedRedirectUri("not a url")).toBe(false);

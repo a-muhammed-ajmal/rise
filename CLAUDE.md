@@ -12,12 +12,12 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1022 tests, 96.43% lines — target met. Remaining gap is entirely `use-tasks.ts` (47%, pre-existing) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1031 tests, 94.39% lines — target met. The largest remaining gaps are `use-tasks.ts` (49.45%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
 
-- **Core Architecture:** Next.js 16.2.9 (App Router) · TypeScript Strict · Tailwind CSS v4 · shadcn/ui (`@base-ui/react`) · Supabase (Postgres + pgvector + RLS) · Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) · Vitest + Testing Library · Vercel.
+- **Core Architecture:** Next.js 16.3.5 (App Router) · TypeScript Strict · Tailwind CSS v4 · shadcn/ui (`@base-ui/react`) · Supabase (Postgres + pgvector + RLS) · Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) · Vitest + Testing Library · Playwright · Vercel.
 - **AI SDKs — Gemini only, and it must stay that way.** `@google/genai` drives
   the chat assistant, the daily digest, and audio transcription. **Do not swap
   any of them to another provider.** Cost is the binding constraint: this is a
@@ -26,8 +26,8 @@ RISE is a single-user personal AI operating system that consolidates task manage
   tool schemas are `@google/genai` `FunctionDeclaration`s, `lib/ai/mcp-schema.ts`
   converts that exact shape into JSON Schema for the MCP `tools/list`, and chat
   resends every tool definition on every request.
-  `@anthropic-ai/sdk` is present in `package.json` but dormant (imported
-  nowhere). A digest-on-Claude version was built and reverted in 7d4687d — the
+  `@anthropic-ai/sdk` was removed from `package.json`. A digest-on-Claude
+  version was built and reverted in 7d4687d — the
   API account has no credit balance, so it failed closed. Do not reintroduce it
   without an explicit decision to start paying for API usage.
   The MCP server endpoint (`/api/mcp`) uses `mcp-handler` + `@modelcontextprotocol/sdk`.
@@ -132,8 +132,8 @@ automatically — there is no second list to update.
 - `bulk_update_task_priority` → APPROVAL, same "acts on many rows at once" rule
   as `bulk_complete_tasks`.
 
-**Approval token:** HMAC-signed, user-bound, `jti` nonce, 2-minute expiry, single-use
-within the serving instance. Ownership of the referenced row is verified *before*
+**Approval token:** HMAC-signed, user-bound, `jti` nonce, 2-minute expiry, and
+database-enforced single use across all serving instances. Ownership of the referenced row is verified *before*
 the confirmation prompt is shown, via the `APPROVAL_RESOURCES` lookup table in
 `app/api/ai/chat/route.ts` — add an entry there when adding an APPROVAL tool.
 
@@ -141,7 +141,7 @@ the confirmation prompt is shown, via the `APPROVAL_RESOURCES` lookup table in
 
 **Tool schema format:** Uses `@google/genai` `FunctionDeclaration` with `Type.STRING` / `Type.OBJECT` / `Type.NUMBER` enum values. Not OpenAI function call format, not Anthropic tool format.
 
-**MCP endpoint** (`/api/mcp`): Exposes only `AUTO_TOOLS`. `APPROVAL_TOOLS` are never reachable via MCP. Auth accepts the static `MCP_ACCESS_TOKEN` (Claude Code) **or** OAuth 2.1 (claude.ai web / Desktop). OAuth is a self-hosted authorization server: helpers in `lib/ai/mcp-oauth.ts`, endpoints at `app/api/oauth/{authorize,token}/` + discovery at `app/.well-known/oauth-*`, tokens/codes stored **hashed** in `oauth_tokens` / `oauth_authorization_codes` (migration `015`, service-role-only RLS). The route wraps the handler in `mcp-handler`'s `withMcpAuth` and validates both token types via `verifyMcpToken`; OAuth tokens are audience-bound (RFC 8707). Pre-registered confidential client via `MCP_OAUTH_CLIENT_ID` / `MCP_OAUTH_CLIENT_SECRET`.
+**MCP endpoint** (`/api/mcp`): Defaults to read-only list/get/search/recall tools. Reversible writes require explicit `MCP_ENABLE_WRITES=true`; irreversible, bulk, financial, and WhatsApp-reminder tools are never reachable via MCP. Auth accepts the static `MCP_ACCESS_TOKEN` (Claude Code) **or** OAuth 2.1. OAuth codes/tokens are stored hashed, authorization codes and refresh tokens are atomically single-use/rotated, and access is audience-bound (RFC 8707). Every call is rate-limited and audit-logged.
 
 **Service-role isolation:** the MCP path injects a service-role client, which bypasses
 RLS entirely. Every query in `execute-tool.ts` must therefore carry `.eq("user_id", userId)`
@@ -279,7 +279,7 @@ app/
     settings/               User localization preferences and application controls
     projects/               Projects workspace with 8 fixed category tabs, project grid, and task drill-down
   api/ai/chat/              SSE chat route — approval gate (HMAC token), tool dispatch, Gemini streaming
-  api/[transport]/          Remote MCP endpoint (/api/mcp) — static-token OR OAuth 2.1 auth, exposes AUTO_TOOLS only
+  api/[transport]/          Remote MCP endpoint (/api/mcp) — static-token OR OAuth 2.1 auth; read-only by default
   api/oauth/                OAuth 2.1 authorization server (authorize + token) for the claude.ai web / Desktop connector
   .well-known/oauth-*/      OAuth discovery metadata (RFC 9728 protected-resource, RFC 8414 authorization-server)
   api/push/                 Web Push subscription management (subscribe, unsubscribe, vapid-public-key)
@@ -300,34 +300,34 @@ lib/
     execute-tool.ts         executeTool(name, input, ctx?) — switch-case, returns ToolResult
                             softDeleteRecord / restoreRecord / detachChildren live here
     memory.ts               Voyage AI (1024-dim pgvector) tracking logic with keyword fallback
-    mcp.ts                  MCP tool registry (AUTO_TOOLS only), bearer-token auth guard, service-role ToolContext
+    mcp.ts                  MCP registry (read-only by default; optional reversible writes), auth guard, service-role ToolContext
     mcp-schema.ts           Gemini FunctionDeclaration → JSON Schema converter for MCP tools/list
     upload-helpers.ts       File upload parsing and text/audio extraction for chat attachments
   hooks/
     use-tasks.ts            Task CRUD with Supabase Realtime subscription; DB sort: starred → due_date → due_time NULLS LAST → created_at
     use-projects.ts         Project CRUD with Supabase Realtime subscription
     use-push-subscription.ts Push notification subscription management
-    use-payment-methods.ts  Wallet balance state and CRUD operations (currently 0% test coverage)
+    use-payment-methods.ts  Wallet balance state and CRUD operations
     use-is-desktop.ts       Returns true when viewport ≥ 768px (md breakpoint); SSR-safe
-    use-categories.ts       Finance category state and CRUD (currently 0% test coverage)
+    use-categories.ts       Finance category state and CRUD
     use-theme.tsx           Dark/light mode toggle; persists to localStorage
   supabase/
     client.ts               Client-side client initializations for browser interactions
     server.ts               Server-side isolated client handlers
     middleware.ts           Session lifecycle handlers, ALLOWED_USER_EMAIL enforcement, token refresh
   types/
-    database.ts             Single Source of Truth — 28 Supabase tables with Row/Insert/Update types
+    database.ts             Single Source of Truth — 32 Supabase tables with Row/Insert/Update types
   format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + isPastDeadline, truncateLabel
   area-colors.ts            AREA_META / AREA_LIST / areaTint() — life-area colors as --area-* CSS tokens
   task-attachments.ts       Private-bucket attachment helpers: attachmentPath() recovers legacy object keys
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities
 
-supabase/migrations/        001 through 023 (append-only; execute via Supabase SQL editor)
+supabase/migrations/        26 append-only migrations (001–023 plus timestamped hardening migrations)
 supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
   send-whatsapp/            Deno edge function — WhatsApp Cloud API reminders (hourly cron)
 proxy.ts                    Next.js 16 middleware entry point — calls lib/supabase/middleware.ts
-public/sw.js                Service worker script managing stale-while-revalidate data paths
+public/sw.js                Service worker: static-shell caching only; private routes and APIs stay network-only
 
 .claude/
   skills/                   frontend-design, db-schema, git-commit, security-audit

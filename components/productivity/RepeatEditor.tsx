@@ -7,6 +7,8 @@ import {
   formatRule,
   weekdayOf,
   WEEKDAYS,
+  FREQUENCIES,
+  isFrequency,
   type Frequency,
   type Weekday,
   type RecurrenceSpec,
@@ -120,7 +122,7 @@ export function RepeatEditor({ value, dueDate, onChange, onClose }: RepeatEditor
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <span className="text-sm font-semibold">Repeats</span>
-        <button type="button" onClick={handleDone} className="text-xs font-bold uppercase tracking-wide text-brand-text">
+        <button type="button" onClick={handleDone} className="text-xs font-semibold uppercase tracking-wide text-brand-text">
           Done
         </button>
       </div>
@@ -161,11 +163,13 @@ export function RepeatEditor({ value, dueDate, onChange, onClose }: RepeatEditor
                 />
                 <select
                   value={freq}
-                  onChange={(e) => setFreq(e.target.value as Frequency)}
+                  onChange={(e) => {
+                    if (isFrequency(e.target.value)) setFreq(e.target.value)
+                  }}
                   aria-label="Frequency unit"
                   className="flex-1 h-9 rounded-lg border border-input px-2 text-sm outline-none focus:border-ring bg-transparent"
                 >
-                  {(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as Frequency[]).map((f) => (
+                  {FREQUENCIES.map((f) => (
                     <option key={f} value={f}>
                       {UNIT_BY_FREQ[f]}{interval > 1 ? 's' : ''}
                     </option>

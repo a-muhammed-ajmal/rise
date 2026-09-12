@@ -10,17 +10,24 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatAED } from "@/lib/format"
 
-const CRM_COLOR = "#0891B2"   // --mod-crm (Cyan)
+const CRM_COLOR = "var(--mod-crm)"
 const STAGE_COLORS: Record<string, string> = {
-  new:         "#9CA3AF",
-  qualified:   "#3B82F6",
-  proposal:    "#F59E0B",
-  negotiation: "#D97706",
-  won:         "#10B981",
-  lost:        "#E11D48",
+  new:         "var(--color-p4)",
+  qualified:   "var(--color-info)",
+  proposal:    "var(--color-warning)",
+  negotiation: "var(--mod-knowledge)",
+  won:         "var(--color-success)",
+  lost:        "var(--color-danger)",
 }
-const TYPE_COLORS = ["#0891B2", "#059669", "#F59E0B", "#7C3AED", "#2563EB"]
+const TYPE_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+]
 
 const tooltipStyle = {
   backgroundColor: "var(--card)",
@@ -79,7 +86,7 @@ export function CrmCharts({ byStage, byType, recentActivity }: CrmChartsProps) {
                 <Tooltip
                   contentStyle={tooltipStyle}
                   formatter={(value: unknown, name: unknown) => [
-                    name === "value" ? `AED ${Number(value ?? 0).toLocaleString()}` : Number(value ?? 0),
+                    name === "value" ? formatAED(Number(value ?? 0)) : Number(value ?? 0),
                     name === "value" ? "Pipeline Value" : "Contacts",
                   ]}
                 />

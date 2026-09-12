@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   __resetRateLimits,
-  checkRateLimit,
+  checkLocalRateLimit,
   clientIpFrom,
   rateLimitResponse,
 } from "../rate-limit";
 
-describe("checkRateLimit", () => {
+describe("checkLocalRateLimit", () => {
   beforeEach(() => {
     __resetRateLimits();
     vi.useFakeTimers();
@@ -19,63 +19,63 @@ describe("checkRateLimit", () => {
 
   it("allows requests up to the limit", () => {
     for (let i = 0; i < 3; i++) {
-      expect(checkRateLimit("user-1", { limit: 3, windowMs: 60_000 })).toMatchObject({
+      expect(checkLocalRateLimit("user-1", { limit: 3, windowMs: 60_000 })).toMatchObject({
         ok: true,
       });
     }
   });
 
   it("reports the remaining allowance", () => {
-    const first = checkRateLimit("user-1", { limit: 3, windowMs: 60_000 });
+    const first = checkLocalRateLimit("user-1", { limit: 3, windowMs: 60_000 });
     expect(first).toEqual({ ok: true, remaining: 2 });
-    const second = checkRateLimit("user-1", { limit: 3, windowMs: 60_000 });
+    const second = checkLocalRateLimit("user-1", { limit: 3, windowMs: 60_000 });
     expect(second).toEqual({ ok: true, remaining: 1 });
   });
 
   it("rejects the request past the limit", () => {
     const opts = { limit: 2, windowMs: 60_000 };
-    checkRateLimit("user-1", opts);
-    checkRateLimit("user-1", opts);
-    const blocked = checkRateLimit("user-1", opts);
+    checkLocalRateLimit("user-1", opts);
+    checkLocalRateLimit("user-1", opts);
+    const blocked = checkLocalRateLimit("user-1", opts);
     expect(blocked.ok).toBe(false);
     if (!blocked.ok) expect(blocked.retryAfterSec).toBeGreaterThan(0);
   });
 
   it("keeps separate keys independent", () => {
     const opts = { limit: 1, windowMs: 60_000 };
-    expect(checkRateLimit("user-1", opts).ok).toBe(true);
-    expect(checkRateLimit("user-2", opts).ok).toBe(true);
-    expect(checkRateLimit("user-1", opts).ok).toBe(false);
+    expect(checkLocalRateLimit("user-1", opts).ok).toBe(true);
+    expect(checkLocalRateLimit("user-2", opts).ok).toBe(true);
+    expect(checkLocalRateLimit("user-1", opts).ok).toBe(false);
   });
 
   it("lets the window slide so allowance returns", () => {
     const opts = { limit: 2, windowMs: 60_000 };
-    checkRateLimit("user-1", opts);
-    checkRateLimit("user-1", opts);
-    expect(checkRateLimit("user-1", opts).ok).toBe(false);
+    checkLocalRateLimit("user-1", opts);
+    checkLocalRateLimit("user-1", opts);
+    expect(checkLocalRateLimit("user-1", opts).ok).toBe(false);
 
     vi.advanceTimersByTime(60_001);
-    expect(checkRateLimit("user-1", opts).ok).toBe(true);
+    expect(checkLocalRateLimit("user-1", opts).ok).toBe(true);
   });
 
   it("slides partially rather than resetting the whole window", () => {
     const opts = { limit: 2, windowMs: 60_000 };
-    checkRateLimit("user-1", opts); // t=0
+    checkLocalRateLimit("user-1", opts); // t=0
     vi.advanceTimersByTime(30_000);
-    checkRateLimit("user-1", opts); // t=30s
-    expect(checkRateLimit("user-1", opts).ok).toBe(false);
+    checkLocalRateLimit("user-1", opts); // t=30s
+    expect(checkLocalRateLimit("user-1", opts).ok).toBe(false);
 
     // The t=0 hit expires but the t=30s hit is still inside the window.
     vi.advanceTimersByTime(30_001);
-    expect(checkRateLimit("user-1", opts).ok).toBe(true);
-    expect(checkRateLimit("user-1", opts).ok).toBe(false);
+    expect(checkLocalRateLimit("user-1", opts).ok).toBe(true);
+    expect(checkLocalRateLimit("user-1", opts).ok).toBe(false);
   });
 
   it("computes retryAfterSec from the oldest hit in the window", () => {
     const opts = { limit: 1, windowMs: 60_000 };
-    checkRateLimit("user-1", opts);
+    checkLocalRateLimit("user-1", opts);
     vi.advanceTimersByTime(50_000);
-    const blocked = checkRateLimit("user-1", opts);
+    const blocked = checkLocalRateLimit("user-1", opts);
     expect(blocked.ok).toBe(false);
     if (!blocked.ok) expect(blocked.retryAfterSec).toBe(10);
   });
@@ -89,9 +89,9 @@ describe("checkRateLimit", () => {
     "bounds memory when many distinct keys are seen",
     () => {
       const opts = { limit: 5, windowMs: 1_000 };
-      for (let i = 0; i < 12_000; i++) checkRateLimit(`key-${i}`, opts);
+      for (let i = 0; i < 12_000; i++) checkLocalRateLimit(`key-${i}`, opts);
       // Eviction has run; a fresh key still works and nothing threw.
-      expect(checkRateLimit("fresh", opts).ok).toBe(true);
+      expect(checkLocalRateLimit("fresh", opts).ok).toBe(true);
     },
     30_000,
   );

@@ -153,7 +153,9 @@ describe("useProjects", () => {
       await result.current.deleteProject("p-1");
     });
 
-    expect(mockQueryChain.delete).toHaveBeenCalled();
+    expect(mockQueryChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ deleted_at: expect.any(String) }),
+    );
     expect(result.current.projects).toHaveLength(1);
     expect(result.current.projects[0].id).toBe("p-2");
   });

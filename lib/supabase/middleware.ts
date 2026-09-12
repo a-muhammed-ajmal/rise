@@ -26,9 +26,20 @@ export async function updateSession(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request });
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const allowedEmail = process.env.ALLOWED_USER_EMAIL;
+  if (!supabaseUrl || !publishableKey || !allowedEmail) {
+    console.error("[auth] required single-user configuration is missing");
+    return NextResponse.json(
+      { error: "Service unavailable" },
+      { status: 503 },
+    );
+  }
+
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    supabaseUrl,
+    publishableKey,
     {
       cookies: {
         getAll() {
@@ -53,8 +64,6 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const allowedEmail = process.env.ALLOWED_USER_EMAIL;
-
   // Redirect unauthenticated users to login
   if (
     !user &&
@@ -67,7 +76,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Block wrong accounts that somehow have a session
-  if (user && allowedEmail && user.email !== allowedEmail) {
+  if (user && user.email !== allowedEmail) {
     await supabase.auth.signOut();
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";

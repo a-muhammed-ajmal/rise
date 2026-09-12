@@ -2,18 +2,18 @@
 
 import { useState, useEffect, useCallback, useId } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Task, Subtask, TaskAttachment } from '@/lib/types/database'
+import type { Database, Task } from '@/lib/types/database'
 import { todayISO } from '@/lib/format'
 
 export type TaskFilter = 'today' | 'all' | 'project' | 'completed'
 
-function coerceTask(t: Record<string, unknown>): Task {
+function hydrateTask(t: Database['public']['Tables']['tasks']['Row']): Task {
   return {
-    ...(t as Task),
+    ...t,
     is_completed: t.completed_at !== null && t.completed_at !== undefined,
-    labels: Array.isArray(t.labels) ? (t.labels as string[]) : [],
-    subtasks: Array.isArray(t.subtasks) ? (t.subtasks as Subtask[]) : [],
-    attachments: Array.isArray(t.attachments) ? (t.attachments as TaskAttachment[]) : [],
+    labels: Array.isArray(t.labels) ? t.labels : [],
+    subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+    attachments: Array.isArray(t.attachments) ? t.attachments : [],
   }
 }
 
@@ -51,7 +51,7 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       setLoading(false)
       return
     }
-    setTasks((data ?? []).map(coerceTask))
+    setTasks((data ?? []).map(hydrateTask))
     setLoading(false)
   }, [filter, projectId])
 
@@ -72,7 +72,7 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
 
-    const { data: row } = await supabase.from('tasks').insert({
+    const { data: row, error } = await supabase.from('tasks').insert({
       user_id: user.id,
       title: data.title ?? '',
       description: data.description ?? null,
@@ -87,10 +87,11 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       is_starred: data.is_starred ?? false,
       is_focus: data.is_focus ?? false,
       labels: data.labels ?? [],
-      subtasks: (data.subtasks ?? []) as unknown as never,
+      subtasks: data.subtasks ?? [],
       estimated_time: data.estimated_time ?? null,
-      attachments: (data.attachments ?? []) as unknown as never,
+      attachments: data.attachments ?? [],
     }).select('id').single()
+    if (error) throw new Error(error.message)
     await fetchTasks()
     return row?.id ?? null
   }
@@ -103,7 +104,7 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       is_completed: _ic,
       ...safeUpdates
     } = updates
-    const { error } = await supabase.from('tasks').update(safeUpdates as never).eq('id', id)
+    const { error } = await supabase.from('tasks').update(safeUpdates).eq('id', id)
     if (error) {
       console.error('[use-tasks] update error:', error.message)
       throw new Error(error.message)
@@ -113,19 +114,21 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
 
   async function completeTask(id: string) {
     const supabase = createClient()
-    await supabase
+    const { error } = await supabase
       .from('tasks')
       .update({ status: 'done', completed_at: new Date().toISOString() })
       .eq('id', id)
+    if (error) throw new Error(error.message)
     setTasks((prev) => prev.filter((t) => t.id !== id))
   }
 
   async function reopenTask(id: string) {
     const supabase = createClient()
-    await supabase
+    const { error } = await supabase
       .from('tasks')
       .update({ status: 'todo', completed_at: null })
       .eq('id', id)
+    if (error) throw new Error(error.message)
     await fetchTasks()
   }
 
@@ -134,10 +137,11 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
     if (!task) return
     const newFocus = !task.is_focus
     const supabase = createClient()
-    await supabase
+    const { error } = await supabase
       .from('tasks')
       .update({ is_focus: newFocus, focus_date: newFocus ? todayISO() : null })
       .eq('id', id)
+    if (error) throw new Error(error.message)
     setTasks((prev) =>
       prev.map((t) =>
         t.id === id ? { ...t, is_focus: newFocus, focus_date: newFocus ? todayISO() : null } : t
@@ -147,28 +151,40 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
 
   async function deleteTask(id: string) {
     const supabase = createClient()
-    await supabase.from('tasks').delete().eq('id', id)
+    const { error } = await supabase
+      .from('tasks')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('deleted_at', null)
+    if (error) throw new Error(error.message)
     setTasks((prev) => prev.filter((t) => t.id !== id))
   }
 
   async function bulkComplete(ids: string[]) {
     const supabase = createClient()
-    await supabase
+    const { error } = await supabase
       .from('tasks')
       .update({ status: 'done', completed_at: new Date().toISOString() })
       .in('id', ids)
+    if (error) throw new Error(error.message)
     setTasks((prev) => prev.filter((t) => !ids.includes(t.id)))
   }
 
   async function bulkDelete(ids: string[]) {
     const supabase = createClient()
-    await supabase.from('tasks').delete().in('id', ids)
+    const { error } = await supabase
+      .from('tasks')
+      .update({ deleted_at: new Date().toISOString() })
+      .in('id', ids)
+      .is('deleted_at', null)
+    if (error) throw new Error(error.message)
     setTasks((prev) => prev.filter((t) => !ids.includes(t.id)))
   }
 
   async function bulkUpdatePriority(ids: string[], priority: Task['priority']) {
     const supabase = createClient()
-    await supabase.from('tasks').update({ priority }).in('id', ids)
+    const { error } = await supabase.from('tasks').update({ priority }).in('id', ids)
+    if (error) throw new Error(error.message)
     await fetchTasks()
   }
 
@@ -177,7 +193,8 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
     if (!task) return
     const newVal = !task.is_starred
     const supabase = createClient()
-    await supabase.from('tasks').update({ is_starred: newVal }).eq('id', id)
+    const { error } = await supabase.from('tasks').update({ is_starred: newVal }).eq('id', id)
+    if (error) throw new Error(error.message)
     setTasks((prev) => prev.map((t) => t.id === id ? { ...t, is_starred: newVal } : t))
   }
 
@@ -187,7 +204,7 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
     if (!user) return
     const task = tasks.find((t) => t.id === id)
     if (!task) return
-    await supabase.from('tasks').insert({
+    const { error } = await supabase.from('tasks').insert({
       user_id: user.id,
       title: `${task.title} (copy)`,
       description: task.description,
@@ -202,10 +219,11 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       is_starred: false,
       is_focus: false,
       labels: task.labels,
-      subtasks: [] as unknown as never,
+      subtasks: [],
       estimated_time: task.estimated_time,
-      attachments: [] as unknown as never,
+      attachments: [],
     })
+    if (error) throw new Error(error.message)
     await fetchTasks()
   }
 

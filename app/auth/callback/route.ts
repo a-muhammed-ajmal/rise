@@ -16,10 +16,16 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    const allowedEmail = process.env.ALLOWED_USER_EMAIL
+    if (!supabaseUrl || !publishableKey || !allowedEmail) {
+      return NextResponse.redirect(`${origin}/login?error=configuration`)
+    }
     const cookieStore = await cookies()
     const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      supabaseUrl,
+      publishableKey,
       {
         cookies: {
           getAll() {
@@ -37,8 +43,7 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser()
-      const allowedEmail = process.env.ALLOWED_USER_EMAIL
-      if (allowedEmail && user?.email !== allowedEmail) {
+      if (user?.email !== allowedEmail) {
         await supabase.auth.signOut()
         return NextResponse.redirect(`${origin}/login?error=unauthorized`)
       }

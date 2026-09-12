@@ -110,6 +110,13 @@ describe("toMcpToolDefinitions", () => {
       name: "do_thing",
       description: "",
       inputSchema: { type: "object", properties: {} },
+      annotations: {
+        title: "Do Thing",
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
     });
   });
 
@@ -121,5 +128,22 @@ describe("toMcpToolDefinitions", () => {
       expect(tool.inputSchema.type).toBe("object");
       expect(tool.inputSchema.properties).toBeTypeOf("object");
     }
+  });
+
+  it("marks reads and destructive writes for MCP clients", () => {
+    const result = toMcpToolDefinitions([
+      { name: "list_tasks" },
+      { name: "delete_task" },
+    ]);
+    expect(result[0]?.annotations).toMatchObject({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+    });
+    expect(result[1]?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+    });
   });
 });

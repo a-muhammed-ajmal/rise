@@ -34,6 +34,7 @@ describe("usePushSubscription", () => {
     });
 
     global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: vi.fn().mockResolvedValue({ publicKey: "dGVzdA==" }),
     });
   });

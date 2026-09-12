@@ -17,7 +17,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    const stored = localStorage.getItem("rise-theme") as Theme | null;
+    const storedValue = localStorage.getItem("rise-theme");
+    const stored: Theme | null =
+      storedValue === "light" || storedValue === "dark" ? storedValue : null;
     const sys = window.matchMedia("(prefers-color-scheme: dark)").matches
       ? "dark"
       : "light";

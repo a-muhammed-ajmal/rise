@@ -12,10 +12,17 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatAED } from "@/lib/format"
 
-const INCOME_COLOR = "#10B981"
-const EXPENSE_COLOR = "#E11D48"
-const PIE_COLORS = ["#2563EB", "#059669", "#F59E0B", "#7C3AED", "#0891B2", "#9CA3AF"]
+const INCOME_COLOR = "var(--color-success)"
+const EXPENSE_COLOR = "var(--color-danger)"
+const PIE_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+]
 
 const tooltipStyle = {
   backgroundColor: "var(--card)",
@@ -96,7 +103,7 @@ export function FinanceCharts({ monthlyFlow, dailyFlow, categorySpend, budgetAct
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(value: unknown) => [`AED ${Number(value ?? 0).toLocaleString()}`, undefined]}
+                formatter={(value: unknown) => [formatAED(Number(value ?? 0)), undefined]}
               />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
               <Area type="monotone" dataKey="income" name="Income" stroke={INCOME_COLOR} fill="url(#incomeGrad)" strokeWidth={2} dot={false} />
@@ -131,7 +138,7 @@ export function FinanceCharts({ monthlyFlow, dailyFlow, categorySpend, budgetAct
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => [`AED ${Number(value ?? 0).toLocaleString()}`, undefined]} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => [formatAED(Number(value ?? 0)), undefined]} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
@@ -153,9 +160,9 @@ export function FinanceCharts({ monthlyFlow, dailyFlow, categorySpend, budgetAct
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="category" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => [`AED ${Number(value ?? 0).toLocaleString()}`, undefined]} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(value: unknown) => [formatAED(Number(value ?? 0)), undefined]} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="budget" name="Budget" fill="#A78BFA" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="budget" name="Budget" fill="var(--chart-5)" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="actual" name="Actual" fill={EXPENSE_COLOR} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

@@ -454,7 +454,7 @@ describe("executeTool", () => {
         description: "Lunch",
       });
       expect(result.success).toBe(true);
-      expect(result.message).toContain("AED 50");
+      expect(result.message).toContain("AED\u00a050.00");
       expect(result.message).toContain("Food & Drinks");
       expect(query.insert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -524,7 +524,7 @@ describe("executeTool", () => {
         category: "Salary",
       });
       expect(result.success).toBe(true);
-      expect(result.message).toContain("AED 5000");
+      expect(result.message).toContain("AED\u00a05,000.00");
       expect(result.message).toContain("Salary");
     });
 

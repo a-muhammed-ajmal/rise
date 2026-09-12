@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1022 passing |
-| Line coverage | 96.43% on `lib/**` |
-| Migrations | 23 (001–023) |
-| DB tables | 28 (across 23 migrations) |
+| Test count | 1031 passing across 35 test files |
+| Line coverage | 94.39% on `lib/**` |
+| Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
+| DB tables | 32 (RLS enabled on all) |
 | AI tools | 65 AUTO + 17 REVERSIBLE + 9 APPROVAL = 91 total |
-| Last feature shipped | Phase 22 — AI tool expansion: task due-time/duration/recurrence/reminder/area plus cross-app gap closure across wellness, goals, CRM, knowledge, projects and finance (2026-09-03) |
+| Last feature shipped | Phase 23 — production hardening: durable approvals/rate limits, OAuth and MCP controls, recoverable deletion, untrusted-content boundaries, dependency/CI/PWA/security-header fixes (2026-09-11) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -21,7 +21,7 @@ _Update this table each time a phase completes or metrics change._
 
 ## Objective
 
-RISE is a single-user personal operating system that replaces Todoist, a finance app, a habit tracker, a journal, a CRM, and a knowledge base in one app. The distinguishing feature is an AI assistant powered by Google Gemini 2.5 Flash (`gemini-2.5-flash` via `@google/genai`) that can *read all user data* and *execute real actions* inside the system — creating tasks, logging expenses, logging habits, searching notes — via a two-tier tool system: auto-execute for low-risk operations, approval-gated for destructive ones.
+RISE is a single-user personal operating system that replaces Todoist, a finance app, a habit tracker, a journal, a CRM, and a knowledge base in one app. The distinguishing feature is an AI assistant powered by Google Gemini 2.5 Flash (`gemini-2.5-flash` via `@google/genai`) that can *read all user data* and *execute real actions* inside the system — creating tasks, logging expenses, logging habits, searching notes — via a three-tier tool system: automatic operations, recoverable soft deletes, and approval-only irreversible or bulk actions.
 
 Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
@@ -31,7 +31,7 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 | Concern | Constraint |
 | --- | --- |
-| Framework | Next.js 16.3.0 (App Router) — `proxy.ts` replaces `middleware.ts` at the project root |
+| Framework | Next.js 16.3.5 (App Router) — `proxy.ts` replaces `middleware.ts` at the project root |
 | Language | TypeScript strict — no `any`, no type assertions |
 | Styling | Tailwind CSS v4 + shadcn/ui built on `@base-ui/react` |
 | AI provider | Google Gemini 2.5 Flash (`@google/genai ^2.10.0`) — function calling via `FunctionDeclaration` / `Type.*` schema format |
@@ -47,7 +47,7 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 - No native mobile apps (iOS / Android)
 - No third-party calendar, bank, or email sync
-- `@anthropic-ai/sdk` is present in `package.json` but dormant — not the active AI provider; remove in next cleanup pass
+- No dormant Anthropic SDK; Gemini is the only application AI provider
 
 ---
 
@@ -55,7 +55,7 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 | Module | Core capability |
 | --- | --- |
-| **Productivity** | Tasks with status (inbox / todo / in_progress / done), priority (low → urgent), due dates, time, reminders, subtasks, attachments, recurring flag, Projects (color-coded grouping) |
+| **Productivity** | Tasks with status (todo / in_progress / blocked / on_hold / done), P1–P4 priority, due dates/times, reminders, subtasks, attachments, recurrence, focus state, and color-coded Projects |
 | **Finance** | Income and expense transactions in AED; category budgets; debt ledger (i_owe / they_owe) |
 | **Wellness** | Habit tracking with daily / weekly / custom schedules, 30-day streak view, focus session log |
 | **Goals** | Goal cards with % progress slider and milestones; Journal tab with mood + energy rating (1–5) |
@@ -128,7 +128,7 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 | Metric | Target |
 | --- | --- |
-| Test coverage | ≥ 85% line on `lib/**` excluding `lib/types/` (current: 49.38% — below target; `execute-tool.ts` expansion and new `use-payment-methods.ts` at 0% drove the drop) |
+| Test coverage | ≥ 85% line on `lib/**` excluding `lib/types/` (current: 94.39% — target met) |
 | Build | `next build` exits 0; 0 TypeScript errors |
 | Lint | ESLint exits 0; 0 errors, 0 warnings (previously-tracked warnings cleared 2026-07-04) |
 | SSE first chunk | < 3 s under normal Gemini API latency |
@@ -144,8 +144,8 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 ```http
 POST /api/ai/chat
-Body: { messages: MessageParam[], approvedTool?: { name, input } }
-      MessageParam: { role: "user" | "assistant" | "model", content: string }
+Body: { messages: MessageParam[], approvalToken?: string }
+      MessageParam: { role: "user" | "assistant" | "model", content: string, attachments?: ChatAttachment[] }
       (Gemini uses "model" for assistant turns in stateful chat sessions)
 
 SSE events:
@@ -156,7 +156,7 @@ SSE events:
   data: [DONE]
 ```
 
-Second leg for approved tools: same endpoint with `approvedTool` set, returns `Response.json({ type: "tool_result", result })`.
+Second leg for approved tools: same endpoint with the signed `approvalToken`, returns `Response.json({ type: "tool_result", result })`. Tokens are user-bound, expire after two minutes, and are consumed once in Postgres.
 
 **Gemini streaming internals:** The route establishes a stateful Gemini chat session via `GoogleGenAI`. Each streamed chunk yields `.candidates[0].content.parts[]`. Text parts emit `{ type: "text" }` SSE events; function-call parts accumulate and are processed after the stream ends. After tool execution, a follow-up `sendMessageStream` passes `functionResponse` parts back to the model. Approval-gated tools skip follow-up — the stream ends after `approval_required`.
 
@@ -198,9 +198,9 @@ The tier split is about **MCP reach, not the in-app gate** — both REVERSIBLE a
 
 > Tool schemas use Google GenAI's `FunctionDeclaration` format (`Type.OBJECT`, `Type.STRING`, etc.) from `@google/genai` — not the Anthropic `input_schema` format.
 
-### Data model (26 Supabase tables, all RLS-enforced on `user_id = auth.uid()`, migrations 001–022)
+### Data model (32 Supabase tables, all RLS-enabled, 26 migration files)
 
-> **Soft delete (022).** 17 of the 26 tables carry `deleted_at timestamptz DEFAULT NULL` — every table with a `delete_*` tool: `tasks`, `projects`, `goals`, `milestones`, `habits`, `habit_logs`, `transactions`, `budgets`, `debts`, `contacts`, `interactions`, `notes`, `documents`, `links`, `journal_entries`, `reviews`, `focus_sessions`. Excluded: `payment_methods` (no delete tool), `categories`, `task_labels`, `user_profile`, `ai_memory`, `ai_conversations`, `oauth_*`, and `push_subscriptions` (which has no UPDATE policy, so an in-place soft delete would be blocked).
+> **Soft delete (022).** 17 tables carry `deleted_at timestamptz DEFAULT NULL` — every table with a `delete_*` tool: `tasks`, `projects`, `goals`, `milestones`, `habits`, `habit_logs`, `transactions`, `budgets`, `debts`, `contacts`, `interactions`, `notes`, `documents`, `links`, `journal_entries`, `reviews`, `focus_sessions`. Infrastructure, identity, audit, subscription, memory, and configuration tables are excluded.
 >
 > `deleted_at IS NULL` is **not** folded into the RLS SELECT policies — that would make the recycle bin and restore unreadable, and would not cover the service-role paths (MCP, daily digest, `send-push`) that bypass RLS anyway. Filtering is explicit at the query layer and guarded by tests in `execute-tool.test.ts`.
 >
@@ -243,22 +243,26 @@ oauth_authorization_codes  id, client_id, code_hash, user_id, redirect_uri,
 oauth_tokens        id, client_id, access_token_hash, refresh_token_hash,
                     user_id, audience, expires_at, revoked_at
 task_labels         id, user_id, name, color, created_at
+approval_token_uses  jti(primary key), user_id, expires_at, created_at
+rate_limit_buckets   bucket_key(primary key), window_start, request_count, expires_at
+push_notification_log  id, user_id, subscription_id, notification_type, entity_id, dedup_key, status
+mcp_audit_log        id, user_id, client_id, tool_name, input_hash, succeeded, duration_ms, created_at
 ```
 
-pgvector function: `match_memories(query_embedding, match_user_id, match_count?, match_threshold?)` — default `match_threshold: 0.7`. Returns `{ id, content, metadata, similarity }[]`.
+pgvector function: `match_memories(query_embedding, match_user_id, match_count?, match_threshold?)` — default `match_threshold: 0.7`. Returns `{ id, content, metadata, similarity, memory_type }[]`; user facts are excluded from similarity results because they are loaded separately.
 
 ### AI memory
 
-User messages embedded via Voyage AI (1024-dim) and stored in `ai_memory`. On each request, top-10 memories retrieved by cosine similarity (`match_threshold: 0.7`) and injected into the system prompt. Keyword ILIKE fallback activates when `VOYAGE_API_KEY` is absent. Conversation compaction runs server-side on long threads (fire-and-forget).
+Explicit user facts and compact conversation summaries are embedded via Voyage AI (1024-dim) and stored in `ai_memory`; raw messages remain in the conversation record rather than being duplicated into long-term memory. On each request, up to eight relevant memories are retrieved by cosine similarity (`match_threshold: 0.7`) and injected into the system prompt. Keyword ILIKE fallback activates when `VOYAGE_API_KEY` is absent.
 
 ### PWA specification
 
 - **Manifest** (`public/manifest.webmanifest`): `display: standalone`, `start_url: /`, `scope: /`, icons at 192×192 and 512×512 (both `any` and `maskable`). Shortcuts: "Add Task" → `/productivity?action=new-task`, "Log Expense" → `/finance?action=new-expense`.
-- **Service worker** (`public/sw.js`): cache name `rise-v3`. Caching strategies:
+- **Service worker** (`public/sw.js`): cache name `rise-v5`. Caching strategies:
   - `/api/**` — network-only (never cache)
   - `/_next/static/**` — cache-first (content-hashed, immutable)
-  - Navigation requests — network-first → cached page → `/offline` fallback
-  - Other assets — stale-while-revalidate
+  - Navigation requests — network-only → `/offline` fallback (authenticated HTML is never cached)
+  - Explicit static shell only (`/offline`, manifest, icons); all other assets use the browser/network normally
 - **Push notifications**: Web Push API. Subscriptions stored in `push_subscriptions` table. Delivery via `supabase/functions/send-push` (Deno edge function, hourly cron `0 * * * *`). Notification types: `habit_nudge` (unlogged habits due today) and `crm_followup` (interactions with `follow_up_date = today`). Required env vars: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
 - **SW update flow**: new worker sends `SKIP_WAITING` on activation; client prompts via toast.
 - **Offline page**: `app/offline/page.tsx` — static, no Supabase calls.
@@ -325,7 +329,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 - All 8 module pages (productivity, finance, wellness, goals, CRM, knowledge, analytics, assistant) render without runtime errors.
 - AI assistant streams text and executes approved tool calls end-to-end.
 - `npm run build` exits 0 (0 TypeScript errors, 0 lint warnings).
-- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 318 tests, 52.27% (below target — see Performance Targets note).
+- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 1031 tests, 94.39%.
 - Pushing `main` produces a working Vercel production deployment.
 
 ---
@@ -336,7 +340,6 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 - Native mobile apps (iOS / Android)
 - Third-party calendar, bank account, or email sync
 - Outbound email from the app
-- Voice input for the AI assistant
 - Real-time collaborative editing
 - Public-facing pages or unauthenticated access beyond `/login`
 
@@ -346,7 +349,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 
 | Date | Decision | Rationale |
 | --- | --- | --- |
-| ~2026-06-21 | Switched AI provider from Anthropic to Google Gemini 2.5 Flash | Free-tier availability and sufficient function-calling capability. `@anthropic-ai/sdk` remains in `package.json` but is dormant — remove in next cleanup pass. |
+| ~2026-06-21 | Switched AI provider from Anthropic to Google Gemini 2.5 Flash | Free-tier availability and sufficient function-calling capability. The dormant Anthropic SDK was removed during the 2026-09 production-hardening pass. |
 | 2026-06-26 | Tool schemas use `Type.OBJECT` / `Type.STRING` from `@google/genai` | Gemini's `FunctionDeclaration` type requires this format; incompatible with Anthropic's `input_schema` format. |
 | 2026-06-26 | VAPID JWT signed via SubtleCrypto in Deno edge function (no npm web-push) | Deno runtime in Supabase Edge Functions has no npm compatibility for `web-push`. SubtleCrypto is a Deno built-in. |
 | 2026-06-26 | Migrations are append-only, applied manually via Supabase SQL editor | Prevents accidental schema drift in CI; single-person project means manual apply is low overhead. |

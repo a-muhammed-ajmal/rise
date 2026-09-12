@@ -26,8 +26,8 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN");
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
 const WHATSAPP_TEMPLATE_NAME = Deno.env.get("WHATSAPP_TEMPLATE_NAME") ?? "rise_reminder";
@@ -35,6 +35,7 @@ const WHATSAPP_TEMPLATE_NAME = Deno.env.get("WHATSAPP_TEMPLATE_NAME") ?? "rise_r
 // "en" is a different language entry and returns a template-not-found error.
 const WHATSAPP_TEMPLATE_LANG = Deno.env.get("WHATSAPP_TEMPLATE_LANG") ?? "en_US";
 const GRAPH_VERSION = Deno.env.get("WHATSAPP_GRAPH_VERSION") ?? "v21.0";
+const CRON_SECRET = Deno.env.get("CRON_SECRET");
 
 // Dubai is UTC+4 year round — no DST — so a fixed offset is correct here and
 // avoids pulling a tz database into the Deno runtime.
@@ -52,6 +53,52 @@ type Recipient = {
   reminder_types: string[] | null;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function parseRecipient(value: unknown): Recipient | null {
+  if (!isRecord(value)) return null;
+  if (
+    typeof value.id !== "string" ||
+    typeof value.user_id !== "string" ||
+    typeof value.phone_e164 !== "string"
+  ) {
+    return null;
+  }
+  const reminderTypes = Array.isArray(value.reminder_types)
+    ? value.reminder_types.filter(
+      (item): item is string => typeof item === "string",
+    )
+    : null;
+  return {
+    id: value.id,
+    user_id: value.user_id,
+    phone_e164: value.phone_e164,
+    reminder_types: reminderTypes,
+  };
+}
+
+function metaMessageId(payload: unknown): string | undefined {
+  if (!isRecord(payload) || !Array.isArray(payload.messages)) return undefined;
+  const first = payload.messages[0];
+  return isRecord(first) ? optionalString(first.id) : undefined;
+}
+
+function metaError(payload: unknown): string | undefined {
+  if (!isRecord(payload) || !isRecord(payload.error)) return undefined;
+  return optionalString(payload.error.message);
+}
+
+function contactName(value: unknown): string | undefined {
+  const contact = Array.isArray(value) ? value[0] : value;
+  return isRecord(contact) ? optionalString(contact.name) : undefined;
+}
+
 function dubaiNow(): { date: string; hour: number; dow: number } {
   const shifted = new Date(Date.now() + DUBAI_OFFSET_MS);
   return {
@@ -65,6 +112,21 @@ function hourOf(time: string | null): number | null {
   if (!time) return null;
   const h = Number.parseInt(time.split(":")[0], 10);
   return Number.isFinite(h) ? h : null;
+}
+
+async function secureEqual(left: string, right: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [leftHash, rightHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(left)),
+    crypto.subtle.digest("SHA-256", encoder.encode(right)),
+  ]);
+  const leftBytes = new Uint8Array(leftHash);
+  const rightBytes = new Uint8Array(rightHash);
+  let difference = 0;
+  for (let index = 0; index < leftBytes.length; index += 1) {
+    difference |= leftBytes[index] ^ rightBytes[index];
+  }
+  return difference === 0;
 }
 
 async function sendTemplate(
@@ -94,27 +156,46 @@ async function sendTemplate(
     },
   );
 
-  const payload = (await res.json().catch(() => null)) as
-    | { messages?: { id: string }[]; error?: { message?: string } }
-    | null;
+  const payload: unknown = await res.json().catch(() => null);
 
   return res.ok
-    ? { ok: true, status: res.status, messageId: payload?.messages?.[0]?.id }
+    ? { ok: true, status: res.status, messageId: metaMessageId(payload) }
     : {
       ok: false,
       status: res.status,
-      error: payload?.error?.message ?? `HTTP ${res.status}`,
+      error: metaError(payload) ?? `HTTP ${res.status}`,
     };
 }
 
-Deno.serve(async (_req) => {
-  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+Deno.serve(async (request) => {
+  if (!CRON_SECRET) {
     // Fail closed and loudly — a missing credential must not be reported the
     // same way as a quiet "nothing was due" run.
     return new Response(
-      JSON.stringify({
-        error: "WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID not configured",
-      }),
+      JSON.stringify({ error: "Required server configuration is missing" }),
+      { status: 503, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const authorization = request.headers.get("authorization");
+  if (
+    !authorization ||
+    !(await secureEqual(authorization, `Bearer ${CRON_SECRET}`))
+  ) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (
+    !SUPABASE_URL ||
+    !SERVICE_ROLE_KEY ||
+    !WHATSAPP_TOKEN ||
+    !WHATSAPP_PHONE_NUMBER_ID
+  ) {
+    return new Response(
+      JSON.stringify({ error: "Required server configuration is missing" }),
       { status: 503, headers: { "Content-Type": "application/json" } },
     );
   }
@@ -181,7 +262,7 @@ Deno.serve(async (_req) => {
 
     const sent = await sendTemplate(recipient.phone_e164, body);
 
-    await supabase
+    const { error: logUpdateError } = await supabase
       .from("whatsapp_log")
       .update({
         status: sent.ok ? "sent" : "failed",
@@ -192,6 +273,13 @@ Deno.serve(async (_req) => {
       })
       .eq("id", claim.id);
 
+    if (logUpdateError) {
+      console.error("[send-whatsapp] delivery log update failed", {
+        claimId: claim.id,
+        code: logUpdateError.code,
+      });
+    }
+
     results.push({
       type,
       entity: entityId ?? "-",
@@ -199,21 +287,34 @@ Deno.serve(async (_req) => {
     });
   }
 
-  for (const recipient of recipients as Recipient[]) {
+  for (const rawRecipient of recipients) {
+    const recipient = parseRecipient(rawRecipient);
+    if (!recipient) {
+      results.push({ type: "task_due", entity: "-", status: "invalid_recipient" });
+      continue;
+    }
     const types: string[] = recipient.reminder_types ?? [];
 
     // ── Habit nudges ────────────────────────────────────────────────────────
     // Service role bypasses RLS, so the soft-delete predicate has to be written
     // out by hand on every query here — nothing upstream applies it.
     if (types.includes("habit_nudge")) {
-      const { data: habits } = await supabase
+      const { data: habits, error: habitsError } = await supabase
         .from("habits")
         .select("id, name, frequency, target_days, reminder_time")
         .eq("user_id", recipient.user_id)
         .is("deleted_at", null)
         .eq("active", true);
 
-      for (const habit of habits ?? []) {
+      if (habitsError) {
+        results.push({
+          type: "habit_nudge",
+          entity: "-",
+          status: `query_error:${habitsError.code}`,
+        });
+      }
+
+      for (const habit of habitsError ? [] : (habits ?? [])) {
         const dueToday = habit.frequency === "daily" ||
           ((habit.frequency === "weekly" || habit.frequency === "custom") &&
             (habit.target_days ?? []).includes(todayDow));
@@ -225,7 +326,7 @@ Deno.serve(async (_req) => {
 
         // A soft-deleted log must not count as logged, or a habit the user has
         // not actually done goes un-nudged.
-        const { data: logged } = await supabase
+        const { data: logged, error: loggedError } = await supabase
           .from("habit_logs")
           .select("id")
           .eq("habit_id", habit.id)
@@ -233,6 +334,14 @@ Deno.serve(async (_req) => {
           .eq("logged_date", today)
           .eq("completed", true)
           .maybeSingle();
+        if (loggedError) {
+          results.push({
+            type: "habit_nudge",
+            entity: habit.id,
+            status: `query_error:${loggedError.code}`,
+          });
+          continue;
+        }
         if (logged) continue;
 
         await claimAndSend(
@@ -248,7 +357,7 @@ Deno.serve(async (_req) => {
     if (types.includes("crm_followup") && currentHour === DEFAULT_HOUR) {
       // !inner makes the contact a join filter, so a follow-up whose contact
       // was deleted stops nudging instead of nudging about a deleted person.
-      const { data: interactions } = await supabase
+      const { data: interactions, error: interactionsError } = await supabase
         .from("interactions")
         .select("id, contacts!inner(name)")
         .eq("user_id", recipient.user_id)
@@ -256,9 +365,16 @@ Deno.serve(async (_req) => {
         .is("contacts.deleted_at", null)
         .eq("follow_up_date", today);
 
-      for (const interaction of interactions ?? []) {
-        const name =
-          (interaction.contacts as { name: string } | null)?.name ?? "a contact";
+      if (interactionsError) {
+        results.push({
+          type: "crm_followup",
+          entity: "-",
+          status: `query_error:${interactionsError.code}`,
+        });
+      }
+
+      for (const interaction of interactionsError ? [] : (interactions ?? [])) {
+        const name = contactName(interaction.contacts) ?? "a contact";
         await claimAndSend(
           recipient,
           "crm_followup",
@@ -270,7 +386,7 @@ Deno.serve(async (_req) => {
 
     // ── Tasks due ───────────────────────────────────────────────────────────
     if (types.includes("task_due")) {
-      const { data: tasks } = await supabase
+      const { data: tasks, error: tasksError } = await supabase
         .from("tasks")
         .select("id, title, due_time")
         .eq("user_id", recipient.user_id)
@@ -279,7 +395,15 @@ Deno.serve(async (_req) => {
         .neq("status", "done")
         .eq("due_date", today);
 
-      for (const task of tasks ?? []) {
+      if (tasksError) {
+        results.push({
+          type: "task_due",
+          entity: "-",
+          status: `query_error:${tasksError.code}`,
+        });
+      }
+
+      for (const task of tasksError ? [] : (tasks ?? [])) {
         if (currentHour !== (hourOf(task.due_time) ?? DEFAULT_HOUR)) continue;
         await claimAndSend(
           recipient,

@@ -1,26 +1,29 @@
 // Supabase Edge Function — send-push
-// Runs on a cron schedule (every hour) to deliver habit nudges + CRM follow-up reminders.
-// Deploy: supabase functions deploy send-push
-// Schedule: set via Supabase dashboard → Edge Functions → send-push → Schedule
+// Hourly cron delivering payload-free Web Push signals. Payload-free delivery
+// is standards-compliant without implementing RFC 8291 encryption, and it keeps
+// private task/contact text out of third-party push infrastructure.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// Minimal VAPID web-push implementation using SubtleCrypto (Deno built-in)
-// Avoids requiring a Node web-push package in Deno runtime.
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
+const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
+const VAPID_SUBJECT =
+  Deno.env.get("VAPID_SUBJECT") ?? "mailto:ajmalconsults@gmail.com";
+const CRON_SECRET = Deno.env.get("CRON_SECRET");
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
-const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:ajmalconsults@gmail.com";
-
-// Dubai is UTC+4 year round (no DST). Edge functions deploy separately and
-// cannot import lib/format.ts, so todayISO() / toDubaiISODate() are out of
-// reach and the shift has to be done here. Reading getUTCHours() or
-// toISOString() raw is wrong twice over: reminder_time is entered in Dubai
-// local time, and between 20:00 and 24:00 UTC the UTC date is already the
-// previous day in Dubai.
 const DUBAI_OFFSET_MS = 4 * 60 * 60 * 1000;
+const DEFAULT_HOUR = 8;
+
+type ReminderType = "habit_nudge" | "crm_followup";
+
+type Subscription = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  reminder_types: string[] | null;
+};
 
 function dubaiNow(): { date: string; hour: number; dow: number } {
   const shifted = new Date(Date.now() + DUBAI_OFFSET_MS);
@@ -31,176 +34,259 @@ function dubaiNow(): { date: string; hour: number; dow: number } {
   };
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function base64UrlDecode(str: string): Uint8Array {
-  const pad = str.length % 4;
-  const padded = str + "=".repeat(pad ? 4 - pad : 0);
-  const base64 = padded.replace(/-/g, "+").replace(/_/g, "/");
-  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+function hourOf(time: string | null): number | null {
+  if (!time) return null;
+  const hour = Number.parseInt(time.split(":")[0] ?? "", 10);
+  return Number.isFinite(hour) ? hour : null;
 }
 
-function base64UrlEncode(buf: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+function base64UrlDecode(value: string): Uint8Array {
+  const remainder = value.length % 4;
+  const padded = value + "=".repeat(remainder ? 4 - remainder : 0);
+  const base64 = padded.replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+}
+
+function base64UrlEncode(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
 }
 
-async function signJWT(header: object, payload: object, privateKeyBytes: Uint8Array): Promise<string> {
-  const enc = new TextEncoder();
-  const headerB64 = base64UrlEncode(enc.encode(JSON.stringify(header)));
-  const payloadB64 = base64UrlEncode(enc.encode(JSON.stringify(payload)));
-  const signingInput = `${headerB64}.${payloadB64}`;
-
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    privateKeyBytes,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    enc.encode(signingInput),
-  );
-  return `${signingInput}.${base64UrlEncode(sig)}`;
+async function secureEqual(left: string, right: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [leftHash, rightHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(left)),
+    crypto.subtle.digest("SHA-256", encoder.encode(right)),
+  ]);
+  const leftBytes = new Uint8Array(leftHash);
+  const rightBytes = new Uint8Array(rightHash);
+  let difference = 0;
+  for (let index = 0; index < leftBytes.length; index += 1) {
+    difference |= leftBytes[index] ^ rightBytes[index];
+  }
+  return difference === 0;
 }
 
-async function buildVapidToken(audience: string): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  const privateKeyBytes = base64UrlDecode(VAPID_PRIVATE_KEY);
-
-  // The private key from web-push-generate is a raw 32-byte EC scalar —
-  // wrap it in PKCS8 DER for SubtleCrypto import.
+async function signJwt(
+  header: object,
+  payload: object,
+  privateKeyBytes: Uint8Array,
+): Promise<string> {
+  const encoder = new TextEncoder();
+  const headerPart = base64UrlEncode(encoder.encode(JSON.stringify(header)));
+  const payloadPart = base64UrlEncode(encoder.encode(JSON.stringify(payload)));
+  const signingInput = `${headerPart}.${payloadPart}`;
   const pkcs8 = new Uint8Array([
     0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48,
     0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03,
     0x01, 0x07, 0x04, 0x27, 0x30, 0x25, 0x02, 0x01, 0x01, 0x04, 0x20,
     ...privateKeyBytes,
   ]);
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    pkcs8,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    key,
+    encoder.encode(signingInput),
+  );
+  return `${signingInput}.${base64UrlEncode(new Uint8Array(signature))}`;
+}
 
-  return signJWT(
+async function sendPush(endpoint: string): Promise<Response> {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    throw new Error("VAPID is not configured");
+  }
+  const endpointUrl = new URL(endpoint);
+  const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
+  const now = Math.floor(Date.now() / 1000);
+  const token = await signJwt(
     { typ: "JWT", alg: "ES256" },
     { aud: audience, exp: now + 12 * 3600, sub: VAPID_SUBJECT },
-    pkcs8,
+    base64UrlDecode(VAPID_PRIVATE_KEY),
   );
+
+  return fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `vapid t=${token},k=${VAPID_PUBLIC_KEY}`,
+      TTL: "86400",
+      Urgency: "normal",
+    },
+  });
 }
 
-async function sendPush(
-  subscription: { endpoint: string; p256dh: string; auth: string },
-  payload: { title: string; body: string; url: string },
-): Promise<Response> {
-  const endpointUrl = new URL(subscription.endpoint);
-  const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
-  const token = await buildVapidToken(audience);
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/octet-stream",
-    Authorization: `vapid t=${token},k=${VAPID_PUBLIC_KEY}`,
-    TTL: "86400",
-  };
-
-  // Encrypt payload using browser-native Web Push encryption (RFC 8291)
-  // For simplicity we send as plaintext with Content-Encoding: aes128gcm
-  // when encryption keys are available. Here we use a minimal approach
-  // that works with the SW push handler which reads event.data.json().
-  const body = new TextEncoder().encode(JSON.stringify(payload));
-
-  return fetch(subscription.endpoint, { method: "POST", headers, body });
-}
-
-// ── main handler ──────────────────────────────────────────────────────────────
-
-Deno.serve(async (_req) => {
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const { date: today, hour: currentHour, dow: todayDow } = dubaiNow();
-
-  // 1. Load all push subscriptions
-  const { data: subs, error: subErr } = await supabase
-    .from("push_subscriptions")
-    .select("user_id, endpoint, p256dh, auth, reminder_types");
-
-  if (subErr || !subs?.length) {
-    return new Response(JSON.stringify({ sent: 0, reason: subErr?.message ?? "no subscriptions" }), {
+Deno.serve(async (request) => {
+  if (!CRON_SECRET) {
+    return new Response(JSON.stringify({ error: "Service unavailable" }), {
+      status: 503,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  const results: { endpoint: string; type: string; status: number }[] = [];
+  const authorization = request.headers.get("authorization");
+  const expectedAuthorization = `Bearer ${CRON_SECRET}`;
+  if (!authorization || !(await secureEqual(authorization, expectedAuthorization))) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
-  for (const sub of subs) {
-    const types: string[] = sub.reminder_types ?? [];
+  if (
+    !SUPABASE_URL ||
+    !SERVICE_ROLE_KEY ||
+    !VAPID_PUBLIC_KEY ||
+    !VAPID_PRIVATE_KEY
+  ) {
+    return new Response(JSON.stringify({ error: "Service unavailable" }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
-    // ── Habit nudges ──────────────────────────────────────────────────────
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const { date: today, hour: currentHour, dow: todayDow } = dubaiNow();
+  const { data: subscriptions, error: subscriptionError } = await supabase
+    .from("push_subscriptions")
+    .select("id, user_id, endpoint, reminder_types");
+
+  if (subscriptionError) {
+    return new Response(JSON.stringify({ error: subscriptionError.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  if (!subscriptions?.length) {
+    return new Response(JSON.stringify({ sent: 0, reason: "no subscriptions" }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const results: { type: ReminderType; entity: string; status: string }[] = [];
+
+  async function claimAndSend(
+    subscription: Subscription,
+    type: ReminderType,
+    entityId: string,
+  ): Promise<void> {
+    const { data: claim, error: claimError } = await supabase
+      .from("push_notification_log")
+      .insert({
+        user_id: subscription.user_id,
+        subscription_id: subscription.id,
+        reminder_type: type,
+        entity_id: entityId,
+        dedup_key: today,
+        status: "pending",
+      })
+      .select("id")
+      .single();
+
+    if (claimError) {
+      if (claimError.code !== "23505") {
+        results.push({
+          type,
+          entity: entityId,
+          status: `claim_error:${claimError.code}`,
+        });
+      }
+      return;
+    }
+
+    let response: Response;
+    try {
+      response = await sendPush(subscription.endpoint);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Push failed";
+      await supabase
+        .from("push_notification_log")
+        .update({
+          status: "failed",
+          error: message,
+          sent_at: new Date().toISOString(),
+        })
+        .eq("id", claim.id);
+      results.push({ type, entity: entityId, status: "failed" });
+      return;
+    }
+
+    const succeeded = response.ok;
+    await supabase
+      .from("push_notification_log")
+      .update({
+        status: succeeded ? "sent" : "failed",
+        http_status: response.status,
+        error: succeeded ? null : `HTTP ${response.status}`,
+        sent_at: new Date().toISOString(),
+      })
+      .eq("id", claim.id);
+
+    if (response.status === 404 || response.status === 410) {
+      await supabase.from("push_subscriptions").delete().eq("id", subscription.id);
+    }
+    results.push({
+      type,
+      entity: entityId,
+      status: succeeded ? "sent" : "failed",
+    });
+  }
+
+  for (const subscription of subscriptions) {
+    const types: string[] = subscription.reminder_types ?? [];
+
     if (types.includes("habit_nudge")) {
-      // This function runs on the service-role key, which bypasses RLS, so the
-      // soft-delete predicate has to be written out here — nothing upstream
-      // applies it. Without it, deleted habits keep sending reminders.
-      const { data: habits } = await supabase
+      const { data: habits, error: habitError } = await supabase
         .from("habits")
-        .select("id, name, frequency, target_days, reminder_time")
-        .eq("user_id", sub.user_id)
+        .select("id, frequency, target_days, reminder_time")
+        .eq("user_id", subscription.user_id)
         .is("deleted_at", null)
         .eq("active", true);
+      if (habitError) {
+        results.push({ type: "habit_nudge", entity: "-", status: "query_error" });
+      }
 
       for (const habit of habits ?? []) {
-        const isDueToday =
+        const dueToday =
           habit.frequency === "daily" ||
-          (habit.frequency === "weekly" && (habit.target_days ?? []).includes(todayDow)) ||
-          (habit.frequency === "custom" && (habit.target_days ?? []).includes(todayDow));
+          ((habit.frequency === "weekly" || habit.frequency === "custom") &&
+            (habit.target_days ?? []).includes(todayDow));
+        if (!dueToday) continue;
+        if (currentHour !== (hourOf(habit.reminder_time) ?? DEFAULT_HOUR)) continue;
 
-        if (!isDueToday) continue;
-
-        // If a reminder_time is set, only fire during that UTC hour
-        if (habit.reminder_time) {
-          const reminderHour = parseInt((habit.reminder_time as string).split(":")[0], 10);
-          if (currentHour !== reminderHour) continue;
-        }
-
-        // Check if already logged today. A soft-deleted log must not count as
-        // logged, or the user gets no nudge for a habit they have not done.
-        const { data: logged } = await supabase
+        const { data: logged, error: logError } = await supabase
           .from("habit_logs")
           .select("id")
+          .eq("user_id", subscription.user_id)
           .eq("habit_id", habit.id)
           .is("deleted_at", null)
           .eq("logged_date", today)
           .eq("completed", true)
           .maybeSingle();
-
-        if (logged) continue;
-
-        const res = await sendPush(sub, {
-          title: "Habit reminder",
-          body: `Don't forget: ${habit.name}`,
-          url: "/wellness",
-        });
-        results.push({ endpoint: sub.endpoint, type: "habit_nudge", status: res.status });
+        if (logError || logged) continue;
+        await claimAndSend(subscription, "habit_nudge", habit.id);
       }
     }
 
-    // ── CRM follow-ups ────────────────────────────────────────────────────
-    if (types.includes("crm_followup")) {
-      // !inner makes the contact a join filter, so a follow-up whose contact
-      // was deleted stops nudging instead of nudging about a deleted person.
-      const { data: interactions } = await supabase
+    if (types.includes("crm_followup") && currentHour === DEFAULT_HOUR) {
+      const { data: interactions, error: interactionError } = await supabase
         .from("interactions")
-        .select("id, notes, contacts!inner(name)")
-        .eq("user_id", sub.user_id)
+        .select("id, contacts!inner(id)")
+        .eq("user_id", subscription.user_id)
         .is("deleted_at", null)
         .is("contacts.deleted_at", null)
         .eq("follow_up_date", today);
-
+      if (interactionError) {
+        results.push({ type: "crm_followup", entity: "-", status: "query_error" });
+      }
       for (const interaction of interactions ?? []) {
-        const contactName = (interaction.contacts as { name: string } | null)?.name ?? "contact";
-        const res = await sendPush(sub, {
-          title: "Follow-up reminder",
-          body: `Follow up with ${contactName} today`,
-          url: "/crm",
-        });
-        results.push({ endpoint: sub.endpoint, type: "crm_followup", status: res.status });
+        await claimAndSend(subscription, "crm_followup", interaction.id);
       }
     }
   }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Contact, Interaction } from "@/lib/types/database";
-import { formatDate, todayISO } from "@/lib/format";
+import { formatAED, formatDate, todayISO } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,32 @@ const STAGE_COLORS: Record<Contact["stage"], string> = {
 };
 
 const STAGES: Contact["stage"][] = ["new", "qualified", "proposal", "negotiation", "won", "lost"];
+const CONTACT_TYPES: Contact["type"][] = [
+  "lead",
+  "prospect",
+  "client",
+  "network",
+  "personal",
+];
+const INTERACTION_TYPES: Interaction["type"][] = [
+  "call",
+  "email",
+  "meeting",
+  "message",
+  "other",
+];
+
+function isContactType(value: unknown): value is Contact["type"] {
+  return CONTACT_TYPES.some((type) => type === value);
+}
+
+function isContactStage(value: unknown): value is Contact["stage"] {
+  return STAGES.some((stage) => stage === value);
+}
+
+function isInteractionType(value: unknown): value is Interaction["type"] {
+  return INTERACTION_TYPES.some((type) => type === value);
+}
 
 export default function CRMPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -69,8 +95,13 @@ export default function CRMPage() {
 
   const fetchContacts = useCallback(async () => {
     const supabase = createClient();
-    const { data } = await supabase.from("contacts").select("*")
+    const { data, error } = await supabase.from("contacts").select("*")
     .is("deleted_at", null).order("name");
+    if (error) {
+      toast.error("Could not load contacts");
+      setLoading(false);
+      return;
+    }
     setContacts(data ?? []);
     setLoading(false);
   }, []);
@@ -93,7 +124,15 @@ export default function CRMPage() {
   async function handleDeleteContact() {
     if (!deleteContactId) return;
     const supabase = createClient();
-    await supabase.from("contacts").delete().eq("id", deleteContactId);
+    const { error } = await supabase
+      .from("contacts")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteContactId)
+      .is("deleted_at", null);
+    if (error) {
+      toast.error("Could not move contact to the recycle bin");
+      return;
+    }
     setDeleteContactId(null);
     if (selected?.id === deleteContactId) setSelected(null);
     toast.success("Contact deleted");
@@ -178,7 +217,7 @@ export default function CRMPage() {
                       </span>
                     )}
                     {contact.email && (
-                      <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground hidden md:flex items-center gap-1">
                         <Mail className="w-3 h-3" />
                         {contact.email}
                       </span>
@@ -305,7 +344,7 @@ function ContactForm({
     const supabase = createClient();
 
     if (initial) {
-      await supabase.from("contacts").update({
+      const { error } = await supabase.from("contacts").update({
         name: name.trim(),
         email: email || null,
         phone: phone || null,
@@ -316,10 +355,18 @@ function ContactForm({
         deal_value: dealValue ? parseFloat(dealValue) : null,
         notes: notes || null,
       }).eq("id", initial.id);
+      if (error) {
+        setSaving(false);
+        toast.error("Could not update contact");
+        return;
+      }
     } else {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("contacts").insert({
+      if (!user) {
+        setSaving(false);
+        return;
+      }
+      const { error } = await supabase.from("contacts").insert({
         user_id: user.id,
         name: name.trim(),
         email: email || null,
@@ -332,6 +379,11 @@ function ContactForm({
         notes: notes || null,
         tags: [],
       });
+      if (error) {
+        setSaving(false);
+        toast.error("Could not create contact");
+        return;
+      }
     }
 
     setSaving(false);
@@ -341,7 +393,7 @@ function ContactForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="md:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Contact" : "New Contact"}</DialogTitle>
         </DialogHeader>
@@ -373,10 +425,15 @@ function ContactForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as Contact["type"])}>
+              <Select
+                value={type}
+                onValueChange={(value) => {
+                  if (isContactType(value)) setType(value);
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["lead", "prospect", "client", "network", "personal"].map((t) => (
+                  {CONTACT_TYPES.map((t) => (
                     <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
                   ))}
                 </SelectContent>
@@ -384,7 +441,12 @@ function ContactForm({
             </div>
             <div className="space-y-2">
               <Label>Stage</Label>
-              <Select value={stage} onValueChange={(v) => setStage(v as Contact["stage"])}>
+              <Select
+                value={stage}
+                onValueChange={(value) => {
+                  if (isContactStage(value)) setStage(value);
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {STAGES.map((s) => (
@@ -434,12 +496,16 @@ function ContactDetail({
 
   async function loadInteractions() {
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("interactions")
       .select("*")
       .is("deleted_at", null)
       .eq("contact_id", contact.id)
       .order("date", { ascending: false });
+    if (error) {
+      toast.error("Could not load interactions");
+      return;
+    }
     setInteractions(data ?? []);
   }
 
@@ -453,7 +519,7 @@ function ContactDetail({
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("interactions").insert({
+    const { error: interactionError } = await supabase.from("interactions").insert({
       user_id: user.id,
       contact_id: contact.id,
       type: intType,
@@ -461,10 +527,17 @@ function ContactDetail({
       date: todayISO(),
       follow_up_date: followUp || null,
     });
-    await supabase
+    if (interactionError) {
+      toast.error("Could not log interaction");
+      return;
+    }
+    const { error: contactError } = await supabase
       .from("contacts")
       .update({ last_contacted_at: new Date().toISOString() })
       .eq("id", contact.id);
+    if (contactError) {
+      toast.error("Interaction saved, but contact activity could not be updated");
+    }
     setNote("");
     setFollowUp("");
     setLogOpen(false);
@@ -476,7 +549,15 @@ function ContactDetail({
   async function handleDeleteInteraction() {
     if (!deleteIntId) return;
     const supabase = createClient();
-    await supabase.from("interactions").delete().eq("id", deleteIntId);
+    const { error } = await supabase
+      .from("interactions")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteIntId)
+      .is("deleted_at", null);
+    if (error) {
+      toast.error("Could not move interaction to the recycle bin");
+      return;
+    }
     setDeleteIntId(null);
     toast.success("Interaction deleted");
     loadInteractions();
@@ -485,7 +566,7 @@ function ContactDetail({
   async function updateStage(newStage: Contact["stage"]) {
     setStageSaving(true);
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("contacts")
       .update({ stage: newStage })
       .eq("id", contact.id)
@@ -493,6 +574,10 @@ function ContactDetail({
       .is("deleted_at", null)
       .single();
     setStageSaving(false);
+    if (error) {
+      toast.error("Could not update stage");
+      return;
+    }
     if (data) {
       toast.success(`Stage updated to ${newStage}`);
       onSaved(data);
@@ -501,7 +586,7 @@ function ContactDetail({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="md:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-mod-crm-tint flex items-center justify-center">
@@ -545,7 +630,9 @@ function ContactDetail({
             {contact.deal_value && (
               <div>
                 <p className="text-xs text-muted-foreground">Deal value</p>
-                <p className="font-medium text-mod-finance">AED {contact.deal_value.toLocaleString()}</p>
+                <p className="font-medium text-mod-finance">
+                  {formatAED(contact.deal_value)}
+                </p>
               </div>
             )}
             {contact.last_contacted_at && (
@@ -589,10 +676,15 @@ function ContactDetail({
           {/* Log form */}
           {logOpen && (
             <form onSubmit={logInteraction} className="space-y-3 p-3 rounded-lg bg-accent/50">
-              <Select value={intType} onValueChange={(v) => setIntType(v as Interaction["type"])}>
+              <Select
+                value={intType}
+                onValueChange={(value) => {
+                  if (isInteractionType(value)) setIntType(value);
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["call", "email", "meeting", "message", "other"].map((t) => (
+                  {INTERACTION_TYPES.map((t) => (
                     <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
                   ))}
                 </SelectContent>

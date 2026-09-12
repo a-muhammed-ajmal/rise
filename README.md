@@ -10,7 +10,7 @@
 
 RISE is a personal productivity OS built for a single user. Instead of juggling five apps, everything lives in one place — tasks, money, habits, goals, relationships, notes — and a Gemini-powered AI assistant can read all of it and take real actions on your behalf.
 
-The AI isn't just a chatbot. It can create a task, log an expense, mark a habit done, update a goal, search your notes, generate a daily digest, and more — with a two-tier safety system: low-risk actions execute automatically; destructive ones pause and ask for explicit approval before running.
+The AI isn't just a chatbot. It can create a task, log an expense, mark a habit done, update a goal, search your notes, generate a daily digest, and more — with a three-tier safety system: routine actions execute automatically, deletes remain recoverable, and irreversible or bulk actions require explicit approval.
 
 ---
 
@@ -118,17 +118,17 @@ Not scheduled through `pg_cron`: set the cadence under
 
 | Layer | Technology |
 | --- | --- |
-| Framework | Next.js 16.3.0 (App Router) |
+| Framework | Next.js 16.3.5 (App Router) |
 | Language | TypeScript strict — no `any`, no type assertions |
 | Styling | Tailwind CSS v4 + shadcn/ui (`@base-ui/react`) + Lucide icons |
 | AI | Google Gemini 2.5 Flash via `@google/genai` (SSE streaming + function calling) |
 | Embeddings | Voyage AI `voyage-3` (1024-dim pgvector) — keyword ILIKE fallback when key absent |
-| Database | Supabase — Postgres + pgvector + Row Level Security (28 tables) |
+| Database | Supabase — Postgres + pgvector + Row Level Security (32 tables) |
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (1022 tests) |
+| Testing | Vitest 4 + Testing Library (1031 tests, 94.39% line coverage) + Playwright |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -149,8 +149,8 @@ RISE uses a locked light-first orange brand system (full spec in `.claude/skills
 
 ## Database Schema
 
-26 tables — all RLS-enforced on `user_id = auth.uid()`, migrations 001–022. The 17 tables with a
-`delete_*` tool also carry `deleted_at` for soft delete (022):
+32 tables — all RLS-enabled, across 26 append-only migration files. The 17 user-data tables with a
+`delete_*` tool also carry `deleted_at` for recoverable soft delete:
 
 ```text
 projects · tasks · goals · milestones · reviews · journal_entries
@@ -162,6 +162,8 @@ ai_conversations · ai_memory (pgvector 1024-dim)
 push_subscriptions · user_profile
 oauth_authorization_codes · oauth_tokens
 task_labels
+whatsapp_recipients · whatsapp_log
+approval_token_uses · rate_limit_buckets · push_notification_log · mcp_audit_log
 ```
 
 ---
@@ -173,8 +175,8 @@ POST /api/ai/chat
 Content-Type: application/json
 
 Body: {
-  messages: { role: "user" | "model", content: string }[],
-  approvedTool?: { name: string, input: object }
+  messages: { role: "user" | "assistant" | "model", content: string, attachments?: ChatAttachment[] }[],
+  approvalToken?: string
 }
 
 SSE events:
@@ -185,7 +187,7 @@ SSE events:
   data: [DONE]
 ```
 
-Destructive tool calls halt streaming and emit `approval_required`. The client shows a `<ConfirmDialog>`; on approval a second POST fires with `approvedTool` set.
+Destructive, bulk, material financial, and attachment-inferred write calls halt streaming and emit `approval_required`. The client shows a `<ConfirmDialog>`; on approval a second POST sends the signed, user-bound token. Its nonce is consumed once in Postgres and expires after two minutes.
 
 ---
 
@@ -303,7 +305,7 @@ MCP_OAUTH_CLIENT_ID=       # OAuth client for claude.ai web / Desktop (any id)
 MCP_OAUTH_CLIENT_SECRET=   # OAuth client secret (long random string)
 ```
 
-Apply migrations 001–022 in your Supabase SQL editor (in order), then:
+Apply all files in `supabase/migrations/` in filename order (001–023, then the timestamped hardening migrations), then:
 
 ```bash
 npm run dev   # Turbopack dev server → http://localhost:3000
@@ -364,6 +366,7 @@ npm run lint           # ESLint
 npm run test           # Vitest single run
 npm run test:watch     # Vitest watch mode
 npm run test:coverage  # Coverage report for lib/**
+npm run test:e2e       # Playwright browser security-boundary checks
 ```
 
 ---
@@ -372,10 +375,10 @@ npm run test:coverage  # Coverage report for lib/**
 
 - **Middleware** lives in `proxy.ts` at the project root — Next.js 16 convention (not `middleware.ts`).
 - **RLS pattern** — every table enforces `user_id = auth.uid()`; no cross-user data access is possible.
-- **AI memory** — user messages embedded via Voyage AI and stored in `ai_memory` (pgvector). Top-10 memories retrieved by cosine similarity (`threshold: 0.7`) and injected into each system prompt. ILIKE keyword fallback activates when `VOYAGE_API_KEY` is absent.
+- **AI memory** — explicit user facts and compact conversation summaries are embedded via Voyage AI and stored in `ai_memory` (pgvector). Up to eight memories are retrieved by cosine similarity (`threshold: 0.7`) and injected into each system prompt. ILIKE keyword fallback activates when `VOYAGE_API_KEY` is absent.
 - **Realtime** — `use-tasks.ts` and `use-projects.ts` subscribe to Supabase Realtime channels for live UI updates; channels are cleaned up on unmount.
-- **PWA** — installable; service worker uses stale-while-revalidate for assets, network-only for `/api/**`, and `/offline` fallback for navigation. Push notifications delivered hourly via Supabase Edge Function.
-- **Security** — HMAC-signed, user-bound approval tokens (2-minute expiry, single-use nonce) gate every destructive tool call. In-memory sliding-window rate limits cap `/api/ai/chat`, `/api/ai/upload`, `/api/oauth/token` and the digest cron. AI routes return a stable generic message plus a correlation id; the detail stays in the server log. All server secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`) are never exposed to client components.
+- **PWA** — installable; the service worker caches only the static shell and immutable Next.js chunks. APIs and authenticated navigation are network-only, with `/offline` as the navigation fallback. Push notifications are delivered hourly via Supabase Edge Function.
+- **Security** — HMAC-signed, user-bound approval tokens (2-minute expiry, database-backed single-use nonce) gate destructive, bulk, and sensitive tool calls. Database-backed rate limits protect serverless instances, with a bounded local fallback if persistence is unavailable. AI routes return a stable generic message plus a correlation id; the detail stays in centralized Vercel logs. CSP, HSTS, clickjacking, MIME-sniffing, referrer, opener, and permissions headers are set globally. All server secrets (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`) remain server-only.
 - **Locale** — AED currency throughout (`Intl.NumberFormat('en-AE', { currency: 'AED' })`), DD/MM/YYYY dates, 12-hour time — all via `lib/format.ts`. Timezone and format preferences stored in Supabase user_metadata and configurable in Settings.
 - **Profile** — Display name and avatar photo stored in Supabase auth `user_metadata` (`full_name`, `avatar_url`). Google OAuth photo is used by default; custom photos can be uploaded to the `avatars` storage bucket.
 
@@ -407,7 +410,13 @@ Optional: `VOYAGE_API_KEY` (keyword fallback without it), `VAPID_*` (push),
 `MCP_ACCESS_TOKEN` (Claude Code), `MCP_OAUTH_CLIENT_ID` / `MCP_OAUTH_CLIENT_SECRET`
 (claude.ai connector).
 
-**2. Migrations** — apply `001` … `022` in order in the Supabase SQL editor.
+The Supabase Edge Function secret store must separately contain `CRON_SECRET`
+for both notification senders, `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` /
+`VAPID_SUBJECT` for `send-push`, and the `WHATSAPP_*` values for
+`send-whatsapp`. Use the same `CRON_SECRET` as Vercel; never copy these values
+into source control.
+
+**2. Migrations** — apply every file in `supabase/migrations/` in filename order. There are currently 26 files: `001` … `023` plus three timestamped hardening migrations.
 Migrations are append-only; never edit an applied file.
 
 **3. Storage** — migration `020` creates both buckets and pins them private.
@@ -456,6 +465,11 @@ where schemaname = 'public' and cmd = 'UPDATE' and with_check is null;
 -- expect zero rows
 ```
 
+**Auth password screening** — enable **Leaked Password Protection** under
+Supabase Dashboard → Authentication → Password Security. This is an account-level
+control and is not applied by SQL migrations. The database security advisor should
+then return no warnings.
+
 **5. Cron** — the Vercel cron (`59 19 * * *` UTC = 11:59 PM Dubai) fires the
 daily digest automatically on Pro/Enterprise; Vercel attaches
 `Authorization: Bearer $CRON_SECRET` itself. On Hobby, point an external cron
@@ -488,8 +502,9 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1022 passing |
-| DB tables | 28 (RLS on all) |
+| Test count | 1031 passing across 35 test files |
+| Line coverage | 94.39% on `lib/**` |
+| DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
-| Migrations | 23 (001–023) |
-| Last phase | Phase 22 — AI tool expansion: task due-time/duration/recurrence/reminder/area plus cross-app gap closure across wellness, goals, CRM, knowledge, projects and finance |
+| Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
+| Last phase | Phase 23 — production hardening: durable approvals/rate limits, OAuth and MCP controls, recoverable deletion, AI content boundaries, dependency/CI/PWA/security-header fixes |

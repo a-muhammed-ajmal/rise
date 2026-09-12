@@ -12,9 +12,15 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const KNOWLEDGE_COLOR = "#D97706"  // --mod-knowledge (Amber)
-const LINK_COLORS = ["#2563EB", "#059669", "#7C3AED", "#9CA3AF"]
-const TAG_COLORS = ["#D97706", "#2563EB", "#059669", "#F59E0B", "#7C3AED", "#9CA3AF"]
+const KNOWLEDGE_COLOR = "var(--mod-knowledge)"
+const LINK_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+]
+const TAG_COLORS = [KNOWLEDGE_COLOR, ...LINK_COLORS]
 
 const tooltipStyle = {
   backgroundColor: "var(--card)",
@@ -60,15 +66,15 @@ export function KnowledgeCharts({
         <CardContent className="pt-6">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold font-mono text-violet-500">{totalNotes}</p>
+              <p className="text-2xl font-semibold font-mono text-violet-500">{totalNotes}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Notes</p>
             </div>
             <div>
-              <p className="text-2xl font-bold font-mono text-blue-400">{totalLinks}</p>
+              <p className="text-2xl font-semibold font-mono text-blue-400">{totalLinks}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Saved Links</p>
             </div>
             <div>
-              <p className="text-2xl font-bold font-mono text-emerald-400">{totalDocs}</p>
+              <p className="text-2xl font-semibold font-mono text-emerald-400">{totalDocs}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Documents</p>
             </div>
           </div>

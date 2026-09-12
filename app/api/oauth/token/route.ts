@@ -2,7 +2,7 @@ import {
   consumeAuthorizationCode,
   issueTokens,
   rotateRefreshToken,
-  verifyClientSecret,
+  verifyClientAuthentication,
   verifyPkceS256,
   type IssuedTokens,
 } from "@/lib/ai/mcp-oauth";
@@ -42,7 +42,8 @@ function tokenResponse(t: IssuedTokens): Response {
   );
 }
 
-// Client auth via client_secret_basic (Authorization: Basic) or client_secret_post (body).
+// Confidential clients use client_secret_basic/client_secret_post. Pre-registered
+// public clients omit client_secret and rely on mandatory S256 PKCE.
 function readClientCredentials(
   req: Request,
   form: FormData,
@@ -73,7 +74,7 @@ function readClientCredentials(
 export async function POST(req: Request): Promise<Response> {
   // Throttled ahead of client-secret verification so this also caps secret and
   // refresh-token guessing, not just successful issuance.
-  const rl = checkRateLimit(`oauth-token:${clientIpFrom(req.headers)}`, {
+  const rl = await checkRateLimit(`oauth-token:${clientIpFrom(req.headers)}`, {
     limit: 10,
     windowMs: 60_000,
   });
@@ -87,7 +88,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const { clientId, clientSecret } = readClientCredentials(req, form);
-  if (!clientId || !verifyClientSecret(clientId, clientSecret)) {
+  if (!clientId || !verifyClientAuthentication(clientId, clientSecret)) {
     console.warn("[oauth/token] client authentication failed");
     return oauthError("invalid_client", 401, "Client authentication failed");
   }

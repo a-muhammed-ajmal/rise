@@ -17,7 +17,7 @@ const RATE_LIMIT = { limit: 2, windowMs: 60_000 };
 
 export async function POST(request: Request) {
   // Throttle ahead of auth so credential guessing cannot be run at speed.
-  const rl = checkRateLimit(
+  const rl = await checkRateLimit(
     `digest:${clientIpFrom(request.headers)}`,
     RATE_LIMIT,
   );
@@ -65,8 +65,8 @@ export async function POST(request: Request) {
     const ai = new GoogleGenAI({ apiKey: geminiKey });
     const result = await runDailyDigestWorkflow({
       userId: user.id,
-      db: adminDb as never,
-      ai: ai as never,
+      db: adminDb,
+      ai,
       now: new Date(),
       source: "cron",
     });

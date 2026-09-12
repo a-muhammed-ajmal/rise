@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AttachmentChip } from "@/components/assistant/attachment-chip";
 import { AudioRecorder } from "@/components/assistant/audio-recorder";
 import type { AttachmentStatus } from "@/components/assistant/attachment-chip";
-import type { ChatAttachment, Database } from "@/lib/types/database";
+import type { ChatAttachment, Database, Json } from "@/lib/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   Send,
@@ -57,6 +58,105 @@ type PendingAttachment = {
   previewUrl?: string;
   result?: ChatAttachment;
 };
+
+const UploadAttachmentSchema = z.object({
+  storage_path: z.string().min(1),
+  filename: z.string().min(1),
+  mime_type: z.string().min(1),
+  size_bytes: z.number().int().nonnegative(),
+  category: z.enum(["image", "file", "audio"]),
+  extracted_text: z.string().optional(),
+  transcript: z.string().optional(),
+});
+
+const ChatAttachmentSchema = UploadAttachmentSchema.extend({
+  id: z.string().min(1),
+});
+
+const ToolResultSchema = z.object({
+  tool: z.string(),
+  message: z.string(),
+  success: z.boolean(),
+});
+
+const MessageSchema = z.object({
+  id: z.string().min(1),
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+  toolResults: z.array(ToolResultSchema).optional(),
+  attachments: z.array(ChatAttachmentSchema).optional(),
+});
+
+const MessagesSchema = z.array(MessageSchema);
+
+const ApprovalToolSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  input: z.record(z.string(), z.unknown()),
+});
+
+const StreamEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({
+    type: z.literal("tool_result"),
+    tool: z.string(),
+    result: z.object({ message: z.string(), success: z.boolean() }),
+  }),
+  z.object({
+    type: z.literal("error"),
+    message: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("approval_required"),
+    tool: ApprovalToolSchema,
+    token: z.string().min(1),
+  }),
+]);
+
+const ApprovalResponseSchema = z.object({
+  result: z.object({ message: z.string(), success: z.boolean() }),
+});
+
+function attachmentsToJson(attachments: ChatAttachment[]): Json[] {
+  return attachments.map((attachment) => {
+    const result: { [key: string]: Json } = {
+      id: attachment.id,
+      storage_path: attachment.storage_path,
+      filename: attachment.filename,
+      mime_type: attachment.mime_type,
+      size_bytes: attachment.size_bytes,
+      category: attachment.category,
+    };
+    if (attachment.extracted_text !== undefined) {
+      result.extracted_text = attachment.extracted_text;
+    }
+    if (attachment.transcript !== undefined) {
+      result.transcript = attachment.transcript;
+    }
+    return result;
+  });
+}
+
+function messagesToJson(messages: Message[]): Json {
+  return messages.map((message) => {
+    const result: { [key: string]: Json } = {
+      id: message.id,
+      role: message.role,
+      content: message.content,
+    };
+    if (message.toolResults) {
+      result.toolResults = message.toolResults.map((toolResult) => ({
+        tool: toolResult.tool,
+        message: toolResult.message,
+        success: toolResult.success,
+      }));
+    }
+    if (message.attachments) {
+      result.attachments = attachmentsToJson(message.attachments);
+    }
+    return result;
+  });
+}
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -317,9 +417,9 @@ function AssistantContent() {
 
       if (data) {
         setConversationId(data.id);
-        const stored = data.messages as Message[] | null;
-        if (Array.isArray(stored) && stored.length > 0) {
-          setMessages(stored);
+        const stored = MessagesSchema.safeParse(data.messages);
+        if (stored.success && stored.data.length > 0) {
+          setMessages(stored.data);
         }
       }
       setHistoryLoading(false);
@@ -343,20 +443,25 @@ function AssistantContent() {
     if (!user) return;
 
     if (convId) {
-      await supabase
+      const { error } = await supabase
         .from("ai_conversations")
-        .update({ messages: msgs as unknown as import("@/lib/types/database").Json })
+        .update({ messages: messagesToJson(msgs) })
         .eq("id", convId)
         .eq("user_id", user.id);
+      if (error) console.error("[assistant] conversation update failed:", error.message);
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("ai_conversations")
         .insert({
           user_id: user.id,
-          messages: msgs as unknown as import("@/lib/types/database").Json,
+          messages: messagesToJson(msgs),
         })
         .select("id")
         .single();
+      if (error) {
+        console.error("[assistant] conversation create failed:", error.message);
+        return;
+      }
       if (data) setConversationId(data.id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -408,7 +513,21 @@ function AssistantContent() {
         return;
       }
 
-      const result = (await res.json()) as Omit<ChatAttachment, "id">;
+      const result = UploadAttachmentSchema.safeParse(await res.json());
+      if (!result.success) {
+        setPendingAttachments((prev) =>
+          prev.map((attachment) =>
+            attachment.id === pendingId
+              ? {
+                  ...attachment,
+                  status: "error",
+                  errorMessage: "The upload response was invalid. Please try again.",
+                }
+              : attachment,
+          ),
+        );
+        return;
+      }
       setPendingAttachments((prev) =>
         prev.map((a) =>
           a.id === pendingId
@@ -416,7 +535,7 @@ function AssistantContent() {
                 ...a,
                 status: "done",
                 progress: 100,
-                result: { ...result, id: pendingId },
+                result: { ...result.data, id: pendingId },
               }
             : a,
         ),
@@ -478,8 +597,11 @@ function AssistantContent() {
 
   async function sendMessage(userText: string) {
     const readyAttachments = pendingAttachments
-      .filter((a) => a.status === "done" && a.result)
-      .map((a) => a.result!);
+      .flatMap((attachment) =>
+        attachment.status === "done" && attachment.result
+          ? [attachment.result]
+          : [],
+      );
 
     const hasContent = userText.trim() || readyAttachments.length > 0;
     if (!hasContent || loading) return;
@@ -519,20 +641,30 @@ function AssistantContent() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      let sseBuffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split("\n");
+        sseBuffer = lines.pop() ?? "";
 
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const raw = line.slice(6);
           if (raw === "[DONE]") continue;
 
-          const event = JSON.parse(raw);
+          let rawEvent: unknown;
+          try {
+            rawEvent = JSON.parse(raw);
+          } catch {
+            continue;
+          }
+          const parsedEvent = StreamEventSchema.safeParse(rawEvent);
+          if (!parsedEvent.success) continue;
+          const event = parsedEvent.data;
 
           if (event.type === "text") {
             assistantText += event.text;
@@ -591,7 +723,7 @@ function AssistantContent() {
           }
 
           if (event.type === "approval_required") {
-            setPendingApproval({ tool: event.tool, token: event.token as string });
+            setPendingApproval({ tool: event.tool, token: event.token });
           }
         }
       }
@@ -629,19 +761,22 @@ function AssistantContent() {
           approvalToken: pendingApproval.token,
         }),
       });
-      const data = await res.json();
+      const data = ApprovalResponseSchema.safeParse(await res.json());
+      if (!res.ok || !data.success) {
+        throw new Error("Approval execution failed");
+      }
       setMessages((prev) => {
         const updated = [
           ...prev,
           {
             id: crypto.randomUUID(),
             role: "assistant" as const,
-            content: data.result.message,
+            content: data.data.result.message,
             toolResults: [
               {
                 tool: pendingApproval.tool.name,
-                message: data.result.message,
-                success: data.result.success,
+                message: data.data.result.message,
+                success: data.data.result.success,
               },
             ],
           },
@@ -692,7 +827,7 @@ function AssistantContent() {
                 Ask me anything. I can read and act on all your data.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 w-full max-w-md">
               {QUICK_PROMPTS.map((p) => (
                 <button
                   key={p}

@@ -53,7 +53,7 @@ export function DurationPicker({ value, onChange, onClose }: DurationPickerProps
       {/* Header band — matches DateTimePicker style exactly */}
       <div className="bg-brand-action text-white px-4 py-4">
         <p className="text-xs text-white/70 font-medium uppercase tracking-wide">Duration</p>
-        <p className="text-3xl font-bold mt-0.5">{headerLabel}</p>
+        <p className="text-3xl font-semibold mt-0.5">{headerLabel}</p>
       </div>
 
       {/* Hour / minute spinners */}
@@ -68,7 +68,7 @@ export function DurationPicker({ value, onChange, onClose }: DurationPickerProps
           >
             <ChevronUp className="w-4 h-4" />
           </button>
-          <span className="text-3xl font-bold tabular-nums w-12 text-center">
+          <span className="text-3xl font-semibold tabular-nums w-12 text-center">
             {hours.toString().padStart(2, '0')}
           </span>
           <button
@@ -82,7 +82,7 @@ export function DurationPicker({ value, onChange, onClose }: DurationPickerProps
           <span className="text-xs text-muted-foreground font-medium mt-0.5">hours</span>
         </div>
 
-        <span className="text-2xl font-bold text-muted-foreground mt-6">:</span>
+        <span className="text-2xl font-semibold text-muted-foreground mt-6">:</span>
 
         {/* Minutes */}
         <div className="flex flex-col items-center gap-1.5">
@@ -94,7 +94,7 @@ export function DurationPicker({ value, onChange, onClose }: DurationPickerProps
           >
             <ChevronUp className="w-4 h-4" />
           </button>
-          <span className="text-3xl font-bold tabular-nums w-12 text-center">
+          <span className="text-3xl font-semibold tabular-nums w-12 text-center">
             {minutes.toString().padStart(2, '0')}
           </span>
           <button
@@ -114,14 +114,14 @@ export function DurationPicker({ value, onChange, onClose }: DurationPickerProps
         <button
           type="button"
           onClick={onClose}
-          className="text-xs font-bold uppercase tracking-wide text-brand-text"
+          className="text-xs font-semibold uppercase tracking-wide text-brand-text"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleSave}
-          className="text-xs font-bold uppercase tracking-wide text-brand-text"
+          className="text-xs font-semibold uppercase tracking-wide text-brand-text"
         >
           Save
         </button>

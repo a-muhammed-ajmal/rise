@@ -9,6 +9,7 @@ import { subDays, format } from "date-fns";
 import type { Habit, HabitLog } from "@/lib/types/database";
 import { todayISO, display12h } from "@/lib/format";
 import { AffirmationDialog } from "@/components/wellness/affirmation-dialog";
+import { toast } from "sonner";
 
 const DAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const VISIBLE_COUNT = 5;
@@ -35,10 +36,21 @@ export function HabitDashboardSection({ habits, logs }: Props) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("habit_logs").upsert(
-      { user_id: user.id, habit_id: habitId, logged_date: today, completed: true },
+    const { error } = await supabase.from("habit_logs").upsert(
+      {
+        user_id: user.id,
+        habit_id: habitId,
+        logged_date: today,
+        completed: true,
+        deleted_at: null,
+      },
       { onConflict: "habit_id,logged_date" },
     );
+    if (error) {
+      console.error("[dashboard habits] mark done failed:", error.message);
+      toast.error("Could not mark this habit done. Please try again.");
+      return;
+    }
     setLogMap((m) => new Map(m).set(habitId, true));
   }
 
@@ -46,10 +58,21 @@ export function HabitDashboardSection({ habits, logs }: Props) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("habit_logs").upsert(
-      { user_id: user.id, habit_id: habitId, logged_date: today, completed: false },
+    const { error } = await supabase.from("habit_logs").upsert(
+      {
+        user_id: user.id,
+        habit_id: habitId,
+        logged_date: today,
+        completed: false,
+        deleted_at: null,
+      },
       { onConflict: "habit_id,logged_date" },
     );
+    if (error) {
+      console.error("[dashboard habits] mark not done failed:", error.message);
+      toast.error("Could not update this habit. Please try again.");
+      return;
+    }
     setLogMap((m) => new Map(m).set(habitId, false));
   }
 

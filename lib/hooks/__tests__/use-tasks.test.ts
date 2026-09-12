@@ -158,7 +158,9 @@ describe("useTasks", () => {
       await result.current.deleteTask("t-1");
     });
 
-    expect(mockQueryChain.delete).toHaveBeenCalled();
+    expect(mockQueryChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ deleted_at: expect.any(String) }),
+    );
     expect(result.current.tasks).toHaveLength(0);
   });
 

@@ -60,7 +60,20 @@ export function weekdayOf(dateISO: string): Weekday {
 
 // ─── Parse / format ──────────────────────────────────────────────────────────
 
-const FREQS: Frequency[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']
+export const FREQUENCIES: readonly Frequency[] = [
+  'DAILY',
+  'WEEKLY',
+  'MONTHLY',
+  'YEARLY',
+]
+
+export function isFrequency(value: unknown): value is Frequency {
+  return typeof value === 'string' && FREQUENCIES.some((freq) => freq === value)
+}
+
+export function isWeekday(value: unknown): value is Weekday {
+  return typeof value === 'string' && WEEKDAYS.some((day) => day === value)
+}
 
 /** Parse an RRULE string into a spec, or null if absent/invalid. */
 export function parseRule(rule: string | null | undefined): RecurrenceSpec | null {
@@ -71,7 +84,7 @@ export function parseRule(rule: string | null | undefined): RecurrenceSpec | nul
     if (k && v) parts.set(k.trim().toUpperCase(), v.trim())
   }
   const freqRaw = parts.get('FREQ')?.toUpperCase()
-  if (!freqRaw || !FREQS.includes(freqRaw as Frequency)) return null
+  if (!isFrequency(freqRaw)) return null
 
   const intervalRaw = parseInt(parts.get('INTERVAL') ?? '1', 10)
   const interval = Number.isFinite(intervalRaw) && intervalRaw >= 1 ? intervalRaw : 1
@@ -79,7 +92,7 @@ export function parseRule(rule: string | null | undefined): RecurrenceSpec | nul
   const byday = (parts.get('BYDAY') ?? '')
     .split(',')
     .map((d) => d.trim().toUpperCase())
-    .filter((d): d is Weekday => (WEEKDAYS as string[]).includes(d))
+    .filter(isWeekday)
 
   const untilRaw = parts.get('UNTIL')
   const until = untilRaw && /^\d{8}/.test(untilRaw)
@@ -90,7 +103,7 @@ export function parseRule(rule: string | null | undefined): RecurrenceSpec | nul
   const countNum = countRaw ? parseInt(countRaw, 10) : NaN
   const count = Number.isFinite(countNum) && countNum >= 1 ? countNum : null
 
-  return { freq: freqRaw as Frequency, interval, byday, until, count }
+  return { freq: freqRaw, interval, byday, until, count }
 }
 
 /** Serialize a spec back to an RRULE string. */

@@ -5,6 +5,7 @@ import {
 } from "@supabase/supabase-js";
 import { MCP_TOOL_SOURCE, APPROVAL_TOOLS } from "@/lib/ai/tools";
 import {
+  isReadOnlyMcpToolName,
   toMcpToolDefinitions,
   type McpToolDefinition,
 } from "@/lib/ai/mcp-schema";
@@ -20,14 +21,39 @@ import type { Database } from "@/lib/types/database";
 // in-app gate and are denied twice below: absent from MCP_TOOL_NAMES, and named
 // explicitly in MCP_DENIED_NAMES so a future edit to MCP_TOOL_SOURCE cannot
 // quietly let one through. (See CLAUDE.md guardrails.)
-export const MCP_TOOLS: McpToolDefinition[] =
+const ALL_MCP_TOOL_DEFINITIONS: McpToolDefinition[] =
   toMcpToolDefinitions(MCP_TOOL_SOURCE);
 
-const MCP_TOOL_NAMES = new Set(MCP_TOOLS.map((t) => t.name));
 const MCP_DENIED_NAMES = new Set(APPROVAL_TOOLS.map((t) => t.name));
+const MCP_SENSITIVE_WRITE_NAMES = new Set([
+  "log_expense",
+  "log_income",
+  "set_whatsapp_reminders",
+]);
 
-export function isMcpAllowedTool(name: string): boolean {
-  return MCP_TOOL_NAMES.has(name) && !MCP_DENIED_NAMES.has(name);
+export function mcpWritesEnabled(): boolean {
+  return process.env.MCP_ENABLE_WRITES === "true";
+}
+
+export function getMcpTools(
+  allowWrites: boolean = mcpWritesEnabled(),
+): McpToolDefinition[] {
+  return ALL_MCP_TOOL_DEFINITIONS.filter(
+    (tool) =>
+      !MCP_DENIED_NAMES.has(tool.name) &&
+      !MCP_SENSITIVE_WRITE_NAMES.has(tool.name) &&
+      (allowWrites || isReadOnlyMcpToolName(tool.name)),
+  );
+}
+
+// Safe default exported for tests and callers that do not explicitly opt in.
+export const MCP_TOOLS: McpToolDefinition[] = getMcpTools(false);
+
+export function isMcpAllowedTool(
+  name: string,
+  allowWrites: boolean = mcpWritesEnabled(),
+): boolean {
+  return getMcpTools(allowWrites).some((tool) => tool.name === name);
 }
 
 // ─── Static token (Claude Code path) ──────────────────────────────────────────
@@ -97,4 +123,26 @@ export async function getMcpToolContext(userId?: string): Promise<ToolContext> {
   }
   cachedContext = { supabase: getAdmin(), userId: resolvedUserId };
   return cachedContext;
+}
+
+export async function recordMcpAudit(input: {
+  userId: string;
+  clientId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  succeeded: boolean;
+  durationMs: number;
+}): Promise<void> {
+  const inputHash = createHash("sha256")
+    .update(JSON.stringify(input.args))
+    .digest("hex");
+  const { error } = await getAdmin().from("mcp_audit_log").insert({
+    user_id: input.userId,
+    client_id: input.clientId,
+    tool_name: input.toolName,
+    input_hash: inputHash,
+    succeeded: input.succeeded,
+    duration_ms: Math.max(0, Math.round(input.durationMs)),
+  });
+  if (error) console.error("[mcp/audit] write failed", error.message);
 }

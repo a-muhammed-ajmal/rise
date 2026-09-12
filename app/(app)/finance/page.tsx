@@ -67,17 +67,33 @@ import {
 } from "date-fns";
 import { toast } from "sonner";
 
+type FinanceTab =
+  | "overview"
+  | "transactions"
+  | "transfers"
+  | "wallets"
+  | "budgets"
+  | "debts"
+  | "categories";
+
+function isFinanceTab(value: unknown): value is FinanceTab {
+  return (
+    value === "overview" ||
+    value === "transactions" ||
+    value === "transfers" ||
+    value === "wallets" ||
+    value === "budgets" ||
+    value === "debts" ||
+    value === "categories"
+  );
+}
+
+function isBudgetPeriod(value: unknown): value is Budget["period"] {
+  return value === "monthly" || value === "quarterly" || value === "yearly";
+}
 
 export default function FinancePage() {
-  const [tab, setTab] = useState<
-    | "overview"
-    | "transactions"
-    | "transfers"
-    | "wallets"
-    | "budgets"
-    | "debts"
-    | "categories"
-  >("overview");
+  const [tab, setTab] = useState<FinanceTab>("overview");
 
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -151,27 +167,48 @@ export default function FinancePage() {
 
   const fetchData = useCallback(async () => {
     const supabase = createClient();
-    const [{ data: txns }, { data: buds }, { data: dts }] = await Promise.all([
-      // Fetch all transactions — needed for overall metrics and transfers tab
-      supabase
-        .from("transactions")
-        .select("*")
-        .is("deleted_at", null)
-        .order("date", { ascending: false })
-        .limit(500),
-      supabase.from("budgets").select("*")
-      .is("deleted_at", null).gte("period_end", todayISO()),
-      supabase
-        .from("debts")
-        .select("*")
-        .is("deleted_at", null)
-        .is("paid_at", null)
-        .order("created_at", { ascending: false }),
-    ]);
-    setAllTransactions(txns ?? []);
-    setBudgets(buds ?? []);
-    setDebts(dts ?? []);
-    setLoading(false);
+    try {
+      // Metrics and the transfers tab need the complete history. Page through
+      // PostgREST so accounts with >500 rows are not silently under-reported.
+      const txns: Transaction[] = [];
+      const pageSize = 500;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("*")
+          .is("deleted_at", null)
+          .order("date", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) throw new Error(error.message);
+        txns.push(...(data ?? []));
+        if (!data || data.length < pageSize) break;
+      }
+
+      const [budgetsResult, debtsResult] = await Promise.all([
+        supabase
+          .from("budgets")
+          .select("*")
+          .is("deleted_at", null)
+          .gte("period_end", todayISO()),
+        supabase
+          .from("debts")
+          .select("*")
+          .is("deleted_at", null)
+          .is("paid_at", null)
+          .order("created_at", { ascending: false }),
+      ]);
+      if (budgetsResult.error) throw new Error(budgetsResult.error.message);
+      if (debtsResult.error) throw new Error(debtsResult.error.message);
+
+      setAllTransactions(txns);
+      setBudgets(budgetsResult.data ?? []);
+      setDebts(debtsResult.data ?? []);
+    } catch (error) {
+      console.error("[finance] fetch failed:", error);
+      toast.error("Could not load all finance data. Please refresh and try again.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -263,40 +300,72 @@ export default function FinancePage() {
   async function handleDeleteTransaction() {
     if (!deleteTxnId) return;
     const supabase = createClient();
-    await supabase.from("transactions").delete().eq("id", deleteTxnId);
+    const { error } = await supabase
+      .from("transactions")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteTxnId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[finance] transaction soft delete failed:", error.message);
+      toast.error("Could not delete the transaction. Please try again.");
+      return;
+    }
     setDeleteTxnId(null);
-    toast.success("Transaction deleted");
+    toast.success("Transaction moved to the recycle bin");
     await Promise.all([fetchData(), refreshWallets()]);
   }
 
   async function handleDeleteBudget() {
     if (!deleteBudgetId) return;
     const supabase = createClient();
-    await supabase.from("budgets").delete().eq("id", deleteBudgetId);
+    const { error } = await supabase
+      .from("budgets")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteBudgetId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[finance] budget soft delete failed:", error.message);
+      toast.error("Could not delete the budget. Please try again.");
+      return;
+    }
     setDeleteBudgetId(null);
-    toast.success("Budget deleted");
-    fetchData();
+    toast.success("Budget moved to the recycle bin");
+    await fetchData();
   }
 
   async function handleDeleteDebt() {
     if (!deleteDebtId) return;
     const supabase = createClient();
-    await supabase.from("debts").delete().eq("id", deleteDebtId);
+    const { error } = await supabase
+      .from("debts")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteDebtId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[finance] debt soft delete failed:", error.message);
+      toast.error("Could not delete the debt. Please try again.");
+      return;
+    }
     setDeleteDebtId(null);
-    toast.success("Debt deleted");
-    fetchData();
+    toast.success("Debt moved to the recycle bin");
+    await fetchData();
   }
 
   async function handleMarkPaid() {
     if (!markPaidDebtId) return;
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("debts")
       .update({ paid_at: new Date().toISOString() })
       .eq("id", markPaidDebtId);
+    if (error) {
+      console.error("[finance] mark paid failed:", error.message);
+      toast.error("Could not mark this debt as paid. Please try again.");
+      return;
+    }
     setMarkPaidDebtId(null);
     toast.success("Marked as paid");
-    fetchData();
+    await fetchData();
   }
 
   async function handleWalletSave(data: {
@@ -535,7 +604,12 @@ export default function FinancePage() {
 
       {/* Tabs */}
       <div className="slide-up stagger-4">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            if (isFinanceTab(value)) setTab(value);
+          }}
+        >
           <TabsList className="w-full overflow-x-auto flex justify-start whitespace-nowrap h-auto p-1 gap-0.5">
             <TabsTrigger value="overview" className="shrink-0 text-xs px-3 py-1.5">
               Overview
@@ -1206,7 +1280,7 @@ export default function FinancePage() {
           if (!v) setDeleteTxnId(null);
         }}
         title="Delete transaction?"
-        description="This transaction will be permanently removed."
+        description="This transaction will move to the recycle bin and can be restored. Its wallet balance will be adjusted."
         onConfirm={handleDeleteTransaction}
       />
       <ConfirmDialog
@@ -1215,7 +1289,7 @@ export default function FinancePage() {
           if (!v) setDeleteBudgetId(null);
         }}
         title="Delete budget?"
-        description="This budget will be permanently removed."
+        description="This budget will move to the recycle bin and can be restored."
         onConfirm={handleDeleteBudget}
       />
       <ConfirmDialog
@@ -1224,7 +1298,7 @@ export default function FinancePage() {
           if (!v) setDeleteDebtId(null);
         }}
         title="Delete debt?"
-        description="This debt record will be permanently removed."
+        description="This debt record will move to the recycle bin and can be restored."
         onConfirm={handleDeleteDebt}
       />
       <ConfirmDialog
@@ -1336,17 +1410,23 @@ function BudgetForm({
     const periodStart = format(startOfMonth(today), "yyyy-MM-dd");
     const periodEnd = format(endOfMonth(today), "yyyy-MM-dd");
 
+    let errorMessage: string | null = null;
     if (initial) {
-      await supabase
+      const { error } = await supabase
         .from("budgets")
         .update({ category, amount: parseFloat(amount), period })
         .eq("id", initial.id);
+      errorMessage = error?.message ?? null;
     } else {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("budgets").insert({
+      if (!user) {
+        setSaving(false);
+        toast.error("Your session expired. Please sign in again.");
+        return;
+      }
+      const { error } = await supabase.from("budgets").insert({
         user_id: user.id,
         category,
         amount: parseFloat(amount),
@@ -1354,6 +1434,13 @@ function BudgetForm({
         period_start: periodStart,
         period_end: periodEnd,
       });
+      errorMessage = error?.message ?? null;
+    }
+    if (errorMessage) {
+      console.error("[finance] budget save failed:", errorMessage);
+      toast.error("Could not save the budget. Please try again.");
+      setSaving(false);
+      return;
     }
 
     setSaving(false);
@@ -1363,7 +1450,7 @@ function BudgetForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="md:max-w-sm">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Budget" : "New Budget"}</DialogTitle>
         </DialogHeader>
@@ -1447,7 +1534,9 @@ function BudgetForm({
               <Label>Period</Label>
               <Select
                 value={period}
-                onValueChange={(v) => setPeriod(v as Budget["period"])}
+                onValueChange={(value) => {
+                  if (isBudgetPeriod(value)) setPeriod(value);
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -1520,8 +1609,9 @@ function DebtForm({
     setSaving(true);
     const supabase = createClient();
 
+    let errorMessage: string | null = null;
     if (initial) {
-      await supabase
+      const { error } = await supabase
         .from("debts")
         .update({
           creditor: creditor.trim(),
@@ -1531,12 +1621,17 @@ function DebtForm({
           due_date: dueDate || null,
         })
         .eq("id", initial.id);
+      errorMessage = error?.message ?? null;
     } else {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("debts").insert({
+      if (!user) {
+        setSaving(false);
+        toast.error("Your session expired. Please sign in again.");
+        return;
+      }
+      const { error } = await supabase.from("debts").insert({
         user_id: user.id,
         creditor: creditor.trim(),
         type,
@@ -1544,6 +1639,13 @@ function DebtForm({
         description: description || null,
         due_date: dueDate || null,
       });
+      errorMessage = error?.message ?? null;
+    }
+    if (errorMessage) {
+      console.error("[finance] debt save failed:", errorMessage);
+      toast.error("Could not save the debt. Please try again.");
+      setSaving(false);
+      return;
     }
 
     setSaving(false);
@@ -1553,7 +1655,7 @@ function DebtForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="md:max-w-sm">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Debt" : "Add Debt / Loan"}</DialogTitle>
         </DialogHeader>

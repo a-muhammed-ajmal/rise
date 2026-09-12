@@ -120,7 +120,7 @@ function QuickAddPanel({
   return (
     <>
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="md:max-w-md">
           <DialogHeader>
             <DialogTitle>Quick add</DialogTitle>
           </DialogHeader>

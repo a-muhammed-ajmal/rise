@@ -1,38 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
-import { addDaysISO, toDubaiISODate } from "@/lib/format";
-
-type QueryResult = { data?: unknown; error?: unknown };
-
-// Only `select` and `eq` are invoked unconditionally; every other step in the
-// chain is called with `?.`, so the contract marks them optional. Keeping this
-// honest lets a caller supply a table-specific builder (the notes path needs
-// no ordering or filtering) without stubbing methods it never reaches.
-type QueryBuilder = {
-  select: (...args: string[]) => QueryBuilder;
-  eq: (column: string, value: unknown) => QueryBuilder;
-  // Required, not optional: every digest query must exclude soft-deleted rows,
-  // so a test double that omits it should fail to compile rather than silently
-  // report deleted tasks in the evening digest.
-  is: (column: string, value: unknown) => QueryBuilder;
-  neq?: (column: string, value: unknown) => QueryBuilder;
-  gte?: (column: string, value: string) => QueryBuilder;
-  order?: (column: string, options?: { ascending?: boolean }) => QueryBuilder;
-  limit?: (value: number) => QueryBuilder;
-  maybeSingle?: () => Promise<QueryResult>;
-  insert?: (payload: Record<string, unknown>) => Promise<QueryResult>;
-  update?: (payload: Record<string, unknown>) => QueryBuilder;
-};
+import { addDaysISO, formatAED, toDubaiISODate } from "@/lib/format";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/types/database";
 
 export interface DailyDigestWorkflowArgs {
   userId: string;
-  db: {
-    from: (table: string) => QueryBuilder;
-  };
-  ai?: {
-    models: {
-      generateContent: (input: unknown) => Promise<unknown>;
-    };
-  };
+  db: SupabaseClient<Database>;
+  ai?: GoogleGenAI;
   now?: Date;
   source?: string;
 }
@@ -48,25 +22,14 @@ export interface DailyDigestResult {
 
 // P1 first, P4 last — plain string sort already gives that ordering.
 function byDueThenPriority(
-  a: { due_date?: string; priority?: string },
-  b: { due_date?: string; priority?: string },
+  a: { due_date?: string | null; priority?: string },
+  b: { due_date?: string | null; priority?: string },
 ): number {
   const dueCompare = (a.due_date ?? "9999-12-31").localeCompare(
     b.due_date ?? "9999-12-31",
   );
   if (dueCompare !== 0) return dueCompare;
   return (a.priority ?? "P4").localeCompare(b.priority ?? "P4");
-}
-
-function rowsOf(result: unknown): {
-  rows: Array<Record<string, unknown>>;
-  error: unknown;
-} {
-  const r = (result ?? {}) as {
-    data?: Array<Record<string, unknown>>;
-    error?: unknown;
-  };
-  return { rows: r.data ?? [], error: r.error ?? null };
 }
 
 export async function runDailyDigestWorkflow({
@@ -78,42 +41,69 @@ export async function runDailyDigestWorkflow({
 }: DailyDigestWorkflowArgs): Promise<DailyDigestResult> {
   const todayStr = toDubaiISODate(now);
 
-  const completedTasksQuery = db.from("tasks").select("title, priority, completed_at")
-    .is("deleted_at", null);
-  const todayHabitLogsQuery = db.from("habit_logs").select("habit_id, completed, logged_date")
-    .is("deleted_at", null);
-  const habitsQuery = db.from("habits").select("id, name, icon")
-    .is("deleted_at", null);
-  const todayTransactionsQuery = db.from("transactions").select("type, amount, category, description")
-    .is("deleted_at", null);
-  const pendingTasksQuery = db.from("tasks").select("title, priority, due_date")
-    .is("deleted_at", null);
-  const activeGoalsQuery = db.from("goals").select("title, progress, status")
-    .is("deleted_at", null);
-
-  const [completedTasksResult, todayHabitLogsResult, habitsResult, todayTransactionsResult, pendingTasksResult, activeGoalsResult] = await Promise.all([
-    completedTasksQuery.eq?.("user_id", userId).eq?.("status", "done").gte?.("completed_at", `${todayStr}T00:00:00`).order?.("completed_at", { ascending: false }),
-    todayHabitLogsQuery.eq?.("user_id", userId).eq?.("logged_date", todayStr),
-    habitsQuery.eq?.("user_id", userId).eq?.("active", true),
-    todayTransactionsQuery.eq?.("user_id", userId).eq?.("date", todayStr),
-    pendingTasksQuery.eq?.("user_id", userId).neq?.("status", "done").order?.("priority"),
-    activeGoalsQuery.eq?.("user_id", userId).eq?.("status", "active").order?.("progress", { ascending: false }).limit?.(5),
+  const [
+    completedTasksResult,
+    todayHabitLogsResult,
+    habitsResult,
+    todayTransactionsResult,
+    pendingTasksResult,
+    activeGoalsResult,
+  ] = await Promise.all([
+    db
+      .from("tasks")
+      .select("title, priority, completed_at")
+      .is("deleted_at", null)
+      .eq("user_id", userId)
+      .eq("status", "done")
+      .gte("completed_at", `${todayStr}T00:00:00`)
+      .order("completed_at", { ascending: false }),
+    db
+      .from("habit_logs")
+      .select("habit_id, completed, logged_date")
+      .is("deleted_at", null)
+      .eq("user_id", userId)
+      .eq("logged_date", todayStr),
+    db
+      .from("habits")
+      .select("id, name, icon")
+      .is("deleted_at", null)
+      .eq("user_id", userId)
+      .eq("active", true),
+    db
+      .from("transactions")
+      .select("type, amount, category, description")
+      .is("deleted_at", null)
+      .eq("user_id", userId)
+      .eq("date", todayStr),
+    db
+      .from("tasks")
+      .select("title, priority, due_date")
+      .is("deleted_at", null)
+      .eq("user_id", userId)
+      .neq("status", "done")
+      .order("priority"),
+    db
+      .from("goals")
+      .select("title, progress, status")
+      .is("deleted_at", null)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("progress", { ascending: false })
+      .limit(5),
   ]);
-
-  const completed = rowsOf(completedTasksResult);
-  const habitLogs = rowsOf(todayHabitLogsResult);
-  const habitRows = rowsOf(habitsResult);
-  const transactions = rowsOf(todayTransactionsResult);
-  const pending = rowsOf(pendingTasksResult);
-  const goalRows = rowsOf(activeGoalsResult);
 
   // A partial read would silently produce a wrong digest ("0 habits done"), so
   // fail loudly instead of reporting an empty day as if it were real.
-  const readError = [completed, habitLogs, habitRows, transactions, pending, goalRows].find(
-    (r) => r.error,
-  );
+  const readError = [
+    completedTasksResult.error,
+    todayHabitLogsResult.error,
+    habitsResult.error,
+    todayTransactionsResult.error,
+    pendingTasksResult.error,
+    activeGoalsResult.error,
+  ].find(Boolean);
   if (readError) {
-    console.error("[daily-digest] read failed:", readError.error);
+    console.error("[daily-digest] read failed:", readError);
     return {
       success: false,
       date: todayStr,
@@ -124,12 +114,12 @@ export async function runDailyDigestWorkflow({
     };
   }
 
-  const completedTasks = completed.rows as Array<{ priority?: string; title?: string }>;
-  const todayHabitLogs = habitLogs.rows as Array<{ habit_id: string; completed: boolean }>;
-  const habits = habitRows.rows as Array<{ id: string; name: string }>;
-  const todayTransactions = transactions.rows as Array<{ type: string; amount: number; category?: string }>;
-  const pendingTasks = pending.rows as Array<{ due_date?: string; priority?: string; title?: string }>;
-  const activeGoals = goalRows.rows as Array<{ title?: string; progress?: number }>;
+  const completedTasks = completedTasksResult.data ?? [];
+  const todayHabitLogs = todayHabitLogsResult.data ?? [];
+  const habits = habitsResult.data ?? [];
+  const todayTransactions = todayTransactionsResult.data ?? [];
+  const pendingTasks = pendingTasksResult.data ?? [];
+  const activeGoals = activeGoalsResult.data ?? [];
 
   const completedCount = completedTasks.length;
   // Logs carry habit_id; names come from the habits table. Compare IDs to IDs.
@@ -158,9 +148,9 @@ HABITS:
 - Missed: ${missedHabits.join(", ") || "None"}
 
 FINANCE:
-- Income today: AED ${totalIncome.toFixed(2)}
-- Expenses today: AED ${totalExpense.toFixed(2)}
-- Transactions: ${todayTransactions.map((transaction) => `${transaction.type} AED ${transaction.amount} (${transaction.category})`).join(", ") || "None"}
+- Income today: ${formatAED(totalIncome)}
+- Expenses today: ${formatAED(totalExpense)}
+- Transactions: ${todayTransactions.map((transaction) => `${transaction.type} ${formatAED(transaction.amount)} (${transaction.category})`).join(", ") || "None"}
 
 TASKS DUE SOON:
 ${dueSoon.join("\n") || "None due imminently"}
@@ -204,7 +194,7 @@ ${context}`,
     ],
   });
 
-  const digestText = (response as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates?.[0]?.content?.parts?.[0]?.text ?? "Daily digest unavailable.";
+  const digestText = response.text ?? "Daily digest unavailable.";
 
   const noteTitle = `Daily Digest — ${todayStr}`;
 
@@ -245,38 +235,34 @@ async function writeDigestNote({
   noteTitle: string;
   digestText: string;
 }): Promise<unknown> {
-  const existingResult = await db
+  const { data: existing, error: existingError } = await db
     .from("notes")
     .select("id")
     .is("deleted_at", null)
     .eq("user_id", userId)
     .eq("title", noteTitle)
-    .maybeSingle?.();
+    .maybeSingle();
+  if (existingError) return existingError;
 
-  const existing = (existingResult ?? {}) as {
-    data?: { id?: string } | null;
-    error?: unknown;
-  };
-  if (existing.error) return existing.error;
-
-  const nowIso = new Date().toISOString();
-
-  if (existing.data?.id) {
-    const updateResult = await db
+  if (existing?.id) {
+    const noteUpdate: Database["public"]["Tables"]["notes"]["Update"] = {
+      content: digestText,
+    };
+    const { error } = await db
       .from("notes")
-      .update?.({ content: digestText, updated_at: nowIso })
-      .eq("id", existing.data.id)
+      .update(noteUpdate)
+      .eq("id", existing.id)
       .eq("user_id", userId);
-    return (updateResult as QueryResult | undefined)?.error ?? null;
+    return error;
   }
 
-  const insertResult = await db.from("notes").insert?.({
+  const noteInsert: Database["public"]["Tables"]["notes"]["Insert"] = {
     user_id: userId,
     title: noteTitle,
     content: digestText,
     tags: ["daily-digest"],
     linked_to_type: null,
-    updated_at: nowIso,
-  });
-  return (insertResult as QueryResult | undefined)?.error ?? null;
+  };
+  const { error } = await db.from("notes").insert(noteInsert);
+  return error;
 }

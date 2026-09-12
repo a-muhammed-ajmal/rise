@@ -15,8 +15,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect('/login')
 
   const meta = user.user_metadata ?? {}
-  const fullName = (meta.full_name as string | undefined) ?? undefined
-  const avatarUrl = (meta.avatar_url as string | undefined) ?? undefined
+  const fullName = typeof meta.full_name === 'string' ? meta.full_name : undefined
+  const avatarUrl = typeof meta.avatar_url === 'string' ? meta.avatar_url : undefined
 
   return (
     <>

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { format, parseISO, startOfMonth } from "date-fns";
-import { todayISO, todayDOW, addDaysISO } from "@/lib/format";
+import { todayISO, todayDOW, addDaysISO, formatAED } from "@/lib/format";
 import { z } from "zod";
 import {
   storeMemory,
@@ -627,11 +627,7 @@ const ListFocusSessionsInput = z.object({
 
 // ─── Recycle bin ──────────────────────────────────────────────────────────────
 
-// z.enum needs a non-empty tuple; DELETABLE_ENTITIES is a plain array, so it is
-// widened here once rather than duplicating the 17 names.
-const deletableEntity = z.enum(
-  DELETABLE_ENTITIES as [DeletableEntity, ...DeletableEntity[]],
-);
+const deletableEntity = z.enum(DELETABLE_ENTITIES);
 
 const ListDeletedInput = z.object({
   entity: deletableEntity.optional(),
@@ -1118,7 +1114,7 @@ export async function executeTool(
       if (error) return dbErr("log_expense", error);
       return {
         success: true,
-        message: `Logged expense: AED ${p.data.amount} for ${p.data.category}`,
+        message: `Logged expense: ${formatAED(p.data.amount)} for ${p.data.category}`,
       };
     }
 
@@ -1148,7 +1144,7 @@ export async function executeTool(
       if (error) return dbErr("log_income", error);
       return {
         success: true,
-        message: `Logged income: AED ${p.data.amount} from ${p.data.category}`,
+        message: `Logged income: ${formatAED(p.data.amount)} from ${p.data.category}`,
       };
     }
 
@@ -1501,10 +1497,10 @@ export async function executeTool(
       const transactions = txRes.data ?? [];
       const income = transactions
         .filter((t) => t.type === "income")
-        .reduce((s: number, t) => s + (t.amount as number), 0);
+        .reduce((sum, transaction) => sum + transaction.amount, 0);
       const expenses = transactions
         .filter((t) => t.type === "expense")
-        .reduce((s: number, t) => s + (t.amount as number), 0);
+        .reduce((sum, transaction) => sum + transaction.amount, 0);
 
       const tasks = taskRes.data ?? [];
       const tasksCompleted = tasks.filter((t) => t.status === "done").length;
@@ -1521,10 +1517,8 @@ export async function executeTool(
       const avgProgress =
         goals.length > 0
           ? Math.round(
-              goals.reduce(
-                (s: number, g) => s + ((g.progress as number) ?? 0),
-                0,
-              ) / goals.length,
+              goals.reduce((sum, goal) => sum + goal.progress, 0) /
+                goals.length,
             )
           : 0;
 
@@ -2196,7 +2190,7 @@ export async function executeTool(
         .select()
         .single();
       if (error) return dbErr("create_transfer", error);
-      return { success: true, message: `Transferred AED ${p.data.amount}`, data };
+      return { success: true, message: `Transferred ${formatAED(p.data.amount)}`, data };
     }
 
     case "create_adjustment": {
@@ -2228,7 +2222,7 @@ export async function executeTool(
       if (error) return dbErr("create_adjustment", error);
       return {
         success: true,
-        message: `Adjusted balance by AED ${p.data.amount}`,
+        message: `Adjusted balance by ${formatAED(p.data.amount)}`,
         data,
       };
     }
@@ -2268,7 +2262,7 @@ export async function executeTool(
       if (error) return dbErr("create_budget", error);
       return {
         success: true,
-        message: `Created budget: ${p.data.category} AED ${p.data.amount}`,
+        message: `Created budget: ${p.data.category} ${formatAED(p.data.amount)}`,
         data,
       };
     }
@@ -2342,7 +2336,7 @@ export async function executeTool(
       if (error) return dbErr("create_debt", error);
       return {
         success: true,
-        message: `Recorded AED ${p.data.amount} ${direction} ${p.data.creditor}`,
+        message: `Recorded ${formatAED(p.data.amount)} ${direction} ${p.data.creditor}`,
         data,
       };
     }
@@ -2948,12 +2942,14 @@ export async function executeTool(
       if (!p.success) return badInput();
 
       // Merge fact into user_profile.facts (upsert-safe)
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from("user_profile")
         .select("facts")
         .eq("user_id", userId)
         .maybeSingle();
-      const currentFacts = (existing?.facts ?? {}) as Record<string, string>;
+      if (existingError) return dbErr("remember_user_fact", existingError);
+      const parsedFacts = z.record(z.string(), z.string()).safeParse(existing?.facts);
+      const currentFacts = parsedFacts.success ? parsedFacts.data : {};
       const updatedFacts = { ...currentFacts, [p.data.key]: p.data.value };
 
       const { error } = await supabase
@@ -3189,11 +3185,12 @@ export async function executeTool(
 
       // Facts live in two places — the JSONB map that builds profile context,
       // and the vector store behind recall_memories. Both have to forget.
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("user_profile")
         .select("facts")
         .eq("user_id", userId)
         .maybeSingle();
+      if (profileError) return dbErr("forget_user_fact", profileError);
 
       const facts = profile?.facts;
       if (!facts || typeof facts !== "object" || Array.isArray(facts))
@@ -3201,9 +3198,11 @@ export async function executeTool(
 
       const remaining: Record<string, Json> = {};
       let found = false;
+      let forgottenValue: string | null = null;
       for (const [key, value] of Object.entries(facts)) {
         if (key === p.data.key) {
           found = true;
+          if (typeof value === "string") forgottenValue = value;
           continue;
         }
         remaining[key] = value;
@@ -3220,12 +3219,16 @@ export async function executeTool(
         .eq("user_id", userId);
       if (error) return dbErr("forget_user_fact", error);
 
-      await supabase
-        .from("ai_memory")
-        .delete()
-        .eq("user_id", userId)
-        .eq("memory_type", "user_fact")
-        .ilike("content", `${p.data.key}:%`);
+      if (forgottenValue !== null) {
+        const { error: memoryDeleteError } = await supabase
+          .from("ai_memory")
+          .delete()
+          .eq("user_id", userId)
+          .eq("memory_type", "user_fact")
+          .eq("content", `User fact — ${p.data.key}: ${forgottenValue}`);
+        if (memoryDeleteError)
+          return dbErr("forget_user_fact", memoryDeleteError);
+      }
 
       return {
         success: true,

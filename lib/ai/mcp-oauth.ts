@@ -13,15 +13,14 @@ const ACCESS_TOKEN_TTL_SEC = 60 * 60; // 1 hour
 const REFRESH_TOKEN_TTL_SEC = 60 * 60 * 24 * 30; // 30 days
 const CODE_TTL_SEC = 60; // 1 minute — codes are single-use and short-lived
 
-// Only these hosts may receive an authorization-code redirect. This prevents an
-// open-redirect / code-exfiltration attack. Claude's callback lives on
-// claude.ai / claude.com; localhost is allowed for local MCP-inspector testing.
-const ALLOWED_REDIRECT_HOSTS = new Set([
-  "claude.ai",
-  "claude.com",
-  "localhost",
-  "127.0.0.1",
+// Exact hosted callback allowlist. Additional callbacks can be supplied as a
+// comma-separated MCP_OAUTH_REDIRECT_URIS value. Native clients use a dynamic
+// loopback port, so only their host + known callback path can be fixed.
+const DEFAULT_REDIRECT_URIS = new Set([
+  "https://claude.ai/api/mcp/auth_callback",
+  "https://claude.com/api/mcp/auth_callback",
 ]);
+const LOOPBACK_REDIRECT_PATHS = new Set(["/callback", "/api/mcp/auth_callback"]);
 
 // ─── Service-role client (mirrors lib/ai/mcp.ts) ──────────────────────────────
 function adminClient() {
@@ -72,9 +71,18 @@ export function getRegisteredClient(): { id: string; secret: string } | null {
   return { id, secret };
 }
 
+function publicClientIds(): Set<string> {
+  return new Set(
+    (process.env.MCP_OAUTH_PUBLIC_CLIENT_IDS ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean),
+  );
+}
+
 export function isValidClientId(clientId: string): boolean {
   const c = getRegisteredClient();
-  return c ? safeEqual(clientId, c.id) : false;
+  return (c ? safeEqual(clientId, c.id) : false) || publicClientIds().has(clientId);
 }
 
 export function verifyClientSecret(
@@ -86,12 +94,34 @@ export function verifyClientSecret(
   return safeEqual(clientId, c.id) && safeEqual(clientSecret, c.secret);
 }
 
+export function verifyClientAuthentication(
+  clientId: string,
+  clientSecret: string | undefined,
+): boolean {
+  if (publicClientIds().has(clientId)) return clientSecret === undefined;
+  return verifyClientSecret(clientId, clientSecret);
+}
+
 export function isAllowedRedirectUri(redirectUri: string): boolean {
   try {
     const u = new URL(redirectUri);
-    const isLocal = u.hostname === "localhost" || u.hostname === "127.0.0.1";
-    if (u.protocol !== "https:" && !isLocal) return false;
-    return ALLOWED_REDIRECT_HOSTS.has(u.hostname);
+    if (u.username || u.password || u.hash) return false;
+    const isLoopback = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+    if (isLoopback) {
+      return (
+        (u.protocol === "http:" || u.protocol === "https:") &&
+        LOOPBACK_REDIRECT_PATHS.has(u.pathname)
+      );
+    }
+    if (u.protocol !== "https:") return false;
+    const configured = new Set([
+      ...DEFAULT_REDIRECT_URIS,
+      ...(process.env.MCP_OAUTH_REDIRECT_URIS ?? "")
+        .split(",")
+        .map((uri) => uri.trim())
+        .filter(Boolean),
+    ]);
+    return configured.has(u.toString());
   } catch {
     return false;
   }
@@ -144,20 +174,16 @@ export async function consumeAuthorizationCode(
 ): Promise<AuthCodeParams | null> {
   const sb = adminClient();
   const { data, error } = await sb
-    .from("oauth_authorization_codes")
-    .select("*")
-    .eq("code_hash", hashToken(code))
-    .maybeSingle();
-  if (error || !data) return null;
-  await sb.from("oauth_authorization_codes").delete().eq("id", data.id);
-  if (new Date(data.expires_at).getTime() < Date.now()) return null;
+    .rpc("consume_oauth_authorization_code", { p_code_hash: hashToken(code) });
+  const consumed = data?.[0];
+  if (error || !consumed) return null;
   return {
-    userId: data.user_id,
-    clientId: data.client_id,
-    redirectUri: data.redirect_uri,
-    codeChallenge: data.code_challenge,
-    scope: data.scope,
-    resource: data.resource,
+    userId: consumed.user_id,
+    clientId: consumed.client_id,
+    redirectUri: consumed.redirect_uri,
+    codeChallenge: consumed.code_challenge,
+    scope: consumed.scope,
+    resource: consumed.resource,
   };
 }
 
@@ -212,36 +238,33 @@ export async function rotateRefreshToken(
   clientId: string,
 ): Promise<IssuedTokens | null> {
   const sb = adminClient();
+  const accessToken = generateToken();
+  const nextRefreshToken = generateToken();
+  const now = Date.now();
   const { data, error } = await sb
-    .from("oauth_tokens")
-    .select("*")
-    .eq("refresh_token_hash", hashToken(refreshToken))
-    .maybeSingle();
-  if (error || !data) return null;
-  if (data.client_id !== clientId) return null;
-  if (data.revoked) {
-    await sb
-      .from("oauth_tokens")
-      .update({ revoked: true })
-      .eq("user_id", data.user_id)
-      .eq("client_id", data.client_id)
-      .eq("revoked", false);
+    .rpc("rotate_oauth_refresh_token", {
+      p_refresh_token_hash: hashToken(refreshToken),
+      p_client_id: clientId,
+      p_access_token_hash: hashToken(accessToken),
+      p_new_refresh_token_hash: hashToken(nextRefreshToken),
+      p_access_expires_at: new Date(now + ACCESS_TOKEN_TTL_SEC * 1000).toISOString(),
+      p_refresh_expires_at: new Date(
+        now + REFRESH_TOKEN_TTL_SEC * 1000,
+      ).toISOString(),
+    });
+  const rotation = data?.[0];
+  if (error || !rotation) return null;
+  if (rotation.rotation_status === "reuse") {
     console.warn("[oauth] refresh token reuse detected — family revoked");
     return null;
   }
-  if (
-    data.refresh_expires_at &&
-    new Date(data.refresh_expires_at).getTime() < Date.now()
-  ) {
-    return null;
-  }
-  await sb.from("oauth_tokens").update({ revoked: true }).eq("id", data.id);
-  return issueTokens({
-    userId: data.user_id,
-    clientId: data.client_id,
-    scope: data.scope,
-    resource: data.resource,
-  });
+  if (rotation.rotation_status !== "rotated" || !rotation.scope) return null;
+  return {
+    accessToken,
+    refreshToken: nextRefreshToken,
+    expiresIn: ACCESS_TOKEN_TTL_SEC,
+    scope: rotation.scope,
+  };
 }
 
 // ─── Access-token verification (resource server) ──────────────────────────────
@@ -285,6 +308,7 @@ export function authorizationServerMetadata(issuer: string) {
     grant_types_supported: ["authorization_code", "refresh_token"],
     code_challenge_methods_supported: ["S256"],
     token_endpoint_auth_methods_supported: [
+      "none",
       "client_secret_post",
       "client_secret_basic",
     ],

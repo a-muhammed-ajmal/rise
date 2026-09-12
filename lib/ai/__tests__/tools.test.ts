@@ -5,9 +5,8 @@ import {
   APPROVAL_TOOLS,
   ALL_TOOLS,
   APPROVAL_TOOL_NAMES,
-  MCP_TOOL_SOURCE,
 } from "../tools";
-import { MCP_TOOLS, isMcpAllowedTool } from "../mcp";
+import { MCP_TOOLS, getMcpTools, isMcpAllowedTool } from "../mcp";
 import { DELETE_TOOL_TARGETS } from "../deletable";
 
 // Tools that destroy data with no way back. This is the line the MCP boundary
@@ -205,35 +204,32 @@ describe("MCP exposure", () => {
     expect(bad).toEqual([]);
   });
 
-  // The point of the whole change: Claude can delete over MCP.
-  it("exposes every reversible delete", () => {
-    for (const tool of REVERSIBLE_TOOLS) {
-      expect(isMcpAllowedTool(tool.name ?? "")).toBe(true);
-    }
+  it("defaults to read-only tools", () => {
+    expect(MCP_TOOLS.length).toBeGreaterThan(0);
+    expect(MCP_TOOLS.every((tool) => /^(list|get|search|recall)_/.test(tool.name ?? ""))).toBe(true);
+    expect(isMcpAllowedTool("delete_task")).toBe(false);
   });
 
   it("exposes the recycle bin so a delete can be undone", () => {
     expect(isMcpAllowedTool("list_deleted")).toBe(true);
-    expect(isMcpAllowedTool("restore_record")).toBe(true);
+    expect(isMcpAllowedTool("restore_record")).toBe(false);
   });
 
   // Every delete reachable over MCP must have a matching undo, or the tier's
   // safety argument does not hold.
   it("pairs every exposed delete with an exposed restore path", () => {
     const exposed = MCP_TOOLS.map((t) => t.name);
-    const deletes = exposed.filter((n) => n.startsWith("delete_"));
-    expect(deletes.length).toBeGreaterThan(0);
-    expect(exposed).toContain("restore_record");
+    expect(exposed.some((n) => n.startsWith("delete_"))).toBe(false);
   });
 
   it("still exposes the read and create tools", () => {
     expect(isMcpAllowedTool("list_tasks")).toBe(true);
-    expect(isMcpAllowedTool("create_task")).toBe(true);
+    expect(isMcpAllowedTool("create_task")).toBe(false);
     expect(isMcpAllowedTool("get_analytics")).toBe(true);
   });
 
   it("matches the declared MCP source", () => {
-    expect(MCP_TOOLS).toHaveLength(MCP_TOOL_SOURCE.length);
+    expect(getMcpTools(true).length).toBeGreaterThan(MCP_TOOLS.length);
   });
 
   it("rejects an unknown tool name", () => {

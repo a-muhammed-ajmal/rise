@@ -73,7 +73,7 @@ export function WalletForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="md:max-w-sm">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Wallet" : "Add Wallet"}</DialogTitle>
         </DialogHeader>

@@ -43,7 +43,14 @@ import {
 } from '@/lib/task-attachments'
 import { toast } from 'sonner'
 import { useTasks } from '@/lib/hooks/use-tasks'
-import type { Task, Subtask, TaskAttachment, ProjectCategory } from '@/lib/types/database'
+import {
+  isProjectCategory,
+  isTaskPriority,
+  type Task,
+  type Subtask,
+  type TaskAttachment,
+  type ProjectCategory,
+} from '@/lib/types/database'
 
 /**
  * Safely build a Date from YYYY-MM-DD + HH:MM strings.
@@ -761,7 +768,12 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
               {/* Priority [30%] + Time [70%] — no labels above */}
               <div className="grid grid-cols-[3fr_7fr] gap-2">
                 {/* Priority */}
-                <Select value={priority} onValueChange={(v) => handlePriorityChange(v as Task['priority'])}>
+                <Select
+                  value={priority}
+                  onValueChange={(value) => {
+                    if (isTaskPriority(value)) handlePriorityChange(value)
+                  }}
+                >
                   <SelectTrigger className="h-9 text-xs w-full" aria-label="Priority">
                     <div className="flex items-center gap-1.5">
                       <Flag
@@ -915,7 +927,12 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
                 {/* Area */}
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Area</Label>
-                  <Select value={area} onValueChange={(v) => handleAreaChange(v as ProjectCategory)}>
+                  <Select
+                    value={area}
+                    onValueChange={(value) => {
+                      if (isProjectCategory(value)) handleAreaChange(value)
+                    }}
+                  >
                     <SelectTrigger className="h-9 w-full text-xs">
                       <div className="flex items-center gap-1.5 min-w-0">
                         {(() => {

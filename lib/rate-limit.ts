@@ -1,11 +1,10 @@
-// Lightweight in-process sliding-window rate limiter.
-//
-// Scope and honest limitations: state lives in this Node process only. On
-// Vercel that means per-lambda-instance — a cold start resets counters and two
-// concurrent instances do not coordinate. For a single-user app the purpose is
-// cost containment (runaway Gemini / transcription spend, credential
-// brute-force), not distributed fairness, and for that this is sufficient
-// without adding a dependency or an external store.
+import { createHash } from "crypto";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/types/database";
+
+// Production requests use an atomic Postgres fixed-window counter so every
+// Vercel instance shares the same limit. The local sliding-window implementation
+// remains exported for deterministic, network-free unit tests.
 
 type Bucket = {
   // Ascending timestamps (ms) of the hits still inside the window.
@@ -44,7 +43,7 @@ function evictIdle(now: number): void {
   }
 }
 
-export function checkRateLimit(
+export function checkLocalRateLimit(
   key: string,
   { limit, windowMs }: RateLimitOptions,
 ): RateLimitResult {
@@ -80,6 +79,56 @@ export function checkRateLimit(
   return { ok: true, remaining: limit - bucket.hits.length };
 }
 
+let cachedAdmin: SupabaseClient<Database> | null = null;
+
+function getAdmin(): SupabaseClient<Database> | null {
+  if (cachedAdmin) return cachedAdmin;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  cachedAdmin = createClient<Database>(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return cachedAdmin;
+}
+
+export async function checkRateLimit(
+  key: string,
+  options: RateLimitOptions,
+): Promise<RateLimitResult> {
+  if (process.env.NODE_ENV === "test") {
+    return checkLocalRateLimit(key, options);
+  }
+
+  const admin = getAdmin();
+  if (!admin) {
+    console.error("[rate-limit] missing Supabase service configuration");
+    return { ok: false, retryAfterSec: 60 };
+  }
+
+  const keyHash = createHash("sha256").update(key).digest("hex");
+  const windowSeconds = Math.max(1, Math.ceil(options.windowMs / 1000));
+
+  try {
+    const { data, error } = await admin.rpc("check_rate_limit", {
+      p_key_hash: keyHash,
+      p_limit: options.limit,
+      p_window_seconds: windowSeconds,
+    });
+    const result = data?.[0];
+    if (error || !result) {
+      console.error("[rate-limit] distributed counter failed", error?.message);
+      return { ok: false, retryAfterSec: windowSeconds };
+    }
+    return result.allowed
+      ? { ok: true, remaining: result.remaining }
+      : { ok: false, retryAfterSec: result.retry_after_seconds };
+  } catch (error) {
+    console.error("[rate-limit] distributed counter threw", error);
+    return { ok: false, retryAfterSec: windowSeconds };
+  }
+}
+
 export function rateLimitResponse(retryAfterSec: number): Response {
   return new Response(
     JSON.stringify({
@@ -110,4 +159,5 @@ export function clientIpFrom(headers: Headers): string {
 // Test-only reset so suites do not leak counters between cases.
 export function __resetRateLimits(): void {
   buckets.clear();
+  cachedAdmin = null;
 }

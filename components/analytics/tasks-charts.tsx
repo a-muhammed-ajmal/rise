@@ -19,9 +19,9 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import type { TaskPriority, TaskStatus } from "@/lib/types/database"
 
-export type TaskStatus = "inbox" | "todo" | "in_progress" | "done"
-export type TaskPriority = "P1" | "P2" | "P3" | "P4"
+export type { TaskPriority, TaskStatus } from "@/lib/types/database"
 
 export interface ByStatusItem {
   status: TaskStatus
@@ -55,9 +55,10 @@ const PIE_OUTER_RADIUS = 80
 const PIE_PADDING_ANGLE = 3
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
-  inbox: "hsl(var(--muted-foreground))",
   todo: "hsl(var(--primary))",
   in_progress: "hsl(var(--destructive))",
+  blocked: "hsl(var(--destructive))",
+  on_hold: "hsl(var(--muted-foreground))",
   done: "hsl(var(--chart-2, 142 76% 36%))",
 }
 
@@ -69,9 +70,10 @@ const PRIORITY_COLORS: Record<TaskPriority, string> = {
 }
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
-  inbox: "Inbox",
   todo: "To Do",
   in_progress: "In Progress",
+  blocked: "Blocked",
+  on_hold: "On Hold",
   done: "Done",
 }
 
@@ -80,6 +82,26 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
   P2: "High",
   P3: "Medium",
   P4: "Low",
+}
+
+function taskStatusLabel(value: string): string {
+  if (
+    value === "todo" ||
+    value === "in_progress" ||
+    value === "blocked" ||
+    value === "on_hold" ||
+    value === "done"
+  ) {
+    return STATUS_LABELS[value]
+  }
+  return value
+}
+
+function taskPriorityLabel(value: unknown): string {
+  if (value === "P1" || value === "P2" || value === "P3" || value === "P4") {
+    return PRIORITY_LABELS[value]
+  }
+  return String(value)
 }
 
 const TOOLTIP_STYLE = {
@@ -264,7 +286,7 @@ export function TasksCharts({
                           title="Tasks by Status"
                           valueFormatter={(value, name) => [
                             numericFormatter(value),
-                            STATUS_LABELS[name as TaskStatus] ?? name,
+                            taskStatusLabel(name),
                           ]}
                         />
                       )}
@@ -273,7 +295,7 @@ export function TasksCharts({
                       iconType="circle"
                       iconSize={8}
                       wrapperStyle={{ fontSize: 11 }}
-                      formatter={(value: string) => STATUS_LABELS[value as TaskStatus] ?? value}
+                      formatter={taskStatusLabel}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -320,7 +342,7 @@ export function TasksCharts({
                       tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(v) => PRIORITY_LABELS[v as TaskPriority] ?? String(v)}
+                      tickFormatter={taskPriorityLabel}
                     />
                     <YAxis
                       tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}

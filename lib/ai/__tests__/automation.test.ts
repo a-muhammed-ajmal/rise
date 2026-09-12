@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { GoogleGenAI } from "@google/genai";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { runDailyDigestWorkflow } from "../automation";
+import type { Database } from "@/lib/types/database";
 
 type Result = { data: unknown; error: unknown };
 
@@ -96,24 +99,30 @@ function createDb(options: DbOptions = {}) {
     }),
   };
 
-  return { db, inserted, updated, notesQuery };
+  return {
+    db: db as unknown as SupabaseClient<Database>,
+    inserted,
+    updated,
+    notesQuery,
+  };
 }
 
 function createAi(text = "Digest ready") {
   const capturedPrompts: string[] = [];
+  const ai = {
+    models: {
+      generateContent: vi.fn(async (input: unknown) => {
+        const req = input as {
+          contents: Array<{ parts: Array<{ text: string }> }>;
+        };
+        capturedPrompts.push(req.contents[0].parts[0].text);
+        return { text };
+      }),
+    },
+  };
   return {
     capturedPrompts,
-    ai: {
-      models: {
-        generateContent: vi.fn(async (input: unknown) => {
-          const req = input as {
-            contents: Array<{ parts: Array<{ text: string }> }>;
-          };
-          capturedPrompts.push(req.contents[0].parts[0].text);
-          return { candidates: [{ content: { parts: [{ text }] } }] };
-        }),
-      },
-    },
+    ai: ai as unknown as GoogleGenAI,
   };
 }
 

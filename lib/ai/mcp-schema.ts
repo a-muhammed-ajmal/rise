@@ -20,7 +20,27 @@ export type McpToolDefinition = {
   name: string;
   description: string;
   inputSchema: McpInputSchema;
+  annotations: {
+    title: string;
+    readOnlyHint: boolean;
+    destructiveHint: boolean;
+    idempotentHint: boolean;
+    openWorldHint: boolean;
+  };
 };
+
+const READ_ONLY_PREFIXES = ["list_", "get_", "search_", "recall_"];
+
+export function isReadOnlyMcpToolName(name: string): boolean {
+  return READ_ONLY_PREFIXES.some((prefix) => name.startsWith(prefix));
+}
+
+function toolTitle(name: string): string {
+  return name
+    .split("_")
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
 
 const TYPE_MAP: Partial<Record<Type, string>> = {
   [Type.STRING]: "string",
@@ -72,6 +92,17 @@ export function toMcpToolDefinitions(
             name: decl.name,
             description: decl.description ?? "",
             inputSchema: toMcpInputSchema(decl.parameters),
+            annotations: {
+              title: toolTitle(decl.name),
+              readOnlyHint: isReadOnlyMcpToolName(decl.name),
+              destructiveHint:
+                decl.name.startsWith("delete_") ||
+                decl.name.startsWith("purge_") ||
+                decl.name.startsWith("forget_") ||
+                decl.name === "bulk_delete_records",
+              idempotentHint: isReadOnlyMcpToolName(decl.name),
+              openWorldHint: false,
+            },
           },
         ]
       : [],

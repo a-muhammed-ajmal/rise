@@ -40,6 +40,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+function isKnowledgeTab(value: unknown): value is "notes" | "links" {
+  return value === "notes" || value === "links";
+}
+
 export default function KnowledgePage() {
   const [tab, setTab] = useState<"notes" | "links">("notes");
   const [notes, setNotes] = useState<Note[]>([]);
@@ -94,19 +98,37 @@ export default function KnowledgePage() {
   async function handleDeleteNote() {
     if (!deleteNoteId) return;
     const supabase = createClient();
-    await supabase.from("notes").delete().eq("id", deleteNoteId);
+    const { error } = await supabase
+      .from("notes")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteNoteId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[knowledge] note soft delete failed:", error.message);
+      toast.error("Could not delete the note. Please try again.");
+      return;
+    }
     setDeleteNoteId(null);
-    toast.success("Note deleted");
-    fetchData();
+    toast.success("Note moved to the recycle bin");
+    await fetchData();
   }
 
   async function handleDeleteLink() {
     if (!deleteLinkId) return;
     const supabase = createClient();
-    await supabase.from("links").delete().eq("id", deleteLinkId);
+    const { error } = await supabase
+      .from("links")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteLinkId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[knowledge] link soft delete failed:", error.message);
+      toast.error("Could not delete the link. Please try again.");
+      return;
+    }
     setDeleteLinkId(null);
-    toast.success("Link deleted");
-    fetchData();
+    toast.success("Link moved to the recycle bin");
+    await fetchData();
   }
 
   const filteredNotes = notes.filter(
@@ -170,7 +192,12 @@ export default function KnowledgePage() {
         />
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          if (isKnowledgeTab(value)) setTab(value);
+        }}
+      >
         <TabsList className="w-full">
           <TabsTrigger value="notes" className="flex-1 gap-1.5">
             <StickyNote className="w-3.5 h-3.5" /> Notes ({filteredNotes.length})
@@ -332,14 +359,14 @@ export default function KnowledgePage() {
         open={!!deleteNoteId}
         onOpenChange={(v) => { if (!v) setDeleteNoteId(null); }}
         title="Delete note?"
-        description="This note will be permanently deleted."
+        description="This note will move to the recycle bin and can be restored."
         onConfirm={handleDeleteNote}
       />
       <ConfirmDialog
         open={!!deleteLinkId}
         onOpenChange={(v) => { if (!v) setDeleteLinkId(null); }}
         title="Delete link?"
-        description="This saved link will be permanently deleted."
+        description="This saved link will move to the recycle bin and can be restored."
         onConfirm={handleDeleteLink}
       />
     </div>
@@ -380,12 +407,21 @@ function NoteDialog({
     setSaving(true);
     const supabase = createClient();
     const tags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+    let errorMessage: string | null = null;
     if (note) {
-      await supabase.from("notes").update({ title, content, tags }).eq("id", note.id);
+      const { error } = await supabase
+        .from("notes")
+        .update({ title, content, tags })
+        .eq("id", note.id);
+      errorMessage = error?.message ?? null;
     } else {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("notes").insert({
+      if (!user) {
+        setSaving(false);
+        toast.error("Your session expired. Please sign in again.");
+        return;
+      }
+      const { error } = await supabase.from("notes").insert({
         user_id: user.id,
         title,
         content,
@@ -393,6 +429,13 @@ function NoteDialog({
         linked_to_type: null,
         linked_to_id: null,
       });
+      errorMessage = error?.message ?? null;
+    }
+    if (errorMessage) {
+      console.error("[knowledge] note save failed:", errorMessage);
+      toast.error("Could not save the note. Please try again.");
+      setSaving(false);
+      return;
     }
     setSaving(false);
     onOpenChange(false);
@@ -401,7 +444,7 @@ function NoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="md:max-w-lg">
         <DialogHeader>
           <DialogTitle>{note ? "Edit Note" : "New Note"}</DialogTitle>
         </DialogHeader>
@@ -464,24 +507,40 @@ function LinkDialog({
     setSaving(true);
     const supabase = createClient();
     const tags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+    let errorMessage: string | null = null;
 
     if (link) {
-      await supabase.from("links").update({
-        url,
-        title: title || null,
-        description: description || null,
-        tags,
-      }).eq("id", link.id);
+      const { error } = await supabase
+        .from("links")
+        .update({
+          url,
+          title: title || null,
+          description: description || null,
+          tags,
+        })
+        .eq("id", link.id);
+      errorMessage = error?.message ?? null;
     } else {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("links").insert({
+      if (!user) {
+        setSaving(false);
+        toast.error("Your session expired. Please sign in again.");
+        return;
+      }
+      const { error } = await supabase.from("links").insert({
         user_id: user.id,
         url,
         title: title || null,
         description: description || null,
         tags,
       });
+      errorMessage = error?.message ?? null;
+    }
+    if (errorMessage) {
+      console.error("[knowledge] link save failed:", errorMessage);
+      toast.error("Could not save the link. Please try again.");
+      setSaving(false);
+      return;
     }
 
     setSaving(false);
@@ -491,7 +550,7 @@ function LinkDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle>{link ? "Edit Link" : "Save Link"}</DialogTitle>
         </DialogHeader>

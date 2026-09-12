@@ -7,13 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useTheme } from "@/lib/hooks/use-theme";
 import {
   User,
@@ -44,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { usePushSubscription } from "@/lib/hooks/use-push-subscription";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { todayISO } from "@/lib/format";
 
 const MODULES = [
   { href: "/productivity", label: "Productivity", description: "Tasks, projects, kanban",          icon: CheckSquare, iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-tint" },
@@ -54,21 +48,23 @@ const MODULES = [
   { href: "/knowledge",    label: "Knowledge",    description: "Notes, links, documents",          icon: BookOpen,    iconCls: "text-mod-knowledge", bgCls: "bg-mod-knowledge-tint" },
   { href: "/assistant",    label: "AI Assistant", description: "Gemini chat with tool access",     icon: RiseLogo,    iconCls: "",                      bgCls: "bg-brand-tint" },
   { href: "/analytics",    label: "Analytics",    description: "Charts across all modules",        icon: BarChart2,   iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-tint" },
-] as const;
+];
 
-type Prefs = {
-  timeFormat: "12h" | "24h";
-  dateFormat: "DD/MM/YYYY" | "MM/DD/YYYY" | "YYYY-MM-DD";
-  timezone: string;
-  weekStart: "sunday" | "monday" | "saturday";
+const AVATAR_MIME_EXTENSIONS: Readonly<Record<string, string>> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
 };
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
-const DEFAULT_PREFS: Prefs = {
-  timeFormat: "12h",
-  dateFormat: "DD/MM/YYYY",
-  timezone: "Asia/Dubai",
-  weekStart: "sunday",
-};
+function metadataString(
+  metadata: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = metadata[key];
+  return typeof value === "string" ? value : null;
+}
 
 export default function SettingsPage() {
   const { theme, toggle } = useTheme();
@@ -81,30 +77,39 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
-  const [savingPrefs, setSavingPrefs] = useState(false);
-
   const [exporting, setExporting] = useState(false);
   const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } = usePushSubscription();
 
   useEffect(() => {
-    createClient()
-      .auth.getUser()
-      .then(({ data }) => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data, error }) => {
+        if (error) {
+          toast.error("Could not load profile");
+          return;
+        }
         const u = data.user;
         if (!u) return;
         setEmail(u.email ?? null);
         const meta = u.user_metadata ?? {};
-        setDisplayName((meta.full_name as string | undefined) ?? "");
-        setAvatarUrl((meta.avatar_url as string | undefined) ?? null);
-        const stored = meta.preferences as Partial<Prefs> | undefined;
-        if (stored) setPrefs({ ...DEFAULT_PREFS, ...stored });
+        const { data: profile, error: profileError } = await supabase
+          .from("user_profile")
+          .select("display_name")
+          .eq("user_id", u.id)
+          .maybeSingle();
+        if (profileError) console.error("[settings] profile load failed", profileError.message);
+        setDisplayName(profile?.display_name ?? metadataString(meta, "full_name") ?? "");
+        setAvatarUrl(metadataString(meta, "avatar_url"));
       });
   }, []);
 
   async function signOut() {
     const supabase = createClient();
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Could not sign out");
+      return;
+    }
+    navigator.serviceWorker?.controller?.postMessage("CLEAR_PRIVATE_CACHES");
     router.push("/login");
     router.refresh();
   }
@@ -112,8 +117,37 @@ export default function SettingsPage() {
   async function saveProfile() {
     setSavingProfile(true);
     const supabase = createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      setSavingProfile(false);
+      toast.error("Could not identify your account");
+      return;
+    }
+    const nextName = displayName.trim() || null;
+    const { data: updatedProfiles, error: profileUpdateError } = await supabase
+      .from("user_profile")
+      .update({ display_name: nextName })
+      .eq("user_id", user.id)
+      .select("id");
+    let profileError = profileUpdateError;
+    if (!profileError && updatedProfiles?.length === 0) {
+      const inserted = await supabase.from("user_profile").insert({
+        user_id: user.id,
+        display_name: nextName,
+        facts: {},
+      });
+      profileError = inserted.error;
+    }
+    if (profileError) {
+      setSavingProfile(false);
+      toast.error("Failed to save name");
+      return;
+    }
     const { error } = await supabase.auth.updateUser({
-      data: { full_name: displayName.trim() || null },
+      data: { full_name: nextName },
     });
     setSavingProfile(false);
     if (error) { toast.error("Failed to save name"); return; }
@@ -123,19 +157,44 @@ export default function SettingsPage() {
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const extension = AVATAR_MIME_EXTENSIONS[file.type];
+    if (!extension) {
+      toast.error("Use a JPG, PNG, WebP, or GIF image");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      toast.error("Profile photos must be 5 MB or smaller");
+      e.target.value = "";
+      return;
+    }
     setUploadingAvatar(true);
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const path = `${user.id}/avatar-${Date.now()}`;
+       const oldPath = metadataString(user.user_metadata ?? {}, "avatar_path");
+       const path = `${user.id}/avatar-${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, file, { upsert: true });
+        .upload(path, file, { upsert: false, contentType: file.type });
       if (uploadError) { toast.error("Upload failed — ensure the 'avatars' bucket exists in Supabase Storage"); return; }
       const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
       const url = urlData.publicUrl;
-      await supabase.auth.updateUser({ data: { avatar_url: url } });
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: { avatar_url: url, avatar_path: path },
+      });
+      if (metadataError) {
+        await supabase.storage.from("avatars").remove([path]);
+        toast.error("Could not save the new photo");
+        return;
+      }
+      if (oldPath && oldPath !== path) {
+        const { error: cleanupError } = await supabase.storage
+          .from("avatars")
+          .remove([oldPath]);
+        if (cleanupError) console.error("[settings] old avatar cleanup failed", cleanupError.message);
+      }
       setAvatarUrl(url);
       toast.success("Photo updated");
     } finally {
@@ -144,56 +203,29 @@ export default function SettingsPage() {
     }
   }
 
-  async function savePrefs(next: Prefs) {
-    setPrefs(next);
-    setSavingPrefs(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ data: { preferences: next } });
-    setSavingPrefs(false);
-    if (error) { toast.error("Failed to save preferences"); return; }
-    toast.success("Preferences saved");
-  }
-
   async function exportData() {
     setExporting(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const [
-      { data: tasks },
-      { data: transactions },
-      { data: habits },
-      { data: goals },
-      { data: contacts },
-      { data: notes },
-    ] = await Promise.all([
-      supabase.from("tasks").select("*")
-      .is("deleted_at", null).neq("status", "done"),
-      supabase.from("transactions").select("*")
-      .is("deleted_at", null).order("date", { ascending: false }),
-      supabase.from("habits").select("*")
-      .is("deleted_at", null).eq("active", true),
-      supabase.from("goals").select("*")
-      .is("deleted_at", null),
-      supabase.from("contacts").select("*")
-      .is("deleted_at", null).order("name"),
-      supabase.from("notes").select("*")
-      .is("deleted_at", null).order("updated_at", { ascending: false }),
-    ]);
-
-    const blob = new Blob(
-      [JSON.stringify({ exported_at: new Date().toISOString(), tasks, transactions, habits, goals, contacts, notes }, null, 2)],
-      { type: "application/json" }
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `rise-export-${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setExporting(false);
-    toast.success("Data exported");
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("export_current_user_data");
+      if (error || data === null) {
+        console.error("[settings] export failed", error?.message);
+        toast.error("Could not export your data");
+        return;
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `rise-export-${todayISO()}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success("Data exported");
+    } finally {
+      setExporting(false);
+    }
   }
 
   const initials = displayName
@@ -300,7 +332,6 @@ export default function SettingsPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Palette className="w-4 h-4" /> Preferences
-            {savingPrefs && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground ml-auto" />}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -322,87 +353,14 @@ export default function SettingsPage() {
             </Button>
           </div>
 
-          {/* Time format */}
-          <div className="flex justify-between items-center gap-3">
-            <Label htmlFor="time-format" className="text-sm font-normal text-muted-foreground shrink-0">
-              Time format
-            </Label>
-            <Select
-              value={prefs.timeFormat}
-              onValueChange={(v) => v && savePrefs({ ...prefs, timeFormat: v as Prefs["timeFormat"] })}
-            >
-              <SelectTrigger id="time-format" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="12h">12-hour (AM/PM)</SelectItem>
-                <SelectItem value="24h">24-hour</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex justify-between items-center">
+            <Label className="text-sm font-normal text-muted-foreground">Locale</Label>
+            <span className="text-sm font-medium">DD/MM/YYYY · 12-hour</span>
           </div>
 
-          {/* Date format */}
-          <div className="flex justify-between items-center gap-3">
-            <Label htmlFor="date-format" className="text-sm font-normal text-muted-foreground shrink-0">
-              Date format
-            </Label>
-            <Select
-              value={prefs.dateFormat}
-              onValueChange={(v) => v && savePrefs({ ...prefs, dateFormat: v as Prefs["dateFormat"] })}
-            >
-              <SelectTrigger id="date-format" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Timezone */}
-          <div className="flex justify-between items-center gap-3">
-            <Label htmlFor="timezone" className="text-sm font-normal text-muted-foreground shrink-0">
-              Timezone
-            </Label>
-            <Select
-              value={prefs.timezone}
-              onValueChange={(v) => v && savePrefs({ ...prefs, timezone: v })}
-            >
-              <SelectTrigger id="timezone" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Asia/Dubai">Dubai (UTC+4)</SelectItem>
-                <SelectItem value="Asia/Riyadh">Riyadh (UTC+3)</SelectItem>
-                <SelectItem value="Asia/Kolkata">India (UTC+5:30)</SelectItem>
-                <SelectItem value="Europe/London">London (UTC+0/+1)</SelectItem>
-                <SelectItem value="America/New_York">New York (UTC-5/-4)</SelectItem>
-                <SelectItem value="America/Los_Angeles">Los Angeles (UTC-8/-7)</SelectItem>
-                <SelectItem value="UTC">UTC</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Week starts */}
-          <div className="flex justify-between items-center gap-3">
-            <Label htmlFor="week-start" className="text-sm font-normal text-muted-foreground shrink-0">
-              Week starts
-            </Label>
-            <Select
-              value={prefs.weekStart}
-              onValueChange={(v) => v && savePrefs({ ...prefs, weekStart: v as Prefs["weekStart"] })}
-            >
-              <SelectTrigger id="week-start" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sunday">Sunday</SelectItem>
-                <SelectItem value="monday">Monday</SelectItem>
-                <SelectItem value="saturday">Saturday</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex justify-between items-center">
+            <Label className="text-sm font-normal text-muted-foreground">Time zone</Label>
+            <span className="text-sm font-medium">Dubai (UTC+4)</span>
           </div>
 
           {/* Currency (fixed) */}
@@ -422,7 +380,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Export all your tasks, transactions, habits, goals, contacts and notes as JSON.
+            Export all RISE records, including completed and recycled items, as JSON.
           </p>
           <Button
             variant="outline"

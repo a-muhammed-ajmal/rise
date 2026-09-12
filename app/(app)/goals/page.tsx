@@ -56,6 +56,20 @@ const MOODS = [
   { value: 5, emoji: "🤩", label: "Amazing" },
 ];
 
+function isGoalsTab(value: unknown): value is "goals" | "journal" {
+  return value === "goals" || value === "journal";
+}
+
+function isGoalCategory(value: unknown): value is Goal["category"] {
+  return (
+    value === "personal" ||
+    value === "professional" ||
+    value === "health" ||
+    value === "financial" ||
+    value === "other"
+  );
+}
+
 export default function GoalsPage() {
   const [tab, setTab] = useState<"goals" | "journal">("goals");
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -111,19 +125,49 @@ export default function GoalsPage() {
   async function handleDeleteGoal() {
     if (!deleteGoalId) return;
     const supabase = createClient();
-    await supabase.from("goals").delete().eq("id", deleteGoalId);
+    const deletedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from("goals")
+      .update({ deleted_at: deletedAt })
+      .eq("id", deleteGoalId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[goals] soft delete failed:", error.message);
+      toast.error("Could not delete the goal. Please try again.");
+      return;
+    }
+
+    const { error: unlinkError } = await supabase
+      .from("projects")
+      .update({ goal_id: null })
+      .eq("goal_id", deleteGoalId)
+      .is("deleted_at", null);
     setDeleteGoalId(null);
-    toast.success("Goal deleted");
-    fetchData();
+    if (unlinkError) {
+      console.error("[goals] project unlink failed:", unlinkError.message);
+      toast.warning("Goal moved to the recycle bin, but linked projects were not unlinked.");
+    } else {
+      toast.success("Goal moved to the recycle bin");
+    }
+    await fetchData();
   }
 
   async function handleDeleteJournal() {
     if (!deleteJournalId) return;
     const supabase = createClient();
-    await supabase.from("journal_entries").delete().eq("id", deleteJournalId);
+    const { error } = await supabase
+      .from("journal_entries")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteJournalId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[goals] journal soft delete failed:", error.message);
+      toast.error("Could not delete the journal entry. Please try again.");
+      return;
+    }
     setDeleteJournalId(null);
-    toast.success("Entry deleted");
-    fetchData();
+    toast.success("Entry moved to the recycle bin");
+    await fetchData();
   }
 
   const active = goals.filter((g) => g.status === "active");
@@ -161,7 +205,12 @@ export default function GoalsPage() {
       </div>
 
       <div className="slide-up stagger-2">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            if (isGoalsTab(value)) setTab(value);
+          }}
+        >
           <TabsList className="w-full">
             <TabsTrigger value="goals" className="flex-1">Goals ({active.length})</TabsTrigger>
             <TabsTrigger value="journal" className="flex-1">Journal</TabsTrigger>
@@ -356,14 +405,14 @@ export default function GoalsPage() {
         open={!!deleteGoalId}
         onOpenChange={(v) => { if (!v) setDeleteGoalId(null); }}
         title="Delete goal?"
-        description="This goal and its milestones will be permanently deleted."
+        description="This goal will move to the recycle bin. Its milestones stay attached and can be restored with it."
         onConfirm={handleDeleteGoal}
       />
       <ConfirmDialog
         open={!!deleteJournalId}
         onOpenChange={(v) => { if (!v) setDeleteJournalId(null); }}
         title="Delete journal entry?"
-        description="This entry will be permanently deleted."
+        description="This entry will move to the recycle bin and can be restored."
         onConfirm={handleDeleteJournal}
       />
     </div>
@@ -408,27 +457,43 @@ function GoalDialog({
     if (!title.trim()) return;
     setSaving(true);
     const supabase = createClient();
+    let errorMessage: string | null = null;
     if (goal) {
-      await supabase.from("goals").update({
-        title,
-        description: description || null,
-        category,
-        target_date: targetDate || null,
-        progress,
-        status: progress === 100 ? "completed" : "active",
-      }).eq("id", goal.id);
+      const { error } = await supabase
+        .from("goals")
+        .update({
+          title,
+          description: description || null,
+          category,
+          target_date: targetDate || null,
+          progress,
+          status: progress === 100 ? "completed" : "active",
+        })
+        .eq("id", goal.id);
+      errorMessage = error?.message ?? null;
     } else {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("goals").insert({
-        user_id: user.id,
-        title,
-        description: description || null,
-        category,
-        target_date: targetDate || null,
-        progress,
-        status: "active" as const,
-      });
+      if (!user) {
+        setSaving(false);
+        toast.error("Your session expired. Please sign in again.");
+        return;
+      }
+      const { error } = await supabase.from("goals").insert({
+          user_id: user.id,
+          title,
+          description: description || null,
+          category,
+          target_date: targetDate || null,
+          progress,
+          status: "active",
+        });
+      errorMessage = error?.message ?? null;
+    }
+    if (errorMessage) {
+      console.error("[goals] save failed:", errorMessage);
+      toast.error("Could not save the goal. Please try again.");
+      setSaving(false);
+      return;
     }
     setSaving(false);
     onOpenChange(false);
@@ -437,7 +502,7 @@ function GoalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle>{goal ? "Edit Goal" : "New Goal"}</DialogTitle>
         </DialogHeader>
@@ -453,7 +518,12 @@ function GoalDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="goal-category">Category</Label>
-              <Select value={category} onValueChange={(v) => setCategory(v as Goal["category"])}>
+              <Select
+                value={category}
+                onValueChange={(value) => {
+                  if (isGoalCategory(value)) setCategory(value);
+                }}
+              >
                 <SelectTrigger id="goal-category" title="Category"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {["personal", "professional", "health", "financial", "other"].map((c) => (
@@ -524,12 +594,17 @@ function MilestonesDialog({
 
   async function loadMilestones() {
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("milestones")
       .select("*")
       .is("deleted_at", null)
       .eq("goal_id", goal.id)
       .order("due_date", { ascending: true });
+    if (error) {
+      console.error("[goals] milestone fetch failed:", error.message);
+      toast.error("Could not load milestones. Please try again.");
+      return;
+    }
     setMilestones(data ?? []);
   }
 
@@ -544,13 +619,23 @@ function MilestonesDialog({
     setAdding(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("milestones").insert({
+    if (!user) {
+      setAdding(false);
+      toast.error("Your session expired. Please sign in again.");
+      return;
+    }
+    const { error } = await supabase.from("milestones").insert({
       user_id: user.id,
       goal_id: goal.id,
       title: newTitle.trim(),
       due_date: newDate || null,
     });
+    if (error) {
+      console.error("[goals] milestone create failed:", error.message);
+      toast.error("Could not add the milestone. Please try again.");
+      setAdding(false);
+      return;
+    }
     setNewTitle("");
     setNewDate("");
     setAdding(false);
@@ -561,24 +646,41 @@ function MilestonesDialog({
 
   async function toggleMilestone(m: Milestone) {
     const supabase = createClient();
-    await supabase.from("milestones").update({
-      completed_at: m.completed_at ? null : new Date().toISOString(),
-    }).eq("id", m.id);
-    loadMilestones();
+    const { error } = await supabase
+      .from("milestones")
+      .update({
+        completed_at: m.completed_at ? null : new Date().toISOString(),
+      })
+      .eq("id", m.id);
+    if (error) {
+      console.error("[goals] milestone update failed:", error.message);
+      toast.error("Could not update the milestone. Please try again.");
+      return;
+    }
+    await loadMilestones();
   }
 
   async function handleDeleteMilestone() {
     if (!deleteMilestoneId) return;
     const supabase = createClient();
-    await supabase.from("milestones").delete().eq("id", deleteMilestoneId);
+    const { error } = await supabase
+      .from("milestones")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteMilestoneId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[goals] milestone soft delete failed:", error.message);
+      toast.error("Could not delete the milestone. Please try again.");
+      return;
+    }
     setDeleteMilestoneId(null);
-    toast.success("Milestone deleted");
-    loadMilestones();
+    toast.success("Milestone moved to the recycle bin");
+    await loadMilestones();
   }
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-sm font-semibold line-clamp-1">
             Milestones — {goal.title}
@@ -645,6 +747,7 @@ function MilestonesDialog({
         open={!!deleteMilestoneId}
         onOpenChange={(v) => { if (!v) setDeleteMilestoneId(null); }}
         title="Delete milestone?"
+        description="This milestone will move to the recycle bin and can be restored."
         onConfirm={handleDeleteMilestone}
       />
     </Dialog>
@@ -684,12 +787,21 @@ function JournalDialog({
     setSaving(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setSaving(false);
+      toast.error("Your session expired. Please sign in again.");
+      return;
+    }
 
+    let errorMessage: string | null = null;
     if (existing) {
-      await supabase.from("journal_entries").update({ content, mood, energy }).eq("id", existing.id);
+      const { error } = await supabase
+        .from("journal_entries")
+        .update({ content, mood, energy })
+        .eq("id", existing.id);
+      errorMessage = error?.message ?? null;
     } else {
-      await supabase.from("journal_entries").upsert({
+      const { error } = await supabase.from("journal_entries").upsert({
         user_id: user.id,
         date: todayISO(),
         content,
@@ -697,6 +809,13 @@ function JournalDialog({
         energy,
         tags: [],
       });
+      errorMessage = error?.message ?? null;
+    }
+    if (errorMessage) {
+      console.error("[goals] journal save failed:", errorMessage);
+      toast.error("Could not save the journal entry. Please try again.");
+      setSaving(false);
+      return;
     }
 
     setSaving(false);
@@ -706,7 +825,7 @@ function JournalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle>{existing ? "Edit Entry" : "Today's Journal"}</DialogTitle>
         </DialogHeader>

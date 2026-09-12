@@ -27,6 +27,23 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    files: [
+      "app/**/*.{ts,tsx}",
+      "components/**/*.{ts,tsx}",
+      "lib/**/*.{ts,tsx}",
+      "supabase/functions/**/*.ts",
+    ],
+    ignores: ["**/*.test.{ts,tsx}", "**/__tests__/**"],
+    rules: {
+      // Project invariant: production runtime values must be narrowed or
+      // parsed, never forced into a type with `as` / angle-bracket assertions.
+      "@typescript-eslint/consistent-type-assertions": [
+        "error",
+        { assertionStyle: "never" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

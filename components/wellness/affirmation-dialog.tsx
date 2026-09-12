@@ -18,7 +18,7 @@ export function AffirmationDialog({ habit, onClose }: Props) {
 
   return (
     <Dialog open={!!habit} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div

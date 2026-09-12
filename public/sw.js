@@ -1,4 +1,4 @@
-const CACHE_NAME = "rise-v4";
+const CACHE_NAME = "rise-v5";
 const OFFLINE_URL = "/offline";
 const STATIC_SHELL = [
   OFFLINE_URL,
@@ -35,18 +35,23 @@ self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") {
     self.skipWaiting();
   }
+  if (event.data === "CLEAR_PRIVATE_CACHES") {
+    event.waitUntil(
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
+    );
+  }
 });
 
 self.addEventListener("push", (event) => {
-  const data = event.data ? event.data.json() : {};
-  const title = data.title ?? "RISE";
   const options = {
-    body: data.body ?? "",
-    icon: data.icon ?? "/icon-192.png",
+    body: "You have a reminder waiting in RISE.",
+    icon: "/icon-192.png",
     badge: "/icon-192.png",
-    data: { url: data.url ?? "/" },
+    data: { url: "/" },
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(self.registration.showNotification("RISE reminder", options));
 });
 
 self.addEventListener("notificationclick", (event) => {
@@ -82,40 +87,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigation requests: network-first, fall back to /offline
+  // Authenticated documents and RSC responses are network-only. Caching them
+  // can expose personal data after logout on a shared device.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          return caches.match(OFFLINE_URL);
-        }),
+        .catch(() => caches.match(OFFLINE_URL)),
     );
     return;
   }
 
-  // Other assets: stale-while-revalidate
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const networkFetch = fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-
-      return cached || networkFetch;
-    }),
-  );
+  // Only the explicit static shell and immutable Next chunks are cacheable.
+  if (STATIC_SHELL.includes(url.pathname)) {
+    event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
+  }
 });

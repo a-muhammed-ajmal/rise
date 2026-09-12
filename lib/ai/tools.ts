@@ -881,7 +881,7 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
     parameters: {
       type: Type.OBJECT,
       properties: {
-        entity: { type: Type.STRING, enum: DELETABLE_ENTITIES, description: 'Which entity type to list. Omit to search across every entity type.' },
+        entity: { type: Type.STRING, enum: [...DELETABLE_ENTITIES], description: 'Which entity type to list. Omit to search across every entity type.' },
         limit: { type: Type.NUMBER, description: 'Maximum results per entity type (default 20)' },
         offset: { type: Type.NUMBER, description: 'Skip this many results — use the offset reported when more results are available' },
       },
@@ -894,7 +894,7 @@ export const AUTO_TOOLS: FunctionDeclaration[] = [
     parameters: {
       type: Type.OBJECT,
       properties: {
-        entity: { type: Type.STRING, enum: DELETABLE_ENTITIES, description: 'Which entity type the id belongs to' },
+        entity: { type: Type.STRING, enum: [...DELETABLE_ENTITIES], description: 'Which entity type the id belongs to' },
         id: { type: Type.STRING, description: 'UUID of the deleted record' },
         record_label: { type: Type.STRING, description: 'Name or title of the record, for confirmation display' },
       },
@@ -1191,7 +1191,7 @@ export const APPROVAL_TOOLS: FunctionDeclaration[] = [
     parameters: {
       type: Type.OBJECT,
       properties: {
-        entity: { type: Type.STRING, enum: DELETABLE_ENTITIES, description: 'Which entity type the id belongs to' },
+        entity: { type: Type.STRING, enum: [...DELETABLE_ENTITIES], description: 'Which entity type the id belongs to' },
         id: { type: Type.STRING, description: 'UUID of the record to destroy' },
         record_label: { type: Type.STRING, description: 'Name or title of the record, for confirmation display' },
         confirm: { type: Type.BOOLEAN, description: 'Must be exactly true. The tool refuses to run otherwise.' },
@@ -1205,7 +1205,7 @@ export const APPROVAL_TOOLS: FunctionDeclaration[] = [
     parameters: {
       type: Type.OBJECT,
       properties: {
-        entity: { type: Type.STRING, enum: DELETABLE_ENTITIES, description: 'Which entity type the ids belong to' },
+        entity: { type: Type.STRING, enum: [...DELETABLE_ENTITIES], description: 'Which entity type the ids belong to' },
         ids: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'UUIDs to delete' },
         summary: { type: Type.STRING, description: 'Human-readable summary of what will be deleted, for confirmation display' },
         confirm: { type: Type.BOOLEAN, description: 'Must be exactly true. The tool refuses to run otherwise.' },

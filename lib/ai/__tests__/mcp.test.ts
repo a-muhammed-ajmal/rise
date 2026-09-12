@@ -4,13 +4,14 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(),
 }));
 
-import { MCP_TOOLS, isMcpAllowedTool, verifyMcpAuth } from "../mcp";
-import { AUTO_TOOLS, REVERSIBLE_TOOLS, APPROVAL_TOOLS } from "../tools";
+import { MCP_TOOLS, getMcpTools, isMcpAllowedTool, verifyMcpAuth } from "../mcp";
+import { APPROVAL_TOOLS } from "../tools";
 import { createClient } from "@supabase/supabase-js";
 
 describe("MCP_TOOLS", () => {
-  it("exposes the auto tools plus the reversible deletes", () => {
-    expect(MCP_TOOLS).toHaveLength(AUTO_TOOLS.length + REVERSIBLE_TOOLS.length);
+  it("defaults to a read-only surface", () => {
+    expect(MCP_TOOLS.length).toBeGreaterThan(0);
+    expect(MCP_TOOLS.every((tool) => tool.annotations.readOnlyHint)).toBe(true);
   });
 
   // The connector deliberately carries tools that prompt in the app chat: a
@@ -23,18 +24,22 @@ describe("MCP_TOOLS", () => {
     }
   });
 
-  it("carries the reversible deletes and their undo", () => {
-    const names = MCP_TOOLS.map((t) => t.name);
+  it("adds reversible writes only after an explicit opt-in", () => {
+    const names = getMcpTools(true).map((t) => t.name);
     expect(names).toContain("delete_task");
     expect(names).toContain("restore_record");
     expect(names).toContain("list_deleted");
+    expect(names).not.toContain("log_expense");
+    expect(names).not.toContain("log_income");
+    expect(names).not.toContain("set_whatsapp_reminders");
   });
 });
 
 describe("isMcpAllowedTool", () => {
   it("allows auto tools", () => {
-    expect(isMcpAllowedTool("create_task")).toBe(true);
+    expect(isMcpAllowedTool("create_task")).toBe(false);
     expect(isMcpAllowedTool("list_tasks")).toBe(true);
+    expect(isMcpAllowedTool("create_task", true)).toBe(true);
   });
 
   it("rejects every approval-gated tool", () => {

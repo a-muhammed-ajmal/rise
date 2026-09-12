@@ -23,7 +23,10 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── Abuse control ───────────────────────────────────────────────────────
   // Transcription bills per request; this is the direct cost ceiling.
-  const rl = checkRateLimit(`upload:${user.id}`, { limit: 8, windowMs: 60_000 });
+  const rl = await checkRateLimit(`upload:${user.id}`, {
+    limit: 8,
+    windowMs: 60_000,
+  });
   if (!rl.ok) return rateLimitResponse(rl.retryAfterSec);
 
   // ── Parse form data ─────────────────────────────────────────────────────

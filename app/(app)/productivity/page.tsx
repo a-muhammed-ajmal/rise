@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import { todayISO } from "@/lib/format";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
@@ -37,7 +37,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import type { Project, Task } from "@/lib/types/database";
+import { isTaskPriority, type Project, type Task } from "@/lib/types/database";
 
 type Filter = "today" | "all" | "completed";
 type ViewMode = "list" | "grid" | "calendar";
@@ -65,6 +65,24 @@ const GROUP_LABELS: Record<GroupBy, string> = {
   status: "Status",
   tag: "Tag",
 };
+const SORT_OPTIONS: Array<[SortBy, string]> = [
+  ["priority", SORT_LABELS.priority],
+  ["due_date", SORT_LABELS.due_date],
+  ["created_at", SORT_LABELS.created_at],
+  ["title", SORT_LABELS.title],
+  ["estimated", SORT_LABELS.estimated],
+];
+const GROUP_OPTIONS: Array<[GroupBy, string]> = [
+  ["none", GROUP_LABELS.none],
+  ["priority", GROUP_LABELS.priority],
+  ["project", GROUP_LABELS.project],
+  ["status", GROUP_LABELS.status],
+  ["tag", GROUP_LABELS.tag],
+];
+
+function isFilter(value: unknown): value is Filter {
+  return value === "today" || value === "all" || value === "completed";
+}
 
 function sortTasks(tasks: Task[], sortBy: SortBy): Task[] {
   return [...tasks].sort((a, b) => {
@@ -131,7 +149,11 @@ function groupTasks(
       return { key, label, tasks };
     })
     .sort((a, b) => {
-      if (groupBy === "priority") return PRIORITY_ORDER[a.key as Task["priority"]] - PRIORITY_ORDER[b.key as Task["priority"]];
+      if (groupBy === "priority") {
+        const aOrder = isTaskPriority(a.key) ? PRIORITY_ORDER[a.key] : 99;
+        const bOrder = isTaskPriority(b.key) ? PRIORITY_ORDER[b.key] : 99;
+        return aOrder - bOrder;
+      }
       return a.label.localeCompare(b.label);
     });
 }
@@ -295,7 +317,8 @@ export default function ProductivityPage() {
         <Tabs
           value={filter}
           onValueChange={(v) => {
-            setFilter(v as Filter);
+            if (!isFilter(v)) return;
+            setFilter(v);
             setBulkMode(false);
             setSelectedIds(new Set());
           }}
@@ -320,10 +343,10 @@ export default function ProductivityPage() {
           {/* View mode — 3 icon buttons */}
           <div className="flex items-center rounded-lg border border-border overflow-hidden shrink-0">
             {([
-              { mode: "list" as ViewMode,     icon: <List className="w-3.5 h-3.5" />,       label: "List view" },
-              { mode: "grid" as ViewMode,     icon: <LayoutGrid className="w-3.5 h-3.5" />, label: "Grid view" },
-              { mode: "calendar" as ViewMode, icon: <Calendar className="w-3.5 h-3.5" />,   label: "Calendar view" },
-            ]).map(({ mode, icon, label }) => (
+              { mode: "list", icon: <List className="w-3.5 h-3.5" />, label: "List view" },
+              { mode: "grid", icon: <LayoutGrid className="w-3.5 h-3.5" />, label: "Grid view" },
+              { mode: "calendar", icon: <Calendar className="w-3.5 h-3.5" />, label: "Calendar view" },
+            ] satisfies Array<{ mode: ViewMode; icon: ReactNode; label: string }>).map(({ mode, icon, label }) => (
               <button
                 key={mode}
                 type="button"
@@ -358,7 +381,7 @@ export default function ProductivityPage() {
             <DropdownMenuContent align="start" className="w-44">
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
-                {(Object.entries(SORT_LABELS) as [SortBy, string][]).map(([val, label]) => (
+                {SORT_OPTIONS.map(([val, label]) => (
                   <DropdownMenuItem
                     key={val}
                     onClick={() => setSortBy(val)}
@@ -372,7 +395,7 @@ export default function ProductivityPage() {
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
-                {(Object.entries(GROUP_LABELS) as [GroupBy, string][]).map(([val, label]) => (
+                {GROUP_OPTIONS.map(([val, label]) => (
                   <DropdownMenuItem
                     key={val}
                     onClick={() => setGroupBy(val)}

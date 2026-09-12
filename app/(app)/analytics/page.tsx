@@ -6,14 +6,28 @@ import { FinanceCharts } from "@/components/analytics/finance-charts"
 import { WellnessCharts } from "@/components/analytics/wellness-charts"
 import { GoalsCharts } from "@/components/analytics/goals-charts"
 import { TasksCharts } from "@/components/analytics/tasks-charts"
-import type { TaskStatus } from "@/components/analytics/tasks-charts"
+import type { TaskPriority, TaskStatus } from "@/components/analytics/tasks-charts"
 import { CrmCharts } from "@/components/analytics/crm-charts"
 import { KnowledgeCharts } from "@/components/analytics/knowledge-charts"
 import type { Transaction, Budget, Habit, HabitLog, JournalEntry, FocusSession, Goal, Task, Contact, Interaction, Note } from "@/lib/types/database"
 
+type AnalyticsTransaction = Pick<Transaction, "type" | "amount" | "category" | "date">
+type AnalyticsBudget = Pick<Budget, "category" | "amount">
+type AnalyticsHabit = Pick<Habit, "id" | "name" | "icon" | "target_days">
+type AnalyticsHabitLog = Pick<HabitLog, "habit_id" | "logged_date" | "completed">
+type AnalyticsJournalEntry = Pick<JournalEntry, "date" | "mood">
+type AnalyticsFocusSession = Pick<FocusSession, "duration_minutes" | "started_at">
+type AnalyticsGoal = Pick<Goal, "title" | "status" | "category" | "progress">
+type AnalyticsTask = Pick<Task, "status" | "priority" | "completed_at">
+type AnalyticsContact = Pick<Contact, "type" | "stage" | "deal_value">
+type AnalyticsInteraction = Pick<Interaction, "date">
+type AnalyticsNote = Pick<Note, "created_at" | "linked_to_type" | "tags">
+
+const TASK_PRIORITIES: TaskPriority[] = ["P1", "P2", "P3", "P4"]
+
 // ── Aggregation helpers ───────────────────────────────────────────────────────
 
-function buildMonthlyFlow(txns: Transaction[], today: Date) {
+function buildMonthlyFlow(txns: AnalyticsTransaction[], today: Date) {
   const map = new Map<string, { income: number; expense: number }>()
   for (let i = 5; i >= 0; i--) {
     map.set(format(subMonths(today, i), "yyyy-MM"), { income: 0, expense: 0 })
@@ -33,7 +47,7 @@ function buildMonthlyFlow(txns: Transaction[], today: Date) {
   }))
 }
 
-function buildDailyFlow(txns: Transaction[], today: Date) {
+function buildDailyFlow(txns: AnalyticsTransaction[], today: Date) {
   const map = new Map<string, { income: number; expense: number }>()
   for (let i = 29; i >= 0; i--) {
     map.set(format(subDays(today, i), "yyyy-MM-dd"), { income: 0, expense: 0 })
@@ -52,7 +66,7 @@ function buildDailyFlow(txns: Transaction[], today: Date) {
   }))
 }
 
-function buildCategorySpend(txns: Transaction[]) {
+function buildCategorySpend(txns: AnalyticsTransaction[]) {
   const map = new Map<string, number>()
   for (const t of txns.filter((t) => t.type === "expense")) {
     map.set(t.category, (map.get(t.category) ?? 0) + t.amount)
@@ -66,7 +80,7 @@ function buildCategorySpend(txns: Transaction[]) {
   ]
 }
 
-function buildBudgetActual(budgets: Pick<Budget, "category" | "amount">[], txns: Transaction[], monthStart: string, monthEnd: string) {
+function buildBudgetActual(budgets: AnalyticsBudget[], txns: AnalyticsTransaction[], monthStart: string, monthEnd: string) {
   const actualMap = new Map<string, number>()
   for (const t of txns.filter((t) => t.type === "expense" && t.date >= monthStart && t.date <= monthEnd)) {
     actualMap.set(t.category, (actualMap.get(t.category) ?? 0) + t.amount)
@@ -76,7 +90,7 @@ function buildBudgetActual(budgets: Pick<Budget, "category" | "amount">[], txns:
     .map((b) => ({ category: b.category, budget: b.amount, actual: Math.round(actualMap.get(b.category) ?? 0) }))
 }
 
-function buildHabitRates(habits: Habit[], logs: HabitLog[], today: Date) {
+function buildHabitRates(habits: AnalyticsHabit[], logs: AnalyticsHabitLog[], today: Date) {
   const last30 = Array.from({ length: 30 }, (_, i) => format(subDays(today, i), "yyyy-MM-dd"))
   return habits.map((habit) => {
     const expectedDays = last30.filter((d) => habit.target_days.includes(parseISO(d).getDay()))
@@ -88,7 +102,7 @@ function buildHabitRates(habits: Habit[], logs: HabitLog[], today: Date) {
   })
 }
 
-function buildFocusMinutes(sessions: FocusSession[], today: Date) {
+function buildFocusMinutes(sessions: AnalyticsFocusSession[], today: Date) {
   const map = new Map<string, number>()
   for (let i = 13; i >= 0; i--) {
     map.set(format(subDays(today, i), "yyyy-MM-dd"), 0)
@@ -103,28 +117,28 @@ function buildFocusMinutes(sessions: FocusSession[], today: Date) {
   }))
 }
 
-function buildGoalByStatus(goals: Goal[]) {
+function buildGoalByStatus(goals: AnalyticsGoal[]) {
   const map = new Map<string, number>()
   for (const g of goals) map.set(g.status, (map.get(g.status) ?? 0) + 1)
   return Array.from(map.entries()).map(([status, count]) => ({ status, count }))
 }
 
-function buildGoalByCategory(goals: Goal[]) {
+function buildGoalByCategory(goals: AnalyticsGoal[]) {
   const map = new Map<string, number>()
   for (const g of goals) map.set(g.category, (map.get(g.category) ?? 0) + 1)
   return Array.from(map.entries()).map(([category, count]) => ({ category, count }))
 }
 
-function buildTaskByStatus(tasks: Task[]) {
+function buildTaskByStatus(tasks: AnalyticsTask[]) {
   const map = new Map<TaskStatus, number>()
   for (const t of tasks) {
-    const s = t.status as TaskStatus
+    const s: TaskStatus = t.status
     map.set(s, (map.get(s) ?? 0) + 1)
   }
   return Array.from(map.entries()).map(([status, count]) => ({ status, count }))
 }
 
-function buildCompletedPerDay(tasks: Task[], today: Date) {
+function buildCompletedPerDay(tasks: AnalyticsTask[], today: Date) {
   const map = new Map<string, number>()
   for (let i = 13; i >= 0; i--) {
     map.set(format(subDays(today, i), "yyyy-MM-dd"), 0)
@@ -141,7 +155,7 @@ function buildCompletedPerDay(tasks: Task[], today: Date) {
   }))
 }
 
-function buildCrmByStage(contacts: Contact[]) {
+function buildCrmByStage(contacts: AnalyticsContact[]) {
   const stageOrder = ["new", "qualified", "proposal", "negotiation", "won", "lost"]
   const map = new Map<string, { count: number; value: number }>()
   for (const stage of stageOrder) map.set(stage, { count: 0, value: 0 })
@@ -156,13 +170,13 @@ function buildCrmByStage(contacts: Contact[]) {
     .map((stage) => ({ stage, ...(map.get(stage) ?? { count: 0, value: 0 }) }))
 }
 
-function buildCrmByType(contacts: Contact[]) {
+function buildCrmByType(contacts: AnalyticsContact[]) {
   const map = new Map<string, number>()
   for (const c of contacts) map.set(c.type, (map.get(c.type) ?? 0) + 1)
   return Array.from(map.entries()).map(([type, count]) => ({ type, count }))
 }
 
-function buildInteractionActivity(interactions: Pick<Interaction, "date">[], today: Date) {
+function buildInteractionActivity(interactions: AnalyticsInteraction[], today: Date) {
   const map = new Map<string, number>()
   for (let i = 5; i >= 0; i--) {
     map.set(format(subMonths(today, i), "yyyy-MM"), 0)
@@ -177,7 +191,7 @@ function buildInteractionActivity(interactions: Pick<Interaction, "date">[], tod
   }))
 }
 
-function buildNotesPerDay(notes: Pick<Note, "created_at">[], today: Date) {
+function buildNotesPerDay(notes: Pick<AnalyticsNote, "created_at">[], today: Date) {
   const map = new Map<string, number>()
   for (let i = 13; i >= 0; i--) {
     map.set(format(subDays(today, i), "yyyy-MM-dd"), 0)
@@ -192,7 +206,7 @@ function buildNotesPerDay(notes: Pick<Note, "created_at">[], today: Date) {
   }))
 }
 
-function buildNotesByLinkedType(notes: Pick<Note, "linked_to_type">[]) {
+function buildNotesByLinkedType(notes: Pick<AnalyticsNote, "linked_to_type">[]) {
   const map = new Map<string, number>()
   for (const n of notes) {
     const key = n.linked_to_type ?? "standalone"
@@ -201,7 +215,7 @@ function buildNotesByLinkedType(notes: Pick<Note, "linked_to_type">[]) {
   return Array.from(map.entries()).map(([type, count]) => ({ type, count }))
 }
 
-function buildTopTags(notes: Pick<Note, "tags">[]) {
+function buildTopTags(notes: Pick<AnalyticsNote, "tags">[]) {
   const map = new Map<string, number>()
   for (const n of notes) {
     for (const tag of n.tags ?? []) {
@@ -227,19 +241,19 @@ export default async function AnalyticsPage() {
   const monthEnd = format(endOfMonth(today), "yyyy-MM-dd")
 
   const [
-    { data: transactions },
-    { data: budgets },
-    { data: habits },
-    { data: habitLogs },
-    { data: journalEntries },
-    { data: focusSessions },
-    { data: goals },
-    { data: tasks },
-    { data: contacts },
-    { data: interactions },
-    { data: notes },
-    { data: links },
-    { data: documents },
+    { data: transactions, error: transactionsError },
+    { data: budgets, error: budgetsError },
+    { data: habits, error: habitsError },
+    { data: habitLogs, error: habitLogsError },
+    { data: journalEntries, error: journalEntriesError },
+    { data: focusSessions, error: focusSessionsError },
+    { data: goals, error: goalsError },
+    { data: tasks, error: tasksError },
+    { data: contacts, error: contactsError },
+    { data: interactions, error: interactionsError },
+    { data: notes, error: notesError },
+    { data: links, error: linksError },
+    { data: documents, error: documentsError },
   ] = await Promise.all([
     supabase.from("transactions").select("type,amount,category,date")
     .is("deleted_at", null).gte("date", sixMonthsAgo).order("date"),
@@ -269,27 +283,35 @@ export default async function AnalyticsPage() {
     .is("deleted_at", null),
   ])
 
+  const queryError = transactionsError ?? budgetsError ?? habitsError ??
+    habitLogsError ?? journalEntriesError ?? focusSessionsError ?? goalsError ??
+    tasksError ?? contactsError ?? interactionsError ?? notesError ?? linksError ??
+    documentsError
+  if (queryError) throw new Error(`Could not load analytics: ${queryError.message}`)
+
   // Finance aggregations
   const txns = transactions ?? []
-  const monthlyFlow = buildMonthlyFlow(txns as Transaction[], today)
-  const dailyFlow = buildDailyFlow(txns as Transaction[], today)
-  const categorySpend = buildCategorySpend(txns as Transaction[])
+  const monthlyFlow = buildMonthlyFlow(txns, today)
+  const dailyFlow = buildDailyFlow(txns, today)
+  const categorySpend = buildCategorySpend(txns)
   const budgetActual = buildBudgetActual(
-    (budgets ?? []) as Pick<Budget, "category" | "amount">[],
-    txns as Transaction[],
+    budgets ?? [],
+    txns,
     monthStart,
     monthEnd,
   )
 
   // Wellness aggregations
-  const habitRates = buildHabitRates((habits ?? []) as Habit[], (habitLogs ?? []) as HabitLog[], today)
-  const moodTrend = ((journalEntries ?? []) as Pick<JournalEntry, "date" | "mood">[])
-    .filter((e) => typeof e.mood === "number" && e.mood > 0)
-    .map((e) => ({ date: format(parseISO(e.date), "dd/MM"), mood: e.mood as number }))
-  const focusMinutes = buildFocusMinutes((focusSessions ?? []) as FocusSession[], today)
+  const habitRates = buildHabitRates(habits ?? [], habitLogs ?? [], today)
+  const moodTrend = (journalEntries ?? []).flatMap((entry: AnalyticsJournalEntry) =>
+    typeof entry.mood === "number" && entry.mood > 0
+      ? [{ date: format(parseISO(entry.date), "dd/MM"), mood: entry.mood }]
+      : [],
+  )
+  const focusMinutes = buildFocusMinutes(focusSessions ?? [], today)
 
   // Goals aggregations
-  const goalList = (goals ?? []) as Goal[]
+  const goalList = goals ?? []
   const goalByStatus = buildGoalByStatus(goalList)
   const goalByCategory = buildGoalByCategory(goalList)
   const activeGoals = goalList
@@ -302,25 +324,25 @@ export default async function AnalyticsPage() {
     }))
 
   // Tasks aggregations
-  const taskList = (tasks ?? []) as Task[]
+  const taskList = tasks ?? []
   const taskByStatus = buildTaskByStatus(taskList)
-  const taskByPriority = (["P1", "P2", "P3", "P4"] as const).map((p) => ({
+  const taskByPriority = TASK_PRIORITIES.map((p) => ({
     priority: p,
     count: taskList.filter((t) => t.priority === p).length,
   }))
   const completedPerDay = buildCompletedPerDay(taskList, today)
 
   // CRM aggregations
-  const contactList = (contacts ?? []) as Contact[]
+  const contactList = contacts ?? []
   const crmByStage = buildCrmByStage(contactList)
   const crmByType = buildCrmByType(contactList)
   const interactionActivity = buildInteractionActivity(
-    (interactions ?? []) as Pick<Interaction, "date">[],
+    interactions ?? [],
     today,
   )
 
   // Knowledge aggregations
-  const noteList = (notes ?? []) as Pick<Note, "created_at" | "linked_to_type" | "tags">[]
+  const noteList = notes ?? []
   const notesPerDay = buildNotesPerDay(noteList, today)
   const notesByLinkedType = buildNotesByLinkedType(noteList)
   const topTags = buildTopTags(noteList)

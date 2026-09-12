@@ -22,7 +22,7 @@ import {
 import { PROJECT_COLORS, PROJECT_CATEGORIES } from './task-constants'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import type { ProjectCategory } from '@/lib/types/database'
+import { isProjectCategory, type ProjectCategory } from '@/lib/types/database'
 
 interface AddProjectDialogProps {
   open: boolean
@@ -68,7 +68,7 @@ export function AddProjectDialog({ open, onOpenChange, defaultCategory = 'defaul
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle>New Project</DialogTitle>
         </DialogHeader>
@@ -89,7 +89,12 @@ export function AddProjectDialog({ open, onOpenChange, defaultCategory = 'defaul
 
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={projectCategory} onValueChange={(v) => setProjectCategory(v as ProjectCategory)}>
+            <Select
+              value={projectCategory}
+              onValueChange={(value) => {
+                if (isProjectCategory(value)) setProjectCategory(value)
+              }}
+            >
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>

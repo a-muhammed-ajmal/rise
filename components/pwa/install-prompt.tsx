@@ -9,6 +9,12 @@ interface BeforeInstallPromptEvent extends Event {
   readonly userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+declare global {
+  interface WindowEventMap {
+    beforeinstallprompt: BeforeInstallPromptEvent;
+  }
+}
+
 const DISMISSED_KEY = "rise-install-dismissed";
 
 export function InstallPrompt() {
@@ -19,9 +25,9 @@ export function InstallPrompt() {
   useEffect(() => {
     if (localStorage.getItem(DISMISSED_KEY)) return;
 
-    const handler = (e: Event) => {
+    const handler = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
-      setPromptEvent(e as BeforeInstallPromptEvent);
+      setPromptEvent(e);
       setVisible(true);
     };
 

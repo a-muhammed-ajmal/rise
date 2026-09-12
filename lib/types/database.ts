@@ -11,13 +11,31 @@ export type Json =
 export type ProjectCategory =
   | 'personal' | 'professional' | 'financial' | 'wellness'
   | 'relationship' | 'vision' | 'legal' | 'default';
+export type ProjectStatus = "active" | "completed" | "archived";
+
+export function isProjectCategory(value: unknown): value is ProjectCategory {
+  return (
+    value === "personal" ||
+    value === "professional" ||
+    value === "financial" ||
+    value === "wellness" ||
+    value === "relationship" ||
+    value === "vision" ||
+    value === "legal" ||
+    value === "default"
+  );
+}
+
+export function isProjectStatus(value: unknown): value is ProjectStatus {
+  return value === "active" || value === "completed" || value === "archived";
+}
 
 type ProjectRow = {
   id: string;
   user_id: string;
   name: string;
   description: string | null;
-  status: "active" | "completed" | "archived";
+  status: ProjectStatus;
   color: string;
   category: ProjectCategory;
   goal_id: string | null;
@@ -53,6 +71,20 @@ export type TaskAttachment = {
 
 export type TaskStatus = "todo" | "in_progress" | "blocked" | "on_hold" | "done";
 export type TaskPriority = "P1" | "P2" | "P3" | "P4";
+
+export function isTaskStatus(value: unknown): value is TaskStatus {
+  return (
+    value === "todo" ||
+    value === "in_progress" ||
+    value === "blocked" ||
+    value === "on_hold" ||
+    value === "done"
+  );
+}
+
+export function isTaskPriority(value: unknown): value is TaskPriority {
+  return value === "P1" || value === "P2" || value === "P3" || value === "P4";
+}
 
 /** iCal RRULE string, e.g. "FREQ=DAILY" */
 export type RecurrenceRule = string;
@@ -376,6 +408,40 @@ type OAuthTokenRow = {
   revoked: boolean;
   created_at: string;
 };
+type ApprovalTokenUseRow = {
+  jti: string;
+  user_id: string;
+  expires_at: string;
+  created_at: string;
+};
+type RateLimitBucketRow = {
+  key_hash: string;
+  window_started_at: string;
+  hit_count: number;
+};
+type PushNotificationLogRow = {
+  id: string;
+  user_id: string;
+  subscription_id: string | null;
+  reminder_type: "habit_nudge" | "crm_followup";
+  entity_id: string | null;
+  dedup_key: string;
+  status: "pending" | "sent" | "failed";
+  http_status: number | null;
+  error: string | null;
+  created_at: string;
+  sent_at: string | null;
+};
+type McpAuditLogRow = {
+  id: string;
+  user_id: string;
+  client_id: string;
+  tool_name: string;
+  input_hash: string;
+  succeeded: boolean;
+  duration_ms: number;
+  created_at: string;
+};
 
 // ─── Helper to build Insert / Update from Row ─────────────────────────────────
 
@@ -520,6 +586,26 @@ export interface Database {
         Insertable<WhatsappLogRow>,
         Partial<Insertable<WhatsappLogRow>>
       >;
+      approval_token_uses: T<
+        ApprovalTokenUseRow,
+        Omit<ApprovalTokenUseRow, "created_at">,
+        Partial<Omit<ApprovalTokenUseRow, "created_at">>
+      >;
+      rate_limit_buckets: T<
+        RateLimitBucketRow,
+        RateLimitBucketRow,
+        Partial<RateLimitBucketRow>
+      >;
+      push_notification_log: T<
+        PushNotificationLogRow,
+        Insertable<PushNotificationLogRow>,
+        Partial<Insertable<PushNotificationLogRow>>
+      >;
+      mcp_audit_log: T<
+        McpAuditLogRow,
+        Insertable<McpAuditLogRow>,
+        Partial<Insertable<McpAuditLogRow>>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -535,7 +621,59 @@ export interface Database {
           content: string;
           metadata: Json;
           similarity: number;
+          memory_type: string;
         }[];
+      };
+      consume_oauth_authorization_code: {
+        Args: { p_code_hash: string };
+        Returns: {
+          user_id: string;
+          client_id: string;
+          redirect_uri: string;
+          code_challenge: string;
+          scope: string;
+          resource: string;
+        }[];
+      };
+      rotate_oauth_refresh_token: {
+        Args: {
+          p_refresh_token_hash: string;
+          p_client_id: string;
+          p_access_token_hash: string;
+          p_new_refresh_token_hash: string;
+          p_access_expires_at: string;
+          p_refresh_expires_at: string;
+        };
+        Returns: {
+          rotation_status: string;
+          user_id: string | null;
+          scope: string | null;
+          resource: string | null;
+        }[];
+      };
+      consume_approval_token: {
+        Args: {
+          p_jti: string;
+          p_user_id: string;
+          p_expires_at: string;
+        };
+        Returns: boolean;
+      };
+      check_rate_limit: {
+        Args: {
+          p_key_hash: string;
+          p_limit: number;
+          p_window_seconds: number;
+        };
+        Returns: {
+          allowed: boolean;
+          remaining: number;
+          retry_after_seconds: number;
+        }[];
+      };
+      export_current_user_data: {
+        Args: Record<string, never>;
+        Returns: Json;
       };
     };
     Enums: Record<string, never>;

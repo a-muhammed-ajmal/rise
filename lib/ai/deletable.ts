@@ -206,7 +206,25 @@ export const DELETABLE: Record<DeletableEntity, DeletableMeta> = {
   },
 };
 
-export const DELETABLE_ENTITIES = Object.keys(DELETABLE) as DeletableEntity[];
+export const DELETABLE_ENTITIES = [
+  "task",
+  "project",
+  "goal",
+  "milestone",
+  "journal_entry",
+  "transaction",
+  "budget",
+  "debt",
+  "habit",
+  "habit_log",
+  "contact",
+  "interaction",
+  "note",
+  "document",
+  "link",
+  "review",
+  "focus_session",
+] as const satisfies readonly DeletableEntity[];
 
 /** Tables carrying a `deleted_at` column — the set every read path must filter. */
 export const SOFT_DELETE_TABLES: readonly DeletableTable[] =

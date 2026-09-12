@@ -22,9 +22,13 @@ import {
 } from '@/components/ui/select'
 import { PROJECT_COLORS, PROJECT_CATEGORIES } from './task-constants'
 import { cn } from '@/lib/utils'
-import type { Project, ProjectCategory } from '@/lib/types/database'
-
-type ProjectStatus = Project['status']
+import {
+  isProjectCategory,
+  isProjectStatus,
+  type Project,
+  type ProjectCategory,
+  type ProjectStatus,
+} from '@/lib/types/database'
 
 interface ProjectFormProps {
   open: boolean
@@ -69,7 +73,7 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="md:max-w-sm">
         <DialogHeader>
           <DialogTitle>{initial ? 'Edit Project' : 'New Project'}</DialogTitle>
         </DialogHeader>
@@ -89,7 +93,12 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
 
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as ProjectCategory)}>
+            <Select
+              value={category}
+              onValueChange={(value) => {
+                if (isProjectCategory(value)) setCategory(value)
+              }}
+            >
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -140,7 +149,12 @@ export function ProjectForm({ open, onOpenChange, initial, onSaved }: ProjectFor
 
           <div className="space-y-2">
             <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as ProjectStatus)}>
+            <Select
+              value={status}
+              onValueChange={(value) => {
+                if (isProjectStatus(value)) setStatus(value)
+              }}
+            >
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>

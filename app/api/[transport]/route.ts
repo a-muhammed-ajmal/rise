@@ -6,12 +6,14 @@ import {
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { executeTool } from "@/lib/ai/execute-tool";
 import {
-  MCP_TOOLS,
+  getMcpTools,
   isMcpAllowedTool,
   isStaticMcpToken,
   resolveAllowedUserId,
   getMcpToolContext,
+  recordMcpAudit,
 } from "@/lib/ai/mcp";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   OAUTH_SCOPE,
   resourceMatches,
@@ -25,7 +27,7 @@ const RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
 const handler = createMcpHandler(
   (server) => {
     server.server.setRequestHandler(ListToolsRequestSchema, () => ({
-      tools: MCP_TOOLS,
+      tools: getMcpTools(),
     }));
 
     server.server.setRequestHandler(
@@ -44,7 +46,31 @@ const handler = createMcpHandler(
           const rawUserId = extra.authInfo?.extra?.userId;
           const userId = typeof rawUserId === "string" ? rawUserId : undefined;
           const ctx = await getMcpToolContext(userId);
+          const rateLimit = await checkRateLimit(`mcp:${ctx.userId}`, {
+            limit: 120,
+            windowMs: 60_000,
+          });
+          if (!rateLimit.ok) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Rate limit exceeded. Retry in ${rateLimit.retryAfterSec} seconds.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          const startedAt = Date.now();
           const result = await executeTool(name, args ?? {}, ctx);
+          await recordMcpAudit({
+            userId: ctx.userId,
+            clientId: extra.authInfo?.clientId ?? "unknown",
+            toolName: name,
+            args: args ?? {},
+            succeeded: result.success,
+            durationMs: Date.now() - startedAt,
+          });
           return {
             content: [{ type: "text", text: JSON.stringify(result) }],
             isError: !result.success,
