@@ -10,7 +10,7 @@ const contentSecurityPolicy = [
   "media-src 'self' blob: https://*.supabase.co",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  "form-action 'self' https://claude.ai https://claude.com",
   "frame-ancestors 'none'",
   "upgrade-insecure-requests",
 ].join("; ");
