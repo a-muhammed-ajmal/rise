@@ -49,3 +49,9 @@ supabase/.temp/
 # source detection scans anything not ignored here, mines garbage class
 # candidates out of them and emits CSS that Turbopack refuses to parse.
 .tmp.driveupload/
+
+# Local agent tooling — mirrors of .claude/skills and Codex config. Kept on
+# disk, out of version control; they were untracked before and a blanket
+# `git add -A` during /ship swept them in.
+.agents/
+.codex/
