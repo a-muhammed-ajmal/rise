@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -14,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Settings, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/hooks/use-theme";
+import { RiseLogo } from "@/components/brand/rise-logo";
 
 interface TopbarProps {
   email?: string;
@@ -41,12 +41,9 @@ export function Topbar({ email, fullName, avatarUrl }: TopbarProps) {
     <header className="h-14 border-b border-border bg-background/90 backdrop-blur-xl flex items-center justify-between px-4 md:px-5 sticky top-0 z-40">
       {/* Mobile logo */}
       <Link href="/" className="flex items-center gap-2 md:hidden group">
-        <Image
-          src="/icon-192.png"
-          alt="RISE"
-          width={28}
-          height={28}
-          className="rounded-lg shadow-sm transition-transform duration-200 group-hover:scale-105"
+        <RiseLogo
+          plate
+          className="w-7 h-7 transition-transform duration-200 group-hover:scale-105"
         />
         <span className="font-heading font-semibold text-base tracking-tight">RISE</span>
       </Link>
@@ -59,7 +56,7 @@ export function Topbar({ email, fullName, avatarUrl }: TopbarProps) {
         <button
           type="button"
           onClick={toggle}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-md border-[1.5px] border-border hover:border-[rgba(255,101,53,0.50)] hover:bg-accent active:scale-95 transition-all"
+          className="h-9 w-9 inline-flex items-center justify-center rounded-md border-[1.5px] border-border hover:border-[var(--border-brand)] hover:bg-accent active:scale-95 transition-all"
           aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
           {theme === "dark" ? (

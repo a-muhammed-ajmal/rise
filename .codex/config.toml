@@ -1,0 +1,10 @@
+[mcp_servers.rise]
+url = "https://rise.muhammedajmal.com/api/mcp"
+bearer_token_env_var = "RISE_MCP_ACCESS_TOKEN"
+default_tools_approval_mode = "writes"
+startup_timeout_sec = 20
+tool_timeout_sec = 60
+required = false
+
+[mcp_servers.supabase]
+url = "https://mcp.supabase.com/mcp?project_ref=fsftqmhpxyxfxxeztxht"

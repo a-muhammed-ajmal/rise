@@ -137,10 +137,10 @@ Not scheduled through `pg_cron`: set the cadence under
 
 RISE uses a locked light-first orange brand system (full spec in `.claude/skills/frontend-design/`):
 
-- **Brand:** `#FF6535` orange — accents, borders, icon fills, focus rings; `#C2410C` for filled button/FAB surfaces with white text (raw `#FF6535` is only 2.93:1 there — fails AA); `#CC4400` for orange text on white (AA 4.8:1); `#FFF0EB` tint for chips/badges
+- **Brand:** `#0C2443` orange — accents, borders, icon fills, focus rings; `#0C2443` for filled button/FAB surfaces with white text (raw `#0C2443` is only 2.93:1 there — fails AA); `#0C2443` for orange text on white (AA 4.8:1); `#EEF2F8` tint for chips/badges
 - **Surfaces:** light-first — `#FFFFFF` base · `#F9FAFB` paper · navy `#1A1A2E` for dark sections; opt-in dark mode uses the navy family (`#0B1120` / `#1A1A2E`)
 - **Typography:** Inter only (400–800); page titles 700, headings 600; 11px eyebrow labels in brand orange
-- **Borders:** always visible at rest — `1.5px rgba(26,26,46,0.16)` on cards, orange `rgba(255,101,53,0.50)` on hover; graph-paper background signature (40×40px grid)
+- **Borders:** always visible at rest — `1.5px rgba(26,26,46,0.16)` on cards, orange `rgba(12, 36, 67,0.50)` on hover; graph-paper background signature (40×40px grid)
 - **Module colors (text + tint pairs):** Tasks `#2563EB` · Finance `#059669` · Wellness `#BE123C` · Goals `#7C3AED` · Knowledge `#D97706` · CRM `#0891B2` — AI inherits the brand orange
 - **Layout:** 5-slot bottom nav on mobile (`[Home][Tasks][AI-FAB][Finance][More]`) · sticky sidebar on desktop (64px collapsed / 224px expanded)
 - **Motion:** 150–400ms tokens, transform/opacity only, `prefers-reduced-motion` support; `.tappable` scale feedback on touch
@@ -507,4 +507,4 @@ curl -s https://<your-app>/api/mcp \
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
-| Last phase | Phase 23 — production hardening: durable approvals/rate limits, OAuth and MCP controls, recoverable deletion, AI content boundaries, dependency/CI/PWA/security-header fixes |
+| Last phase | Phase 24 — RISE brand identity: three-leaf mark across app, PWA and favicon surfaces; brand tokens migrated to Deep Navy `#0C2443` with a Golden Yellow `#FDB304` accent |

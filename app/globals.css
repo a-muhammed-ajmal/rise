@@ -54,6 +54,8 @@
   --color-brand-hover: var(--brand-hover);
   --color-brand-text: var(--brand-text);
   --color-brand-tint: var(--brand-tint);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-tint: var(--brand-accent-tint);
 
   /* Module accent colors — text/icon color + tint background per module */
   --color-mod-tasks: var(--mod-tasks);
@@ -89,8 +91,8 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   LIGHT MODE (default) — RISE OS orange brand
-   Brand: #FF6535 · Text: #1A1A2E · Base: #FFFFFF · Paper: #F9FAFB
+   LIGHT MODE (default) — RISE navy brand, golden-yellow accent
+   Brand: #0C2443 · Accent: #FDB304 · Text: #1A1A2E · Base: #FFFFFF · Paper: #F9FAFB
    ══════════════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -107,33 +109,43 @@
   --secondary-foreground: #1A1A2E;
   --muted: #F9FAFB;
   --muted-foreground: rgba(26, 26, 46, 0.62);
-  --accent: #FFF0EB;
-  --accent-foreground: #D6450F;
+  --accent: #EEF2F8;
+  --accent-foreground: #0C2443;
   --destructive: #E11D48;
   --border: rgba(26, 26, 46, 0.16);
   --input: rgba(26, 26, 46, 0.18);
-  --ring: #FF6535;
+  --ring: #0C2443;
   /* Chart palette */
-  --chart-1: #FF6535;
+  --chart-1: #0C2443;
   --chart-2: #2563EB;
   --chart-3: #10B981;
   --chart-4: #F59E0B;
   --chart-5: #7C3AED;
   --sidebar: #FFFFFF;
   --sidebar-foreground: #1A1A2E;
-  --sidebar-primary: #FF6535;
+  --sidebar-primary: #0C2443;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #FFF0EB;
-  --sidebar-accent-foreground: #D6450F;
+  --sidebar-accent: #EEF2F8;
+  --sidebar-accent-foreground: #0C2443;
   --sidebar-border: rgba(26, 26, 46, 0.13);
-  --sidebar-ring: #FF6535;
+  --sidebar-ring: #0C2443;
 
   /* ── Brand semantic ─────────────────────────────────────────────────────── */
-  --brand:        #FF6535;   /* accents, borders, icon fills, focus — NOT text/filled-surface-text */
-  --brand-action:  #C2410C;   /* filled button/FAB surfaces — white text AA (5.2:1)     */
-  --brand-hover:  #FF8159;   /* hover / gradient end        */
-  --brand-text:   #CC4400;   /* orange text on white — AA (4.8:1) */
-  --brand-tint:   #FFF0EB;   /* chip / badge backgrounds    */
+  --brand:        #0C2443;   /* accents, borders, icon fills, focus — NOT text/filled-surface-text */
+  --brand-action: #0C2443;   /* filled button/FAB surfaces — white text AAA (15.6:1)   */
+  --brand-hover:  #16365C;   /* hover / gradient end — white text AAA (12.2:1)         */
+  --brand-text:   #0C2443;   /* navy text on white — AAA (15.6:1), on tint (13.9:1)    */
+  --brand-tint:   #EEF2F8;   /* chip / badge backgrounds    */
+
+  /* Golden yellow — the accent half of the mark. Highlights, active/selected
+     indicators and small emphasis ONLY; never a large background, and never
+     text on white (1.8:1). On navy it reads at 8.6:1. */
+  --brand-accent:      #FDB304;
+  --brand-accent-tint: #FFF6E0;
+
+  /* Fill for the logo's navy leaf group. Light mode is the master colour; the
+     .dark override lightens it so the mark stays legible on navy surfaces. */
+  --brand-mark:   #0C2443;
 
   /* ── Module accent tokens — text/icon color + tint pair ────────────────── */
   --mod-tasks: #2563EB;          --mod-tasks-tint: #EFF6FF;
@@ -175,9 +187,9 @@
   /* ── Borders ────────────────────────────────────────────────────────────── */
   --border-subtle:  rgba(26, 26, 46, 0.10);
   --border-line:    #E5E5E5;
-  --border-brand:   rgba(255, 101, 53, 0.30);
-  --border-on-dark: rgba(255, 101, 53, 0.20);
-  --border-focus:   #FF6535;
+  --border-brand:   rgba(12, 36, 67, 0.30);
+  --border-on-dark: rgba(253, 179, 4, 0.28);
+  --border-focus:   #0C2443;
 
   /* ── Semantic status ─────────────────────────────────────────────────────
      Text tokens darkened from the original 500-level Tailwind hues, which
@@ -229,8 +241,8 @@
   --shadow-card:  0 1px 3px rgba(26, 26, 46, 0.08);
   --shadow-hover: 0 4px 16px rgba(26, 26, 46, 0.12);
   --shadow-popup: 0 8px 32px rgba(26, 26, 46, 0.14);
-  --shadow-brand: 0 4px 16px rgba(255, 101, 53, 0.25);
-  --glow-focus:   0 0 0 3px rgba(255, 101, 53, 0.13);
+  --shadow-brand: 0 4px 16px rgba(12, 36, 67, 0.25);
+  --glow-focus:   0 0 0 3px rgba(12, 36, 67, 0.13);
 
   /* ── Motion ─────────────────────────────────────────────────────────────── */
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);  /* entrances / confirmations */
@@ -246,8 +258,10 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   DARK MODE (opt-in via .dark on <html>) — navy family, orange brand
-   Background: #0B1120 · Surface: #1A1A2E · Brand: #FF6535 / #FF8159
+   DARK MODE (opt-in via .dark on <html>) — navy family, golden-yellow accent
+   Background: #0B1120 · Surface: #1A1A2E · Fill: #2E5488 · Accent: #FDB304
+   Navy cannot carry the brand here (1.2:1 on #0B1120), so a lifted navy takes
+   filled surfaces and the golden yellow takes accents, rings and indicators.
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .dark {
@@ -263,33 +277,36 @@
   --secondary-foreground: #E9EAF2;
   --muted: rgba(255, 255, 255, 0.06);
   --muted-foreground: rgba(233, 234, 242, 0.55);
-  --accent: rgba(255, 101, 53, 0.15);
-  --accent-foreground: #FF8159;
+  --accent: rgba(253, 179, 4, 0.15);
+  --accent-foreground: #FDB304;
   --destructive: #F43F5E;
   --border: rgba(255, 255, 255, 0.12);
   --input: rgba(255, 255, 255, 0.16);
-  --ring: #FF8159;
+  --ring: #FDB304;
   /* Chart palette — dark (lightened for contrast) */
-  --chart-1: #FF8159;
+  --chart-1: #FDB304;
   --chart-2: #60A5FA;
   --chart-3: #34D399;
   --chart-4: #FBBF24;
   --chart-5: #A78BFA;
   --sidebar: #1A1A2E;
   --sidebar-foreground: #E9EAF2;
-  --sidebar-primary: #FF6535;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(255, 101, 53, 0.15);
-  --sidebar-accent-foreground: #FF8159;
+  --sidebar-primary: #FDB304;
+  --sidebar-primary-foreground: #0C2443;
+  --sidebar-accent: rgba(253, 179, 4, 0.15);
+  --sidebar-accent-foreground: #FDB304;
   --sidebar-border: rgba(255, 255, 255, 0.10);
-  --sidebar-ring: #FF8159;
+  --sidebar-ring: #FDB304;
 
   /* ── Brand (dark) ───────────────────────────────────────────────────────── */
-  --brand:        #FF6535;
-  --brand-action:  #C2410C;
-  --brand-hover:  #FF8159;
-  --brand-text:   #FF8159;
-  --brand-tint:   rgba(255, 101, 53, 0.15);
+  --brand:        #FDB304;   /* accents, rings, active indicators — 10.4:1 on #0B1120 */
+  --brand-action: #2E5488;   /* filled surfaces — white text AAA (7.7:1)              */
+  --brand-hover:  #3A6AA8;   /* hover — white text AA (5.5:1)                         */
+  --brand-text:   #FDB304;   /* 9.4:1 on the dark card                                */
+  --brand-tint:   rgba(253, 179, 4, 0.15);
+  --brand-accent:      #FDB304;
+  --brand-accent-tint: rgba(253, 179, 4, 0.15);
+  --brand-mark:   #8FA8C8;   /* lightened navy leaves — 7.0:1 on #1A1A2E              */
 
   /* ── Module accents (dark) — lightened for navy surfaces ───────────────── */
   --mod-tasks: #60A5FA;          --mod-tasks-tint: rgba(96, 165, 250, 0.15);
@@ -329,9 +346,9 @@
         hover / focus / active emphasis ──────────────────────────────────── */
   --border-subtle:  rgba(255, 255, 255, 0.10);
   --border-line:    rgba(255, 255, 255, 0.12);
-  --border-brand:   rgba(255, 101, 53, 0.40);
-  --border-on-dark: rgba(255, 101, 53, 0.20);
-  --border-focus:   #FF8159;
+  --border-brand:   rgba(253, 179, 4, 0.40);
+  --border-on-dark: rgba(253, 179, 4, 0.24);
+  --border-focus:   #FDB304;
 
   /* ── Semantic status (dark) ─────────────────────────────────────────────── */
   --color-success:      #34D399;
@@ -353,8 +370,8 @@
   --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.40);
   --shadow-popup: 0 8px 32px rgba(0, 0, 0, 0.50);
-  --shadow-brand: 0 4px 16px rgba(255, 101, 53, 0.30);
-  --glow-focus:   0 0 0 3px rgba(255, 101, 53, 0.20);
+  --shadow-brand: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --glow-focus:   0 0 0 3px rgba(253, 179, 4, 0.22);
 }
 
 /* ─── Animations ─────────────────────────────────────────────────────────── */
@@ -378,20 +395,20 @@
   to { stroke-dashoffset: 0; }
 }
 
-/* Brand pulse — orange glow breathing (AI-active, recording states) */
+/* Brand pulse — brand glow breathing (AI-active, recording states) */
 @keyframes brand-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 101, 53, 0.10); }
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
   50%      { box-shadow: var(--shadow-brand); }
 }
 
-/* Bee float — gentle idle bob for the logo mark (FAB, hero renders) */
-@keyframes bee-float {
+/* Logo float — gentle idle bob for the logo mark (FAB, hero renders) */
+@keyframes logo-float {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-2px); }
 }
 
-.bee-float {
-  animation: bee-float 2.6s var(--ease-smooth) infinite;
+.logo-float {
+  animation: logo-float 2.6s var(--ease-smooth) infinite;
 }
 
 .slide-up {
@@ -457,7 +474,7 @@
 @media (hover: hover) {
   .card:hover,
   .card-hover:hover {
-    border-color: rgba(255, 101, 53, 0.50);
+    border-color: var(--border-brand);
     box-shadow: var(--shadow-hover);
     transform: translateY(-1px);
   }
@@ -466,12 +483,12 @@
 }
 .card:active,
 .card-hover:active {
-  border-color: rgba(255, 101, 53, 0.50);
+  border-color: var(--border-brand);
   transform: scale(0.995);
 }
 
 .login-card {
-  box-shadow: 0 0 40px rgba(255, 101, 53, 0.15), 0 12px 32px rgba(26, 26, 46, 0.10);
+  box-shadow: 0 0 40px rgba(12, 36, 67, 0.15), 0 12px 32px rgba(26, 26, 46, 0.10);
 }
 
 @layer base {
@@ -589,20 +606,36 @@
 .shadow-popup { box-shadow: var(--shadow-popup); }
 .shadow-brand { box-shadow: var(--shadow-brand); }
 
+/* ─── Logo: dark-mode leaf contrast ──────────────────────────────────────────
+   #0C2443 on the #0B1120 background measures 1.2:1 — effectively invisible.
+   Prominent placements solve this with a light plate (see <RiseLogo plate />);
+   for the small inline uses where a plate would look wrong, the navy group
+   lightens to --brand-mark (7.0:1). The golden leaf never changes. ───────── */
+
+.rise-mark__navy {
+  fill: var(--brand-mark);
+}
+
+/* On the light plate the mark always shows its master colours — the lightened
+   dark-mode navy would wash out against white (2.4:1). */
+.rise-mark--plate .rise-mark__navy {
+  fill: #0C2443;
+}
+
 /* ─── Brand signature: graph-paper background ────────────────────────────── */
 
 .graph-bg {
   background-image:
-    linear-gradient(rgba(26, 26, 46, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26, 26, 46, 0.08) 1px, transparent 1px);
+    linear-gradient(rgba(12, 36, 67, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(12, 36, 67, 0.08) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
 .graph-bg-dark,
 .dark .graph-bg {
   background-image:
-    linear-gradient(rgba(255, 101, 53, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 101, 53, 0.07) 1px, transparent 1px);
+    linear-gradient(rgba(253, 179, 4, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(253, 179, 4, 0.06) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
@@ -670,19 +703,19 @@
 
 .bottom-nav__fab {
   margin-bottom: 20px;
-  background: var(--brand);
-  border: 1.5px solid rgba(255, 101, 53, 0.20);
+  background: #FFFFFF;
+  border: 1.5px solid var(--border-brand);
   box-shadow: var(--shadow-brand);
   transition:
     background var(--dur-fast) var(--ease-smooth),
     box-shadow var(--dur-fast) var(--ease-smooth);
 }
 .bottom-nav__fab:active {
-  background: var(--brand-hover);
+  background: #F4F7FB;
 }
 
 .bottom-nav__fab--active {
-  background: var(--brand-hover);
+  border-color: var(--brand-accent);
   box-shadow: var(--shadow-brand), var(--glow-focus);
 }
 
@@ -712,12 +745,12 @@
 }
 .nav-drawer__item:hover,
 .nav-drawer__item:active {
-  border-color: rgba(255, 101, 53, 0.50);
+  border-color: var(--border-brand);
 }
 
 .nav-drawer__item--active {
   background: var(--brand-action);
-  border-color: rgba(255, 101, 53, 0.20);
+  border-color: var(--border-brand);
   color: var(--text-on-brand);
   box-shadow: var(--shadow-brand);
 }

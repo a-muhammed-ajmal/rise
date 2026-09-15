@@ -64,7 +64,7 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
 
 const PRIORITY_COLORS: Record<TaskPriority, string> = {
   P1: "#EF4444",
-  P2: "#FF6535",
+  P2: "#CC4400",
   P3: "#3B82F6",
   P4: "hsl(var(--muted-foreground))",
 }

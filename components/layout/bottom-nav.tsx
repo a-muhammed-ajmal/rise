@@ -111,7 +111,7 @@ export function BottomNav() {
               aiActive && "bottom-nav__fab--active",
             )}
           >
-            <RiseLogo mono className="w-6 h-6 bee-float" />
+            <RiseLogo className="w-6 h-6 logo-float" />
           </Link>
         </div>
 

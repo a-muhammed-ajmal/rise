@@ -43,3 +43,9 @@ next-env.d.ts
 
 # Supabase CLI scratch state (linked project ref, version cache)
 supabase/.temp/
+
+# Google Drive sync scratch. These are extension-less binary blobs that hold
+# fragments of the project's own compiled output; Tailwind v4's automatic
+# source detection scans anything not ignored here, mines garbage class
+# candidates out of them and emits CSS that Turbopack refuses to parse.
+.tmp.driveupload/

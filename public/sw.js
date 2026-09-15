@@ -1,4 +1,4 @@
-const CACHE_NAME = "rise-v5";
+const CACHE_NAME = "rise-v6";
 const OFFLINE_URL = "/offline";
 const STATIC_SHELL = [
   OFFLINE_URL,

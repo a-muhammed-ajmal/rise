@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
@@ -307,7 +306,7 @@ function FileAttachmentView({
       href={url ?? "#"}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border-[1.5px] border-border shadow-card text-xs hover:border-[rgba(255,101,53,0.50)] transition-colors"
+      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border-[1.5px] border-border shadow-card text-xs hover:border-[var(--border-brand)] transition-colors"
     >
       <FileText className="w-4 h-4 shrink-0 text-muted-foreground" />
       <span className="truncate max-w-[140px]">{att.filename}</span>
@@ -812,15 +811,10 @@ function AssistantContent() {
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full space-y-4 py-12 slide-up">
-            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md bee-float">
-              <Image
-                src="/icon-512.png"
-                alt="RISE"
-                width={64}
-                height={64}
-                className="w-full h-full object-cover"
-              />
-            </div>
+            <RiseLogo
+              plate
+              className="w-16 h-16 rounded-2xl shadow-md logo-float"
+            />
             <div className="text-center space-y-1">
               <h2 className="font-semibold text-lg">RISE AI Assistant</h2>
               <p className="text-sm text-muted-foreground">

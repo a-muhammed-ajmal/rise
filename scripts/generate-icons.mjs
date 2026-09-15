@@ -1,58 +1,41 @@
 /**
- * RISE icon pipeline — regenerates every app/PWA icon from the master logo.
+ * RISE maskable icon pipeline.
  *
  *   node scripts/generate-icons.mjs
  *
- * Source of truth: public/rise-ai.png (bee mark, any size, white or
- * transparent background). Outputs:
+ * Every other app/PWA icon is a supplied brand asset copied in verbatim from
+ * the RISE logo package — do not regenerate those here. Only the two maskable
+ * PWA tiles are derived, because Android crops a maskable icon to a circle or
+ * squircle and a transparent source would lose its ground. The mark is placed
+ * on a white plate at 62% (inside the maskable safe zone); white is used
+ * because both the navy leaves and the golden leaf read against it.
  *
- *   public/rise-logo.png           512  transparent mark (in-app renders)
- *   public/icon-192.png            192  white tile, mark at 80%
- *   public/icon-512.png            512  white tile, mark at 80%
- *   public/icon-maskable-192.png   192  white tile, mark at 62% (safe zone)
- *   public/icon-maskable-512.png   512  white tile, mark at 62% (safe zone)
- *   public/apple-touch-icon.png    180  white tile, mark at 80%
- *   app/icon.png                    96  white tile (Next.js favicon)
+ * Source of truth: public/icon-1024.png (supplied RISE-logo-1024x1024.png).
+ * Outputs:
+ *
+ *   public/icon-maskable-192.png   192  white plate, mark at 62%
+ *   public/icon-maskable-512.png   512  white plate, mark at 62%
  */
 import sharp from "sharp";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SRC = path.join(root, "public", "rise-ai.png");
+const SRC = path.join(root, "public", "icon-1024.png");
 
 const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };
+const SAFE_ZONE = 0.62;
 
-/** Load the master, knock near-white background out to transparency,
- *  and trim to the mark's bounding box. */
-async function loadMark() {
-  const { data, info } = await sharp(SRC)
-    .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+/** The supplied PNGs carry their own clear space; trim to the true bounding
+ *  box first so the safe-zone percentage is measured against the mark. */
+const mark = await sharp(SRC)
+  .ensureAlpha()
+  .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 10 })
+  .png()
+  .toBuffer();
 
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] > 242 && data[i + 1] > 242 && data[i + 2] > 242) {
-      data[i + 3] = 0;
-    }
-  }
-
-  return sharp(data, {
-    raw: { width: info.width, height: info.height, channels: 4 },
-  })
-    .png()
-    .toBuffer()
-    .then((buf) =>
-      sharp(buf)
-        .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 10 })
-        .png()
-        .toBuffer()
-    );
-}
-
-/** Square white tile with the mark centered at `scale` of the tile size. */
-async function tile(mark, size, scale, outPath) {
+/** Square white plate with the mark centered at `scale` of the plate size. */
+async function plate(size, scale, outPath) {
   const inner = Math.round(size * scale);
   const resized = await sharp(mark)
     .resize(inner, inner, { fit: "inside" })
@@ -75,22 +58,7 @@ async function tile(mark, size, scale, outPath) {
   console.log(`✓ ${path.relative(root, outPath)} (${size}x${size})`);
 }
 
-const mark = await loadMark();
-
-await sharp(mark)
-  .resize(512, 512, {
-    fit: "contain",
-    background: { r: 0, g: 0, b: 0, alpha: 0 },
-  })
-  .png()
-  .toFile(path.join(root, "public", "rise-logo.png"));
-console.log("✓ public/rise-logo.png (512x512, transparent)");
-
-await tile(mark, 192, 0.8, path.join(root, "public", "icon-192.png"));
-await tile(mark, 512, 0.8, path.join(root, "public", "icon-512.png"));
-await tile(mark, 192, 0.62, path.join(root, "public", "icon-maskable-192.png"));
-await tile(mark, 512, 0.62, path.join(root, "public", "icon-maskable-512.png"));
-await tile(mark, 180, 0.8, path.join(root, "public", "apple-touch-icon.png"));
-await tile(mark, 96, 0.8, path.join(root, "app", "icon.png"));
+await plate(192, SAFE_ZONE, path.join(root, "public", "icon-maskable-192.png"));
+await plate(512, SAFE_ZONE, path.join(root, "public", "icon-maskable-512.png"));
 
 console.log("Done.");

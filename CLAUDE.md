@@ -66,9 +66,9 @@ These rules are enforced by the `frontend-design` skill and must be followed for
 - **Conditional classes:** Use `cn()` (= `twMerge(clsx(...))`) for all conditional class merging.
 - **Dynamic colors:** Use `style={{ color: varValue }}` for computed/dynamic colors. Never use arbitrary Tailwind `bg-[${color}]`.
 - **Typography:** Inter only. Max Tailwind weight class is `font-semibold` (600). `font-bold` (700) is banned — use the design token heading scale instead.
-- **Brand color:** `#FF6535` for backgrounds/fills. For orange text on white backgrounds use `--brand-text: #D6450F` (AA contrast requirement — `#FF6535` fails WCAG AA on white).
+- **Brand colors:** Deep Navy `#0C2443` is the brand — fills, text and accents alike (white text on it is AAA 15.6:1, and it is AAA 15.6:1 as text on white). Golden Yellow `#FDB304` is `--brand-accent`: highlights, active/selected indicators and small emphasis only — never a large background, and never text on white (1.8:1). In dark mode navy cannot carry the brand (1.2:1 on `#0B1120`), so `--brand-action` lifts to `#2E5488` and `--brand`/`--brand-text` become the golden yellow.
 - **Module identity colors:** Use CSS variables `--mod-tasks`, `--mod-wellness`, `--mod-goals`, `--mod-finance`, `--mod-crm` for border colors and tints. Never use raw Tailwind color utilities for module-specific identity.
-- **Graph-paper background:** Every section requires `.graph-bg` (light) or `.graph-bg-dark` (dark) — navy grid on light, orange grid on dark, 40px background-size.
+- **Graph-paper background:** Every section requires `.graph-bg` (light) or `.graph-bg-dark` (dark) — navy grid on light, golden grid on dark, 40px background-size.
 - **Glassmorphism:** Glass effect only on structural chrome (sidebar, modals, topbar). Never on content cards.
 - **Dialogs:** `window.confirm` is banned. Use `<ConfirmDialog>` for all confirmation flows.
 - **Animations:** Use `.slide-up .stagger-N` for section entrance animations (stagger-1 through stagger-4). Page modules use `animate-rise-in stagger-1` on the heading.
@@ -286,6 +286,8 @@ app/
   auth/callback/            OAuth verification interchange and session validation routes
 
 components/
+  brand/                    RiseLogo — the only place the three-leaf mark is rendered; inline SVG,
+                            `plate` variant for dark surfaces. Never hardcode the mark elsewhere.
   ui/                       Core design architecture primitive assets (@base-ui/react)
   layout/                   Universal frame shells: Sidebar (Desktop), BottomNav (Mobile, max 5 items), Topbar
   analytics/                Isolated Recharts rendering structures per module
@@ -327,7 +329,13 @@ supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
   send-whatsapp/            Deno edge function — WhatsApp Cloud API reminders (hourly cron)
 proxy.ts                    Next.js 16 middleware entry point — calls lib/supabase/middleware.ts
-public/sw.js                Service worker: static-shell caching only; private routes and APIs stay network-only
+public/rise-logo.svg        Brand vector — source of truth for logo geometry and colours
+public/icon-*.png           Supplied app/PWA rasters (192/512/1024 + apple-touch); only the two
+                            maskable tiles are derived, by scripts/generate-icons.mjs
+app/favicon.ico             Supplied 6-size favicon (16/32/48/64/128/256)
+public/sw.js                Service worker: static-shell caching only; private routes and APIs stay network-only.
+                            Bump CACHE_NAME whenever an icon changes — the filenames are stable, so
+                            installed clients otherwise keep serving the precached previous mark.
 
 .claude/
   skills/                   frontend-design, db-schema, git-commit, security-audit

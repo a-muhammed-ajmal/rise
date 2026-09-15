@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { RiseLogo } from "@/components/brand/rise-logo";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -65,18 +65,11 @@ function LoginForm() {
 
   return (
     <div className="flex flex-col items-center gap-5 w-full max-w-sm slide-up">
-      <Image
-        src="/icon-512.png"
-        alt="RISE logo"
-        width={72}
-        height={72}
-        className="rounded-2xl shadow-lg"
-        priority
-      />
+      <RiseLogo plate className="w-[72px] h-[72px] rounded-2xl shadow-lg" />
 
       <Card className="w-full login-card border-primary/20">
         <CardHeader className="text-center space-y-1 pb-2">
-          <CardTitle className="text-h1 font-heading text-primary">
+          <CardTitle className="text-h1 font-heading text-brand-text">
             RISE
           </CardTitle>
           <CardDescription className="text-sm">

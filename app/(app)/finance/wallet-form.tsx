@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
 
 const COLOR_SWATCHES = [
-  "#FF6535",
+  "#0C2443",
   "#10b981",
   "#ef4444",
   "#3b82f6",

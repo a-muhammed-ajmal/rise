@@ -9,11 +9,11 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border-[rgba(255,101,53,0.20)] bg-primary text-primary-foreground shadow-brand hover:bg-brand-hover hover:shadow-[0_0_0_3px_rgba(255,101,53,0.14),0_3px_12px_rgba(255,101,53,0.2)] active:shadow-none",
+          "border-[var(--border-brand)] bg-primary text-primary-foreground shadow-brand hover:bg-brand-hover hover:shadow-[var(--glow-focus),var(--shadow-brand)] active:shadow-none",
         outline:
-          "border-input bg-background hover:border-[rgba(255,101,53,0.50)] hover:text-foreground active:border-[rgba(255,101,53,0.50)] aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-input bg-background hover:border-[var(--border-focus)] hover:text-foreground active:border-[var(--border-focus)] aria-expanded:bg-muted aria-expanded:text-foreground",
         secondary:
-          "border-border bg-secondary text-secondary-foreground hover:border-[rgba(255,101,53,0.50)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border-border bg-secondary text-secondary-foreground hover:border-[var(--border-focus)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
           "hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground",
         destructive:

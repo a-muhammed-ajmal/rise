@@ -207,13 +207,13 @@ function consentShell(title: string, inner: string): string {
     background:#F9FAFB; font-family: Inter, system-ui, -apple-system, sans-serif; color:#1A1A2E; padding:24px; }
   .card { width:100%; max-width:400px; background:#fff; border:1.5px solid rgba(26,26,46,0.16);
     border-radius:16px; padding:28px; box-shadow:0 8px 30px rgba(26,26,46,0.08); }
-  h1 { font-size:20px; font-weight:600; margin:0 0 16px; color:#D6450F; }
+  h1 { font-size:20px; font-weight:600; margin:0 0 16px; color:#0C2443; }
   .lead { font-size:15px; font-weight:600; margin:0 0 8px; }
   .muted { font-size:13px; color:#5b5b6b; margin:0 0 12px; line-height:1.5; }
   form { margin:20px 0 8px; }
-  .approve { width:100%; min-height:44px; border:none; border-radius:10px; background:#FF6535;
+  .approve { width:100%; min-height:44px; border:none; border-radius:10px; background:#0C2443;
     color:#fff; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; }
-  .approve:hover { background:#e8551f; }
+  .approve:hover { background:#16365C; }
   .deny { display:block; text-align:center; margin-top:12px; font-size:13px; color:#5b5b6b; text-decoration:none; }
   .deny:hover { text-decoration:underline; }
 </style></head>

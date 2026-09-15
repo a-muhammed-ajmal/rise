@@ -227,7 +227,7 @@ export const DateTimePicker = ({
                       className={cn(
                         'tap-target mx-auto rounded-full text-sm font-medium transition active:scale-95',
                         disabled && 'cursor-not-allowed opacity-40',
-                        isSelected ? 'bg-[var(--brand)] text-white' :
+                        isSelected ? 'bg-[var(--brand-action)] text-white' :
                         isToday ? 'border-2 border-[var(--brand)] text-[var(--brand-text)]' :
                         'text-foreground hover:bg-[var(--brand-tint)]'
                       )}
@@ -306,7 +306,7 @@ export const DateTimePicker = ({
                     className={cn(
                       'rounded px-2 py-0.5 text-xs font-semibold transition',
                       meridiem === m
-                        ? 'bg-[var(--brand)] text-white'
+                        ? 'bg-[var(--brand-action)] text-white'
                         : 'border border-border bg-background text-muted-foreground hover:border-[var(--brand)]'
                     )}
                   >
@@ -340,7 +340,7 @@ export const DateTimePicker = ({
         <button
           type="button"
           onClick={handleSave}
-          className="min-h-[44px] rounded bg-[var(--brand)] px-5 text-sm font-semibold text-white shadow-brand transition hover:bg-[var(--brand-hover)] active:scale-95"
+          className="min-h-[44px] rounded bg-[var(--brand-action)] px-5 text-sm font-semibold text-white shadow-brand transition hover:bg-[var(--brand-hover)] active:scale-95"
         >
           Save
         </button>
