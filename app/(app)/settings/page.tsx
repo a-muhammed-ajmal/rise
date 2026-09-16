@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +83,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const supabase = createClient();
+    // Deliberately getUser(), not getClaims(): this reads user_metadata, and
+    // the JWT's copy only catches up with an updateUser() edit at the next
+    // token refresh — up to an hour of showing the previous name or photo.
+    // Settings is a cold, rarely-visited screen, so the round trip is free.
     supabase.auth.getUser().then(async ({ data, error }) => {
         if (error) {
           toast.error("Could not load profile");
@@ -117,11 +122,8 @@ export default function SettingsPage() {
   async function saveProfile() {
     setSavingProfile(true);
     const supabase = createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-    if (userError || !user) {
+    const userId = await currentUserId();
+    if (!userId) {
       setSavingProfile(false);
       toast.error("Could not identify your account");
       return;
@@ -130,12 +132,12 @@ export default function SettingsPage() {
     const { data: updatedProfiles, error: profileUpdateError } = await supabase
       .from("user_profile")
       .update({ display_name: nextName })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .select("id");
     let profileError = profileUpdateError;
     if (!profileError && updatedProfiles?.length === 0) {
       const inserted = await supabase.from("user_profile").insert({
-        user_id: user.id,
+        user_id: userId,
         display_name: nextName,
         facts: {},
       });
@@ -151,6 +153,11 @@ export default function SettingsPage() {
     });
     setSavingProfile(false);
     if (error) { toast.error("Failed to save name"); return; }
+    // The Topbar reads full_name from the layout's verified JWT claims, and
+    // updateUser() does not re-issue the access token. Without this refresh the
+    // old name would sit in the header until the token next rotated.
+    await supabase.auth.refreshSession();
+    router.refresh();
     toast.success("Name saved");
   }
 
@@ -171,10 +178,12 @@ export default function SettingsPage() {
     setUploadingAvatar(true);
     try {
       const supabase = createClient();
+      // getUser() again: avatar_path lives in user_metadata and has to be the
+      // server's current value, or a second upload orphans the previous file.
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-       const oldPath = metadataString(user.user_metadata ?? {}, "avatar_path");
-       const path = `${user.id}/avatar-${crypto.randomUUID()}.${extension}`;
+      const oldPath = metadataString(user.user_metadata ?? {}, "avatar_path");
+      const path = `${user.id}/avatar-${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(path, file, { upsert: false, contentType: file.type });
@@ -196,6 +205,10 @@ export default function SettingsPage() {
         if (cleanupError) console.error("[settings] old avatar cleanup failed", cleanupError.message);
       }
       setAvatarUrl(url);
+      // Same reason as the name save — refresh the token so the Topbar avatar
+      // changes now rather than at the next rotation.
+      await supabase.auth.refreshSession();
+      router.refresh();
       toast.success("Photo updated");
     } finally {
       setUploadingAvatar(false);

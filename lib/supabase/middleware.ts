@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/types/database";
+import { cachedJwks } from "@/lib/supabase/jwks";
 
 export async function updateSession(request: NextRequest) {
   // MCP + OAuth endpoints are hit by Claude without an app session and enforce
@@ -59,14 +60,16 @@ export async function updateSession(request: NextRequest) {
   );
 
   // getClaims() verifies the access token's signature locally against the
-  // project's cached JWKS, so an authenticated navigation costs no network
-  // round trip to the Auth server. getUser() cost one on *every* request —
+  // process-wide JWKS cache, so an authenticated navigation costs no network
+  // round trip at all. getUser() cost one on *every* request —
   // sequentially ahead of the layout's own auth call and the page's queries,
   // which is what made a cold app open feel slow. The session is still loaded
   // (and refreshed when expired) first, and on a project using legacy
   // symmetric JWT secrets getClaims() falls back to getUser() internally, so
   // the security properties are unchanged either way.
-  const { data: claimsData } = await supabase.auth.getClaims();
+  const { data: claimsData } = await supabase.auth.getClaims(undefined, {
+    jwks: await cachedJwks(),
+  });
   const claims = claimsData?.claims ?? null;
   const email = typeof claims?.email === "string" ? claims.email : undefined;
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { Goal, JournalEntry, Milestone } from "@/lib/types/database";
 import { todayISO, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -472,14 +473,14 @@ function GoalDialog({
         .eq("id", goal.id);
       errorMessage = error?.message ?? null;
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const userId = await currentUserId();
+      if (!userId) {
         setSaving(false);
         toast.error("Your session expired. Please sign in again.");
         return;
       }
       const { error } = await supabase.from("goals").insert({
-          user_id: user.id,
+          user_id: userId,
           title,
           description: description || null,
           category,
@@ -618,14 +619,14 @@ function MilestonesDialog({
     if (!newTitle.trim()) return;
     setAdding(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const userId = await currentUserId();
+    if (!userId) {
       setAdding(false);
       toast.error("Your session expired. Please sign in again.");
       return;
     }
     const { error } = await supabase.from("milestones").insert({
-      user_id: user.id,
+      user_id: userId,
       goal_id: goal.id,
       title: newTitle.trim(),
       due_date: newDate || null,
@@ -786,8 +787,8 @@ function JournalDialog({
     e.preventDefault();
     setSaving(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const userId = await currentUserId();
+    if (!userId) {
       setSaving(false);
       toast.error("Your session expired. Please sign in again.");
       return;
@@ -802,7 +803,7 @@ function JournalDialog({
       errorMessage = error?.message ?? null;
     } else {
       const { error } = await supabase.from("journal_entries").upsert({
-        user_id: user.id,
+        user_id: userId,
         date: todayISO(),
         content,
         mood,

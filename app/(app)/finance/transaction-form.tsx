@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { Transaction, PaymentMethod, Category } from "@/lib/types/database";
 import { todayISO } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -153,13 +154,11 @@ export function TransactionForm({
           return;
         }
       } else {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+        const userId = await currentUserId();
+        if (!userId) return;
 
         const { error } = await supabase.from("transactions").insert({
-          user_id: user.id,
+          user_id: userId,
           type,
           amount: parseFloat(amount),
           category,

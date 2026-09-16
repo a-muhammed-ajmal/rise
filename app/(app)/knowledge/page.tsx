@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { Note, Link } from "@/lib/types/database";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -415,14 +416,14 @@ function NoteDialog({
         .eq("id", note.id);
       errorMessage = error?.message ?? null;
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const userId = await currentUserId();
+      if (!userId) {
         setSaving(false);
         toast.error("Your session expired. Please sign in again.");
         return;
       }
       const { error } = await supabase.from("notes").insert({
-        user_id: user.id,
+        user_id: userId,
         title,
         content,
         tags,
@@ -521,14 +522,14 @@ function LinkDialog({
         .eq("id", link.id);
       errorMessage = error?.message ?? null;
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const userId = await currentUserId();
+      if (!userId) {
         setSaving(false);
         toast.error("Your session expired. Please sign in again.");
         return;
       }
       const { error } = await supabase.from("links").insert({
-        user_id: user.id,
+        user_id: userId,
         url,
         title: title || null,
         description: description || null,

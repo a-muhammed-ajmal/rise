@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -403,13 +404,13 @@ function AssistantContent() {
   useEffect(() => {
     async function loadConversation() {
       setHistoryLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setHistoryLoading(false); return; }
+      const userId = await currentUserId();
+      if (!userId) { setHistoryLoading(false); return; }
 
       const { data } = await supabase
         .from("ai_conversations")
         .select("id, messages")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -438,21 +439,21 @@ function AssistantContent() {
   // ── Persist messages to Supabase (debounced 800ms) ────────────────────────
 
   const persistMessages = useCallback(async (msgs: Message[], convId: string | null) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
 
     if (convId) {
       const { error } = await supabase
         .from("ai_conversations")
         .update({ messages: messagesToJson(msgs) })
         .eq("id", convId)
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
       if (error) console.error("[assistant] conversation update failed:", error.message);
     } else {
       const { data, error } = await supabase
         .from("ai_conversations")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           messages: messagesToJson(msgs),
         })
         .select("id")

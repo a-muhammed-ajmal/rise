@@ -4,6 +4,14 @@ vi.mock("@supabase/ssr", () => ({
   createServerClient: vi.fn(),
 }));
 
+// Stubbed so these cases never reach the network for the project's key set —
+// jwks.test.ts covers the cache itself.
+vi.mock("@/lib/supabase/jwks", () => ({
+  cachedJwks: vi.fn().mockResolvedValue({
+    keys: [{ kty: "EC", key_ops: ["verify"], kid: "test-kid" }],
+  }),
+}));
+
 import { updateSession } from "../middleware";
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { NextRequest } from "next/server";

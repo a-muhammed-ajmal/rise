@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { Habit, HabitLog } from "@/lib/types/database";
 import { todayISO, todayDOW, display12h } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -131,11 +132,11 @@ export default function WellnessPage() {
 
   async function markDone(habitId: string) {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     const { error } = await supabase.from("habit_logs").upsert(
       {
-        user_id: user.id,
+        user_id: userId,
         habit_id: habitId,
         logged_date: today,
         completed: true,
@@ -153,11 +154,11 @@ export default function WellnessPage() {
 
   async function markNotDone(habitId: string) {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     const { error } = await supabase.from("habit_logs").upsert(
       {
-        user_id: user.id,
+        user_id: userId,
         habit_id: habitId,
         logged_date: today,
         completed: false,
@@ -568,11 +569,11 @@ function HabitDialog({
         .eq("id", habit.id);
       errorMessage = error?.message ?? null;
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setSaving(false); return; }
+      const userId = await currentUserId();
+      if (!userId) { setSaving(false); return; }
       const { error } = await supabase
         .from("habits")
-        .insert({ ...payload, user_id: user.id, active: true, icon: "⭐" });
+        .insert({ ...payload, user_id: userId, active: true, icon: "⭐" });
       errorMessage = error?.message ?? null;
     }
     if (errorMessage) {
@@ -741,10 +742,10 @@ function FocusTimerDialog({
   async function saveSession() {
     if (!startedAt) return;
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     const { error } = await supabase.from("focus_sessions").insert({
-      user_id: user.id,
+      user_id: userId,
       duration_minutes: minutes,
       started_at: startedAt.toISOString(),
       ended_at: new Date().toISOString(),

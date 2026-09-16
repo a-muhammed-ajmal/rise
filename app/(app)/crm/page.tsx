@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { Contact, Interaction } from "@/lib/types/database";
 import { formatAED, formatDate, todayISO } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -361,13 +362,13 @@ function ContactForm({
         return;
       }
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const userId = await currentUserId();
+      if (!userId) {
         setSaving(false);
         return;
       }
       const { error } = await supabase.from("contacts").insert({
-        user_id: user.id,
+        user_id: userId,
         name: name.trim(),
         email: email || null,
         phone: phone || null,
@@ -517,10 +518,10 @@ function ContactDetail({
   async function logInteraction(e: React.FormEvent) {
     e.preventDefault();
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     const { error: interactionError } = await supabase.from("interactions").insert({
-      user_id: user.id,
+      user_id: userId,
       contact_id: contact.id,
       type: intType,
       notes: note,
