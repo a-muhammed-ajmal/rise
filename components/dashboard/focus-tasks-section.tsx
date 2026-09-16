@@ -1,25 +1,33 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Star, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TaskCard } from "@/components/productivity/task-card";
-import { TaskPopup } from "@/components/productivity/task-popup";
 
-import { useTasks } from "@/lib/hooks/use-tasks";
-import { useProjects } from "@/lib/hooks/use-projects";
+import { useTodayData } from "@/components/dashboard/today-data-provider";
 import { todayISO } from "@/lib/format";
 
 import { toast } from "sonner";
 import type { Task } from "@/lib/types/database";
 
+// Loaded on demand — see the note in tasks-dashboard-section.tsx. Both
+// sections point at the same chunk, so the first tap fetches it once.
+const TaskPopup = dynamic(
+  () => import("@/components/productivity/task-popup").then((m) => m.TaskPopup),
+  { ssr: false },
+);
+
 const MAX_FOCUS_TASKS = 3;
 
 export function FocusTasksSection() {
-  const { tasks, loading, createTask, completeTask, refresh } = useTasks("today");
-  const { projects } = useProjects();
+  const {
+    tasks: { tasks, loading, createTask, completeTask, refresh },
+    projects: { projects },
+  } = useTodayData();
   // Snapshot, not an id looked up in `tasks`: unfocusing or rescheduling a task
   // would drop it out of this section's list and unmount the popup mid-save.
   const [detailTask, setDetailTask] = useState<Task | null>(null);

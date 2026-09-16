@@ -58,15 +58,23 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() verifies the access token's signature locally against the
+  // project's cached JWKS, so an authenticated navigation costs no network
+  // round trip to the Auth server. getUser() cost one on *every* request —
+  // sequentially ahead of the layout's own auth call and the page's queries,
+  // which is what made a cold app open feel slow. The session is still loaded
+  // (and refreshed when expired) first, and on a project using legacy
+  // symmetric JWT secrets getClaims() falls back to getUser() internally, so
+  // the security properties are unchanged either way.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims ?? null;
+  const email = typeof claims?.email === "string" ? claims.email : undefined;
 
   const { pathname } = request.nextUrl;
 
   // Redirect unauthenticated users to login
   if (
-    !user &&
+    !claims &&
     !pathname.startsWith("/login") &&
     !pathname.startsWith("/auth")
   ) {
@@ -76,7 +84,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Block wrong accounts that somehow have a session
-  if (user && user.email !== allowedEmail) {
+  if (claims && email !== allowedEmail) {
     await supabase.auth.signOut();
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
@@ -85,7 +93,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users away from login
-  if (user && pathname.startsWith("/login")) {
+  if (claims && pathname.startsWith("/login")) {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = "/";
     return NextResponse.redirect(homeUrl);

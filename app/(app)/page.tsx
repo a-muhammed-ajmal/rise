@@ -8,6 +8,7 @@ import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
 import { formatAED, formatDate, todayISO, todayDOW, currentHourDubai } from "@/lib/format";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { TodayDataProvider } from "@/components/dashboard/today-data-provider";
 import { TasksDashboardSection } from "@/components/dashboard/tasks-dashboard-section";
 import { FocusTasksSection } from "@/components/dashboard/focus-tasks-section";
 import { QuickAddFab } from "@/components/dashboard/quick-add-fab";
@@ -152,46 +153,50 @@ export default async function HomePage() {
       </div>
 
       {/* Primary daily sections — Quote → Focus → Habits → Tasks */}
-      <div className="space-y-4">
-        {/* Motivational quote */}
-        <MotivationalQuote />
+      {/* Focus and Tasks read the same two datasets, so they share one fetch
+          and one Realtime channel through TodayDataProvider. */}
+      <TodayDataProvider>
+        <div className="space-y-4">
+          {/* Motivational quote */}
+          <MotivationalQuote />
 
-        {/* Today's focus */}
-        <FocusTasksSection />
+          {/* Today's focus */}
+          <FocusTasksSection />
 
-        {/* Today's habits */}
-        <Card className="slide-up stagger-2 border-t-4 border-t-mod-wellness">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-mod-wellness-tint flex items-center justify-center">
-                <Heart className="w-3.5 h-3.5 text-mod-wellness" />
-              </div>
-              Habits
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {dueHabits.length > 0 ? (
-              <>
-                <Progress
-                  value={(completedCount / dueHabits.length) * 100}
-                  className="h-2 mb-3"
-                />
-                <HabitDashboardSection
-                  habits={dueHabits}
-                  logs={habitLogs ?? []}
-                />
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No habits due today.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+          {/* Today's habits */}
+          <Card className="slide-up stagger-2 border-t-4 border-t-mod-wellness">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-mod-wellness-tint flex items-center justify-center">
+                  <Heart className="w-3.5 h-3.5 text-mod-wellness" />
+                </div>
+                Habits
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {dueHabits.length > 0 ? (
+                <>
+                  <Progress
+                    value={(completedCount / dueHabits.length) * 100}
+                    className="h-2 mb-3"
+                  />
+                  <HabitDashboardSection
+                    habits={dueHabits}
+                    logs={habitLogs ?? []}
+                  />
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No habits due today.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Today's tasks */}
-        <TasksDashboardSection />
-      </div>
+          {/* Today's tasks */}
+          <TasksDashboardSection />
+        </div>
+      </TodayDataProvider>
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Active goals */}

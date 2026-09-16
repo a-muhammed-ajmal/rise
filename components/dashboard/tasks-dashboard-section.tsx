@@ -1,36 +1,44 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CheckSquare, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TaskCard } from "@/components/productivity/task-card";
-import { TaskPopup } from "@/components/productivity/task-popup";
 
-import { useTasks } from "@/lib/hooks/use-tasks";
-import { useProjects } from "@/lib/hooks/use-projects";
+import { useTodayData } from "@/components/dashboard/today-data-provider";
 import { todayISO } from "@/lib/format";
 
 import { toast } from "sonner";
 import type { Task } from "@/lib/types/database";
 
+// The detail popup is the single heaviest client component in the app and
+// nothing on the dashboard shows it until a card is tapped, so it is fetched
+// on demand instead of riding in the landing route's first-load JS.
+const TaskPopup = dynamic(
+  () => import("@/components/productivity/task-popup").then((m) => m.TaskPopup),
+  { ssr: false },
+);
+
 const VISIBLE_COUNT = 5;
 
 export function TasksDashboardSection() {
   const {
-    tasks,
-    loading,
-    createTask,
-    updateTask,
-    completeTask,
-    deleteTask,
-    duplicateTask,
-    refresh,
-  } = useTasks("today");
-
-  const { projects } = useProjects();
+    tasks: {
+      tasks,
+      loading,
+      createTask,
+      updateTask,
+      completeTask,
+      deleteTask,
+      duplicateTask,
+      refresh,
+    },
+    projects: { projects },
+  } = useTodayData();
   // Snapshot, not an id looked up in `tasks`: this section only queries today's
   // tasks, so rescheduling one would unmount the popup mid-save.
   const [detailTask, setDetailTask] = useState<Task | null>(null);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useId } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { currentUserId } from '@/lib/supabase/current-user'
 import type { Database, Task } from '@/lib/types/database'
 import { todayISO } from '@/lib/format'
 
@@ -69,11 +70,11 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
 
   async function createTask(data: Partial<Task>): Promise<string | null> {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
+    const userId = await currentUserId()
+    if (!userId) return null
 
     const { data: row, error } = await supabase.from('tasks').insert({
-      user_id: user.id,
+      user_id: userId,
       title: data.title ?? '',
       description: data.description ?? null,
       status: data.status ?? 'todo',
@@ -200,12 +201,12 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
 
   async function duplicateTask(id: string) {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const userId = await currentUserId()
+    if (!userId) return
     const task = tasks.find((t) => t.id === id)
     if (!task) return
     const { error } = await supabase.from('tasks').insert({
-      user_id: user.id,
+      user_id: userId,
       title: `${task.title} (copy)`,
       description: task.description,
       status: task.status === 'done' ? 'todo' : task.status,

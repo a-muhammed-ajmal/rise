@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useId } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { Project, ProjectCategory } from "@/lib/types/database";
 
 export function useProjects() {
@@ -47,12 +48,10 @@ export function useProjects() {
     category: ProjectCategory = "default",
   ) {
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     const { error: insertError } = await supabase.from("projects").insert({
-      user_id: user.id,
+      user_id: userId,
       name,
       description: description ?? null,
       status: "active",

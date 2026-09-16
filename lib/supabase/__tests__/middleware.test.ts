@@ -13,13 +13,20 @@ function makeRequest(pathname: string): NextRequest {
   return new NextRequest(url);
 }
 
+// updateSession authenticates with getClaims(), which verifies the access
+// token's signature locally against the cached JWKS instead of calling the
+// Auth server. `claims` is the decoded JWT payload, so `sub` stands in for the
+// user id and `email` is read straight off it.
 function setupMockAuth(
   user: { id: string; email?: string } | null,
   opts?: { signOut?: () => Promise<void> },
 ) {
   const mockSupabase = {
     auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user } }),
+      getClaims: vi.fn().mockResolvedValue({
+        data: user ? { claims: { sub: user.id, email: user.email } } : null,
+        error: null,
+      }),
       signOut: opts?.signOut ?? vi.fn().mockResolvedValue({}),
     },
   };
@@ -92,11 +99,10 @@ describe("updateSession", () => {
       capturedSetAll = opts.cookies.setAll;
       return {
         auth: {
-          getUser: vi
-              .fn()
-            .mockResolvedValue({
-              data: { user: { id: "user-123", email: "owner@example.com" } },
-            }),
+          getClaims: vi.fn().mockResolvedValue({
+            data: { claims: { sub: "user-123", email: "owner@example.com" } },
+            error: null,
+          }),
         },
       } as never;
     });

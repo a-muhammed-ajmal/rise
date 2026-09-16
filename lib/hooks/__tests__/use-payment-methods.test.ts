@@ -16,7 +16,9 @@ const mockQueryChain = {
 const mockSupabase = {
   from: vi.fn(() => mockQueryChain),
   auth: {
-    getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }),
+    getClaims: vi
+      .fn()
+      .mockResolvedValue({ data: { claims: { sub: "user-123" } }, error: null }),
   },
 };
 
@@ -47,8 +49,9 @@ function setupQueryResolve(data: unknown, error: unknown = null) {
 describe("usePaymentMethods", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSupabase.auth.getUser.mockResolvedValue({
-      data: { user: { id: "user-123" } },
+    mockSupabase.auth.getClaims.mockResolvedValue({
+      data: { claims: { sub: "user-123" } },
+      error: null,
     });
     mockQueryChain.single.mockResolvedValue({ data: null, error: null });
     mockQueryChain.maybeSingle.mockResolvedValue({ data: null, error: null });
@@ -124,7 +127,7 @@ describe("usePaymentMethods", () => {
     });
 
     it("does nothing when the user is not authenticated", async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } });
+      mockSupabase.auth.getClaims.mockResolvedValueOnce({ data: null, error: null });
       const { result } = renderHook(() => usePaymentMethods());
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -313,7 +316,7 @@ describe("usePaymentMethods", () => {
     });
 
     it("does nothing when the user is not authenticated", async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } });
+      mockSupabase.auth.getClaims.mockResolvedValueOnce({ data: null, error: null });
       const { result } = renderHook(() => usePaymentMethods());
       await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -351,7 +354,7 @@ describe("usePaymentMethods", () => {
     });
 
     it("returns null when the user is not authenticated", async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } });
+      mockSupabase.auth.getClaims.mockResolvedValueOnce({ data: null, error: null });
       const { result } = renderHook(() => usePaymentMethods());
       await waitFor(() => expect(result.current.loading).toBe(false));
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, ChevronDown, Flame, Clock } from "lucide-react";
@@ -34,11 +35,11 @@ export function HabitDashboardSection({ habits, logs }: Props) {
 
   async function markDone(habitId: string) {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     const { error } = await supabase.from("habit_logs").upsert(
       {
-        user_id: user.id,
+        user_id: userId,
         habit_id: habitId,
         logged_date: today,
         completed: true,
@@ -56,11 +57,11 @@ export function HabitDashboardSection({ habits, logs }: Props) {
 
   async function markNotDone(habitId: string) {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     const { error } = await supabase.from("habit_logs").upsert(
       {
-        user_id: user.id,
+        user_id: userId,
         habit_id: habitId,
         logged_date: today,
         completed: false,

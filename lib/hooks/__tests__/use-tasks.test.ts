@@ -25,7 +25,9 @@ const mockSupabase = {
   channel: vi.fn(() => mockChannel),
   removeChannel: vi.fn(),
   auth: {
-    getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }),
+    getClaims: vi
+      .fn()
+      .mockResolvedValue({ data: { claims: { sub: "user-123" } }, error: null }),
   },
 };
 
