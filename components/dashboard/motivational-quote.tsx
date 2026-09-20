@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 
 const QUOTES: readonly string[] = [
@@ -94,11 +94,13 @@ function shuffleArray(arr: readonly string[]): string[] {
 }
 
 export function MotivationalQuote() {
-  const shuffled = useMemo(() => shuffleArray(QUOTES), [])
+  // The server and the first browser render must show identical text.
+  const [shuffled, setShuffled] = useState<readonly string[]>(QUOTES)
   const [index, setIndex] = useState(0)
   const [fading, setFading] = useState(false)
 
   useEffect(() => {
+    setShuffled(shuffleArray(QUOTES))
     const FADE_MS = 250
     let changeTimer: ReturnType<typeof setTimeout>
 
