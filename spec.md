@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1031 passing across 35 test files |
+| Test count | 1039 passing across 36 test files |
 | Line coverage | 94.39% on `lib/**` |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 65 AUTO + 17 REVERSIBLE + 9 APPROVAL = 91 total |
-| Last feature shipped | Phase 24 — RISE brand identity: three-leaf mark installed across app/PWA/favicon surfaces, brand token family migrated from orange to Deep Navy `#0C2443` with Golden Yellow `#FDB304` accent (2026-09-15) |
+| Last feature shipped | Phase 25 — Visual consistency: unified design specification, shared page layout and controls, refreshed Home and Finance, and readable transaction type selection (2026-09-20) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -69,58 +69,15 @@ Built for one person (UAE-based): AED currency, DD/MM/YYYY dates, 12-hour time.
 
 ## Visual Requirements
 
-> Full system: `.claude/skills/frontend-design/` (SKILL.md + AGENT_PROMPT.md + assets/tokens.css). Light-first orange brand; Inter-only type.
+Canonical specification: [.claude/skills/frontend-design/DESIGN_SYSTEM.md](.claude/skills/frontend-design/DESIGN_SYSTEM.md). Runtime tokens: app/globals.css. The local .agents skill files mirror .claude and do not define a separate system.
 
-### Typography
-
-- **Single typeface: Inter** (400/500/600/700/800), loaded via `next/font/google`; CSS var `--font-inter`. No other font family — `--font-sans`, `--font-heading`, `--font-display`, and `--font-mono` all resolve to Inter.
-- Fixed type scale utilities in `app/globals.css`: `text-display` (24px, greeting), `text-h1` (20px page titles, weight 700), `text-h2` (16px card titles, 600), `text-body` (14px), `text-label` (12px), `text-micro` (11px floor), `text-metric` (24px, tabular-nums). No fluid `clamp()` scaling.
-- Headings: h1 = 700 / −0.02em; h2–h6 = 600 / −0.02em. `font-bold` (700) and `font-extrabold` (800) are permitted per the Inter weight ladder.
-- Eyebrow labels: 11px / 700 / +0.15em uppercase, brand orange (`.eyebrow`).
-
-### Color system
-
-- **Brand**: `--brand: #0C2443` (accents, borders, icon fills, focus — NOT filled-surface text), `--brand-action: #0C2443` (filled button/FAB surfaces with white text — raw `--brand` is only 2.93:1 and fails AA there), `--brand-hover: #16365C`, `--brand-text: #0C2443` (orange text on white, AA 4.8:1), `--brand-tint: #EEF2F8` (chips/badges).
-- **Light-first surfaces**: `--surface-base: #FFFFFF`, `--surface-paper: #F9FAFB`, `--surface-dark: #1A1A2E` (navy, inverted sections), `--surface-footer: #0B1120`.
-- **Text**: `--text-strong: #1A1A2E`, `--text-body: navy/70`, `--text-muted: navy/62` (raised from navy/50 — the original failed AA at 3.31:1).
-- **Borders — always visible at rest**: cards `1.5px rgba(26,26,46,0.16)`, inputs `1.5px rgba(26,26,46,0.18)`, hover/focus `rgba(12, 36, 67,0.50)` / `--border-focus: #0C2443`. Nothing borderless.
-- **Status** (text darkened from the original 500-level hues to clear AA on their own tint): success `#047857`, danger `#B91C1C`, warning `#92400E`, info `#1D4ED8` (each with a `-tint` background, unchanged). Priority: P1 `#EF4444`, P2 `#CC4400` (brand-text-safe orange — not raw `#FF6535`), P3 `#3B82F6`, P4 `#9CA3AF`.
-- Module accent tokens (text/icon color + `-tint` background; tints for badges/chips, solid for icons/labels — never button fills):
-
-| Module | Token | Text/icon | Tint |
-| --- | --- | --- | --- |
-| Tasks | `mod-tasks` | `#2563EB` | `#EFF6FF` |
-| Finance | `mod-finance` | `#059669` | `#ECFDF5` |
-| Wellness | `mod-wellness` | `#BE123C` | `#FFF1F2` |
-| Goals | `mod-goals` | `#7C3AED` | `#F5F3FF` |
-| Knowledge | `mod-knowledge` | `#D97706` | `#FFFBEB` |
-| CRM | `mod-crm` | `#0891B2` | `#ECFEFF` |
-
-- **AI has no module token** — `mod-ai` is retired; AI surfaces inherit `--brand` / `--brand-tint` and use the standard card treatment (no glassmorphism). AI-active state: orange `brand-pulse` glow (`--shadow-brand`).
-- **Graph-paper background** (brand signature): `.graph-bg` navy grid on light, orange grid on dark, 40×40px — applied to the app shell `<main>` and login.
-- Dark mode: opt-in `.dark` class on `<html>`, toggled via `lib/hooks/use-theme.tsx`, persisted to `localStorage` key `rise-theme`; falls back to `prefers-color-scheme`. Navy elevation ladder (`#0B1120` → `#151527` → `#1A1A2E` → `#232338`), off-white text (`#E9EAF2`, never pure white), neutral white/12 hairline borders with orange reserved for hover/focus/active, desaturated 400-series module accents. Light mode is the default.
-
-### Animation system
-
-- Entry: `.slide-up` — 350ms `--ease-out` fade + 16px Y translate. Stagger: `.stagger-1`–`.stagger-4` (0.08s increments).
-- Motion tokens: `--dur-instant` (80ms), `--dur-fast` (150ms), `--dur-normal` (250ms), `--dur-enter` (350ms), `--dur-slow` (400ms). Easing: `--ease-out`, `--ease-spring`, `--ease-smooth`, `--ease-exit`.
-- Animate `transform` and `opacity` only; reduced motion collapses all durations to `0.01ms`.
-- Touch feedback: `.tappable` scales to 0.96 on `:active`; every `:hover` is paired with an `:active` state (hover alone is insufficient on touch).
-- Interactive cards: `.card-hover` — orange top-bar wipe, `translateY(-1px)` lift, orange border on hover.
-- Glass blur is permitted only on structural chrome (bottom nav, topbar); never on content cards or AI bubbles.
-
-### Layout / responsive
-
-- Breakpoint: `md` (768px), the only breakpoint. Below → `BottomNav` 5-slot `[Home][Tasks][AI-FAB][Finance][More]`; center AI FAB (brand orange, `--shadow-brand`) routes to `/assistant` and protrudes above the nav bar. Above → `Sidebar` (sticky, 64px collapsed / 224px expanded, all 10 nav items).
-- "More" overflow sheet (shadcn `Sheet`, `side="bottom"`) exposes Wellness, Goals, Analytics, Knowledge, CRM, Settings in a 3×2 grid.
-- Radii: buttons 4px, inputs 8px, cards 12px, panels/sheets 16px, pills 9999px.
-- Touch targets: minimum 44×44px on every tappable element; buttons default to 44px height.
-- Floating actions: brand-orange circles with `--shadow-brand`, hover lift, `active:scale-95`.
-
-### Accessibility
-
-- Focus ring: 2px solid `var(--border-focus)` at 2px offset on `:focus-visible`.
-- All destructive actions gated behind `<ConfirmDialog>` — never `window.confirm`.
+- Deep Navy #0C2443 and Golden Yellow #FDB304; preserve the three-leaf logo via RiseLogo. Yellow is a small highlight, never text on white. Dark mode uses #2E5488 action fills and gold accents.
+- Inter only, maximum weight 600. Fixed scale: greeting/metrics 24px, page titles 20px, section titles 16px, body 14px, metadata 12px, compact navigation floor 11px. --text-body is a color; --font-size-body is the body size.
+- PageShell/PageHeader provide a centered 1280px workspace with 16px mobile / 24px desktop side padding and 24px section gaps. Only md (768px); use intrinsic wrapping for columns with insufficient space.
+- Faint 40px graph grid on the shell and login, neutral resting card borders, 12px card radius, restrained shadows, and small module accent icons. Inner rows may use separators. Preserve life-area and priority meanings.
+- Shared buttons and icon controls target 44px. Primary actions have visible labels. Use existing five-slot mobile navigation and respect safe areas.
+- Home prioritizes Focus and Today's Tasks, then compact habits. Finance keeps wallet totals visible and all seven views available through three primary buttons plus More.
+- WCAG AA contrast targets, visible keyboard focus, reduced motion, and ConfirmDialog for destructive actions remain required. See the canonical system for component, theme, motion and validation details.
 
 ---
 
@@ -329,7 +286,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 - All 8 module pages (productivity, finance, wellness, goals, CRM, knowledge, analytics, assistant) render without runtime errors.
 - AI assistant streams text and executes approved tool calls end-to-end.
 - `npm run build` exits 0 (0 TypeScript errors, 0 lint warnings).
-- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 1031 tests, 94.39%.
+- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 1039 tests, 94.39%.
 - Pushing `main` produces a working Vercel production deployment.
 
 ---
@@ -406,3 +363,4 @@ Candidate areas (not prioritized):
 | 21 | WCAG AA contrast pass across the token system | 2026-08-13 | `app/globals.css` (new `--brand-action: #C2410C` for filled button/FAB surfaces — raw `--brand` at 2.93:1 with white text failed AA; `--brand-text` #D6450F→#CC4400; `--muted-foreground`/`--text-muted` alpha 0.50→0.62; `--color-success/warning/danger/info` darkened to clear AA on their own tint; `--color-p2` #22C55E→#CC4400 light, dark equivalent; `.stage-negotiation` hardcoded rgba → `--color-warning-tint`), `components/productivity/task-constants.ts` (**fix:** `PRIORITY_CONFIG.P2.color` disagreed with the `--color-p2` CSS var it also fed — task-popup.tsx and task-calendar.tsx rendered P2 green while task-card.tsx and task-toolbar.tsx rendered it orange, for the same task; unified), `components/productivity/task-calendar.tsx` (dropped a locally-duplicated `PRIORITY_DOT` map in favor of the shared one from task-constants.ts), 13 files across every module page + `quick-add-fab.tsx` + `DurationPicker.tsx` + `RepeatEditor.tsx` + `task-popup.tsx` (`bg-brand`→`bg-brand-action` on filled button/FAB surfaces; `text-brand`→`text-brand-text` on 7 foreground-text usages), `.claude/skills/frontend-design/` (SKILL.md, DESIGN_SYSTEM.md, AGENT_PROMPT.md, assets/tokens.css, references/{accessibility,aesthetics,components}.md — token tables and rule prose resynced to the corrected values) |
 | 22 | AI tool expansion: task time/duration/format + cross-app gap closure | 2026-09-03 | `lib/ai/tools.ts` (task tools gain `due_time`/`estimated_time`/`recurrence`/`reminder`/`area`/`project_id`/`subtasks`; **fix:** dead `is_starred` param on `update_task` replaced with a working `is_focus` toggle; 7 new tools — `duplicate_task`, `reopen_milestone`, `update_habit_log`, `list_habit_logs` AUTO, `bulk_update_task_priority`, `create_transfer`, `create_adjustment` APPROVAL), `lib/ai/execute-tool.ts` (matching Zod schemas and handlers; `update_task`'s `is_focus` branch ports the UI's exact today/no-due-date + 3-per-day eligibility rule server-side; `create_transfer`/`create_adjustment` mirror the wallet UI's exact DB write shape; ownership guards added for every new foreign key — `project_id` on create_task, `goal_id` on milestones/projects, `contact_id` on interactions, `linked_to_id` on notes), `app/(app)/assistant/page.tsx` (`TOOL_LABELS` entries for the 3 new APPROVAL tools), `lib/ai/__tests__/tools.test.ts` + `lib/ai/__tests__/execute-tool.test.ts` (tier-count assertions updated, ~140 new test cases covering every new field and tool) |
 | 24 | RISE brand identity implementation | 2026-09-15 | `components/brand/rise-logo.tsx` (raster `<Image>` → inline SVG carrying the supplied vector geometry verbatim; `mono`/`keepColor` filter hacks replaced by a `plate` variant — `mono`'s `brightness-0 invert` would flatten the two-tone mark to a white blob, and both props relied on Tailwind `dark:` utilities, which are media-query based here while the theme toggles a `.dark` class), `app/globals.css` (brand token family retuned to navy/gold across both themes — navy measures 1.2:1 on the `#0B1120` dark ground, so `--brand-action` lifts to `#2E5488` and `--brand`/`--brand-text` become the gold; new `--brand-accent`/`--brand-accent-tint`/`--brand-mark`; `.rise-mark__navy` dark treatment lightens only the navy leaf group to `#8FA8C8` at 7.0:1 while geometry and the golden leaf stay untouched; `.bottom-nav__fab` filled-brand circle → white plate with a gold active ring; `bee-float` → `logo-float`; card/nav-drawer hover edges and `brand-pulse` de-orange'd), supplied assets installed verbatim into `public/` + `app/favicon.ico` (6-size ico) with only the two maskable PWA tiles derived, `scripts/generate-icons.mjs` (rewritten to derive just those tiles; obsolete `public/rise-ai.png` master removed), `app/layout.tsx` (full icons declaration), `public/manifest.webmanifest` (`theme_color`), `public/sw.js` (`CACHE_NAME` v5→v6 — filenames are unchanged, so without the bump installed clients keep serving the precached previous mark), `components/ui/{button,badge}.tsx` + `components/layout/{sidebar,topbar,bottom-nav}.tsx` + `app/(auth)/login/page.tsx` + `app/(app)/assistant/page.tsx` + `app/api/oauth/authorize/route.ts` (hardcoded retired-brand orange → tokens), `components/productivity/DateTimePicker.tsx` (**fix:** used `--brand` as a filled surface under white text, against the token contract — in dark mode `--brand` is now the gold accent, where white text falls to 1.9:1; moved to `--brand-action`), `.gitignore` (**fix:** `.tmp.driveupload/` — extension-less Drive-sync binaries holding fragments of the project's own compiled CSS were scanned by Tailwind v4's automatic source detection, which mined garbage class candidates out of them and emitted CSS Turbopack refused to parse, 500-ing `next dev` while `next build` tolerated it), both skill trees resynced + a Logo section added to `brand-guidelines/SKILL.md` |
+| 25 | Visual consistency across Home and Finance | 2026-09-20 | `.claude/skills/frontend-design/DESIGN_SYSTEM.md` (canonical navy/gold specification), `app/globals.css` (body token fix, typography, contrast and calmer surfaces), `components/layout/page-shell.tsx` (shared page/header), `app/(app)/page.tsx` (tasks first, compact habits), `components/finance/finance-navigation.tsx` (all seven views with regression tests), `app/(app)/finance/` (wallet and monthly layout, visible transaction type selector); 1039 tests across 36 files, 94.39% line coverage |

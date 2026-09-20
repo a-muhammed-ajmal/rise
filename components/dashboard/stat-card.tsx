@@ -8,12 +8,12 @@ import { cn } from "@/lib/utils"
 type StatAccent = "tasks" | "wellness" | "goals" | "finance" | "danger"
 
 // Tailwind can't compile dynamic class names — accents must be static strings
-const ACCENT: Record<StatAccent, { border: string; icon: string }> = {
-  tasks: { border: "border-t-mod-tasks", icon: "text-mod-tasks" },
-  wellness: { border: "border-t-mod-wellness", icon: "text-mod-wellness" },
-  goals: { border: "border-t-mod-goals", icon: "text-mod-goals" },
-  finance: { border: "border-t-mod-finance", icon: "text-mod-finance" },
-  danger: { border: "border-t-destructive", icon: "text-destructive" },
+const ACCENT: Record<StatAccent, { icon: string }> = {
+  tasks: { icon: "text-mod-tasks" },
+  wellness: { icon: "text-mod-wellness" },
+  goals: { icon: "text-mod-goals" },
+  finance: { icon: "text-mod-finance" },
+  danger: { icon: "text-destructive" },
 }
 
 type StatCardProps = {
@@ -47,13 +47,12 @@ export function StatCard({
       <Card
         size="sm"
         className={cn(
-          "card-hover h-full cursor-pointer border-t-4 py-2 md:py-2.5",
-          ACCENT[accent].border,
+          "card-hover h-full cursor-pointer py-3 md:py-4",
         )}
       >
-        <CardContent className="px-2.5 md:px-3 space-y-0.5">
+        <CardContent className="px-3 md:px-4 space-y-2">
           <div className="flex items-center justify-between gap-1">
-            <p className="text-micro uppercase tracking-wide text-muted-foreground truncate">
+            <p className="text-label font-medium text-muted-foreground">
               {label}
             </p>
             <Icon
@@ -61,19 +60,19 @@ export function StatCard({
               aria-hidden="true"
             />
           </div>
-          <p className="text-lg md:text-metric font-mono font-medium truncate">
+          <p className="text-h1 md:text-metric font-semibold tabular-nums">
             {value}
           </p>
           {typeof progress === "number" ? (
             <Progress
               value={progress}
-              className="pt-1"
+              className="h-1.5"
               aria-label={`${label} progress`}
             />
           ) : context ? (
             <p
               className={cn(
-                "text-micro truncate",
+                "text-label leading-snug break-words",
                 contextTone === "danger"
                   ? "text-destructive font-medium"
                   : "text-muted-foreground",

@@ -128,7 +128,7 @@ Not scheduled through `pg_cron`: set the cadence under
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (1031 tests, 94.39% line coverage) + Playwright |
+| Testing | Vitest 4 + Testing Library (1039 tests, 94.39% line coverage) + Playwright |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -502,9 +502,9 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1031 passing across 35 test files |
+| Test count | 1039 passing across 36 test files |
 | Line coverage | 94.39% on `lib/**` |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
-| Last phase | Phase 24 — RISE brand identity: three-leaf mark across app, PWA and favicon surfaces; brand tokens migrated to Deep Navy `#0C2443` with a Golden Yellow `#FDB304` accent |
+| Last phase | Phase 25 — Visual consistency: unified design specification, shared page layout and controls, refreshed Home and Finance, and readable transaction type selection |

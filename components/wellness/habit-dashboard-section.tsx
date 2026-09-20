@@ -10,9 +10,10 @@ import type { Habit, HabitLog } from "@/lib/types/database";
 import { todayISO, display12h } from "@/lib/format";
 import { AffirmationDialog } from "@/components/wellness/affirmation-dialog";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const DAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const VISIBLE_COUNT = 5;
+const VISIBLE_COUNT = 3;
 
 interface Props {
   habits: Habit[];
@@ -122,20 +123,22 @@ export function HabitDashboardSection({ habits, logs }: Props) {
         const streak = getStreak(habit);
 
         return (
-          <Card key={habit.id} className="card-hover border-l-[3px] border-l-mod-wellness">
-            <CardContent className="p-3 flex items-center gap-3">
-              <div
-                className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
+          <Card key={habit.id} className="gap-0 border-0 border-b rounded-none py-0 shadow-none last:border-b-0">
+            <CardContent className="px-0 py-3 flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!habit.description}
+                className={cn("flex-1 min-w-0 min-h-11 text-left rounded-sm", habit.description && "hover:text-brand-text active:opacity-80")}
                 onClick={() => { if (habit.description) setViewHabit(habit); }}
               >
-                <div className="flex items-center gap-2">
-                  <div
+                <span className="flex items-center gap-2">
+                  <span
                     className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: habit.color ?? "var(--brand)" }}
                   />
-                  <span className="text-sm font-medium truncate">{habit.name}</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5 ml-4 flex items-center gap-1">
+                  <span className="text-sm font-medium break-words">{habit.name}</span>
+                </span>
+                <span className="text-xs text-muted-foreground mt-1 ml-4 flex flex-wrap items-center gap-1">
                   {scheduleLabel(habit)}
                   {habit.reminder_time && (
                     <span className="flex items-center gap-0.5 ml-1">
@@ -143,10 +146,10 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                       {display12h(habit.reminder_time)}
                     </span>
                   )}
-                </p>
-              </div>
+                </span>
+              </button>
 
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 {streak > 0 && (
                   <Badge variant="secondary" className="gap-1 text-xs">
                     <Flame className="w-3 h-3 text-[var(--color-warning)]" />
@@ -157,7 +160,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                 <button
                   type="button"
                   onClick={() => markDone(habit.id)}
-                  className="w-7 h-7 rounded-full border-2 border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-tint)] active:scale-95"
+                  className="w-11 h-11 rounded-full border border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-tint)] active:scale-95"
                   aria-label="Mark done"
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -165,7 +168,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                 <button
                   type="button"
                   onClick={() => markNotDone(habit.id)}
-                  className="w-7 h-7 rounded-full border-2 border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-tint)] active:scale-95"
+                  className="w-11 h-11 rounded-full border border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-tint)] active:scale-95"
                   aria-label="Mark not done"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -180,7 +183,8 @@ export function HabitDashboardSection({ habits, logs }: Props) {
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground py-1.5 transition-colors"
+          aria-expanded={expanded}
+          className="min-h-11 w-full flex items-center justify-center gap-1 text-label text-brand-text hover:bg-brand-tint active:opacity-80 rounded-sm transition-colors"
         >
           <ChevronDown
             className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}

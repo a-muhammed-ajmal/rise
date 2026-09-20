@@ -99,7 +99,7 @@ export function MotivationalQuote() {
   const [fading, setFading] = useState(false)
 
   useEffect(() => {
-    const FADE_MS = 600
+    const FADE_MS = 250
     let changeTimer: ReturnType<typeof setTimeout>
 
     const intervalTimer = setInterval(() => {
@@ -118,15 +118,14 @@ export function MotivationalQuote() {
 
   return (
     <div
-      className="slide-up stagger-1 rounded-xl border border-border border-l-[3px] bg-card px-4 py-3 shadow-card"
-      style={{ borderLeftColor: "var(--brand)" }}
+      className="rounded-lg border border-border bg-card px-4 py-3"
       role="region"
       aria-label="Daily motivation"
       aria-live="polite"
     >
       <p
         className={cn(
-          "text-sm font-medium leading-relaxed transition-opacity duration-500",
+          "text-label text-muted-foreground leading-relaxed transition-opacity duration-250",
           fading ? "opacity-0" : "opacity-100",
         )}
       >

@@ -15,7 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageShell, PageHeader } from "@/components/layout/page-shell";
+import { FinanceNavigation, type FinanceTab } from "@/components/finance/finance-navigation";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -66,27 +68,6 @@ import {
   subMonths,
 } from "date-fns";
 import { toast } from "sonner";
-
-type FinanceTab =
-  | "overview"
-  | "transactions"
-  | "transfers"
-  | "wallets"
-  | "budgets"
-  | "debts"
-  | "categories";
-
-function isFinanceTab(value: unknown): value is FinanceTab {
-  return (
-    value === "overview" ||
-    value === "transactions" ||
-    value === "transfers" ||
-    value === "wallets" ||
-    value === "budgets" ||
-    value === "debts" ||
-    value === "categories"
-  );
-}
 
 function isBudgetPeriod(value: unknown): value is Budget["period"] {
   return value === "monthly" || value === "quarterly" || value === "yearly";
@@ -438,210 +419,88 @@ export default function FinancePage() {
   );
 
   return (
-    <div
-      className="p-3 md:p-5 max-w-2xl space-y-3"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between slide-up stagger-1">
-        <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-mod-finance-tint flex items-center justify-center">
-            <DollarSign className="w-4 h-4 text-mod-finance" />
-          </div>
-          Finance
-        </h1>
-        <div className="flex items-center gap-1.5">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={() => {
-              setEditTxn(null);
-              setTxnType("income");
-              setTxnOpen(true);
-            }}
-            aria-label="Add income"
-          >
-            <TrendingUp className="w-4 h-4 text-mod-finance" />
+    <PageShell>
+      <PageHeader
+        title="Finance"
+        icon={<span className="flex size-8 items-center justify-center rounded-lg bg-mod-finance-tint"><DollarSign className="size-4 text-mod-finance" /></span>}
+        actions={<>
+          <Button variant="outline" onClick={() => { setEditTxn(null); setTxnType("income"); setTxnOpen(true); }}>
+            <TrendingUp aria-hidden="true" /> Add income
           </Button>
-          <Button
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => {
-              setEditTxn(null);
-              setTxnType("expense");
-              setTxnOpen(true);
-            }}
-            aria-label="Add expense"
-          >
-            <TrendingDown className="w-4 h-4" />
+          <Button onClick={() => { setEditTxn(null); setTxnType("expense"); setTxnOpen(true); }}>
+            <Plus aria-hidden="true" /> Add expense
           </Button>
-        </div>
-      </div>
+        </>}
+      />
 
-      {/* Wallet balance cards — always visible */}
-      {activeWallets.length > 0 && (
-        <div className="slide-up stagger-2">
-          <div className="flex overflow-x-auto gap-2 pb-1 -mx-1 px-1">
-            {activeWallets.map((wallet) => (
-              <div
-                key={wallet.id}
-                className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card min-h-[40px]"
-              >
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    backgroundColor:
-                      wallet.color ?? "var(--muted-foreground)",
-                  }}
-                />
-                <div>
-                  <p className="text-xs text-muted-foreground leading-none mb-0.5">
-                    {wallet.name}
-                  </p>
-                  <p
-                    className={`text-sm font-mono font-medium leading-none ${
-                      wallet.balance < 0
-                        ? "text-destructive"
-                        : "text-mod-finance"
-                    }`}
-                  >
-                    {formatAED(wallet.balance)}
-                  </p>
+      <div className="flex flex-col gap-6 md:flex-row md:flex-wrap md:items-start">
+        <aside className="min-w-0 md:order-2 md:flex-[1_1_16rem]" aria-label="Wallet balances">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2"><Wallet className="size-4 text-mod-finance" aria-hidden="true" /> Wallets</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setTab("wallets")}>Manage</Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1 border-b border-border pb-4">
+                <p className="text-label text-muted-foreground">Total balance</p>
+                <p className={cn("text-metric font-semibold break-words", totalWalletBalance < 0 && "text-destructive")}>{formatAED(totalWalletBalance)}</p>
+              </div>
+              {activeWallets.length > 0 ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  {activeWallets.map((wallet) => (
+                    <div key={wallet.id} className="min-w-0 space-y-1">
+                      <p className="flex items-center gap-2 text-label text-muted-foreground">
+                        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: wallet.color ?? "var(--muted-foreground)" }} aria-hidden="true" />
+                        <span className="break-words min-w-0">{wallet.name}</span>
+                      </p>
+                      <p className={cn("text-sm tabular-nums font-medium break-words", wallet.balance < 0 && "text-destructive")}>{formatAED(wallet.balance)}</p>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-            {/* Total balance tile */}
-            <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-mod-finance/30 bg-mod-finance-tint min-h-[40px]">
-              <Wallet className="w-3.5 h-3.5 text-mod-finance" />
-              <div>
-                <p className="text-xs text-muted-foreground leading-none mb-0.5">
-                  Total
-                </p>
-                <p
-                  className={`text-sm font-mono font-medium leading-none ${
-                    totalWalletBalance < 0
-                      ? "text-destructive"
-                      : "text-mod-finance"
-                  }`}
-                >
-                  {formatAED(totalWalletBalance)}
-                </p>
-              </div>
-            </div>
+              ) : <p className="text-sm text-muted-foreground">Add a wallet to track your balances.</p>}
+            </CardContent>
+          </Card>
+        </aside>
+        <div className="min-w-0 space-y-6 md:order-1 md:flex-[2_1_28rem]">
+      <section className="slide-up stagger-2 space-y-4" aria-label="Monthly summary">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-h2 font-semibold">Monthly summary</h2>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="ghost" onClick={() => setSelectedMonth((m) => subMonths(m, 1))} aria-label="Previous month"><ChevronLeft aria-hidden="true" /></Button>
+            <span className="text-sm font-medium min-w-[88px] text-center" aria-live="polite">{format(selectedMonth, "MMM yyyy")}</span>
+            <Button size="icon" variant="ghost" onClick={() => setSelectedMonth((m) => addMonths(m, 1))} aria-label="Next month"><ChevronRight aria-hidden="true" /></Button>
           </div>
         </div>
-      )}
-
-      {/* Monthly summary — centered nav + 3-column stat grid */}
-      <div className="slide-up stagger-3 space-y-2.5">
-        <div className="flex items-center justify-center gap-0.5">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={() => setSelectedMonth((m) => subMonths(m, 1))}
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-sm font-medium text-foreground min-w-[88px] text-center">
-            {format(selectedMonth, "MMM yyyy")}
-          </span>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={() => setSelectedMonth((m) => addMonths(m, 1))}
-            aria-label="Next month"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          <div className="flex flex-col items-center gap-1 py-2 rounded-xl bg-card border border-border">
-            <TrendingUp className="w-3.5 h-3.5 text-mod-finance" />
-            <p className="text-[10px] text-muted-foreground leading-none">Income</p>
-            <p className="text-xs font-mono font-semibold text-mod-finance leading-none">
-              {formatAED(monthlyIncome)}
-            </p>
-          </div>
-
-          <div
-            className={`flex flex-col items-center gap-1 py-2 rounded-xl border ${
-              monthlyNet >= 0
-                ? "bg-mod-finance-tint border-mod-finance/30"
-                : "bg-destructive/10 border-destructive/30"
-            }`}
-          >
-            <DollarSign
-              className={`w-3.5 h-3.5 ${
-                monthlyNet >= 0 ? "text-mod-finance" : "text-destructive"
-              }`}
-            />
-            <p className="text-[10px] text-muted-foreground leading-none">
-              {monthlyNet >= 0 ? "Saved" : "Deficit"}
-            </p>
-            <p
-              className={`text-xs font-mono font-semibold leading-none ${
-                monthlyNet >= 0 ? "text-mod-finance" : "text-destructive"
-              }`}
-            >
-              {monthlyNet >= 0 ? "+" : "−"}
-              {formatAED(Math.abs(monthlyNet))}
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center gap-1 py-2 rounded-xl bg-card border border-border">
-            <TrendingDown className="w-3.5 h-3.5 text-destructive" />
-            <p className="text-[10px] text-muted-foreground leading-none">Spent</p>
-            <p className="text-xs font-mono font-semibold text-destructive leading-none">
-              {formatAED(monthlyExpense)}
+        <div className="grid grid-cols-2 gap-3">
+          <Card size="sm" className="gap-0">
+            <CardContent className="space-y-2">
+              <p className="flex items-center gap-2 text-label text-muted-foreground"><TrendingUp className="size-4 text-mod-finance" aria-hidden="true" />Income</p>
+              <p className="text-base tabular-nums font-semibold break-words">{formatAED(monthlyIncome)}</p>
+            </CardContent>
+          </Card>
+          <Card size="sm" className="gap-0">
+            <CardContent className="space-y-2">
+              <p className="flex items-center gap-2 text-label text-muted-foreground"><TrendingDown className="size-4" aria-hidden="true" />Spent</p>
+              <p className="text-base tabular-nums font-semibold break-words">{formatAED(monthlyExpense)}</p>
+            </CardContent>
+          </Card>
+          <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3">
+            <p className="text-sm text-muted-foreground">{monthlyNet >= 0 ? "Saved" : "Deficit"}</p>
+            <p className={cn("text-base tabular-nums font-semibold break-words", monthlyNet >= 0 ? "text-mod-finance" : "text-destructive")}>
+              {monthlyNet >= 0 ? "+" : "−"}{formatAED(Math.abs(monthlyNet))}
             </p>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Tabs */}
-      <div className="slide-up stagger-4">
-        <Tabs
-          value={tab}
-          onValueChange={(value) => {
-            if (isFinanceTab(value)) setTab(value);
-          }}
-        >
-          <TabsList className="w-full overflow-x-auto flex justify-start whitespace-nowrap h-auto p-1 gap-0.5">
-            <TabsTrigger value="overview" className="shrink-0 text-xs px-3 py-1.5">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="transactions" className="shrink-0 text-xs px-3 py-1.5">
-              Transactions
-            </TabsTrigger>
-            <TabsTrigger value="transfers" className="shrink-0 text-xs px-3 py-1.5">
-              Transfers
-            </TabsTrigger>
-            <TabsTrigger value="wallets" className="shrink-0 text-xs px-3 py-1.5">
-              Wallets
-            </TabsTrigger>
-            <TabsTrigger value="budgets" className="shrink-0 text-xs px-3 py-1.5">
-              Budgets
-            </TabsTrigger>
-            <TabsTrigger value="debts" className="shrink-0 text-xs px-3 py-1.5">
-              Debts
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="shrink-0 text-xs px-3 py-1.5">
-              Categories
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      <FinanceNavigation value={tab} onChange={setTab} />
 
       {/* Overview */}
       {tab === "overview" && (
         <div className="space-y-3 slide-up stagger-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Spending by Category</CardTitle>
+              <CardTitle className="text-h2">Spending by Category</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {Object.keys(spendingByCategory).length === 0 ? (
@@ -652,11 +511,11 @@ export default function FinancePage() {
                 Object.entries(spendingByCategory)
                   .sort(([, a], [, b]) => b - a)
                   .map(([cat, amount]) => (
-                    <div key={cat} className="space-y-1">
-                      <div className="flex justify-between items-baseline text-sm">
+                    <div key={cat} className="space-y-2 py-1">
+                      <div className="flex flex-wrap justify-between items-baseline gap-x-3 gap-y-1 text-sm">
                         <span>{cat}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-label text-muted-foreground">
                             {Math.round((amount / monthlyExpense) * 100)}%
                           </span>
                           <span className="font-mono font-medium">{formatAED(amount)}</span>
@@ -688,7 +547,7 @@ export default function FinancePage() {
           ) : (
             groupedTxns.map(([date, txns]) => (
               <div key={date}>
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 pt-3 pb-1.5 first:pt-0">
+                <p className="text-label font-medium text-muted-foreground uppercase tracking-wide px-1 pt-3 pb-1.5 first:pt-0">
                   {formatDate(date)}
                 </p>
                 <div className="space-y-1.5">
@@ -733,7 +592,7 @@ export default function FinancePage() {
                           {formatAED(txn.amount)}
                         </span>
                         <DropdownMenu>
-                          <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent">
+                          <DropdownMenuTrigger aria-label="More actions" className="h-11 w-11 shrink-0 inline-flex items-center justify-center rounded-md hover:bg-accent active:bg-accent">
                             <MoreVertical className="w-3.5 h-3.5" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -918,7 +777,7 @@ export default function FinancePage() {
                         </p>
                       </div>
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="ml-3 h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent shrink-0">
+                        <DropdownMenuTrigger aria-label="More actions" className="ml-3 h-11 w-11 inline-flex items-center justify-center rounded-md hover:bg-accent active:bg-accent shrink-0">
                           <MoreVertical className="w-3.5 h-3.5" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -1005,7 +864,7 @@ export default function FinancePage() {
                     </Badge>
                   </div>
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent">
+                    <DropdownMenuTrigger aria-label="More actions" className="h-11 w-11 shrink-0 inline-flex items-center justify-center rounded-md hover:bg-accent active:bg-accent">
                       <MoreVertical className="w-3.5 h-3.5" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -1055,7 +914,7 @@ export default function FinancePage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 text-xs gap-1"
+                        className="min-h-11 text-xs gap-1"
                         onClick={() => {
                           setAddCatType(catType);
                           setAddCatName("");
@@ -1077,7 +936,7 @@ export default function FinancePage() {
                     editCatId === cat.id ? (
                       <div key={cat.id} className="flex items-center gap-2">
                         <Input
-                          className="h-8 text-sm flex-1"
+                          className="h-11 text-sm flex-1"
                           value={editCatName}
                           onChange={(e) => setEditCatName(e.target.value)}
                           onKeyDown={(e) => {
@@ -1091,7 +950,7 @@ export default function FinancePage() {
                         />
                         <Button
                           size="sm"
-                          className="h-8 text-xs shrink-0"
+                          className="min-h-11 text-xs shrink-0"
                           disabled={!editCatName.trim()}
                           onClick={handleCategoryUpdate}
                         >
@@ -1100,7 +959,7 @@ export default function FinancePage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-8 text-xs shrink-0"
+                          className="min-h-11 text-xs shrink-0"
                           onClick={() => setEditCatId(null)}
                         >
                           Cancel
@@ -1115,7 +974,7 @@ export default function FinancePage() {
                         <button
                           type="button"
                           aria-label="Rename category"
-                          className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground"
+                          className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-muted-foreground"
                           onClick={() => {
                             setEditCatId(cat.id);
                             setEditCatName(cat.name);
@@ -1127,7 +986,7 @@ export default function FinancePage() {
                         <button
                           type="button"
                           aria-label="Delete category"
-                          className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent text-destructive"
+                          className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-destructive"
                           onClick={() => setDeleteCatId(cat.id)}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1138,7 +997,7 @@ export default function FinancePage() {
                   {addCatType === catType && (
                     <div className="flex items-center gap-2 pt-1">
                       <Input
-                        className="h-8 text-sm flex-1"
+                        className="h-11 text-sm flex-1"
                         placeholder="Category name"
                         value={addCatName}
                         onChange={(e) => setAddCatName(e.target.value)}
@@ -1153,7 +1012,7 @@ export default function FinancePage() {
                       />
                       <Button
                         size="sm"
-                        className="h-8 text-xs shrink-0"
+                        className="min-h-11 text-xs shrink-0"
                         disabled={!addCatName.trim()}
                         onClick={() => handleCategoryAdd(catType)}
                       >
@@ -1162,7 +1021,7 @@ export default function FinancePage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 text-xs shrink-0"
+                        className="min-h-11 text-xs shrink-0"
                         onClick={() => setAddCatType(null)}
                       >
                         Cancel
@@ -1180,6 +1039,9 @@ export default function FinancePage() {
           })}
         </div>
       )}
+
+        </div>
+      </div>
 
       {/* FAB */}
       <button
@@ -1337,7 +1199,7 @@ export default function FinancePage() {
           }
         }}
       />
-    </div>
+    </PageShell>
   );
 }
 
@@ -1501,13 +1363,13 @@ function BudgetForm({
                       handleBudgetCreateCategory();
                     }
                   }}
-                  className="h-8 text-sm"
+                  className="h-11 text-sm"
                   autoFocus
                 />
                 <Button
                   type="button"
                   size="sm"
-                  className="h-8 shrink-0"
+                  className="min-h-11 shrink-0"
                   disabled={creatingCat || !newCatName.trim()}
                   onClick={handleBudgetCreateCategory}
                 >

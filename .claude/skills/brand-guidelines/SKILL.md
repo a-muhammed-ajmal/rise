@@ -51,77 +51,10 @@ description of the artwork.
 
 ---
 
-## Color
+## Visual rules
 
-| Token             | Hex       | Use                                                  |
-|--------------------|-----------|-------------------------------------------------------|
-| `--brand`            | `#0C2443` | Primary identity — accents, borders, icon fills, focus |
-| `--brand-action`     | `#0C2443` | Filled surfaces (buttons, FABs) — white text 15.6:1    |
-| `--brand-hover`      | `#16365C` | Hover / gradient end — white text 12.2:1               |
-| `--brand-text`       | `#0C2443` | Navy text on white — 15.6:1                            |
-| `--brand-tint`       | `#EEF2F8` | Badge / chip / tinted fill backgrounds                 |
-| `--brand-accent`     | `#FDB304` | Golden yellow — highlights and active/selected only    |
-| `--brand-accent-tint`| `#FFF6E0` | Accent chip backgrounds                                |
-| `--surface-dark`     | `#1A1A2E` | Dark sections — navy, never pure black                 |
-| `--text-strong`      | `#1A1A2E` | Headings, primary text                                 |
+Read [the canonical frontend design system](../frontend-design/DESIGN_SYSTEM.md) for color roles, typography, graph texture, theme behavior and motion. app/globals.css owns runtime values.
 
-**Dark mode shifts the roles.** Navy is invisible on the dark ground (1.2:1 on `#0B1120`), so `--brand-action` lifts to `#2E5488` (white text 7.7:1) for fills and the golden yellow takes over `--brand` / `--brand-text` for accents, rings and indicators (10.4:1).
+Navy and gold are the brand colors. Keep Inter at 400/500/600, including headings; no 700/800 weights. Use the faint grid on the app shell, neutral cards and small accents. Existing semantic status, module and life-area colors retain their meanings and are not additional brand accents.
 
-Semantic status colors (not brand accents — use only for their meaning):
-
-| Status    | Hex       |
-|-----------|-----------|
-| Success   | `#10B981` |
-| Danger    | `#E11D48` |
-| Warning   | `#F59E0B` |
-
-**Rule:** Navy and golden yellow are the *only* brand colours, and they are not interchangeable — navy carries identity and fills, yellow is reserved for highlights and active/selected state. Never introduce a third accent hue for emphasis; reach for weight, size, or the accent instead. Never set yellow as text on white (1.8:1).
-
-## Typography
-
-- **Single typeface: Inter.** No exceptions — no serif, no secondary display font.
-- Hierarchy comes from **weight**, not font changes: 400 body → 500 medium emphasis → 600 section heads → 700 titles → 800 hero display.
-- **`font-bold` (700 as a Tailwind class) is banned in-app** — use the heading scale token instead. 800 is reserved for hero display only.
-- Tracking: `-0.02em` on anything ≥20px (tightens large type). Eyebrow labels go the other way: `+0.15em` uppercase.
-- No fluid `clamp()` scaling — use the fixed type scale.
-
-## Brand Signature: Graph-paper grid
-
-The one non-negotiable visual motif. Every section carries a faint grid:
-- Light sections → faint **navy** lines
-- Dark sections → faint **orange** lines
-- Cell size: 40×40px
-
-This is what makes an artifact read as "RISE" at a glance — a plain white or navy fill without it is off-brand.
-
-## Motion character
-
-- Signature ease: `cubic-bezier(0.16, 1, 0.3, 1)` for brand slide-ins.
-- Entrances stagger in 0.08s increments.
-- Hover = subtle lift (`translateY(-1px)`) + shadow increase. Active = scale to `0.96–0.97`.
-- Nothing longer than 400ms for UI interactions. Respect `prefers-reduced-motion`.
-- No AI-pulse / glow effects except the orange CTA shadow (`--shadow-brand`) — AI has no separate visual identity from the core brand.
-
-## Dark mode
-
-Opt-in, not default. Navy family throughout — **never pure black, never pure white text**:
-- Surfaces: `#0B1120` → `#151527` → `#1A1A2E` → `#232338` (elevation via lighter surface, not shadow)
-- Text: off-white `#E9EAF2`, not `#FFFFFF` (avoids glare)
-- Orange appears on hover/focus/active only — hairline neutral borders at rest
-- Graph-paper grid flips to orange automatically
-
-## Do / Don't
-
-| Don't | Do |
-|---|---|
-| Any font other than Inter | `font-family: var(--font-sans)` always |
-| Hardcoded hex in code | CSS custom property token |
-| A second accent color for "variety" | Orange only — vary weight/size instead |
-| Pure black dark mode | Navy family (`#1A1A2E` base) |
-| Pure white text on dark | Off-white (`#E9EAF2`) |
-| Decorative/rainbow gradients | Orange CTA glow + graph-paper only |
-| Flat background with no texture | Graph-paper grid (40×40px) |
-
----
-
-For full implementation detail — component tokens, radii, shadows, layout breakpoints, accessibility requirements, and anti-patterns for actual code — see [`frontend-design`](../frontend-design/SKILL.md).
+The original logo rules above remain in force. Historical orange-theme wording and duplicated token tables are superseded by the canonical specification.

@@ -7,6 +7,7 @@ import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, AlertTriang
 import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
 import { formatAED, formatDate, todayISO, todayDOW, currentHourDubai } from "@/lib/format";
+import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TasksDashboardSection } from "@/components/dashboard/tasks-dashboard-section";
 import { FocusTasksSection } from "@/components/dashboard/focus-tasks-section";
@@ -112,15 +113,11 @@ export default async function HomePage() {
   const dayName = format(parseISO(today), "EEEE, dd MMMM yyyy");
 
   return (
-    <div className="p-3 md:p-5 space-y-5 max-w-4xl">
-      {/* Header */}
-      <div className="slide-up stagger-1">
-        <p className="text-micro text-muted-foreground tracking-wide uppercase">{dayName}</p>
-        <h1 className="text-display mt-1">{greeting}</h1>
-      </div>
+    <PageShell>
+      <PageHeader title={greeting} eyebrow={dayName} />
 
-      {/* Quick stats — max 3 per line on mobile; extra cards scroll horizontally */}
-      <div className="grid grid-flow-col auto-cols-[calc((100%-1rem)/3)] gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory md:grid-flow-row md:grid-cols-3 md:auto-cols-auto md:gap-3 md:overflow-visible slide-up stagger-2">
+      {/* Quick stats — three readable summaries on every screen */}
+      <div className="grid grid-cols-3 gap-2 md:gap-4 slide-up stagger-2">
         <StatCard
           href="/productivity"
           label="Tasks"
@@ -128,7 +125,6 @@ export default async function HomePage() {
           accent="tasks"
           value={String(pendingTodayCount ?? 0)}
           context={`${completedTodayCount ?? 0} of ${todayTotal} done`}
-          className="snap-start"
         />
         <StatCard
           href="/wellness"
@@ -137,7 +133,6 @@ export default async function HomePage() {
           accent="wellness"
           value={`${completedCount}/${dueHabits.length}`}
           progress={dueHabits.length > 0 ? (completedCount / dueHabits.length) * 100 : 0}
-          className="snap-start"
         />
         <StatCard
           href="/productivity"
@@ -147,20 +142,18 @@ export default async function HomePage() {
           value={String(overdueCount ?? 0)}
           context={(overdueCount ?? 0) > 0 ? "needs attention" : "all clear"}
           contextTone={(overdueCount ?? 0) > 0 ? "danger" : "muted"}
-          className="snap-start"
         />
       </div>
 
-      {/* Primary daily sections — Quote → Focus → Habits → Tasks */}
-      <div className="space-y-4">
-        {/* Motivational quote */}
-        <MotivationalQuote />
-
-        {/* Today's focus */}
-        <FocusTasksSection />
+      {/* Daily actions first; habits sit alongside them on desktop. */}
+      <div className="grid items-start gap-6 md:grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
+        <div className="min-w-0 space-y-6">
+          <FocusTasksSection />
+          <TasksDashboardSection />
+        </div>
 
         {/* Today's habits */}
-        <Card className="slide-up stagger-2 border-t-4 border-t-mod-wellness">
+        <Card className="slide-up stagger-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-wellness-tint flex items-center justify-center">
@@ -189,14 +182,12 @@ export default async function HomePage() {
           </CardContent>
         </Card>
 
-        {/* Today's tasks */}
-        <TasksDashboardSection />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-2 gap-6">
         {/* Active goals */}
-        <Card className="slide-up stagger-4 border-t-4 border-t-mod-goals">
-          <CardHeader className="pb-2 flex-row items-center justify-between">
+        <Card className="slide-up stagger-4">
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-goals-tint flex items-center justify-center">
                 <Target className="w-3.5 h-3.5 text-mod-goals" />
@@ -205,7 +196,7 @@ export default async function HomePage() {
             </CardTitle>
             <Link
               href="/goals"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex min-h-11 items-center text-label text-brand-text hover:underline active:opacity-80"
             >
               View all
             </Link>
@@ -215,10 +206,10 @@ export default async function HomePage() {
               activeGoals.map((goal) => (
                 <div
                   key={goal.id}
-                  className="rounded-lg border border-border bg-card p-3 space-y-2 card-hover"
+                  className="border-b border-border pb-4 space-y-2 last:border-b-0 last:pb-0"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium text-sm min-w-0 truncate">{goal.title}</p>
+                    <p className="font-medium text-sm min-w-0 break-words">{goal.title}</p>
                     {goal.category && (
                       <Badge variant="secondary" className="text-xs shrink-0 capitalize">
                         {goal.category}
@@ -248,7 +239,7 @@ export default async function HomePage() {
         </Card>
 
         {/* AI Assistant CTA */}
-        <Card className="slide-up stagger-4 border-t-4 border-t-brand border-brand/30 bg-brand-tint/40 shadow-brand">
+        <Card className="slide-up stagger-4">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-brand-tint flex items-center justify-center">
@@ -270,7 +261,7 @@ export default async function HomePage() {
                 <Link
                   key={prompt}
                   href={`/assistant?q=${encodeURIComponent(prompt)}`}
-                  className="block text-xs text-brand-text hover:underline px-2 py-1.5 rounded-md bg-brand-tint/50 hover:bg-brand-tint transition-colors"
+                  className="flex min-h-11 items-center text-sm text-brand-text px-3 py-2 rounded-md bg-brand-tint/50 hover:bg-brand-tint active:opacity-80 transition-colors"
                 >
                   &ldquo;{prompt}&rdquo;
                 </Link>
@@ -282,8 +273,8 @@ export default async function HomePage() {
 
       {/* CRM contacts needing attention */}
       {followUps && followUps.length > 0 && (
-        <Card className="slide-up stagger-4 border-t-4 border-t-mod-crm">
-          <CardHeader className="pb-2 flex-row items-center justify-between">
+        <Card className="slide-up stagger-4">
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-crm-tint flex items-center justify-center">
                 <Users className="w-3.5 h-3.5 text-mod-crm" />
@@ -292,7 +283,7 @@ export default async function HomePage() {
             </CardTitle>
             <Link
               href="/crm"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex min-h-11 items-center text-label text-brand-text hover:underline active:opacity-80"
             >
               View all
             </Link>
@@ -301,7 +292,7 @@ export default async function HomePage() {
             {followUps.map((contact) => (
               <div
                 key={contact.id}
-                className="rounded-lg border border-border bg-card p-3 flex items-center gap-3 border-l-4 border-l-mod-crm card-hover"
+                className="rounded-lg border border-border bg-card p-3 flex items-center gap-3 "
               >
                 <div className="w-10 h-10 rounded-full bg-mod-crm-tint flex items-center justify-center shrink-0">
                   <span className="text-mod-crm font-semibold">
@@ -328,7 +319,7 @@ export default async function HomePage() {
                       <a
                         href={`mailto:${contact.email}`}
                         aria-label={`Email ${contact.name}`}
-                        className="h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
+                        className="h-11 w-11 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
                       >
                         <Mail className="w-3.5 h-3.5" aria-hidden="true" />
                       </a>
@@ -337,7 +328,7 @@ export default async function HomePage() {
                       <a
                         href={`tel:${contact.phone}`}
                         aria-label={`Call ${contact.name}`}
-                        className="h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
+                        className="h-11 w-11 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-mod-crm transition-colors"
                       >
                         <Phone className="w-3.5 h-3.5" aria-hidden="true" />
                       </a>
@@ -352,8 +343,8 @@ export default async function HomePage() {
 
       {/* Today's finance */}
       {recentTransactions && recentTransactions.length > 0 && (
-        <Card className="slide-up stagger-4 border-t-4 border-t-mod-finance">
-          <CardHeader className="pb-2 flex-row items-center justify-between">
+        <Card className="slide-up stagger-4">
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-mod-finance-tint flex items-center justify-center">
                 <DollarSign className="w-3.5 h-3.5 text-mod-finance" />
@@ -362,7 +353,7 @@ export default async function HomePage() {
             </CardTitle>
             <Link
               href="/finance"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex min-h-11 items-center text-label text-brand-text hover:underline active:opacity-80"
             >
               View all
             </Link>
@@ -402,7 +393,8 @@ export default async function HomePage() {
         </Card>
       )}
 
+      <MotivationalQuote />
       <QuickAddFab />
-    </div>
+    </PageShell>
   );
 }

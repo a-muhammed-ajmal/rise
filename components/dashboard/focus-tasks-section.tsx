@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { Star, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,8 +56,8 @@ export function FocusTasksSection() {
   );
 
   return (
-    <Card className="slide-up stagger-1 border-t-4 border-t-mod-tasks" aria-label="Today's focus">
-      <CardHeader className="flex-row items-center justify-between pb-2">
+    <Card className="slide-up stagger-1" aria-label="Today's focus">
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <div
             className="flex h-6 w-6 items-center justify-center rounded-md bg-mod-tasks-tint"
@@ -83,10 +84,13 @@ export function FocusTasksSection() {
             <Skeleton className="h-12 w-full rounded-xl" />
           </div>
         ) : focusTasks.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border bg-muted/20 p-4">
+          <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              No focus tasks yet. Open a task and tap the star to focus up to 3 for today.
+              Choose up to 3 tasks to focus on today.
             </p>
+            <Link href="/productivity" className="inline-flex min-h-11 items-center gap-2 rounded-sm border border-input px-3 text-sm font-medium text-brand-text hover:bg-brand-tint active:scale-95">
+              <Star className="size-4" aria-hidden="true" /> Choose focus tasks
+            </Link>
           </div>
         ) : (
           focusTasks.map((task) => (

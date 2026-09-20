@@ -200,23 +200,17 @@ export function TransactionForm({
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
+              variant={type === "expense" ? "default" : "outline"}
+              aria-pressed={type === "expense"}
               onClick={() => changeType("expense")}
-              className={
-                type === "expense"
-                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-              }
             >
               Expense
             </Button>
             <Button
               type="button"
+              variant={type === "income" ? "default" : "outline"}
+              aria-pressed={type === "income"}
               onClick={() => changeType("income")}
-              className={
-                type === "income"
-                  ? "bg-[var(--color-success)] text-white hover:opacity-90"
-                  : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-              }
             >
               Income
             </Button>

@@ -81,8 +81,8 @@ export function TasksDashboardSection() {
   );
 
   return (
-    <Card className="slide-up stagger-3 border-t-4 border-t-mod-tasks" aria-label="Today's tasks">
-      <CardHeader className="flex-row items-center justify-between pb-2">
+    <Card className="slide-up stagger-2" aria-label="Today's tasks">
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <div
             className="flex h-6 w-6 items-center justify-center rounded-md bg-mod-tasks-tint"
@@ -95,7 +95,7 @@ export function TasksDashboardSection() {
 
         <Link
           href="/productivity"
-          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex min-h-11 items-center text-label text-brand-text hover:underline active:opacity-80"
         >
           View all
         </Link>

@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1031 tests, 94.39% lines — target met. The largest remaining gaps are `use-tasks.ts` (49.45%) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1039 tests, 94.39% lines — target met. The largest remaining gaps are `use-tasks.ts` (49.45%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -59,16 +59,16 @@ npx vitest run lib/ai/__tests__/execute-tool.test.ts   # Execute isolated test t
 
 ## Design System Rules
 
-These rules are enforced by the `frontend-design` skill and must be followed for all UI work:
+The canonical visual specification is `.claude/skills/frontend-design/DESIGN_SYSTEM.md`; `app/globals.css` owns runtime values. The `frontend-design` skill applies this specification to all UI work:
 
 - **Tailwind v4:** No `tailwind.config.ts`. All design tokens live in the `@theme {}` block in CSS.
 - **Single breakpoint:** Only `md` (768px). Never use `sm`, `lg`, `xl`, or `2xl` breakpoints.
 - **Conditional classes:** Use `cn()` (= `twMerge(clsx(...))`) for all conditional class merging.
 - **Dynamic colors:** Use `style={{ color: varValue }}` for computed/dynamic colors. Never use arbitrary Tailwind `bg-[${color}]`.
-- **Typography:** Inter only. Max Tailwind weight class is `font-semibold` (600). `font-bold` (700) is banned — use the design token heading scale instead.
+- **Typography:** Inter only. Max Tailwind weight class is `font-semibold` (600). `font-bold` (700) and `font-extrabold` (800) are banned; all heading tokens also stop at 600.
 - **Brand colors:** Deep Navy `#0C2443` is the brand — fills, text and accents alike (white text on it is AAA 15.6:1, and it is AAA 15.6:1 as text on white). Golden Yellow `#FDB304` is `--brand-accent`: highlights, active/selected indicators and small emphasis only — never a large background, and never text on white (1.8:1). In dark mode navy cannot carry the brand (1.2:1 on `#0B1120`), so `--brand-action` lifts to `#2E5488` and `--brand`/`--brand-text` become the golden yellow.
-- **Module identity colors:** Use CSS variables `--mod-tasks`, `--mod-wellness`, `--mod-goals`, `--mod-finance`, `--mod-crm` for border colors and tints. Never use raw Tailwind color utilities for module-specific identity.
-- **Graph-paper background:** Every section requires `.graph-bg` (light) or `.graph-bg-dark` (dark) — navy grid on light, golden grid on dark, 40px background-size.
+- **Module identity colors:** Use CSS variables `--mod-tasks`, `--mod-wellness`, `--mod-goals`, `--mod-finance`, `--mod-crm` for small identity icons, labels and tints. Prefer neutral outer card borders. Never use raw Tailwind color utilities for module-specific identity.
+- **Graph-paper background:** The app shell and login carry `.graph-bg` (light) or `.graph-bg-dark` (dark), with no additional grids inside cards — navy grid on light, golden grid on dark, 40px background-size.
 - **Glassmorphism:** Glass effect only on structural chrome (sidebar, modals, topbar). Never on content cards.
 - **Dialogs:** `window.confirm` is banned. Use `<ConfirmDialog>` for all confirmation flows.
 - **Animations:** Use `.slide-up .stagger-N` for section entrance animations (stagger-1 through stagger-4). Page modules use `animate-rise-in stagger-1` on the heading.
