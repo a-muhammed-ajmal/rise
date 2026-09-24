@@ -73,7 +73,7 @@ export function AdjustBalanceForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-sm">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle>Adjust Balance — {paymentMethod.name}</DialogTitle>
         </DialogHeader>

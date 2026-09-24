@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { PageShell, PageHeader } from "@/components/layout/page-shell";
+import { PageShell } from "@/components/layout/page-shell";
 import { FinanceNavigation, type FinanceTab } from "@/components/finance/finance-navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -51,7 +51,6 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ArrowLeftRight,
-  DollarSign,
   MoreVertical,
   Pencil,
   Trash2,
@@ -420,48 +419,59 @@ export default function FinancePage() {
 
   return (
     <PageShell>
-      <PageHeader
-        title="Finance"
-        icon={<span className="flex size-8 items-center justify-center rounded-lg bg-mod-finance-tint"><DollarSign className="size-4 text-mod-finance" /></span>}
-        actions={<>
-          <Button variant="outline" onClick={() => { setEditTxn(null); setTxnType("income"); setTxnOpen(true); }}>
-            <TrendingUp aria-hidden="true" /> Add income
-          </Button>
-          <Button onClick={() => { setEditTxn(null); setTxnType("expense"); setTxnOpen(true); }}>
-            <Plus aria-hidden="true" /> Add expense
-          </Button>
-        </>}
-      />
+      <h1 className="sr-only">Financial</h1>
 
-      <div className="flex flex-col gap-6 md:flex-row md:flex-wrap md:items-start">
-        <aside className="min-w-0 md:order-2 md:flex-[1_1_16rem]" aria-label="Wallet balances">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <CardTitle className="flex items-center gap-2"><Wallet className="size-4 text-mod-finance" aria-hidden="true" /> Wallets</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => setTab("wallets")}>Manage</Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1 border-b border-border pb-4">
-                <p className="text-label text-muted-foreground">Total balance</p>
-                <p className={cn("text-metric font-semibold break-words", totalWalletBalance < 0 && "text-destructive")}>{formatAED(totalWalletBalance)}</p>
-              </div>
-              {activeWallets.length > 0 ? (
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  {activeWallets.map((wallet) => (
-                    <div key={wallet.id} className="min-w-0 space-y-1">
-                      <p className="flex items-center gap-2 text-label text-muted-foreground">
-                        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: wallet.color ?? "var(--muted-foreground)" }} aria-hidden="true" />
-                        <span className="break-words min-w-0">{wallet.name}</span>
-                      </p>
-                      <p className={cn("text-sm tabular-nums font-medium break-words", wallet.balance < 0 && "text-destructive")}>{formatAED(wallet.balance)}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="text-sm text-muted-foreground">Add a wallet to track your balances.</p>}
-            </CardContent>
-          </Card>
-        </aside>
-        <div className="min-w-0 space-y-6 md:order-1 md:flex-[2_1_28rem]">
+      <section
+        className="slide-up stagger-1 overflow-hidden rounded-xl border-[1.5px] border-mod-finance/30 bg-linear-to-br from-mod-finance-tint via-card to-card p-4 shadow-hover md:p-5"
+        aria-label="Wallet balances"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <p className="flex items-center gap-2 text-label text-muted-foreground">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-mod-finance-tint">
+                <Wallet className="size-4 text-mod-finance" aria-hidden="true" />
+              </span>
+              Total balance
+            </p>
+            <p className={cn("text-metric font-semibold tabular-nums break-words", totalWalletBalance < 0 ? "text-[var(--color-danger)]" : "text-foreground")}>
+              {formatAED(totalWalletBalance)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Across {activeWallets.length} active {activeWallets.length === 1 ? "wallet" : "wallets"}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" className="shrink-0" onClick={() => setTab("wallets")}>Manage</Button>
+        </div>
+        {activeWallets.length > 0 ? (
+          <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
+            {activeWallets.map((wallet) => {
+              const color = wallet.color ?? "var(--muted-foreground)";
+              return (
+                <li
+                  key={wallet.id}
+                  className="flex min-h-20 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] p-3 shadow-card"
+                  style={{
+                    borderColor: `color-mix(in srgb, ${color} 45%, transparent)`,
+                    backgroundColor: `color-mix(in srgb, ${color} 10%, var(--card))`,
+                  }}
+                >
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
+                    <span className="min-w-0 break-words">{wallet.name}</span>
+                  </p>
+                  <p className={cn("text-base font-semibold tabular-nums break-words", wallet.balance < 0 && "text-[var(--color-danger)]")}>
+                    {formatAED(wallet.balance)}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">Add a wallet to track your balances.</p>
+        )}
+      </section>
+
+      <div className="min-w-0 space-y-6">
       <section className="slide-up stagger-2 space-y-4" aria-label="Monthly summary">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-h2 font-semibold">Monthly summary</h2>
@@ -472,21 +482,22 @@ export default function FinancePage() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Card size="sm" className="gap-0">
-            <CardContent className="space-y-2">
-              <p className="flex items-center gap-2 text-label text-muted-foreground"><TrendingUp className="size-4 text-mod-finance" aria-hidden="true" />Income</p>
-              <p className="text-base tabular-nums font-semibold break-words">{formatAED(monthlyIncome)}</p>
-            </CardContent>
-          </Card>
-          <Card size="sm" className="gap-0">
-            <CardContent className="space-y-2">
-              <p className="flex items-center gap-2 text-label text-muted-foreground"><TrendingDown className="size-4" aria-hidden="true" />Spent</p>
-              <p className="text-base tabular-nums font-semibold break-words">{formatAED(monthlyExpense)}</p>
-            </CardContent>
-          </Card>
-          <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3">
+          <div className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-[var(--color-success)]/30 bg-[var(--color-success-tint)] p-4 shadow-card">
+            <p className="flex items-center gap-2 text-label text-[var(--color-success)]"><TrendingUp className="size-4" aria-hidden="true" />Income</p>
+            <p className="text-base tabular-nums font-semibold break-words text-[var(--color-success)]">{formatAED(monthlyIncome)}</p>
+          </div>
+          <div className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-[var(--color-danger)]/30 bg-[var(--color-danger-tint)] p-4 shadow-card">
+            <p className="flex items-center gap-2 text-label text-[var(--color-danger)]"><TrendingDown className="size-4" aria-hidden="true" />Spent</p>
+            <p className="text-base tabular-nums font-semibold break-words text-[var(--color-danger)]">{formatAED(monthlyExpense)}</p>
+          </div>
+          <div
+            className={cn(
+              "col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border-[1.5px] bg-card px-4 py-3 shadow-card",
+              monthlyNet >= 0 ? "border-[var(--color-success)]/30" : "border-[var(--color-danger)]/30"
+            )}
+          >
             <p className="text-sm text-muted-foreground">{monthlyNet >= 0 ? "Saved" : "Deficit"}</p>
-            <p className={cn("text-base tabular-nums font-semibold break-words", monthlyNet >= 0 ? "text-mod-finance" : "text-destructive")}>
+            <p className={cn("text-base tabular-nums font-semibold break-words", monthlyNet >= 0 ? "text-[var(--color-success)]" : "text-[var(--color-danger)]")}>
               {monthlyNet >= 0 ? "+" : "−"}{formatAED(Math.abs(monthlyNet))}
             </p>
           </div>
@@ -585,7 +596,7 @@ export default function FinancePage() {
                           className={`text-sm font-semibold font-mono ${
                             txn.type === "income"
                               ? "text-mod-finance"
-                              : "text-destructive"
+                              : "text-[var(--color-danger)]"
                           }`}
                         >
                           {txn.type === "income" ? "+" : "−"}
@@ -1040,7 +1051,6 @@ export default function FinancePage() {
         </div>
       )}
 
-        </div>
       </div>
 
       {/* FAB */}
@@ -1051,7 +1061,7 @@ export default function FinancePage() {
           setTxnType("expense");
           setTxnOpen(true);
         }}
-        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand-action text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
+        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 rounded-full bg-destructive text-white shadow-popup transition-all hover:opacity-90 active:scale-95 flex items-center justify-center z-40"
         aria-label="Add expense"
       >
         <Plus className="w-6 h-6" />
@@ -1312,7 +1322,7 @@ function BudgetForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-sm">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Budget" : "New Budget"}</DialogTitle>
         </DialogHeader>
@@ -1333,7 +1343,7 @@ function BudgetForm({
                 }
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue
                   placeholder={
                     expenseCategories.length === 0
@@ -1395,12 +1405,13 @@ function BudgetForm({
             <div className="space-y-2">
               <Label>Period</Label>
               <Select
+                items={{ monthly: "Monthly", quarterly: "Quarterly", yearly: "Yearly" }}
                 value={period}
                 onValueChange={(value) => {
                   if (isBudgetPeriod(value)) setPeriod(value);
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1517,7 +1528,7 @@ function DebtForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-sm">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Debt" : "Add Debt / Loan"}</DialogTitle>
         </DialogHeader>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -15,6 +15,19 @@ import { LogOut, Settings, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/hooks/use-theme";
 import { RiseLogo } from "@/components/brand/rise-logo";
 
+// Routes whose topbar shows the module name beside the logo instead of "RISE".
+const TOPBAR_TITLES: ReadonlyArray<{ prefix: string; title: string }> = [
+  { prefix: "/finance", title: "Financial" },
+];
+
+export function topbarTitle(pathname: string | null): string | null {
+  if (!pathname) return null;
+  const match = TOPBAR_TITLES.find(
+    ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+  return match?.title ?? null;
+}
+
 interface TopbarProps {
   email?: string;
   fullName?: string;
@@ -23,6 +36,7 @@ interface TopbarProps {
 
 export function Topbar({ email, fullName, avatarUrl }: TopbarProps) {
   const router = useRouter();
+  const pageTitle = topbarTitle(usePathname());
   const { theme, toggle } = useTheme();
 
   async function signOut() {
@@ -45,11 +59,15 @@ export function Topbar({ email, fullName, avatarUrl }: TopbarProps) {
           plate
           className="w-7 h-7 transition-transform duration-200 group-hover:scale-105"
         />
-        <span className="font-heading font-semibold text-base tracking-tight">RISE</span>
+        <span className="font-heading font-semibold text-base tracking-tight">{pageTitle ?? "RISE"}</span>
       </Link>
 
-      {/* Desktop: empty left */}
-      <div className="hidden md:block" />
+      {/* Desktop: page title when the route has one */}
+      <div className="hidden md:block">
+        {pageTitle && (
+          <span className="font-heading font-semibold text-base tracking-tight">{pageTitle}</span>
+        )}
+      </div>
 
       <div className="flex items-center gap-2">
         {/* Theme toggle */}

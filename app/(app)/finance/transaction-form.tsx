@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export function TransactionForm({
   open,
@@ -63,6 +64,19 @@ export function TransactionForm({
 
   const activeWallets = paymentMethods.filter((m) => m.is_active);
   const typeCategories = categories.filter((c) => c.type === type);
+  const isIncome = type === "income";
+
+  // Base UI's <SelectValue> renders the raw value unless the root is given
+  // the value → label map, which is how wallet UUIDs leaked into the trigger.
+  const walletItems: Record<string, string> = {
+    none: "—",
+    ...Object.fromEntries(activeWallets.map((m) => [m.id, m.name])),
+    __other__: "Other…",
+  };
+  const categoryItems: Record<string, string> = {
+    ...Object.fromEntries(typeCategories.map((c) => [c.name, c.name])),
+    __new__: "+ New category…",
+  };
 
   useEffect(() => {
     if (initial) {
@@ -188,7 +202,9 @@ export function TransactionForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="md:max-w-md">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle
+            className={isIncome ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}
+          >
             {initial
               ? "Edit Transaction"
               : type === "income"
@@ -200,17 +216,25 @@ export function TransactionForm({
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
-              variant={type === "expense" ? "default" : "outline"}
+              variant="outline"
               aria-pressed={type === "expense"}
               onClick={() => changeType("expense")}
+              className={cn(
+                type === "expense" &&
+                  "border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
+              )}
             >
               Expense
             </Button>
             <Button
               type="button"
-              variant={type === "income" ? "default" : "outline"}
+              variant="outline"
               aria-pressed={type === "income"}
               onClick={() => changeType("income")}
+              className={cn(
+                isIncome &&
+                  "border-mod-finance bg-mod-finance text-white hover:bg-mod-finance/90 hover:text-white dark:text-background dark:hover:text-background"
+              )}
             >
               Income
             </Button>
@@ -234,6 +258,7 @@ export function TransactionForm({
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
+                items={categoryItems}
                 value={showNewCat ? "__new__" : category || ""}
                 onValueChange={(v) => {
                   if (!v) return;
@@ -247,7 +272,7 @@ export function TransactionForm({
                   }
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue
                     placeholder={
                       typeCategories.length === 0
@@ -295,12 +320,13 @@ export function TransactionForm({
             <div className="space-y-2">
               <Label>Wallet</Label>
               <Select
+                items={walletItems}
                 value={paymentMethodId || "none"}
                 onValueChange={(v) =>
                   setPaymentMethodId(v == null || v === "none" ? "" : v)
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>
                 <SelectContent>
@@ -355,7 +381,15 @@ export function TransactionForm({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !category}>
+            <Button
+              type="submit"
+              disabled={saving || !category}
+              className={
+                isIncome
+                  ? "bg-mod-finance text-white hover:bg-mod-finance/90 dark:text-background"
+                  : "bg-destructive text-white hover:bg-destructive/90"
+              }
+            >
               {saving ? "Saving…" : initial ? "Update" : "Save"}
             </Button>
           </DialogFooter>

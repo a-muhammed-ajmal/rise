@@ -8,7 +8,7 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1041 passing across 37 test files |
+| Test count | 1045 passing across 39 test files |
 | Line coverage | 94.39% on `lib/**` |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
 | DB tables | 32 (RLS enabled on all) |
@@ -76,7 +76,7 @@ Canonical specification: [.claude/skills/frontend-design/DESIGN_SYSTEM.md](.clau
 - PageShell/PageHeader provide a centered 1280px workspace with 16px mobile / 24px desktop side padding and 24px section gaps. Only md (768px); use intrinsic wrapping for columns with insufficient space.
 - Faint 40px graph grid on the shell and login, neutral resting card borders, 12px card radius, restrained shadows, and small module accent icons. Inner rows may use separators. Preserve life-area and priority meanings.
 - Shared buttons and icon controls target 44px. Primary actions have visible labels. Use existing five-slot mobile navigation and respect safe areas.
-- Home prioritizes Focus and Today's Tasks, then compact habits. Finance keeps wallet totals visible and all seven views available through three primary buttons plus More.
+- Home prioritizes Focus and Today's Tasks, then compact habits. Finance names itself "Financial" in the topbar, opens on a wallet-balance hero card (total plus a colour-tinted tile per wallet), colours income green and expenses red, and keeps all seven views available through three primary buttons plus More.
 - WCAG AA contrast targets, visible keyboard focus, reduced motion, and ConfirmDialog for destructive actions remain required. See the canonical system for component, theme, motion and validation details.
 
 ---
@@ -286,7 +286,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 - All 8 module pages (productivity, finance, wellness, goals, CRM, knowledge, analytics, assistant) render without runtime errors.
 - AI assistant streams text and executes approved tool calls end-to-end.
 - `npm run build` exits 0 (0 TypeScript errors, 0 lint warnings).
-- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 1041 tests, 94.39%.
+- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 1045 tests, 94.39%.
 - Pushing `main` produces a working Vercel production deployment.
 
 ---

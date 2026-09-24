@@ -43,6 +43,9 @@ export function TransferForm({
   const [saving, setSaving] = useState(false);
 
   const activeWallets = paymentMethods.filter((m) => m.is_active);
+  const walletItems: Record<string, string> = Object.fromEntries(
+    activeWallets.map((m) => [m.id, m.name])
+  );
 
   useEffect(() => {
     if (!open) {
@@ -102,15 +105,15 @@ export function TransferForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-sm">
+      <DialogContent className="md:max-w-md">
         <DialogHeader>
           <DialogTitle>Wallet Transfer</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>From wallet</Label>
-            <Select value={fromId} onValueChange={(v) => setFromId(v ?? "")} required>
-              <SelectTrigger>
+            <Select items={walletItems} value={fromId} onValueChange={(v) => setFromId(v ?? "")} required>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select source" />
               </SelectTrigger>
               <SelectContent>
@@ -125,8 +128,8 @@ export function TransferForm({
 
           <div className="space-y-2">
             <Label>To wallet</Label>
-            <Select value={toId} onValueChange={(v) => setToId(v ?? "")} required>
-              <SelectTrigger>
+            <Select items={walletItems} value={toId} onValueChange={(v) => setToId(v ?? "")} required>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select destination" />
               </SelectTrigger>
               <SelectContent>
