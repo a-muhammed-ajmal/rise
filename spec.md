@@ -8,8 +8,8 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1045 passing across 39 test files |
-| Line coverage | 94.39% on `lib/**` |
+| Test count | 1056 passing across 40 test files |
+| Line coverage | 94.5% on `lib/**` |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 65 AUTO + 17 REVERSIBLE + 9 APPROVAL = 91 total |
@@ -286,7 +286,7 @@ RISE ships Claude Code skills and commands that enforce architectural patterns d
 - All 8 module pages (productivity, finance, wellness, goals, CRM, knowledge, analytics, assistant) render without runtime errors.
 - AI assistant streams text and executes approved tool calls end-to-end.
 - `npm run build` exits 0 (0 TypeScript errors, 0 lint warnings).
-- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 1045 tests, 94.39%.
+- `npm run test:coverage` reports ≥ 85% line coverage over `lib/**` (excluding `lib/types/`). Current: 1056 tests, 94.5%.
 - Pushing `main` produces a working Vercel production deployment.
 
 ---

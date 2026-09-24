@@ -17,7 +17,23 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   experimental: {
-    staleTimes: { dynamic: 30, static: 180 },
+    // Client-side Router Cache. Revisiting a module inside the session reuses
+    // the cached RSC payload instead of re-running the server render and its
+    // queries. 30s was short enough that normal tab-hopping still paid a full
+    // round trip each time; the app is single-user and every list also carries
+    // a Realtime subscription, so a longer window cannot show another writer's
+    // stale data.
+    staleTimes: { dynamic: 180, static: 300 },
+    // Rewrites barrel imports to deep paths so a `date-fns` or icon import
+    // pulls in the handful of modules it actually uses instead of the whole
+    // package index. lucide-react and recharts are the two heaviest offenders
+    // in this app; date-fns is imported by nearly every page.
+    optimizePackageImports: [
+      "date-fns",
+      "lucide-react",
+      "recharts",
+      "@base-ui/react",
+    ],
   },
   compiler: {
     removeConsole:

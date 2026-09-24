@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { cachedJwks } from '@/lib/supabase/jwks'
 import { Sidebar } from '@/components/layout/sidebar'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { Topbar } from '@/components/layout/topbar'
@@ -8,13 +9,19 @@ import { SWUpdateToast } from '@/components/pwa/sw-update-toast'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Local signature verification against the process-wide JWKS — no round trip.
+  // getUser() here was a second sequential network hop on every navigation,
+  // stacked on top of the one the proxy already pays, before a single page
+  // query could start. Everything below is read straight off the verified
+  // claims. On a project still signing with a symmetric secret, getClaims()
+  // falls back to getUser() internally, so this is never less strict.
+  const { data } = await supabase.auth.getClaims(undefined, { jwks: await cachedJwks() })
+  const claims = data?.claims
 
-  if (!user) redirect('/login')
+  if (!claims) redirect('/login')
 
-  const meta = user.user_metadata ?? {}
+  const email = typeof claims.email === 'string' ? claims.email : undefined
+  const meta = claims.user_metadata ?? {}
   const fullName = typeof meta.full_name === 'string' ? meta.full_name : undefined
   const avatarUrl = typeof meta.avatar_url === 'string' ? meta.avatar_url : undefined
 
@@ -24,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Sidebar />
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Topbar email={user.email} fullName={fullName} avatarUrl={avatarUrl} />
+          <Topbar email={email} fullName={fullName} avatarUrl={avatarUrl} />
 
           <main className="flex-1 overflow-y-auto pb-[calc(56px+env(safe-area-inset-bottom))] md:pb-0 graph-bg">
             {children}

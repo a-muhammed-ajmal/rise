@@ -36,6 +36,7 @@ import { PRIORITY_MAP, PRIORITY_CONFIG, PROJECT_CATEGORIES } from './task-consta
 import { formatRelativeDate, display12h, todayISO } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { currentUserId } from '@/lib/supabase/current-user'
 import {
   TASK_ATTACHMENT_BUCKET,
   attachmentPath,
@@ -411,12 +412,12 @@ export function TaskPopup({ task, projects, defaultProjectId, onClose, onCreate,
     setUploading(true)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { toast.error('Not authenticated'); return }
+      const userId = await currentUserId()
+      if (!userId) { toast.error('Not authenticated'); return }
       // Sanitize the object key — encodeURI leaves '#', '?', '&' and '+' intact,
       // which would make the stored key unreachable. The original name is kept
       // for display and for the download filename.
-      const path = `${user.id}/${Date.now()}-${sanitizeObjectName(file.name)}`
+      const path = `${userId}/${Date.now()}-${sanitizeObjectName(file.name)}`
       const { error } = await supabase.storage
         .from(TASK_ATTACHMENT_BUCKET)
         .upload(path, file, { contentType: file.type || 'application/octet-stream' })

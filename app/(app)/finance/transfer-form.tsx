@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { PaymentMethod } from "@/lib/types/database";
 import { todayISO } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -69,16 +70,14 @@ export function TransferForm({
     setSaving(true);
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await currentUserId();
+      if (!userId) return;
 
       const fromName = activeWallets.find((m) => m.id === fromId)?.name ?? "";
       const toName = activeWallets.find((m) => m.id === toId)?.name ?? "";
 
       const { error } = await supabase.from("transactions").insert({
-        user_id: user.id,
+        user_id: userId,
         type: "transfer" as const,
         amount: parseFloat(amount),
         category: "Transfer",

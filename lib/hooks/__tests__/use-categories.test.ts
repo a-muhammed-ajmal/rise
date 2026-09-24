@@ -14,7 +14,9 @@ const mockQueryChain = {
 const mockSupabase = {
   from: vi.fn(() => mockQueryChain),
   auth: {
-    getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }),
+    getClaims: vi
+      .fn()
+      .mockResolvedValue({ data: { claims: { sub: "user-123" } }, error: null }),
   },
 };
 
@@ -88,7 +90,7 @@ describe("useCategories", () => {
   });
 
   it("createCategory returns null when the user is not authenticated", async () => {
-    mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } });
+    mockSupabase.auth.getClaims.mockResolvedValueOnce({ data: null, error: null });
     setupQueryResolve([]);
     const { result } = renderHook(() => useCategories());
     await waitFor(() => expect(result.current.loading).toBe(false));

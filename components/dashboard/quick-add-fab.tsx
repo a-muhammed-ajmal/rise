@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -24,9 +25,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TaskPopup } from "@/components/productivity/task-popup";
-import { AddProjectDialog } from "@/components/productivity/add-project-dialog";
-import { TransactionForm } from "@/app/(app)/finance/transaction-form";
 
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
@@ -35,6 +33,27 @@ import { useCategories } from "@/lib/hooks/use-categories";
 
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+// The three inline forms are the bulk of this component's weight and none of
+// them render until a tile is tapped, so they are code-split out of the first
+// load. `primed` already defers their *data*; this defers their *code* too,
+// which is what keeps them off the dashboard's critical path.
+const TaskPopup = dynamic(
+  () => import("@/components/productivity/task-popup").then((m) => m.TaskPopup),
+  { ssr: false },
+);
+const AddProjectDialog = dynamic(
+  () =>
+    import("@/components/productivity/add-project-dialog").then(
+      (m) => m.AddProjectDialog,
+    ),
+  { ssr: false },
+);
+const TransactionForm = dynamic(
+  () =>
+    import("@/app/(app)/finance/transaction-form").then((m) => m.TransactionForm),
+  { ssr: false },
+);
 
 type InlineAction = "task" | "project" | "income" | "expense";
 

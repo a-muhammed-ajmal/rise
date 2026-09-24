@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { Category } from "@/lib/types/database";
 
 export function useCategories() {
@@ -32,13 +33,11 @@ export function useCategories() {
     type: "income" | "expense"
   ): Promise<Category | null> {
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = await currentUserId();
+    if (!userId) return null;
     const { data, error } = await supabase
       .from("categories")
-      .insert({ user_id: user.id, name: name.trim(), type })
+      .insert({ user_id: userId, name: name.trim(), type })
       .select()
       .single();
     if (error || !data) return null;

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { Transaction, Budget, Debt, PaymentMethod, Category } from "@/lib/types/database";
 import { useCategories } from "@/lib/hooks/use-categories";
 import { formatAED, formatDate, todayISO } from "@/lib/format";
@@ -1290,16 +1291,14 @@ function BudgetForm({
         .eq("id", initial.id);
       errorMessage = error?.message ?? null;
     } else {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      const userId = await currentUserId();
+      if (!userId) {
         setSaving(false);
         toast.error("Your session expired. Please sign in again.");
         return;
       }
       const { error } = await supabase.from("budgets").insert({
-        user_id: user.id,
+        user_id: userId,
         category,
         amount: parseFloat(amount),
         period,
@@ -1496,16 +1495,14 @@ function DebtForm({
         .eq("id", initial.id);
       errorMessage = error?.message ?? null;
     } else {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      const userId = await currentUserId();
+      if (!userId) {
         setSaving(false);
         toast.error("Your session expired. Please sign in again.");
         return;
       }
       const { error } = await supabase.from("debts").insert({
-        user_id: user.id,
+        user_id: userId,
         creditor: creditor.trim(),
         type,
         amount: parseFloat(amount),

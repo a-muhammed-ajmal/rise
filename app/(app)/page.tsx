@@ -9,6 +9,7 @@ import Link from "next/link";
 import { formatAED, formatDate, todayISO, todayDOW, currentHourDubai } from "@/lib/format";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { TodayDataProvider } from "@/components/dashboard/today-data-provider";
 import { TasksDashboardSection } from "@/components/dashboard/tasks-dashboard-section";
 import { FocusTasksSection } from "@/components/dashboard/focus-tasks-section";
 import { QuickAddFab } from "@/components/dashboard/quick-add-fab";
@@ -145,7 +146,10 @@ export default async function HomePage() {
         />
       </div>
 
-      {/* Daily actions first; habits sit alongside them on desktop. */}
+      {/* Daily actions first; habits sit alongside them on desktop. Focus and
+          Tasks read the same two datasets, so they share one fetch and one
+          Realtime channel through TodayDataProvider. */}
+      <TodayDataProvider>
       <div className="grid items-start gap-6 md:grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
         <div className="min-w-0 space-y-6">
           <FocusTasksSection />
@@ -183,6 +187,7 @@ export default async function HomePage() {
         </Card>
 
       </div>
+      </TodayDataProvider>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Active goals */}

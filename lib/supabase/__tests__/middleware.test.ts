@@ -4,6 +4,14 @@ vi.mock("@supabase/ssr", () => ({
   createServerClient: vi.fn(),
 }));
 
+// Stubbed so these cases never reach the network for the project's key set —
+// jwks.test.ts covers the cache itself.
+vi.mock("@/lib/supabase/jwks", () => ({
+  cachedJwks: vi.fn().mockResolvedValue({
+    keys: [{ kty: "EC", key_ops: ["verify"], kid: "test-kid" }],
+  }),
+}));
+
 import { updateSession } from "../middleware";
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { NextRequest } from "next/server";
@@ -13,13 +21,20 @@ function makeRequest(pathname: string): NextRequest {
   return new NextRequest(url);
 }
 
+// updateSession authenticates with getClaims(), which verifies the access
+// token's signature locally against the cached JWKS instead of calling the
+// Auth server. `claims` is the decoded JWT payload, so `sub` stands in for the
+// user id and `email` is read straight off it.
 function setupMockAuth(
   user: { id: string; email?: string } | null,
   opts?: { signOut?: () => Promise<void> },
 ) {
   const mockSupabase = {
     auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user } }),
+      getClaims: vi.fn().mockResolvedValue({
+        data: user ? { claims: { sub: user.id, email: user.email } } : null,
+        error: null,
+      }),
       signOut: opts?.signOut ?? vi.fn().mockResolvedValue({}),
     },
   };
@@ -92,11 +107,10 @@ describe("updateSession", () => {
       capturedSetAll = opts.cookies.setAll;
       return {
         auth: {
-          getUser: vi
-              .fn()
-            .mockResolvedValue({
-              data: { user: { id: "user-123", email: "owner@example.com" } },
-            }),
+          getClaims: vi.fn().mockResolvedValue({
+            data: { claims: { sub: "user-123", email: "owner@example.com" } },
+            error: null,
+          }),
         },
       } as never;
     });

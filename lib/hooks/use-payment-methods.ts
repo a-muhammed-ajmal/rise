@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
 import type { PaymentMethod } from "@/lib/types/database";
 import { todayISO } from "@/lib/format";
 import { toast } from "sonner";
@@ -34,10 +35,8 @@ export function usePaymentMethods() {
     color: string | null;
   }) {
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
 
     const maxOrder = paymentMethods.reduce(
       (max, m) => Math.max(max, m.display_order),
@@ -45,7 +44,7 @@ export function usePaymentMethods() {
     );
 
     const { error } = await supabase.from("payment_methods").insert({
-      user_id: user.id,
+      user_id: userId,
       name: data.name.trim(),
       balance: data.balance,
       color: data.color,
@@ -132,13 +131,11 @@ export function usePaymentMethods() {
     if (delta === 0) return;
 
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
 
     const { error } = await supabase.from("transactions").insert({
-      user_id: user.id,
+      user_id: userId,
       type: "adjustment" as const,
       amount: delta,
       category: "Balance Adjustment",
@@ -161,16 +158,14 @@ export function usePaymentMethods() {
     if (!trimmed) return null;
 
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = await currentUserId();
+    if (!userId) return null;
 
     // Case-insensitive lookup first to prevent duplicates
     const { data: existing } = await supabase
       .from("payment_methods")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .ilike("name", trimmed)
       .maybeSingle();
 
@@ -184,7 +179,7 @@ export function usePaymentMethods() {
     const { data: created, error } = await supabase
       .from("payment_methods")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         name: trimmed,
         balance: 0,
         color: null,
@@ -200,7 +195,7 @@ export function usePaymentMethods() {
         const { data: retry } = await supabase
           .from("payment_methods")
           .select("id")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .ilike("name", trimmed)
           .maybeSingle();
         return retry?.id ?? null;
