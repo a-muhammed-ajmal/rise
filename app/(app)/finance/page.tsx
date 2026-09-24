@@ -422,53 +422,42 @@ export default function FinancePage() {
     <PageShell>
       <h1 className="sr-only">Financial</h1>
 
-      <section
-        className="slide-up stagger-1 overflow-hidden rounded-xl border-[1.5px] border-mod-finance/30 bg-linear-to-br from-mod-finance-tint via-card to-card p-4 shadow-hover md:p-5"
-        aria-label="Wallet balances"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <p className="flex items-center gap-2 text-label text-muted-foreground">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-mod-finance-tint">
-                <Wallet className="size-4 text-mod-finance" aria-hidden="true" />
-              </span>
+      {/* Total + one tile per wallet, all the same size, two per row. */}
+      <section className="slide-up stagger-1" aria-label="Wallet balances">
+        <ul className="grid auto-rows-fr grid-cols-2 gap-3">
+          <li className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-mod-finance/40 bg-mod-finance-tint p-4 shadow-card">
+            <p className="flex items-center gap-2 text-sm font-medium text-mod-finance">
+              <Wallet className="size-4 shrink-0" aria-hidden="true" />
               Total balance
             </p>
-            <p className={cn("text-metric font-semibold tabular-nums break-words", totalWalletBalance < 0 ? "text-[var(--color-danger)]" : "text-foreground")}>
+            <p className={cn("text-base font-semibold tabular-nums break-words", totalWalletBalance < 0 && "text-[var(--color-danger)]")}>
               {formatAED(totalWalletBalance)}
             </p>
-            <p className="text-xs text-muted-foreground">
-              Across {activeWallets.length} active {activeWallets.length === 1 ? "wallet" : "wallets"}
-            </p>
-          </div>
-          <Button variant="outline" size="sm" className="shrink-0" onClick={() => setTab("wallets")}>Manage</Button>
-        </div>
-        {activeWallets.length > 0 ? (
-          <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-            {activeWallets.map((wallet) => {
-              const color = wallet.color ?? "var(--muted-foreground)";
-              return (
-                <li
-                  key={wallet.id}
-                  className="flex min-h-20 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] p-3 shadow-card"
-                  style={{
-                    borderColor: `color-mix(in srgb, ${color} 45%, transparent)`,
-                    backgroundColor: `color-mix(in srgb, ${color} 10%, var(--card))`,
-                  }}
-                >
-                  <p className="flex items-center gap-2 text-sm font-medium">
-                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
-                    <span className="min-w-0 break-words">{wallet.name}</span>
-                  </p>
-                  <p className={cn("text-base font-semibold tabular-nums break-words", wallet.balance < 0 && "text-[var(--color-danger)]")}>
-                    {formatAED(wallet.balance)}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">Add a wallet to track your balances.</p>
+          </li>
+          {activeWallets.map((wallet) => {
+            const color = wallet.color ?? "var(--muted-foreground)";
+            return (
+              <li
+                key={wallet.id}
+                className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] p-4 shadow-card"
+                style={{
+                  borderColor: `color-mix(in srgb, ${color} 45%, transparent)`,
+                  backgroundColor: `color-mix(in srgb, ${color} 10%, var(--card))`,
+                }}
+              >
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
+                  <span className="min-w-0 break-words">{wallet.name}</span>
+                </p>
+                <p className={cn("text-base font-semibold tabular-nums break-words", wallet.balance < 0 && "text-[var(--color-danger)]")}>
+                  {formatAED(wallet.balance)}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+        {activeWallets.length === 0 && (
+          <p className="mt-3 text-sm text-muted-foreground">Add a wallet to track your balances.</p>
         )}
       </section>
 
