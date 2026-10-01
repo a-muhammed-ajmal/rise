@@ -128,7 +128,7 @@ Not scheduled through `pg_cron`: set the cadence under
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (1056 tests, 94.5% line coverage) + Playwright |
+| Testing | Vitest 4 + Testing Library (1063 tests, 94.54% line coverage) + Playwright |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -502,8 +502,8 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1056 passing across 40 test files |
-| Line coverage | 94.5% on `lib/**` |
+| Test count | 1063 passing across 41 test files |
+| Line coverage | 94.54% on `lib/**` |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
