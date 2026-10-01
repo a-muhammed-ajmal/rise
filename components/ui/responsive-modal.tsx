@@ -41,7 +41,7 @@ export function ResponsiveModal({
           aria-label={ariaLabel}
           showCloseButton={false}
           className={cn(
-            'md:max-w-[520px] max-h-[85vh] flex flex-col overflow-hidden p-0 gap-0',
+            'md:max-w-[520px] max-h-[85dvh] flex flex-col overflow-hidden p-0 gap-0',
             className
           )}
         >
@@ -58,7 +58,7 @@ export function ResponsiveModal({
         aria-label={ariaLabel}
         showCloseButton={false}
         className={cn(
-          'max-h-[85vh] flex flex-col overflow-hidden p-0 gap-0',
+          'max-h-[85dvh] flex flex-col overflow-hidden p-0 gap-0',
           className
         )}
       >

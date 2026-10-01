@@ -394,7 +394,7 @@ function ContactForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="md:max-w-md max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Contact" : "New Contact"}</DialogTitle>
         </DialogHeader>
@@ -587,7 +587,7 @@ function ContactDetail({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="md:max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="md:max-w-md max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-mod-crm-tint flex items-center justify-center">
