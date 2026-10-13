@@ -13,17 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
+import { WALLET_COLORS, walletPickerColor } from "@/lib/wallet-colors";
 
-const COLOR_SWATCHES = [
-  "#0C2443",
-  "#10b981",
-  "#ef4444",
-  "#3b82f6",
-  "#f59e0b",
-  "#8b5cf6",
-  "#06b6d4",
-  "#ec4899",
-];
 
 export function WalletForm({
   open,
@@ -47,7 +38,7 @@ export function WalletForm({
     if (initial) {
       setName(initial.name);
       setBalance(String(initial.balance));
-      setColor(initial.color);
+      setColor(walletPickerColor(initial.color));
     } else {
       setName("");
       setBalance("0");
@@ -115,7 +106,7 @@ export function WalletForm({
           <div className="space-y-2">
             <Label>Color (optional)</Label>
             <div className="flex gap-2 flex-wrap">
-              {COLOR_SWATCHES.map((c) => (
+              {WALLET_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"

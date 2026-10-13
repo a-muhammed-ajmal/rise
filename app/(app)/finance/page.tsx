@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageShell } from "@/components/layout/page-shell";
 import { FinanceNavigation, type FinanceTab } from "@/components/finance/finance-navigation";
 import { cn } from "@/lib/utils";
+import { walletColor, walletShare } from "@/lib/wallet-colors";
 import {
   Dialog,
   DialogContent,
@@ -422,36 +423,55 @@ export default function FinancePage() {
     <PageShell>
       <h1 className="sr-only">Financial</h1>
 
-      {/* Total + one tile per wallet, all the same size, two per row. */}
+      {/* Total hero, then one full-width row per wallet (two columns from md). */}
       <section className="slide-up stagger-1" aria-label="Wallet balances">
-        <ul className="grid auto-rows-fr grid-cols-2 gap-3">
-          <li className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-mod-finance/40 bg-mod-finance-tint p-4 shadow-card">
-            <p className="flex items-center gap-2 text-sm font-medium text-mod-finance">
-              <Wallet className="size-4 shrink-0" aria-hidden="true" />
-              Total balance
-            </p>
-            <p className={cn("text-base font-semibold tabular-nums break-words", totalWalletBalance < 0 && "text-[var(--color-danger)]")}>
-              {formatAED(totalWalletBalance)}
-            </p>
+        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <li className="relative min-w-0 overflow-hidden rounded-lg bg-brand-action p-5 text-[var(--text-on-brand)] shadow-brand md:col-span-2">
+            <span className="absolute inset-y-0 left-0 w-1 bg-brand-accent" aria-hidden="true" />
+            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+              <div className="min-w-0 space-y-1">
+                <p className="flex items-center gap-2 text-sm font-medium opacity-80">
+                  <Wallet className="size-4 shrink-0 text-brand-accent" aria-hidden="true" />
+                  Total balance
+                </p>
+                <p className="text-display font-semibold tabular-nums break-words">
+                  {formatAED(totalWalletBalance)}
+                </p>
+              </div>
+              <p className="text-sm opacity-80">
+                {activeWallets.length} {activeWallets.length === 1 ? "wallet" : "wallets"}
+              </p>
+            </div>
           </li>
-          {activeWallets.map((wallet) => {
-            const color = wallet.color ?? "var(--muted-foreground)";
+          {activeWallets.map((wallet, i) => {
+            const color = walletColor(wallet.color, i);
+            const share = walletShare(wallet.balance, totalWalletBalance);
             return (
               <li
                 key={wallet.id}
-                className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] p-4 shadow-card"
-                style={{
-                  borderColor: `color-mix(in srgb, ${color} 45%, transparent)`,
-                  backgroundColor: `color-mix(in srgb, ${color} 10%, var(--card))`,
-                }}
+                className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-4 shadow-card"
               >
-                <p className="flex items-center gap-2 text-sm font-medium">
-                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
-                  <span className="min-w-0 break-words">{wallet.name}</span>
-                </p>
-                <p className={cn("text-base font-semibold tabular-nums break-words", wallet.balance < 0 && "text-[var(--color-danger)]")}>
-                  {formatAED(wallet.balance)}
-                </p>
+                <div className="flex items-center gap-3">
+                  <span
+                    className="flex size-10 shrink-0 items-center justify-center rounded-md"
+                    style={{ backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`, color }}
+                    aria-hidden="true"
+                  >
+                    <Wallet className="size-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{wallet.name}</p>
+                    <p className="text-label text-muted-foreground">
+                      {share === 0 && wallet.balance > 0 ? "<1" : share}% of total
+                    </p>
+                  </div>
+                  <p className={cn("shrink-0 text-base font-semibold tabular-nums", wallet.balance < 0 && "text-[var(--color-danger)]")}>
+                    {formatAED(wallet.balance)}
+                  </p>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                  <div className="h-full rounded-full" style={{ width: `${share}%`, backgroundColor: color }} />
+                </div>
               </li>
             );
           })}

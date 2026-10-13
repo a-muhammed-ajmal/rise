@@ -2,6 +2,7 @@
 
 import type { PaymentMethod } from "@/lib/types/database";
 import { formatAED } from "@/lib/format";
+import { walletColor } from "@/lib/wallet-colors";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronUp, ChevronDown, Pencil, SlidersHorizontal } from "lucide-react";
@@ -31,7 +32,7 @@ export function WalletCard({
       <div
         className="w-3 h-3 rounded-full shrink-0"
         style={{
-          backgroundColor: paymentMethod.color ?? "var(--muted-foreground)",
+          backgroundColor: walletColor(paymentMethod.color),
         }}
       />
 

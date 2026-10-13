@@ -14,10 +14,10 @@ export default function FinanceLoading() {
       </div>
 
       {/* Wallet cards */}
-      <div className="flex gap-3 overflow-hidden">
-        <div className="h-24 w-40 rounded-xl bg-muted animate-pulse shrink-0" />
-        <div className="h-24 w-40 rounded-xl bg-muted animate-pulse shrink-0" />
-        <div className="h-24 w-40 rounded-xl bg-muted animate-pulse shrink-0" />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="h-24 rounded-lg bg-muted animate-pulse md:col-span-2" />
+        <div className="h-20 rounded-lg bg-muted animate-pulse" />
+        <div className="h-20 rounded-lg bg-muted animate-pulse" />
       </div>
 
       {/* Summary row */}
