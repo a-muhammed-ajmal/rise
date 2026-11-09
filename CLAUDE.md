@@ -273,7 +273,7 @@ app/
     wellness/               Habit tracker with reminder_time scheduling, done/not-done marking, streak logic
     goals/                  Strategic goal tracking and milestone matrices
     crm/                    Contact lifecycle managers and interaction logs
-    knowledge/              Rich-text documentation workspace (Tiptap implementation)
+    knowledge/              Notes (plain-text Textarea), document metadata and links
     assistant/              Gemini AI chat view utilizing SSE streaming interfaces
     analytics/              Cross-modular reporting graphics powered by Recharts
     settings/               User localization preferences and application controls
@@ -317,9 +317,13 @@ lib/
     client.ts               Client-side client initializations for browser interactions
     server.ts               Server-side isolated client handlers
     middleware.ts           Session lifecycle handlers, ALLOWED_USER_EMAIL enforcement, token refresh
+    jwks.ts                 Process-wide JWKS cache (10-min TTL, single-flight) passed to getClaims()
+    current-user.ts         currentUserId() — user id from the locally verified token; no auth.getUser() hop
+  finance/
+    net-worth.ts            summarizeNetWorth() — active wallets + owed to you − you owe (open debts only)
   types/
     database.ts             Single Source of Truth — 32 Supabase tables with Row/Insert/Update types
-  format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + isPastDeadline, truncateLabel
+  format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + formatAEDWrappable, isPastDeadline, truncateLabel
   area-colors.ts            AREA_META / AREA_LIST / areaTint() — life-area colors as --area-* CSS tokens
   task-attachments.ts       Private-bucket attachment helpers: attachmentPath() recovers legacy object keys
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities

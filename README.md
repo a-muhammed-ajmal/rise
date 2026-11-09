@@ -21,11 +21,11 @@ The AI isn't just a chatbot. It can create a task, log an expense, mark a habit 
 | **Dashboard** | Daily overview — tasks due, habits to log, goal progress, and recent transactions at a glance |
 | **Productivity** | Tasks with priority, due dates, subtasks, tags, attachments. Filter tabs (Today / All / Done), sort, group, and list / grid / calendar views |
 | **Projects** | Dedicated workspace with 8 fixed category tabs (personal, professional, financial, wellness, relationship, vision, legal, default); project cards per category; task drill-down per project; Area field on tasks filters the project dropdown |
-| **Finance** | AED income/expense/transfer ledger with category budgets, debt tracking, and live wallet balances |
+| **Finance** | AED income/expense/transfer ledger with category budgets, debt tracking, live wallet balances, and a net-worth summary (wallets + owed to you − you owe) |
 | **Wellness** | Habit tracker with daily/weekly schedules, reminder times, streak logic, and 30-day progress view |
 | **Goals** | Goal cards with % progress slider, milestone tracking, and journal entries with mood/energy ratings |
 | **CRM** | Contacts with pipeline stages, deal values, interaction logs (call/email/meeting), and follow-up tracking |
-| **Knowledge** | Rich-text notes (Tiptap), document metadata, and links — all searchable by the AI |
+| **Knowledge** | Plain-text notes, document metadata, and links — all searchable by the AI |
 | **AI Assistant** | Gemini 2.5 Flash chat with SSE streaming, pgvector memory, file/image uploads, and 91 executable tools |
 | **Analytics** | Recharts dashboards aggregating cross-module data — finance has Monthly / Daily view toggle |
 
@@ -126,9 +126,8 @@ Not scheduled through `pg_cron`: set the cadence under
 | Database | Supabase — Postgres + pgvector + Row Level Security (32 tables) |
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
-| Rich text | Tiptap (knowledge module) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (1056 tests, 94.5% line coverage) + Playwright |
+| Testing | Vitest 4 + Testing Library (1071 tests, 94.56% line coverage) + Playwright |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -502,9 +501,9 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1056 passing across 40 test files |
-| Line coverage | 94.5% on `lib/**` |
+| Test count | 1071 passing across 42 test files |
+| Line coverage | 94.56% on `lib/**` |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
-| Last phase | Phase 25 — Visual consistency: unified design specification, shared page layout and controls, refreshed Home and Finance, and readable transaction type selection |
+| Last phase | Phase 26 — Startup performance and Finance net worth: local JWT verification with a cached JWKS, functions pinned to Mumbai next to the database, a shared dashboard data source, and a Net worth card on the Finance Overview |
