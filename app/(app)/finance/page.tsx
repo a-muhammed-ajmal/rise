@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { currentUserId } from "@/lib/supabase/current-user";
 import type { Transaction, Budget, Debt, PaymentMethod, Category } from "@/lib/types/database";
 import { useCategories } from "@/lib/hooks/use-categories";
-import { formatAED, formatDate, todayISO } from "@/lib/format";
+import { formatAED, formatAEDWrappable, formatDate, todayISO } from "@/lib/format";
 import { usePaymentMethods } from "@/lib/hooks/use-payment-methods";
 import { TransactionForm } from "./transaction-form";
 import { TransferForm } from "./transfer-form";
@@ -18,6 +18,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { PageShell } from "@/components/layout/page-shell";
 import { FinanceNavigation, type FinanceTab } from "@/components/finance/finance-navigation";
+import { NetWorthCard } from "@/components/finance/net-worth-card";
+import { summarizeNetWorth } from "@/lib/finance/net-worth";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -267,6 +269,9 @@ export default function FinancePage() {
     0
   );
 
+  // Net worth = wallets + money owed to you − money you owe (open debts only).
+  const netWorth = summarizeNetWorth(totalWalletBalance, debts);
+
   // Wallet name lookup for transfer display
   const walletNameById = useMemo(() => {
     const map: Record<string, string> = {};
@@ -424,14 +429,14 @@ export default function FinancePage() {
 
       {/* Total + one tile per wallet, all the same size, two per row. */}
       <section className="slide-up stagger-1" aria-label="Wallet balances">
-        <ul className="grid auto-rows-fr grid-cols-2 gap-3">
+        <ul className="grid auto-rows-fr grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
           <li className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-mod-finance/40 bg-mod-finance-tint p-4 shadow-card">
             <p className="flex items-center gap-2 text-sm font-medium text-mod-finance">
               <Wallet className="size-4 shrink-0" aria-hidden="true" />
               Total balance
             </p>
             <p className={cn("text-base font-semibold tabular-nums break-words", totalWalletBalance < 0 && "text-[var(--color-danger)]")}>
-              {formatAED(totalWalletBalance)}
+              {formatAEDWrappable(totalWalletBalance)}
             </p>
           </li>
           {activeWallets.map((wallet) => {
@@ -450,7 +455,7 @@ export default function FinancePage() {
                   <span className="min-w-0 break-words">{wallet.name}</span>
                 </p>
                 <p className={cn("text-base font-semibold tabular-nums break-words", wallet.balance < 0 && "text-[var(--color-danger)]")}>
-                  {formatAED(wallet.balance)}
+                  {formatAEDWrappable(wallet.balance)}
                 </p>
               </li>
             );
@@ -471,24 +476,24 @@ export default function FinancePage() {
             <Button size="icon" variant="ghost" onClick={() => setSelectedMonth((m) => addMonths(m, 1))} aria-label="Next month"><ChevronRight aria-hidden="true" /></Button>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-[var(--color-success)]/30 bg-[var(--color-success-tint)] p-4 shadow-card">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-[var(--color-success)]/30 bg-[var(--color-success-tint)] p-4 shadow-card">
             <p className="flex items-center gap-2 text-label text-[var(--color-success)]"><TrendingUp className="size-4" aria-hidden="true" />Income</p>
-            <p className="text-base tabular-nums font-semibold break-words text-[var(--color-success)]">{formatAED(monthlyIncome)}</p>
+            <p className="text-base tabular-nums font-semibold break-words text-[var(--color-success)]">{formatAEDWrappable(monthlyIncome)}</p>
           </div>
-          <div className="flex min-h-24 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-[var(--color-danger)]/30 bg-[var(--color-danger-tint)] p-4 shadow-card">
+          <div className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-[var(--color-danger)]/30 bg-[var(--color-danger-tint)] p-4 shadow-card">
             <p className="flex items-center gap-2 text-label text-[var(--color-danger)]"><TrendingDown className="size-4" aria-hidden="true" />Spent</p>
-            <p className="text-base tabular-nums font-semibold break-words text-[var(--color-danger)]">{formatAED(monthlyExpense)}</p>
+            <p className="text-base tabular-nums font-semibold break-words text-[var(--color-danger)]">{formatAEDWrappable(monthlyExpense)}</p>
           </div>
           <div
             className={cn(
-              "col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border-[1.5px] bg-card px-4 py-3 shadow-card",
+              "col-span-2 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border-[1.5px] bg-card px-4 py-3 shadow-card md:col-span-1 md:min-h-24 md:flex-col md:flex-nowrap md:items-stretch md:p-4",
               monthlyNet >= 0 ? "border-[var(--color-success)]/30" : "border-[var(--color-danger)]/30"
             )}
           >
             <p className="text-sm text-muted-foreground">{monthlyNet >= 0 ? "Saved" : "Deficit"}</p>
             <p className={cn("text-base tabular-nums font-semibold break-words", monthlyNet >= 0 ? "text-[var(--color-success)]" : "text-[var(--color-danger)]")}>
-              {monthlyNet >= 0 ? "+" : "−"}{formatAED(Math.abs(monthlyNet))}
+              {monthlyNet >= 0 ? "+" : "−"}{formatAEDWrappable(Math.abs(monthlyNet))}
             </p>
           </div>
         </div>
@@ -498,8 +503,9 @@ export default function FinancePage() {
 
       {/* Overview */}
       {tab === "overview" && (
-        <div className="space-y-3 slide-up stagger-4">
-          <Card>
+        <div className="grid items-start gap-3 slide-up stagger-4 grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))]">
+          <NetWorthCard summary={netWorth} onViewDebts={() => setTab("debts")} />
+          <Card className="min-w-0">
             <CardHeader className="pb-2">
               <CardTitle className="text-h2">Spending by Category</CardTitle>
             </CardHeader>
@@ -514,12 +520,12 @@ export default function FinancePage() {
                   .map(([cat, amount]) => (
                     <div key={cat} className="space-y-2 py-1">
                       <div className="flex flex-wrap justify-between items-baseline gap-x-3 gap-y-1 text-sm">
-                        <span>{cat}</span>
+                        <span className="min-w-0 break-words">{cat}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-label text-muted-foreground">
+                          <span className="text-label text-muted-foreground tabular-nums">
                             {Math.round((amount / monthlyExpense) * 100)}%
                           </span>
-                          <span className="font-mono font-medium">{formatAED(amount)}</span>
+                          <span className="font-medium tabular-nums whitespace-nowrap">{formatAED(amount)}</span>
                         </div>
                       </div>
                       <Progress
@@ -555,11 +561,11 @@ export default function FinancePage() {
                   {txns.map((txn) => (
                     <div
                       key={txn.id}
-                      className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card"
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border bg-card"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${
                             txn.type === "income"
                               ? "bg-mod-finance-tint"
                               : "bg-[var(--color-danger-tint)]"
@@ -571,19 +577,19 @@ export default function FinancePage() {
                             <ArrowDownLeft className="w-4 h-4 text-[var(--color-danger)]" />
                           )}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium break-words">
                             {txn.description ?? txn.category}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground break-words">
                             {txn.category}
                             {txn.payment_method && ` · ${txn.payment_method}`}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex shrink-0 items-center">
                         <span
-                          className={`text-sm font-semibold font-mono ${
+                          className={`text-sm font-semibold tabular-nums whitespace-nowrap ${
                             txn.type === "income"
                               ? "text-mod-finance"
                               : "text-[var(--color-danger)]"
@@ -654,17 +660,17 @@ export default function FinancePage() {
               return (
                 <div
                   key={txn.id}
-                  className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card"
+                  className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-border bg-card"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted">
-                      <ArrowLeftRight className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center bg-muted">
+                      <ArrowLeftRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium break-words">
                         {fromName} → {toName}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground break-words">
                         {formatDate(txn.date)}
                         {txn.description &&
                           txn.description !== `${fromName} → ${toName}` &&
@@ -672,7 +678,7 @@ export default function FinancePage() {
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm font-semibold text-muted-foreground">
+                  <span className="shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap text-muted-foreground">
                     {formatAED(txn.amount)}
                   </span>
                 </div>
@@ -754,13 +760,13 @@ export default function FinancePage() {
                 <Card key={budget.id}>
                   <CardContent className="p-3 space-y-2">
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex justify-between">
-                          <span className="text-sm font-medium">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap justify-between items-baseline gap-x-3 gap-y-0.5">
+                          <span className="min-w-0 text-sm font-medium break-words">
                             {budget.category}
                           </span>
                           <span
-                            className={`text-sm font-semibold ${
+                            className={`text-sm font-semibold tabular-nums ${
                               pct >= 90 ? "text-destructive" : ""
                             }`}
                           >
@@ -829,12 +835,12 @@ export default function FinancePage() {
             debts.map((debt) => (
               <div
                 key={debt.id}
-                className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card"
+                className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border bg-card"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{debt.creditor}</p>
+                  <p className="text-sm font-medium break-words">{debt.creditor}</p>
                   {debt.description && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground break-words">
                       {debt.description}
                     </p>
                   )}
@@ -845,9 +851,9 @@ export default function FinancePage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="text-right">
+                  <div className="flex flex-col items-end gap-1 text-right">
                     <p
-                      className={`text-sm font-semibold ${
+                      className={`text-sm font-semibold tabular-nums whitespace-nowrap ${
                         debt.type === "i_owe"
                           ? "text-destructive"
                           : "text-mod-finance"

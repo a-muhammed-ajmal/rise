@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   formatAED,
+  formatAEDWrappable,
   formatDate,
   formatTime,
   formatDateTime,
@@ -39,6 +40,23 @@ describe("formatAED", () => {
   it("formats negative amounts", () => {
     const result = formatAED(-250.75);
     expect(result).toContain("250.75");
+  });
+});
+
+describe("formatAEDWrappable", () => {
+  it("matches formatAED except for a breakable space after the currency", () => {
+    expect(formatAEDWrappable(123456.78)).toBe("AED 123,456.78");
+    expect(formatAEDWrappable(123456.78)).toBe(formatAED(123456.78).replace(/\s+/g, " "));
+  });
+
+  it("contains no no-break spaces", () => {
+    for (const amount of [0, 5, -250.75, 98765432.1]) {
+      expect(formatAEDWrappable(amount)).not.toMatch(/[\u00a0\u202f]/);
+    }
+  });
+
+  it("keeps the sign attached to the currency code", () => {
+    expect(formatAEDWrappable(-12.5)).toBe("-AED 12.50");
   });
 });
 

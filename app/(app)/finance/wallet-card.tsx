@@ -5,6 +5,7 @@ import { formatAED } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronUp, ChevronDown, Pencil, SlidersHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function WalletCard({
   paymentMethod,
@@ -26,80 +27,79 @@ export function WalletCard({
   onMoveDown: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
-      {/* Color dot */}
-      <div
-        className="w-3 h-3 rounded-full shrink-0"
-        style={{
-          backgroundColor: paymentMethod.color ?? "var(--muted-foreground)",
-        }}
-      />
-
-      {/* Name & balance */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{paymentMethod.name}</p>
-        <p
-          className={`text-xs font-mono ${
-            paymentMethod.balance < 0 ? "text-destructive" : "text-mod-finance"
-          }`}
-        >
-          {formatAED(paymentMethod.balance)}
-        </p>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-card p-3">
+      {/* Color dot + name & balance. Takes the full first line on narrow
+          screens; the actions wrap underneath instead of crushing the name. */}
+      <div className="flex min-w-[10rem] flex-1 items-center gap-3">
+        <span
+          className="size-3 shrink-0 rounded-full"
+          style={{
+            backgroundColor: paymentMethod.color ?? "var(--muted-foreground)",
+          }}
+          aria-hidden="true"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <span className="min-w-0 break-words">{paymentMethod.name}</span>
+            {!paymentMethod.is_active && (
+              <Badge variant="secondary" className="text-xs">
+                Inactive
+              </Badge>
+            )}
+          </p>
+          <p
+            className={cn(
+              "text-xs font-medium tabular-nums",
+              paymentMethod.balance < 0 ? "text-destructive" : "text-mod-finance"
+            )}
+          >
+            {formatAED(paymentMethod.balance)}
+          </p>
+        </div>
       </div>
 
-      {/* Status badge */}
-      {!paymentMethod.is_active && (
-        <Badge variant="secondary" className="text-xs shrink-0">
-          Inactive
-        </Badge>
-      )}
-
-      {/* Actions */}
-      <div className="flex items-center gap-1 shrink-0">
+      {/* Actions — every control keeps the shared 44px touch target. */}
+      <div className="ml-auto flex shrink-0 items-center">
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7"
           onClick={onMoveUp}
           disabled={isFirst}
           aria-label="Move up"
         >
-          <ChevronUp className="w-3.5 h-3.5" />
+          <ChevronUp aria-hidden="true" />
         </Button>
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7"
           onClick={onMoveDown}
           disabled={isLast}
           aria-label="Move down"
         >
-          <ChevronDown className="w-3.5 h-3.5" />
+          <ChevronDown aria-hidden="true" />
         </Button>
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7"
           onClick={onEdit}
           aria-label="Edit wallet"
         >
-          <Pencil className="w-3.5 h-3.5" />
+          <Pencil aria-hidden="true" />
         </Button>
         {paymentMethod.is_active && (
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
             onClick={onAdjust}
             aria-label="Adjust balance"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <SlidersHorizontal aria-hidden="true" />
           </Button>
         )}
         <Button
           size="sm"
           variant="ghost"
-          className="h-7 text-xs px-2"
+          className="text-xs"
           onClick={onToggleActive}
         >
           {paymentMethod.is_active ? "Deactivate" : "Activate"}

@@ -76,7 +76,7 @@ Canonical specification: [.claude/skills/frontend-design/DESIGN_SYSTEM.md](.clau
 - PageShell/PageHeader provide a centered 1280px workspace with 16px mobile / 24px desktop side padding and 24px section gaps. Only md (768px); use intrinsic wrapping for columns with insufficient space.
 - Faint 40px graph grid on the shell and login, neutral resting card borders, 12px card radius, restrained shadows, and small module accent icons. Inner rows may use separators. Preserve life-area and priority meanings.
 - Shared buttons and icon controls target 44px. Primary actions have visible labels. Use existing five-slot mobile navigation and respect safe areas.
-- Home prioritizes Focus and Today's Tasks, then compact habits. Finance names itself "Financial" in the topbar, opens on a wallet-balance hero card (total plus a colour-tinted tile per wallet), colours income green and expenses red, and keeps all seven views available through three primary buttons plus More.
+- Home prioritizes Focus and Today's Tasks, then compact habits. Finance names itself "Financial" in the topbar, opens on a wallet-balance hero card (total plus a colour-tinted tile per wallet), colours income green and expenses red, and keeps all seven views available through three primary buttons plus More. The Overview view leads with a **Net worth** card — active wallet balances + money owed to you − money you owe, counting only open debts (not paid, not deleted) — showing the total and its three parts (`lib/finance/net-worth.ts`).
 - WCAG AA contrast targets, visible keyboard focus, reduced motion, and ConfirmDialog for destructive actions remain required. See the canonical system for component, theme, motion and validation details.
 
 ---

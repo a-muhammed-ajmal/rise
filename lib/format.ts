@@ -10,6 +10,14 @@ export function formatAED(amount: number): string {
   }).format(amount)
 }
 
+// formatAED for narrow tiles. Intl joins "AED" and the number with a
+// no-break space, so a long amount in a half-width card can only wrap
+// mid-number ("AED 123,45" / "6.78"). A plain space lets it wrap cleanly as
+// "AED" / "123,456.78" instead; on one line the two look identical.
+export function formatAEDWrappable(amount: number): string {
+  return formatAED(amount).replace(/\s+/g, ' ')
+}
+
 // DD/MM/YYYY — per spec date format
 export function formatDate(dateStr: string): string {
   return format(parseISO(dateStr), 'dd/MM/yyyy')

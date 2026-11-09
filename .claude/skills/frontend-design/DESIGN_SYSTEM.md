@@ -52,7 +52,7 @@ Success, danger, warning and info use their own semantic tokens. Do not communic
 | Compact navigation | text-micro | 11px floor | 400–600 |
 | Metric | text-metric | 24px | 600 |
 
-Use the fixed scale, no fluid clamp(). Titles of 20px and above use -0.02em tracking. Financial amounts and metrics use tabular numerals. Important labels and warnings wrap instead of truncating. Forms may use 16px input text on mobile.
+Use the fixed scale, no fluid clamp(). Titles of 20px and above use -0.02em tracking. Financial amounts and metrics use tabular numerals; in half-width tiles use formatAEDWrappable so a long amount wraps between "AED" and the number, never mid-number. tailwind-merge does not know the custom size utilities (text-metric, text-h1, text-h2, text-label, text-display), so do not pass one through cn() together with a text colour class — it is dropped as a clash. Important labels and warnings wrap instead of truncating. Forms may use 16px input text on mobile.
 
 --text-body is exclusively a COLOR. --font-size-body is the 14px SIZE used by the text-body utility. Never reuse a CSS custom property for incompatible value types.
 
@@ -80,7 +80,7 @@ Use the fixed scale, no fluid clamp(). Titles of 20px and above use -0.02em trac
 
 Home: greeting and three summaries, then Today's Focus and Today's Tasks. Habits sit alongside on wide screens and follow tasks on mobile. Show three pending habits initially with an accessible expand control. Keep goals, AI assistance, contact follow-ups, transactions and the smaller motivation message available. Choosing focus tasks opens the existing task workflow.
 
-Finance: labeled Add income/Add expense actions, a visible total wallet balance, wrapping wallet details, readable monthly income/spending/net values, and three main navigation buttons (Overview, Transactions, Wallets). Transfers, Budgets, Debts and Categories stay reachable in the More menu, which displays the selected secondary view. Preserve date filtering, amounts, all existing forms and every ConfirmDialog.
+Finance: labeled Add income/Add expense actions, a visible total wallet balance, wrapping wallet details, readable monthly income/spending/net values, a Net worth card at the top of Overview (headline total, then wallet balance, owed to you and you owe so the sum can be checked; a negative total is labeled, not just red), and three main navigation buttons (Overview, Transactions, Wallets). Transfers, Budgets, Debts and Categories stay reachable in the More menu, which displays the selected secondary view. Preserve date filtering, amounts, all existing forms and every ConfirmDialog.
 
 ## Accessibility and motion
 
