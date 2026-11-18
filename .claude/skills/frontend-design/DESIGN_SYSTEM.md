@@ -51,6 +51,7 @@ Success, danger, warning and info use their own semantic tokens. Do not communic
 | Metadata | text-label or text-xs | 12px | 400–500 |
 | Compact navigation | text-micro | 11px floor | 400–600 |
 | Metric | text-metric | 24px | 600 |
+| Finance net worth hero | text-hero | 32px | 600 |
 
 Use the fixed scale, no fluid clamp(). Titles of 20px and above use -0.02em tracking. Financial amounts and metrics use tabular numerals; in half-width tiles use formatAEDWrappable so a long amount wraps between "AED" and the number, never mid-number. tailwind-merge does not know the custom size utilities (text-metric, text-h1, text-h2, text-label, text-display), so do not pass one through cn() together with a text colour class — it is dropped as a clash. Important labels and warnings wrap instead of truncating. Forms may use 16px input text on mobile.
 
@@ -80,7 +81,7 @@ Use the fixed scale, no fluid clamp(). Titles of 20px and above use -0.02em trac
 
 Home: greeting and three summaries, then Today's Focus and Today's Tasks. Habits sit alongside on wide screens and follow tasks on mobile. Show three pending habits initially with an accessible expand control. Keep goals, AI assistance, contact follow-ups, transactions and the smaller motivation message available. Choosing focus tasks opens the existing task workflow.
 
-Finance: labeled Add income/Add expense actions, a visible total wallet balance, wrapping wallet details, readable monthly income/spending/net values, a Net worth card at the top of Overview (headline total, then wallet balance, owed to you and you owe so the sum can be checked; a negative total is labeled, not just red), and three main navigation buttons (Overview, Transactions, Wallets). Transfers, Budgets, Debts and Categories stay reachable in the More menu, which displays the selected secondary view. Preserve date filtering, amounts, all existing forms and every ConfirmDialog.
+Finance: a Home | Money switch on the shared Tabs primitive. Home: the Net worth hero (`.finance-hero` — deep finance green #064E3B → #047857 in both themes, white text at 5.4:1 or better; headline total in `text-hero`, then wallet balance, owed to you and you owe so the sum can be checked; a negative total says "Below zero" in words), a month card (month arrows, money in on a success tint, money out on a danger tint, net labelled Saved or Deficit, saving-rate pill: green from 20%, amber 0–19%, red below 0) and a Needs attention card (red dot = overdue or over budget, amber dot = due within 7 days or 75–100% used; each row opens the matching Money tab). Money: Activity, Wallets, Budgets and Debts tabs. Activity has labelled Expense / Income / Transfer buttons and day-grouped rows in one card with separators. Budgets use `.finance-bar` (green under 75%, `--fill-warning` amber 75–100%, red above) with a % pill and "X of Y · Z left / over by Z" in words; Categories open from the Budgets tab. Debts show Owed to me / I owe tint cards, Overdue / Today / Tomorrow / In N days pills and a Show settled list. Row actions sit in one 44px ⋮ menu. The green round Add button opens the entry form. Preserve date filtering, amounts, all existing forms and every ConfirmDialog.
 
 ## Accessibility and motion
 

@@ -51,12 +51,13 @@ describe("NetWorthCard", () => {
 
     const total = screen.getByTestId("net-worth-total");
     expect(total.textContent).toBe(aed(-500));
-    // Regression: the danger colour must not knock out the metric size class.
-    expect(total.className).toContain("text-metric");
-    expect(total.className).toContain("text-[var(--color-danger)]");
+    // The hero is white on deep green, so a negative total is said in words.
+    expect(total.className).toContain("text-hero");
+    expect(screen.getByText("Below zero")).toBeDefined();
     expect(
       screen.getByText("Negative — you owe more than you hold"),
     ).toBeDefined();
+    expect(screen.queryByText("Wallets + money owed to you − money you owe")).toBeNull();
   });
 
   it("shows unsigned zeros and no counts when there are no debts", () => {

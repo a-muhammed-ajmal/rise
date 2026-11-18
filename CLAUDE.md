@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1071 tests, 94.56% lines — target met. The largest remaining gaps are `use-tasks.ts` (49.45%) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1111 tests, 94.82% lines — target met. The largest remaining gaps are `use-tasks.ts` (49.45%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -291,6 +291,8 @@ components/
   ui/                       Core design architecture primitive assets (@base-ui/react)
   layout/                   Universal frame shells: Sidebar (Desktop), BottomNav (Mobile, max 5 items), Topbar
   analytics/                Isolated Recharts rendering structures per module
+  finance/                  Finance Home (net worth hero, month card, Needs attention) and the Money
+                            tabs (Activity, Budgets, Debts views); Home | Money navigation
   productivity/             Task entry forms and visualization cards
   pwa/                      Service Worker setup toasts, caching, and installation components
 
@@ -321,6 +323,10 @@ lib/
     current-user.ts         currentUserId() — user id from the locally verified token; no auth.getUser() hop
   finance/
     net-worth.ts            summarizeNetWorth() — active wallets + owed to you − you owe (open debts only)
+    month.ts                summarizeMonth() / savingRate() / spentByCategory() / budgetLevel() — 75% and 100% bands
+    debts.ts                isOverdue() / isDueSoon() (7 days) / dueLabel() / sortByDueDate() — Dubai date strings
+    attention.ts            needsAttention() — overdue debts → over budgets → due soon → budgets at 75–100%
+    activity.ts             groupByDay() / dayLabel() / signedAmount() for the Money → Activity list
   types/
     database.ts             Single Source of Truth — 32 Supabase tables with Row/Insert/Update types
   format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + formatAEDWrappable, isPastDeadline, truncateLabel
