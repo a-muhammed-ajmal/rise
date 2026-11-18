@@ -100,16 +100,19 @@ don't leave a wrong-identity commit in history "to fix later."
 
 ## 6. Push — always, immediately after commit
 
-After identity is confirmed, push the **current branch** automatically —
+After identity is confirmed, push to **`main`** automatically —
 do not ask, do not wait for the user to say "push":
 
 ```bash
-git push origin <current-branch>
+git push origin main
 ```
 
 Remote: https://github.com/a-muhammed-ajmal/rise
 
-- If on a feature branch (`feat/*`, `fix/*`, etc.), push that branch.
-- **Never** push directly to `main` — CLAUDE.md prohibits it.
+- **Main only.** Commit on `main` and push `main`. Do not create or push
+  any other branch (no `feat/*`, `fix/*`, `claude/*` branches, no pull
+  requests) — the user's rule since 2026-11-18.
+- A push to `main` deploys to production on Vercel, so run `/verify` and
+  get the commit confirmed (step 4) before pushing.
 - Confirm the push succeeded by checking the output line.
 - Never force-push unless the user explicitly asks.
