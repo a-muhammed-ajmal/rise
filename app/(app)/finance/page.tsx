@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { currentUserId } from "@/lib/supabase/current-user";
 import type { Transaction, Budget, Debt, PaymentMethod, Category } from "@/lib/types/database";
 import { useCategories } from "@/lib/hooks/use-categories";
-import { formatAED, formatAEDWrappable, formatDate, todayISO } from "@/lib/format";
+import { formatAEDWrappable, todayISO } from "@/lib/format";
 import { usePaymentMethods } from "@/lib/hooks/use-payment-methods";
 import { TransactionForm } from "./transaction-form";
 import { TransferForm } from "./transfer-form";
@@ -14,13 +14,24 @@ import { AdjustBalanceForm } from "./adjust-balance-form";
 import { WalletCard } from "./wallet-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { PageShell } from "@/components/layout/page-shell";
-import { FinanceNavigation, type FinanceTab } from "@/components/finance/finance-navigation";
-import { NetWorthCard } from "@/components/finance/net-worth-card";
+import {
+  FinanceSectionList,
+  MoneyViewList,
+  isFinanceSection,
+  isMoneyView,
+  type FinanceSection,
+  type MoneyView,
+} from "@/components/finance/finance-navigation";
+import { FinanceHome } from "@/components/finance/finance-home";
+import { ActivityView } from "@/components/finance/activity-view";
+import { BudgetsView } from "@/components/finance/budgets-view";
+import { DebtsView } from "@/components/finance/debts-view";
 import { summarizeNetWorth } from "@/lib/finance/net-worth";
-import { cn } from "@/lib/utils";
+import { monthBounds, spentByCategory, summarizeMonth } from "@/lib/finance/month";
+import { needsAttention } from "@/lib/finance/attention";
+import { isOpenDebt, sortByDueDate } from "@/lib/finance/debts";
 import {
   Dialog,
   DialogContent,
@@ -28,13 +39,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,22 +50,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  Plus,
-  TrendingUp,
-  TrendingDown,
-  Loader2,
-  ArrowUpRight,
-  ArrowDownLeft,
-  ArrowLeftRight,
-  MoreVertical,
-  Pencil,
-  Trash2,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Wallet,
-} from "lucide-react";
+import { ChevronLeft, Loader2, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import {
   startOfMonth,
   endOfMonth,
@@ -76,7 +65,9 @@ function isBudgetPeriod(value: unknown): value is Budget["period"] {
 }
 
 export default function FinancePage() {
-  const [tab, setTab] = useState<FinanceTab>("overview");
+  const [section, setSection] = useState<FinanceSection>("home");
+  const [moneyView, setMoneyView] = useState<MoneyView>("activity");
+  const [showCategories, setShowCategories] = useState(false);
 
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -151,7 +142,7 @@ export default function FinancePage() {
   const fetchData = useCallback(async () => {
     const supabase = createClient();
     try {
-      // Metrics and the transfers tab need the complete history. Page through
+      // Metrics and the Activity view need the complete history. Page through
       // PostgREST so accounts with >500 rows are not silently under-reported.
       const txns: Transaction[] = [];
       const pageSize = 500;
@@ -177,7 +168,6 @@ export default function FinancePage() {
           .from("debts")
           .select("*")
           .is("deleted_at", null)
-          .is("paid_at", null)
           .order("created_at", { ascending: false }),
       ]);
       if (budgetsResult.error) throw new Error(budgetsResult.error.message);
@@ -200,79 +190,50 @@ export default function FinancePage() {
 
   // ── Derived data ─────────────────────────────────────────────────────────────
 
+  const today = todayISO();
   const monthStart = format(startOfMonth(selectedMonth), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
+  const monthLabel = format(selectedMonth, "MMMM yyyy");
 
-  // Monthly income/expense transactions (excludes transfers & adjustments)
-  const monthlyFinancialTxns = useMemo(
-    () =>
-      allTransactions.filter(
-        (t) =>
-          t.type === "income" || t.type === "expense"
-            ? t.date >= monthStart && t.date <= monthEnd
-            : false
-      ),
+  // Money in / out for the month on screen (transfers and adjustments excluded).
+  const month = useMemo(
+    () => summarizeMonth(allTransactions, monthStart, monthEnd),
     [allTransactions, monthStart, monthEnd]
   );
-
-  const monthlyIncome = monthlyFinancialTxns
-    .filter((t) => t.type === "income")
-    .reduce((s, t) => s + t.amount, 0);
-  const monthlyExpense = monthlyFinancialTxns
-    .filter((t) => t.type === "expense")
-    .reduce((s, t) => s + t.amount, 0);
-  const monthlyNet = monthlyIncome - monthlyExpense;
-
-  // Spending by category — current month only
   const spendingByCategory = useMemo(
-    () =>
-      monthlyFinancialTxns
-        .filter((t) => t.type === "expense")
-        .reduce<Record<string, number>>((acc, t) => {
-          acc[t.category] = (acc[t.category] ?? 0) + t.amount;
-          return acc;
-        }, {}),
-    [monthlyFinancialTxns]
-  );
-
-  // Transfers tab — all transfer rows
-  const transfers = useMemo(
-    () => allTransactions.filter((t) => t.type === "transfer"),
-    [allTransactions]
-  );
-
-  // Transactions tab — only income/expense for selected month
-  const monthlyTxnsForList = useMemo(
-    () =>
-      allTransactions.filter(
-        (t) =>
-          (t.type === "income" || t.type === "expense") &&
-          t.date >= monthStart &&
-          t.date <= monthEnd
-      ),
+    () => spentByCategory(allTransactions, monthStart, monthEnd),
     [allTransactions, monthStart, monthEnd]
   );
 
-  // Group transactions by date for the list view
-  const groupedTxns = useMemo(() => {
-    const groups: Record<string, Transaction[]> = {};
-    monthlyTxnsForList.forEach((t) => {
-      (groups[t.date] ??= []).push(t);
-    });
-    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
-  }, [monthlyTxnsForList]);
+  // "Needs attention" always looks at the current month, whatever is on screen.
+  const current = monthBounds(today);
+  const spentThisMonth = useMemo(
+    () => spentByCategory(allTransactions, current.start, current.end),
+    [allTransactions, current.start, current.end]
+  );
+
+  const openDebts = useMemo(() => sortByDueDate(debts.filter(isOpenDebt)), [debts]);
+  const settledDebts = useMemo(
+    () =>
+      debts
+        .filter((d) => !!d.paid_at)
+        .sort((a, b) => (b.paid_at ?? "").localeCompare(a.paid_at ?? "")),
+    [debts]
+  );
+
+  const attention = useMemo(
+    () => needsAttention({ debts: openDebts, budgets, spent: spentThisMonth, today }),
+    [openDebts, budgets, spentThisMonth, today]
+  );
 
   // Wallet totals
   const activeWallets = paymentMethods.filter((m) => m.is_active);
-  const totalWalletBalance = activeWallets.reduce(
-    (s, m) => s + m.balance,
-    0
-  );
+  const totalWalletBalance = activeWallets.reduce((s, m) => s + m.balance, 0);
 
   // Net worth = wallets + money owed to you − money you owe (open debts only).
-  const netWorth = summarizeNetWorth(totalWalletBalance, debts);
+  const netWorth = summarizeNetWorth(totalWalletBalance, openDebts);
 
-  // Wallet name lookup for transfer display
+  // Wallet name lookup for activity rows
   const walletNameById = useMemo(() => {
     const map: Record<string, string> = {};
     paymentMethods.forEach((m) => {
@@ -280,6 +241,18 @@ export default function FinancePage() {
     });
     return map;
   }, [paymentMethods]);
+
+  function openMoney(view: MoneyView) {
+    setMoneyView(view);
+    setShowCategories(false);
+    setSection("money");
+  }
+
+  function openTransactionForm(type: "income" | "expense") {
+    setEditTxn(null);
+    setTxnType(type);
+    setTxnOpen(true);
+  }
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -427,640 +400,321 @@ export default function FinancePage() {
     <PageShell>
       <h1 className="sr-only">Financial</h1>
 
-      {/* Total + one tile per wallet, all the same size, two per row. */}
-      <section className="slide-up stagger-1" aria-label="Wallet balances">
-        <ul className="grid auto-rows-fr grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
-          <li className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-mod-finance/40 bg-mod-finance-tint p-4 shadow-card">
-            <p className="flex items-center gap-2 text-sm font-medium text-mod-finance">
-              <Wallet className="size-4 shrink-0" aria-hidden="true" />
-              Total balance
-            </p>
-            <p className={cn("text-base font-semibold tabular-nums break-words", totalWalletBalance < 0 && "text-[var(--color-danger)]")}>
-              {formatAEDWrappable(totalWalletBalance)}
-            </p>
-          </li>
-          {activeWallets.map((wallet) => {
-            const color = wallet.color ?? "var(--muted-foreground)";
-            return (
-              <li
-                key={wallet.id}
-                className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] p-4 shadow-card"
-                style={{
-                  borderColor: `color-mix(in srgb, ${color} 45%, transparent)`,
-                  backgroundColor: `color-mix(in srgb, ${color} 10%, var(--card))`,
-                }}
-              >
-                <p className="flex items-center gap-2 text-sm font-medium">
-                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
-                  <span className="min-w-0 break-words">{wallet.name}</span>
-                </p>
-                <p className={cn("text-base font-semibold tabular-nums break-words", wallet.balance < 0 && "text-[var(--color-danger)]")}>
-                  {formatAEDWrappable(wallet.balance)}
-                </p>
-              </li>
-            );
-          })}
-        </ul>
-        {activeWallets.length === 0 && (
-          <p className="mt-3 text-sm text-muted-foreground">Add a wallet to track your balances.</p>
-        )}
-      </section>
-
-      <div className="min-w-0 space-y-6">
-      <section className="slide-up stagger-2 space-y-4" aria-label="Monthly summary">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-h2 font-semibold">Monthly summary</h2>
-          <div className="flex items-center gap-1">
-            <Button size="icon" variant="ghost" onClick={() => setSelectedMonth((m) => subMonths(m, 1))} aria-label="Previous month"><ChevronLeft aria-hidden="true" /></Button>
-            <span className="text-sm font-medium min-w-[88px] text-center" aria-live="polite">{format(selectedMonth, "MMM yyyy")}</span>
-            <Button size="icon" variant="ghost" onClick={() => setSelectedMonth((m) => addMonths(m, 1))} aria-label="Next month"><ChevronRight aria-hidden="true" /></Button>
-          </div>
+      <Tabs
+        value={section}
+        onValueChange={(value) => {
+          if (isFinanceSection(value)) setSection(value);
+        }}
+        className="gap-4"
+      >
+        <div className="animate-rise-in stagger-1">
+          <FinanceSectionList />
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          <div className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-[var(--color-success)]/30 bg-[var(--color-success-tint)] p-4 shadow-card">
-            <p className="flex items-center gap-2 text-label text-[var(--color-success)]"><TrendingUp className="size-4" aria-hidden="true" />Income</p>
-            <p className="text-base tabular-nums font-semibold break-words text-[var(--color-success)]">{formatAEDWrappable(monthlyIncome)}</p>
-          </div>
-          <div className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg border-[1.5px] border-[var(--color-danger)]/30 bg-[var(--color-danger-tint)] p-4 shadow-card">
-            <p className="flex items-center gap-2 text-label text-[var(--color-danger)]"><TrendingDown className="size-4" aria-hidden="true" />Spent</p>
-            <p className="text-base tabular-nums font-semibold break-words text-[var(--color-danger)]">{formatAEDWrappable(monthlyExpense)}</p>
-          </div>
-          <div
-            className={cn(
-              "col-span-2 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border-[1.5px] bg-card px-4 py-3 shadow-card md:col-span-1 md:min-h-24 md:flex-col md:flex-nowrap md:items-stretch md:p-4",
-              monthlyNet >= 0 ? "border-[var(--color-success)]/30" : "border-[var(--color-danger)]/30"
-            )}
-          >
-            <p className="text-sm text-muted-foreground">{monthlyNet >= 0 ? "Saved" : "Deficit"}</p>
-            <p className={cn("text-base tabular-nums font-semibold break-words", monthlyNet >= 0 ? "text-[var(--color-success)]" : "text-[var(--color-danger)]")}>
-              {monthlyNet >= 0 ? "+" : "−"}{formatAEDWrappable(Math.abs(monthlyNet))}
-            </p>
-          </div>
-        </div>
-      </section>
 
-      <FinanceNavigation value={tab} onChange={setTab} />
+        <TabsContent value="home">
+          <FinanceHome
+            netWorth={netWorth}
+            monthLabel={monthLabel}
+            month={month}
+            onPrevMonth={() => setSelectedMonth((m) => subMonths(m, 1))}
+            onNextMonth={() => setSelectedMonth((m) => addMonths(m, 1))}
+            attention={attention}
+            onOpen={openMoney}
+          />
+        </TabsContent>
 
-      {/* Overview */}
-      {tab === "overview" && (
-        <div className="grid items-start gap-3 slide-up stagger-4 grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))]">
-          <NetWorthCard summary={netWorth} onViewDebts={() => setTab("debts")} />
-          <Card className="min-w-0">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-h2">Spending by Category</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {Object.keys(spendingByCategory).length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No expenses in {format(selectedMonth, "MMMM")}.
-                </p>
-              ) : (
-                Object.entries(spendingByCategory)
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([cat, amount]) => (
-                    <div key={cat} className="space-y-2 py-1">
-                      <div className="flex flex-wrap justify-between items-baseline gap-x-3 gap-y-1 text-sm">
-                        <span className="min-w-0 break-words">{cat}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-label text-muted-foreground tabular-nums">
-                            {Math.round((amount / monthlyExpense) * 100)}%
-                          </span>
-                          <span className="font-medium tabular-nums whitespace-nowrap">{formatAED(amount)}</span>
-                        </div>
-                      </div>
-                      <Progress
-                        value={
-                          monthlyExpense > 0
-                            ? (amount / monthlyExpense) * 100
-                            : 0
-                        }
-                        className="h-1.5"
-                      />
-                    </div>
-                  ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Transactions */}
-      {tab === "transactions" && (
-        <div className="space-y-1 slide-up stagger-4">
-          {groupedTxns.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground text-sm">
-              No transactions in {format(selectedMonth, "MMMM yyyy")}.
-            </p>
-          ) : (
-            groupedTxns.map(([date, txns]) => (
-              <div key={date}>
-                <p className="text-label font-medium text-muted-foreground uppercase tracking-wide px-1 pt-3 pb-1.5 first:pt-0">
-                  {formatDate(date)}
-                </p>
-                <div className="space-y-1.5">
-                  {txns.map((txn) => (
-                    <div
-                      key={txn.id}
-                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border bg-card"
-                    >
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <div
-                          className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${
-                            txn.type === "income"
-                              ? "bg-mod-finance-tint"
-                              : "bg-[var(--color-danger-tint)]"
-                          }`}
-                        >
-                          {txn.type === "income" ? (
-                            <ArrowUpRight className="w-4 h-4 text-mod-finance" />
-                          ) : (
-                            <ArrowDownLeft className="w-4 h-4 text-[var(--color-danger)]" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium break-words">
-                            {txn.description ?? txn.category}
-                          </p>
-                          <p className="text-xs text-muted-foreground break-words">
-                            {txn.category}
-                            {txn.payment_method && ` · ${txn.payment_method}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center">
-                        <span
-                          className={`text-sm font-semibold tabular-nums whitespace-nowrap ${
-                            txn.type === "income"
-                              ? "text-mod-finance"
-                              : "text-[var(--color-danger)]"
-                          }`}
-                        >
-                          {txn.type === "income" ? "+" : "−"}
-                          {formatAED(txn.amount)}
-                        </span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger aria-label="More actions" className="h-11 w-11 shrink-0 inline-flex items-center justify-center rounded-md hover:bg-accent active:bg-accent">
-                            <MoreVertical className="w-3.5 h-3.5" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditTxn(txn);
-                                setTxnType(
-                                  txn.type === "income" ? "income" : "expense"
-                                );
-                                setTxnOpen(true);
-                              }}
-                            >
-                              <Pencil className="w-4 h-4 mr-2" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setDeleteTxnId(txn.id)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Transfers */}
-      {tab === "transfers" && (
-        <div className="space-y-3 slide-up stagger-4">
-          <Button
-            size="sm"
-            onClick={() => setTransferOpen(true)}
-            className="w-full gap-1.5"
-          >
-            <ArrowLeftRight className="w-4 h-4" /> New Transfer
-          </Button>
-          {transfers.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground text-sm">
-              No transfers yet.
-            </p>
-          ) : (
-            transfers.map((txn) => {
-              const fromName =
-                (txn.from_payment_method_id &&
-                  walletNameById[txn.from_payment_method_id]) ||
-                "Unknown";
-              const toName =
-                (txn.to_payment_method_id &&
-                  walletNameById[txn.to_payment_method_id]) ||
-                "Unknown";
-              return (
-                <div
-                  key={txn.id}
-                  className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-border bg-card"
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center bg-muted">
-                      <ArrowLeftRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium break-words">
-                        {fromName} → {toName}
-                      </p>
-                      <p className="text-xs text-muted-foreground break-words">
-                        {formatDate(txn.date)}
-                        {txn.description &&
-                          txn.description !== `${fromName} → ${toName}` &&
-                          ` · ${txn.description}`}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap text-muted-foreground">
-                    {formatAED(txn.amount)}
-                  </span>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {/* Wallets */}
-      {tab === "wallets" && (
-        <div className="space-y-3 slide-up stagger-4">
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditWallet(null);
-              setWalletFormOpen(true);
+        <TabsContent value="money">
+          <Tabs
+            value={moneyView}
+            onValueChange={(value) => {
+              if (isMoneyView(value)) {
+                setMoneyView(value);
+                setShowCategories(false);
+              }
             }}
-            className="w-full gap-1.5"
+            className="gap-4"
           >
-            <Plus className="w-4 h-4" /> Add Wallet
-          </Button>
-          {sortedWallets.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground text-sm">
-              No wallets yet. Add one to get started.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {sortedWallets.map((wallet, idx) => (
-                <WalletCard
-                  key={wallet.id}
-                  paymentMethod={wallet}
-                  isFirst={idx === 0}
-                  isLast={idx === sortedWallets.length - 1}
-                  onEdit={() => {
-                    setEditWallet(wallet);
+            <MoneyViewList />
+
+            <TabsContent value="activity" className="slide-up stagger-1">
+              <ActivityView
+                transactions={allTransactions}
+                walletNameById={walletNameById}
+                today={today}
+                onAddExpense={() => openTransactionForm("expense")}
+                onAddIncome={() => openTransactionForm("income")}
+                onTransfer={() => setTransferOpen(true)}
+                onEdit={(txn) => {
+                  setEditTxn(txn);
+                  setTxnType(txn.type === "income" ? "income" : "expense");
+                  setTxnOpen(true);
+                }}
+                onDelete={setDeleteTxnId}
+              />
+            </TabsContent>
+
+            <TabsContent value="wallets" className="slide-up stagger-1 space-y-4">
+              <section
+                aria-label="Total balance"
+                className="flex flex-wrap items-end justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-card"
+              >
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Wallet className="size-4 shrink-0 text-mod-finance" aria-hidden="true" />
+                    Total balance
+                  </p>
+                  <p className={`text-metric mt-2 font-semibold break-words ${totalWalletBalance < 0 ? "text-[var(--color-danger)]" : ""}`}>
+                    {formatAEDWrappable(totalWalletBalance)}
+                  </p>
+                  <p className="mt-1 text-label text-muted-foreground">
+                    {activeWallets.length === 1 ? "1 active wallet" : `${activeWallets.length} active wallets`}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setEditWallet(null);
                     setWalletFormOpen(true);
                   }}
-                  onAdjust={() => setAdjustWallet(wallet)}
-                  onToggleActive={() => {
-                    if (wallet.is_active) {
-                      setDeactivateWalletId(wallet.id);
-                    } else {
-                      setActiveStatus(wallet.id, true);
-                      toast.success("Wallet activated");
-                    }
+                >
+                  <Plus aria-hidden="true" /> Add wallet
+                </Button>
+              </section>
+
+              {sortedWallets.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
+                  <p className="text-sm font-medium">No wallets yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Add a bank account, card or cash wallet to track its balance.</p>
+                </div>
+              ) : (
+                <ul aria-label="Wallets" className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card shadow-card">
+                  {sortedWallets.map((wallet, idx) => (
+                    <WalletCard
+                      key={wallet.id}
+                      paymentMethod={wallet}
+                      isFirst={idx === 0}
+                      isLast={idx === sortedWallets.length - 1}
+                      onEdit={() => {
+                        setEditWallet(wallet);
+                        setWalletFormOpen(true);
+                      }}
+                      onAdjust={() => setAdjustWallet(wallet)}
+                      onToggleActive={() => {
+                        if (wallet.is_active) {
+                          setDeactivateWalletId(wallet.id);
+                        } else {
+                          setActiveStatus(wallet.id, true);
+                          toast.success("Wallet activated");
+                        }
+                      }}
+                      onMoveUp={() => handleWalletReorder(wallet.id, "up")}
+                      onMoveDown={() => handleWalletReorder(wallet.id, "down")}
+                    />
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
+
+            <TabsContent value="budgets" className="slide-up stagger-1">
+              {showCategories ? (
+                <div className="space-y-4">
+                  <Button variant="ghost" className="-ml-3 gap-1" onClick={() => setShowCategories(false)}>
+                    <ChevronLeft aria-hidden="true" /> Budgets
+                  </Button>
+                  <h2 className="text-h2 font-semibold">Categories</h2>
+                  <div className="space-y-4">
+                    {(["expense", "income"] as const).map((catType) => {
+                      const typeCats = categories.filter((c) => c.type === catType);
+                      const atLimit = typeCats.length >= 10;
+                      return (
+                        <Card key={catType}>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-sm capitalize">
+                                {catType} Categories
+                              </CardTitle>
+                              {!atLimit && addCatType !== catType && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="min-h-11 text-xs gap-1"
+                                  onClick={() => {
+                                    setAddCatType(catType);
+                                    setAddCatName("");
+                                    setEditCatId(null);
+                                  }}
+                                >
+                                  <Plus className="w-3 h-3" /> Add
+                                </Button>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-1.5">
+                            {typeCats.length === 0 && addCatType !== catType && (
+                              <p className="text-sm text-muted-foreground">
+                                No categories yet.
+                              </p>
+                            )}
+                            {typeCats.map((cat) =>
+                              editCatId === cat.id ? (
+                                <div key={cat.id} className="flex items-center gap-2">
+                                  <Input
+                                    className="h-11 text-sm flex-1"
+                                    value={editCatName}
+                                    onChange={(e) => setEditCatName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleCategoryUpdate();
+                                      }
+                                      if (e.key === "Escape") setEditCatId(null);
+                                    }}
+                                    autoFocus
+                                  />
+                                  <Button
+                                    size="sm"
+                                    className="min-h-11 text-xs shrink-0"
+                                    disabled={!editCatName.trim()}
+                                    onClick={handleCategoryUpdate}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="min-h-11 text-xs shrink-0"
+                                    onClick={() => setEditCatId(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div
+                                  key={cat.id}
+                                  className="flex items-center gap-2 py-0.5"
+                                >
+                                  <span className="flex-1 text-sm">{cat.name}</span>
+                                  <button
+                                    type="button"
+                                    aria-label="Rename category"
+                                    className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-muted-foreground"
+                                    onClick={() => {
+                                      setEditCatId(cat.id);
+                                      setEditCatName(cat.name);
+                                      setAddCatType(null);
+                                    }}
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-label="Delete category"
+                                    className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-destructive"
+                                    onClick={() => setDeleteCatId(cat.id)}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )
+                            )}
+                            {addCatType === catType && (
+                              <div className="flex items-center gap-2 pt-1">
+                                <Input
+                                  className="h-11 text-sm flex-1"
+                                  placeholder="Category name"
+                                  value={addCatName}
+                                  onChange={(e) => setAddCatName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleCategoryAdd(catType);
+                                    }
+                                    if (e.key === "Escape") setAddCatType(null);
+                                  }}
+                                  autoFocus
+                                />
+                                <Button
+                                  size="sm"
+                                  className="min-h-11 text-xs shrink-0"
+                                  disabled={!addCatName.trim()}
+                                  onClick={() => handleCategoryAdd(catType)}
+                                >
+                                  Add
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="min-h-11 text-xs shrink-0"
+                                  onClick={() => setAddCatType(null)}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            )}
+                            {atLimit && (
+                              <p className="text-xs text-muted-foreground pt-1">
+                                Limit of 10 reached.
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <BudgetsView
+                  monthLabel={monthLabel}
+                  budgets={budgets}
+                  spent={spendingByCategory}
+                  onAdd={() => {
+                    setEditBudget(null);
+                    setBudgetOpen(true);
                   }}
-                  onMoveUp={() => handleWalletReorder(wallet.id, "up")}
-                  onMoveDown={() => handleWalletReorder(wallet.id, "down")}
+                  onEdit={(budget) => {
+                    setEditBudget(budget);
+                    setBudgetOpen(true);
+                  }}
+                  onDelete={setDeleteBudgetId}
+                  onCategories={() => setShowCategories(true)}
                 />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              )}
+            </TabsContent>
 
-      {/* Budgets */}
-      {tab === "budgets" && (
-        <div className="space-y-3 slide-up stagger-4">
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditBudget(null);
-              setBudgetOpen(true);
-            }}
-            className="w-full gap-1.5"
-          >
-            <Plus className="w-4 h-4" /> Add Budget
-          </Button>
-          {budgets.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground text-sm">
-              No budgets set. Add one to track spending.
-            </p>
-          ) : (
-            budgets.map((budget) => {
-              const spent = spendingByCategory[budget.category] ?? 0;
-              const pct = Math.min((spent / budget.amount) * 100, 100);
-              return (
-                <Card key={budget.id}>
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap justify-between items-baseline gap-x-3 gap-y-0.5">
-                          <span className="min-w-0 text-sm font-medium break-words">
-                            {budget.category}
-                          </span>
-                          <span
-                            className={`text-sm font-semibold tabular-nums ${
-                              pct >= 90 ? "text-destructive" : ""
-                            }`}
-                          >
-                            {formatAED(spent)} / {formatAED(budget.amount)}
-                          </span>
-                        </div>
-                        <Progress
-                          value={pct}
-                          className={`h-2 mt-2 ${
-                            pct >= 90 ? "[&>div]:bg-destructive" : ""
-                          }`}
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {Math.round(pct)}% used · {budget.period}
-                        </p>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger aria-label="More actions" className="ml-3 h-11 w-11 inline-flex items-center justify-center rounded-md hover:bg-accent active:bg-accent shrink-0">
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEditBudget(budget);
-                              setBudgetOpen(true);
-                            }}
-                          >
-                            <Pencil className="w-4 h-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => setDeleteBudgetId(budget.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </div>
-      )}
+            <TabsContent value="debts" className="slide-up stagger-1">
+              <DebtsView
+                openDebts={openDebts}
+                settledDebts={settledDebts}
+                owedToYou={netWorth.owedToYou}
+                youOwe={netWorth.youOwe}
+                owedToYouCount={netWorth.owedToYouCount}
+                youOweCount={netWorth.youOweCount}
+                today={today}
+                onAdd={() => {
+                  setEditDebt(null);
+                  setDebtOpen(true);
+                }}
+                onMarkPaid={setMarkPaidDebtId}
+                onEdit={(debt) => {
+                  setEditDebt(debt);
+                  setDebtOpen(true);
+                }}
+                onDelete={setDeleteDebtId}
+              />
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+      </Tabs>
 
-      {/* Debts */}
-      {tab === "debts" && (
-        <div className="space-y-2 slide-up stagger-4">
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditDebt(null);
-              setDebtOpen(true);
-            }}
-            className="w-full gap-1.5"
-          >
-            <Plus className="w-4 h-4" /> Add Debt / Loan
-          </Button>
-          {debts.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground text-sm">
-              No outstanding debts.
-            </p>
-          ) : (
-            debts.map((debt) => (
-              <div
-                key={debt.id}
-                className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border bg-card"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium break-words">{debt.creditor}</p>
-                  {debt.description && (
-                    <p className="text-xs text-muted-foreground break-words">
-                      {debt.description}
-                    </p>
-                  )}
-                  {debt.due_date && (
-                    <p className="text-xs text-muted-foreground">
-                      Due: {formatDate(debt.due_date)}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex flex-col items-end gap-1 text-right">
-                    <p
-                      className={`text-sm font-semibold tabular-nums whitespace-nowrap ${
-                        debt.type === "i_owe"
-                          ? "text-destructive"
-                          : "text-mod-finance"
-                      }`}
-                    >
-                      {formatAED(debt.amount)}
-                    </p>
-                    <Badge
-                      variant={
-                        debt.type === "i_owe" ? "destructive" : "secondary"
-                      }
-                      className="text-xs"
-                    >
-                      {debt.type === "i_owe" ? "I owe" : "They owe"}
-                    </Badge>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger aria-label="More actions" className="h-11 w-11 shrink-0 inline-flex items-center justify-center rounded-md hover:bg-accent active:bg-accent">
-                      <MoreVertical className="w-3.5 h-3.5" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => setMarkPaidDebtId(debt.id)}
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as paid
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setEditDebt(debt);
-                          setDebtOpen(true);
-                        }}
-                      >
-                        <Pencil className="w-4 h-4 mr-2" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteDebtId(debt.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Categories */}
-      {tab === "categories" && (
-        <div className="space-y-4 slide-up stagger-4">
-          {(["expense", "income"] as const).map((catType) => {
-            const typeCats = categories.filter((c) => c.type === catType);
-            const atLimit = typeCats.length >= 10;
-            return (
-              <Card key={catType}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm capitalize">
-                      {catType} Categories
-                    </CardTitle>
-                    {!atLimit && addCatType !== catType && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="min-h-11 text-xs gap-1"
-                        onClick={() => {
-                          setAddCatType(catType);
-                          setAddCatName("");
-                          setEditCatId(null);
-                        }}
-                      >
-                        <Plus className="w-3 h-3" /> Add
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-1.5">
-                  {typeCats.length === 0 && addCatType !== catType && (
-                    <p className="text-sm text-muted-foreground">
-                      No categories yet.
-                    </p>
-                  )}
-                  {typeCats.map((cat) =>
-                    editCatId === cat.id ? (
-                      <div key={cat.id} className="flex items-center gap-2">
-                        <Input
-                          className="h-11 text-sm flex-1"
-                          value={editCatName}
-                          onChange={(e) => setEditCatName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleCategoryUpdate();
-                            }
-                            if (e.key === "Escape") setEditCatId(null);
-                          }}
-                          autoFocus
-                        />
-                        <Button
-                          size="sm"
-                          className="min-h-11 text-xs shrink-0"
-                          disabled={!editCatName.trim()}
-                          onClick={handleCategoryUpdate}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="min-h-11 text-xs shrink-0"
-                          onClick={() => setEditCatId(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
-                      <div
-                        key={cat.id}
-                        className="flex items-center gap-2 py-0.5"
-                      >
-                        <span className="flex-1 text-sm">{cat.name}</span>
-                        <button
-                          type="button"
-                          aria-label="Rename category"
-                          className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-muted-foreground"
-                          onClick={() => {
-                            setEditCatId(cat.id);
-                            setEditCatName(cat.name);
-                            setAddCatType(null);
-                          }}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Delete category"
-                          className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-destructive"
-                          onClick={() => setDeleteCatId(cat.id)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )
-                  )}
-                  {addCatType === catType && (
-                    <div className="flex items-center gap-2 pt-1">
-                      <Input
-                        className="h-11 text-sm flex-1"
-                        placeholder="Category name"
-                        value={addCatName}
-                        onChange={(e) => setAddCatName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleCategoryAdd(catType);
-                          }
-                          if (e.key === "Escape") setAddCatType(null);
-                        }}
-                        autoFocus
-                      />
-                      <Button
-                        size="sm"
-                        className="min-h-11 text-xs shrink-0"
-                        disabled={!addCatName.trim()}
-                        onClick={() => handleCategoryAdd(catType)}
-                      >
-                        Add
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="min-h-11 text-xs shrink-0"
-                        onClick={() => setAddCatType(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                  {atLimit && (
-                    <p className="text-xs text-muted-foreground pt-1">
-                      Limit of 10 reached.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      </div>
-
-      {/* FAB */}
+      {/* Add button — opens the entry form (type selector inside, expense first) */}
       <button
         type="button"
-        onClick={() => {
-          setEditTxn(null);
-          setTxnType("expense");
-          setTxnOpen(true);
-        }}
-        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 rounded-full bg-destructive text-white shadow-popup transition-all hover:opacity-90 active:scale-95 flex items-center justify-center z-40"
-        aria-label="Add expense"
+        onClick={() => openTransactionForm("expense")}
+        className="finance-fab fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full transition-all active:scale-95 md:bottom-6 md:right-6"
+        aria-label="Add expense or income"
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="h-6 w-6" aria-hidden="true" />
       </button>
 
       {/* Dialogs */}
