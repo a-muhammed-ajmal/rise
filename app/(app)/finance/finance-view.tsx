@@ -29,6 +29,9 @@ import { AttentionCard, MonthCard } from "@/components/finance/finance-home";
 import { ActivityView } from "@/components/finance/activity-view";
 import { BudgetsView } from "@/components/finance/budgets-view";
 import { DebtsView } from "@/components/finance/debts-view";
+import { TidyCategoriesDialog } from "@/components/finance/tidy-categories-dialog";
+import { KEEP, collectLabels, needsTidyUp, suggestMajor, type TidyPlan } from "@/lib/finance/categories";
+import { applyTidyUp, TidyUpError, type BudgetTarget } from "@/lib/data/tidy-categories";
 import { summarizeNetWorth } from "@/lib/finance/net-worth";
 import { monthBounds, spentByCategory, summarizeMonth } from "@/lib/finance/month";
 import { needsAttention } from "@/lib/finance/attention";
@@ -51,7 +54,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { ChevronLeft, Loader2, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import { ChevronLeft, Loader2, Pencil, Plus, Sparkles, Trash2, Wallet } from "lucide-react";
 import {
   startOfMonth,
   endOfMonth,
@@ -118,10 +121,14 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
 
   const {
     categories,
+    fetchCategories,
     createCategory,
     updateCategory,
     deleteCategory,
   } = useCategories(initial.categories);
+
+  // One-time category tidy-up (Budgets tab and Categories screen)
+  const [tidyOpen, setTidyOpen] = useState(false);
 
   // Quick-add intent: ?add=transfer (the dashboard tile) or any other entry
   // kind opens the Add dialog on that tab.
@@ -223,6 +230,14 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     return alerts;
   }, [attention]);
 
+  // Small categories the tidy-up would fold into major ones; the Budgets tab
+  // offers it only while there is something to do.
+  const showTidyUp = useMemo(() => needsTidyUp(categories, allTransactions), [categories, allTransactions]);
+  const tidyUpCount = useMemo(
+    () => collectLabels(categories, allTransactions).filter((l) => suggestMajor(l.kind, l.name) !== KEEP).length,
+    [categories, allTransactions]
+  );
+
   // Wallets, in the order the user arranged them.
   const sortedWallets = useMemo(
     () => [...paymentMethods].sort((a, b) => a.display_order - b.display_order),
@@ -263,6 +278,39 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  async function handleTidyUp({ plan, budgets: targets }: { plan: TidyPlan; budgets: BudgetTarget[] }) {
+    const userId = await currentUserId();
+    if (!userId) {
+      toast.error("Your session expired. Please sign in again.");
+      throw new Error("No session");
+    }
+    // This month in Dubai, like every other date on the page.
+    const period = monthBounds(today);
+    try {
+      const result = await applyTidyUp(createClient(), {
+        userId,
+        plan,
+        budgets: targets,
+        existingBudgets: budgets,
+        periodStart: period.start,
+        periodEnd: period.end,
+      });
+      toast.success(
+        `Categories tidied · ${result.relabelled} ${result.relabelled === 1 ? "transaction" : "transactions"} re-labelled, ${result.budgetsSet} ${result.budgetsSet === 1 ? "budget" : "budgets"} set`
+      );
+    } catch (error) {
+      console.error("[finance] tidy-up failed:", error instanceof Error ? error.message : error);
+      toast.error(
+        error instanceof TidyUpError
+          ? `Stopped while updating ${error.step}. Nothing was lost — run Tidy up again to finish.`
+          : "Could not tidy up categories. Please try again."
+      );
+      throw error;
+    } finally {
+      await Promise.all([fetchData(), fetchCategories()]);
+    }
+  }
 
   async function handleDeleteTransaction() {
     if (!deleteTxnId) return;
@@ -517,7 +565,12 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
               <Button variant="ghost" className="-ml-3 gap-1" onClick={() => setShowCategories(false)}>
                 <ChevronLeft aria-hidden="true" /> Budgets
               </Button>
-              <h2 className="text-h2 font-semibold">Categories</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-h2 font-semibold">Categories</h2>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setTidyOpen(true)}>
+                  <Sparkles aria-hidden="true" /> Tidy up
+                </Button>
+              </div>
               <div className="space-y-4">
                 {(["expense", "income"] as const).map((catType) => {
                   const typeCats = categories.filter((c) => c.type === catType);
@@ -675,6 +728,8 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
               onCategories={() => setShowCategories(true)}
               onPrevMonth={() => setSelectedMonth((m) => subMonths(m, 1))}
               onNextMonth={() => setSelectedMonth((m) => addMonths(m, 1))}
+              onTidyUp={showTidyUp ? () => setTidyOpen(true) : undefined}
+              tidyUpCount={tidyUpCount}
             />
           )}
         </TabsContent>
@@ -747,6 +802,18 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
           toast.success(editTxn ? "Transaction updated" : "Transaction saved");
         }}
       />
+
+      {tidyOpen && (
+        <TidyCategoriesDialog
+          open={tidyOpen}
+          onOpenChange={setTidyOpen}
+          categories={categories}
+          transactions={allTransactions}
+          budgets={budgets}
+          today={today}
+          onApply={handleTidyUp}
+        />
+      )}
 
       <WalletForm
         open={walletFormOpen}

@@ -103,14 +103,14 @@ describe("ActivityView", () => {
     renderActivity([
       txn({ type: "adjustment", amount: -450, category: "Debt", description: "Lent to Ahmed", payment_method_id: "w1" }),
       txn({ type: "adjustment", amount: 200, category: "Debt", description: "Repayment from Ahmed", payment_method_id: "w2" }),
-      txn({ type: "expense", amount: 5, category: "Transfer fee", description: "Fee · Mashreq → Savings" }),
+      txn({ type: "expense", amount: 5, category: "Fees & Charges", description: "Transfer fee · Mashreq → Savings" }),
     ]);
     expect(screen.getByText("Lent to Ahmed")).toBeDefined();
     expect(screen.getByText("Debt · Mashreq")).toBeDefined();
     expect(screen.getByText(`−${aed(450)}`)).toBeDefined();
     expect(screen.getByText("Repayment from Ahmed")).toBeDefined();
     expect(screen.getByText(`+${aed(200)}`)).toBeDefined();
-    expect(screen.getByText("Fee · Mashreq → Savings")).toBeDefined();
+    expect(screen.getByText("Transfer fee · Mashreq → Savings")).toBeDefined();
     expect(screen.getByText(`−${aed(5)}`)).toBeDefined();
     expect(screen.queryByText("Balance adjusted")).toBeNull();
   });
@@ -121,6 +121,21 @@ function budget(id: string, category: string, amount: number, period: Budget["pe
 }
 
 describe("BudgetsView", () => {
+  it("offers the category tidy-up only when asked to", () => {
+    const onTidyUp = vi.fn();
+    const props = { monthLabel: "November 2026", budgets: [], spent: {}, onAdd: noop, onEdit: noop, onDelete: noop, onCategories: noop };
+    const { rerender } = render(<BudgetsView {...props} />);
+    expect(screen.queryByRole("heading", { name: /Organise your categories/ })).toBeNull();
+
+    rerender(<BudgetsView {...props} onTidyUp={onTidyUp} tidyUpCount={18} />);
+    expect(screen.getByText(/Fold 18 small categories into 10 major ones/)).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /Tidy up/ }));
+    expect(onTidyUp).toHaveBeenCalledTimes(1);
+
+    rerender(<BudgetsView {...props} onTidyUp={onTidyUp} tidyUpCount={0} />);
+    expect(screen.getByText(/Add the 10 major categories/)).toBeDefined();
+  });
+
   it("shows each budget's use, the total, and spending with no budget", () => {
     render(
       <BudgetsView

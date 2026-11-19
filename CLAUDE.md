@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1242 tests, 95.37% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1295 tests, 95.68% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -299,7 +299,8 @@ components/
   layout/                   Universal frame shells: Sidebar (Desktop), BottomNav (Mobile, max 5 items), Topbar
   analytics/                Isolated Recharts rendering structures per module
   finance/                  One page: net worth hero (wallet list, total available, owed each way),
-                            then Activity | Wallets | Budgets | Debts tabs; no Home | Money switch
+                            then Activity | Wallet | Budget | Debt tabs (one colour each); no Home | Money switch;
+                            tidy-categories-dialog.tsx folds small categories into the majors and sets budgets
   productivity/             Task entry forms and visualization cards
   pwa/                      Service Worker setup toasts, caching, and installation components
 
@@ -323,6 +324,7 @@ lib/
     upload-helpers.ts       File upload parsing and text/audio extraction for chat attachments
   data/
     snapshot.ts             ServerSnapshot { data, loadedAt } + takeSnapshot() / isFreshSnapshot() (15s)
+    tidy-categories.ts      applyTidyUp() — writes a reviewed tidy-up plan; every step idempotent, so a failed run is re-run
     finance.ts · tasks.ts · modules.ts
                             Initial-data loaders, one per module page. Shared by the server page and
                             the client view's refetch, so both run the same queries; they throw on error
@@ -333,7 +335,7 @@ lib/
     use-push-subscription.ts Push notification subscription management
     use-payment-methods.ts  Wallet balance state and CRUD operations; optional server snapshot
     use-is-desktop.ts       Returns true when viewport ≥ 768px (md breakpoint); SSR-safe
-    use-categories.ts       Finance category state and CRUD; optional server snapshot
+    use-categories.ts       Finance category state and CRUD; optional server snapshot; majors first (sortCategories)
     use-theme.tsx           Dark/light mode toggle; persists to localStorage
   supabase/
     client.ts               Client-side client initializations for browser interactions
@@ -347,8 +349,10 @@ lib/
     debts.ts                isOverdue() / isDueSoon() (7 days) / dueLabel() / sortByDueDate() — Dubai date strings
     attention.ts            needsAttention() — overdue debts → over budgets → due soon → budgets at 75–100%
     activity.ts             groupByDay() / dayLabel() / signedAmount() for the Activity list
-    entries.ts              Add-dialog rows: buildTransferRows() (transfer + optional fee expense, one INSERT),
+    entries.ts              Add-dialog rows: buildTransferRows() (transfer + optional "Fees & Charges" expense, one INSERT),
                             planRepayment() / debtMovementRow() (signed "Debt" adjustment when a wallet is chosen)
+    categories.ts           MAJOR_CATEGORIES (10 expense, 3 income, in display order), suggestMajor() (unknown names → KEEP),
+                            planTidyUp() / suggestBudgets() for the Budget tab's Tidy up; sortCategories() used by use-categories
   types/
     database.ts             Single Source of Truth — 32 Supabase tables with Row/Insert/Update types
   format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + formatAEDWrappable, isPastDeadline, truncateLabel

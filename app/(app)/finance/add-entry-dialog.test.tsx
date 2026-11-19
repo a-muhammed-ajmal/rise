@@ -147,7 +147,7 @@ describe("AddEntryDialog", () => {
     const fee = screen.getByLabelText(/Fee/);
     expect(fee.getAttribute("type")).toBe("number");
     expect(fee.hasAttribute("required")).toBe(false);
-    expect(screen.getByText(/saved as a “Transfer fee” expense/)).toBeDefined();
+    expect(screen.getByText(/saved as a “Fees & Charges” expense/)).toBeDefined();
   });
 
   it("saves a transfer and its fee in one insert", async () => {
@@ -171,7 +171,7 @@ describe("AddEntryDialog", () => {
     expect(inserts).toHaveLength(1);
     expect(inserts[0].payload).toEqual([
       expect.objectContaining({ type: "transfer", amount: 500, from_payment_method_id: "w-botim", to_payment_method_id: "w-mashreq" }),
-      expect.objectContaining({ type: "expense", amount: 5, category: "Transfer fee", payment_method_id: "w-botim" }),
+      expect.objectContaining({ type: "expense", amount: 5, category: "Fees & Charges", payment_method_id: "w-botim" }),
     ]);
   });
 

@@ -65,7 +65,7 @@ export function MonthCard({
   const saved = summary.net >= 0;
 
   return (
-    <section aria-labelledby="month-card-title" className="finance-card min-w-0 p-3 md:p-4">
+    <section aria-labelledby="month-card-title" className="finance-card finance-month min-w-0 p-3 md:p-4">
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <MonthSwitcher
           monthLabel={monthLabel}

@@ -15,8 +15,8 @@ import type { Database, Debt } from "@/lib/types/database";
 
 export type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"];
 
-/** Category of the expense row a transfer fee is recorded as. */
-export const TRANSFER_FEE_CATEGORY = "Transfer fee";
+/** Category of the expense row a transfer fee is recorded as (a major category). */
+export const TRANSFER_FEE_CATEGORY = "Fees & Charges";
 
 /** Category of the wallet movement recorded with a debt or a repayment. */
 export const DEBT_CATEGORY = "Debt";
@@ -87,7 +87,7 @@ export function buildTransferRows(input: TransferInput): TransactionInsert[] {
       type: "expense",
       amount: fee,
       category: TRANSFER_FEE_CATEGORY,
-      description: `Fee · ${route}`,
+      description: `Transfer fee · ${route}`,
       date: input.date,
       payment_method: input.fromName,
       payment_method_id: input.fromId,

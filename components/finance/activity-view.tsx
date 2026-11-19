@@ -35,12 +35,28 @@ const FLOW_TEXT = {
   neutral: "text-muted-foreground",
 } as const;
 
+function amountTone(txn: Transaction): string {
+  if (txn.type === "transfer") return "text-[var(--color-info)]";
+  if (txn.type === "adjustment" && txn.category === DEBT_CATEGORY) return "text-[var(--color-warning)]";
+  return FLOW_TEXT[flowOf(txn)];
+}
+
 function RowIcon({ txn }: { txn: Transaction }) {
   if (txn.type === "transfer" || txn.type === "adjustment") {
-    const Icon =
-      txn.type === "transfer" ? ArrowLeftRight : txn.category === DEBT_CATEGORY ? HandCoins : SlidersHorizontal;
+    const debt = txn.type === "adjustment" && txn.category === DEBT_CATEGORY;
+    const Icon = txn.type === "transfer" ? ArrowLeftRight : debt ? HandCoins : SlidersHorizontal;
     return (
-      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground" aria-hidden="true">
+      <span
+        className={cn(
+          "inline-flex size-9 shrink-0 items-center justify-center rounded-full",
+          txn.type === "transfer"
+            ? "bg-[var(--color-info-tint)] text-[var(--color-info)]"
+            : debt
+            ? "bg-[var(--color-warning-tint)] text-[var(--color-warning)]"
+            : "bg-muted text-muted-foreground",
+        )}
+        aria-hidden="true"
+      >
         <Icon className="size-4" />
       </span>
     );
@@ -57,6 +73,15 @@ function RowIcon({ txn }: { txn: Transaction }) {
       {income ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
     </span>
   );
+}
+
+/** The row's colour: money in, money out, a move between wallets, or a debt. */
+export function rowTone(txn: Pick<Transaction, "type" | "category">): string {
+  if (txn.type === "income") return "finance-row--in";
+  if (txn.type === "expense") return "finance-row--out";
+  if (txn.type === "transfer") return "finance-row--move";
+  if (txn.category === DEBT_CATEGORY) return "finance-row--debt";
+  return "";
 }
 
 function describeRow(txn: Transaction, walletName: (id: string | null) => string | null): { title: string; subtitle: string } {
@@ -113,15 +138,15 @@ export function ActivityView({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
-        <Button variant="outline" className="gap-1.5 px-2" onClick={onAddExpense} aria-label="Add expense">
-          <Minus aria-hidden="true" className="text-[var(--color-danger)]" />
+        <Button variant="outline" className="finance-action finance-action--out gap-1.5 px-2" onClick={onAddExpense} aria-label="Add expense">
+          <Minus aria-hidden="true" />
           Expense
         </Button>
-        <Button variant="outline" className="gap-1.5 px-2" onClick={onAddIncome} aria-label="Add income">
-          <Plus aria-hidden="true" className="text-[var(--color-success)]" />
+        <Button variant="outline" className="finance-action finance-action--in gap-1.5 px-2" onClick={onAddIncome} aria-label="Add income">
+          <Plus aria-hidden="true" />
           Income
         </Button>
-        <Button variant="outline" className="gap-1.5 px-2" onClick={onTransfer} aria-label="New transfer">
+        <Button variant="outline" className="finance-action gap-1.5 px-2" onClick={onTransfer} aria-label="New transfer">
           <ArrowLeftRight aria-hidden="true" />
           Transfer
         </Button>
@@ -141,13 +166,13 @@ export function ActivityView({
                 const { title, subtitle } = describeRow(txn, walletName);
                 const editable = txn.type === "income" || txn.type === "expense";
                 return (
-                  <li key={txn.id} className="flex min-h-14 items-center gap-2.5 py-1.5 pl-3">
+                  <li key={txn.id} className={cn("finance-row flex min-h-14 items-center gap-2.5 py-1.5 pl-3.5", rowTone(txn))}>
                     <RowIcon txn={txn} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium break-words">{title}</p>
                       {subtitle && <p className="text-label text-muted-foreground break-words">{subtitle}</p>}
                     </div>
-                    <span className={cn("shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap", FLOW_TEXT[flowOf(txn)])}>
+                    <span className={cn("shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap", amountTone(txn))}>
                       {signedAmount(txn)}
                     </span>
                     {!editable && <span className="size-11 shrink-0" aria-hidden="true" />}

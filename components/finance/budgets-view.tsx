@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVertical, Pencil, Plus, Tags, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, Plus, Sparkles, Tags, Trash2 } from "lucide-react";
 import type { Budget } from "@/lib/types/database";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +54,8 @@ export function BudgetsView({
   onCategories,
   onPrevMonth,
   onNextMonth,
+  onTidyUp,
+  tidyUpCount = 0,
 }: {
   monthLabel: string;
   budgets: readonly Budget[];
@@ -66,6 +68,10 @@ export function BudgetsView({
   /** With both month handlers, the month name gets arrows to change it. */
   onPrevMonth?: () => void;
   onNextMonth?: () => void;
+  /** When given, a card offers the category tidy-up (see TidyCategoriesDialog). */
+  onTidyUp?: () => void;
+  /** Small categories the tidy-up would fold into major ones. */
+  tidyUpCount?: number;
 }) {
   const budgeted = new Set(budgets.map((b) => b.category));
   const unbudgeted = Object.entries(spent)
@@ -76,6 +82,28 @@ export function BudgetsView({
 
   return (
     <div className="space-y-4">
+      {onTidyUp && (
+        <section
+          aria-labelledby="tidy-up-title"
+          className="finance-card finance-tidy flex flex-wrap items-center justify-between gap-3 p-3 md:p-4"
+        >
+          <div className="min-w-0 flex-1">
+            <h3 id="tidy-up-title" className="flex items-center gap-1.5 text-sm font-semibold">
+              <Sparkles className="size-4 shrink-0 text-[var(--mod-goals)]" aria-hidden="true" />
+              Organise your categories
+            </h3>
+            <p className="mt-0.5 text-label text-muted-foreground">
+              {tidyUpCount > 0
+                ? `Fold ${tidyUpCount} small ${tidyUpCount === 1 ? "category" : "categories"} into 10 major ones and set monthly budgets from your spending.`
+                : "Add the 10 major categories and set monthly budgets from your spending."}
+            </p>
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={onTidyUp}>
+            <Sparkles aria-hidden="true" /> Tidy up
+          </Button>
+        </section>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         {onPrevMonth && onNextMonth ? (
           <MonthSwitcher monthLabel={monthLabel} onPrevMonth={onPrevMonth} onNextMonth={onNextMonth} />

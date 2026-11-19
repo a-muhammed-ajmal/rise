@@ -86,7 +86,7 @@ describe("buildTransferRows", () => {
       type: "expense",
       amount: 5.25,
       category: TRANSFER_FEE_CATEGORY,
-      description: "Fee · Botim → Mashreq",
+      description: "Transfer fee · Botim → Mashreq",
       date: "2026-11-20",
       payment_method: "Botim",
       payment_method_id: "w-botim",

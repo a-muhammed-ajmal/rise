@@ -835,6 +835,72 @@
     background: var(--color-danger-tint);
     border-color: color-mix(in srgb, var(--color-danger) 26%, transparent);
   }
+  /* Month card: a light blue wash, so it reads apart from the white cards. */
+  .finance-month {
+    background:
+      linear-gradient(140deg,
+        color-mix(in srgb, var(--color-info) 9%, var(--card)) 0%,
+        color-mix(in srgb, var(--color-info) 3%, var(--card)) 55%,
+        var(--card) 100%);
+    border-color: color-mix(in srgb, var(--color-info) 18%, var(--border));
+  }
+  /* The category tidy-up offer, in the Budget tab's violet. */
+  .finance-tidy {
+    background: color-mix(in srgb, var(--mod-goals) 7%, var(--card));
+    border-color: color-mix(in srgb, var(--mod-goals) 24%, var(--border));
+  }
+}
+
+/* The four Finance tabs each carry their own hue: the icon always, a light
+   tint on hover, and tint + coloured label + a short bar when selected.
+   Unlayered on purpose, so it wins over the shared TabsTrigger utilities.
+   Every label colour is AA (4.5:1+) on its own tint in both themes. */
+.finance-tab { --tab: var(--color-info);     --tab-tint: var(--color-info-tint); }
+.finance-tab--wallets { --tab: var(--mod-finance);   --tab-tint: var(--mod-finance-tint); }
+.finance-tab--budgets { --tab: var(--mod-goals);     --tab-tint: var(--mod-goals-tint); }
+.finance-tab--debts   { --tab: var(--mod-knowledge); --tab-tint: var(--mod-knowledge-tint); }
+.finance-tab svg { color: var(--tab); }
+.finance-tab:hover { background: var(--tab-tint); color: var(--tab); }
+.finance-tab[data-active] {
+  background: var(--tab-tint);
+  color: var(--tab);
+  border-color: color-mix(in srgb, var(--tab) 30%, transparent);
+}
+.finance-tab[data-active]::after {
+  opacity: 1;
+  background: var(--tab);
+  left: 28%;
+  right: 28%;
+  bottom: 4px;
+  height: 3px;
+  border-radius: 9999px;
+}
+
+/* Expense / Income / Transfer quick buttons, in the colour of what they add. */
+.finance-action { --act: var(--color-info); --act-tint: var(--color-info-tint); }
+.finance-action--out { --act: var(--color-danger);  --act-tint: var(--color-danger-tint); }
+.finance-action--in  { --act: var(--color-success); --act-tint: var(--color-success-tint); }
+.finance-action {
+  background: var(--act-tint);
+  color: var(--act);
+  border-color: color-mix(in srgb, var(--act) 30%, transparent);
+}
+.finance-action:hover {
+  background: color-mix(in srgb, var(--act) 16%, var(--card));
+  color: var(--act);
+  border-color: var(--act);
+}
+
+/* Activity rows: a faint wash and a 3px edge in the colour of the row's kind,
+   so money in, money out and moves between wallets read at a glance. */
+.finance-row { --row: var(--muted-foreground); }
+.finance-row--in   { --row: var(--color-success); }
+.finance-row--out  { --row: var(--color-danger); }
+.finance-row--move { --row: var(--color-info); }
+.finance-row--debt { --row: var(--fill-warning); }
+.finance-row {
+  background: color-mix(in srgb, var(--row) 5%, var(--card));
+  box-shadow: inset 3px 0 0 var(--row);
 }
 
 /* Add button — same green, white "+" at 5.5:1 in both themes. */

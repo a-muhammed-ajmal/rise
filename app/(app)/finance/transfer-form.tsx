@@ -188,7 +188,7 @@ export function TransferFields({
         </div>
       </div>
       <p id={`${uid}-fee-hint`} className="-mt-2 text-label text-muted-foreground">
-        A fee is taken from the source wallet and saved as a “Transfer fee” expense.
+        A fee is taken from the source wallet and saved as a “Fees & Charges” expense.
       </p>
 
       {ready && (

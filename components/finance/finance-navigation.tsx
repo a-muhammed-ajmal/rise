@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 /** The Finance views under the net worth card, in tab order. */
 export type MoneyView = "activity" | "wallets" | "budgets" | "debts";
 
-export const MONEY_VIEWS: readonly { value: MoneyView; label: string; Icon: LucideIcon }[] = [
-  { value: "activity", label: "Activity", Icon: ReceiptText },
-  { value: "wallets", label: "Wallets", Icon: Wallet },
-  { value: "budgets", label: "Budgets", Icon: PieChart },
-  { value: "debts", label: "Debts", Icon: HandCoins },
+/** Each view has its own hue (see .finance-tab in globals.css). Static class
+ *  strings so Tailwind and the stylesheet keep them. */
+export const MONEY_VIEWS: readonly { value: MoneyView; label: string; Icon: LucideIcon; tone: string }[] = [
+  { value: "activity", label: "Activity", Icon: ReceiptText, tone: "finance-tab--activity" },
+  { value: "wallets", label: "Wallet", Icon: Wallet, tone: "finance-tab--wallets" },
+  { value: "budgets", label: "Budget", Icon: PieChart, tone: "finance-tab--budgets" },
+  { value: "debts", label: "Debt", Icon: HandCoins, tone: "finance-tab--debts" },
 ];
 
 /** A view that needs a look: red for overdue / over budget, amber for soon. */
@@ -22,8 +24,8 @@ export function isMoneyView(value: unknown): value is MoneyView {
 }
 
 /**
- * Activity | Wallets | Budgets | Debts. Render inside a <Tabs> whose value is
- * a MoneyView. A dot marks a view with something that needs attention.
+ * Activity | Wallet | Budget | Debt. Render inside a <Tabs> whose value is a
+ * MoneyView. A dot marks a view with something that needs attention.
  */
 export function MoneyViewList({
   alerts = {},
@@ -31,14 +33,20 @@ export function MoneyViewList({
   alerts?: Partial<Record<MoneyView, ViewAlert>>;
 }) {
   return (
-    <TabsList aria-label="Finance views" className="grid h-auto w-full grid-cols-4 border border-border shadow-card">
-      {MONEY_VIEWS.map(({ value, label, Icon }) => {
+    <TabsList
+      aria-label="Finance views"
+      className="grid h-auto w-full grid-cols-4 gap-1 border border-border bg-card p-1 shadow-card"
+    >
+      {MONEY_VIEWS.map(({ value, label, Icon, tone }) => {
         const alert = alerts[value];
         return (
           <TabsTrigger
             key={value}
             value={value}
-            className="min-h-13 flex-col gap-0.5 px-0.5 text-xs md:min-h-11 md:flex-row md:gap-1.5 md:text-sm"
+            className={cn(
+              "finance-tab min-h-13 flex-col gap-0.5 px-0.5 pb-1.5 text-xs transition-colors md:min-h-11 md:flex-row md:gap-1.5 md:text-sm",
+              tone,
+            )}
           >
             <Icon aria-hidden="true" className="size-4" />
             {label}

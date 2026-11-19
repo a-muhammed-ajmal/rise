@@ -6,17 +6,19 @@ import { currentUserId } from "@/lib/supabase/current-user";
 import type { Category } from "@/lib/types/database";
 import { loadCategories } from "@/lib/data/finance";
 import { isFreshSnapshot, type ServerSnapshot } from "@/lib/data/snapshot";
+import { sortCategories } from "@/lib/finance/categories";
 
 /** `initial` is a server-loaded snapshot, used only while fresh. */
 export function useCategories(initial?: ServerSnapshot<Category[]> | null) {
   // Captured once: the snapshot only describes the first render.
   const [snapshot] = useState(initial);
-  const [categories, setCategories] = useState<Category[]>(snapshot?.data ?? []);
+  // Major categories first, in their set order, then the rest A–Z.
+  const [categories, setCategories] = useState<Category[]>(() => sortCategories(snapshot?.data ?? []));
   const [loading, setLoading] = useState(!snapshot);
 
   const fetchCategories = useCallback(async () => {
     try {
-      setCategories(await loadCategories(createClient()));
+      setCategories(sortCategories(await loadCategories(createClient())));
     } catch (error) {
       console.error(
         "[use-categories] fetch failed",
