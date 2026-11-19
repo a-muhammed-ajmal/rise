@@ -844,10 +844,14 @@
         var(--card) 100%);
     border-color: color-mix(in srgb, var(--color-info) 18%, var(--border));
   }
-  /* The category tidy-up offer, in the Budget tab's violet. */
-  .finance-tidy {
-    background: color-mix(in srgb, var(--mod-goals) 7%, var(--card));
-    border-color: color-mix(in srgb, var(--mod-goals) 24%, var(--border));
+  /* Budget summary, in the Budget tab's violet. */
+  .finance-budget {
+    background:
+      linear-gradient(140deg,
+        color-mix(in srgb, var(--mod-goals) 9%, var(--card)) 0%,
+        color-mix(in srgb, var(--mod-goals) 3%, var(--card)) 55%,
+        var(--card) 100%);
+    border-color: color-mix(in srgb, var(--mod-goals) 20%, var(--border));
   }
 }
 
@@ -942,5 +946,6 @@
 .finance-pill--muted { background: var(--muted);              color: var(--muted-foreground); }
 
 .finance-dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 9999px; }
+.finance-dot--ok      { background: var(--color-success); }
 .finance-dot--danger  { background: var(--color-danger); }
 .finance-dot--warning { background: var(--fill-warning); }

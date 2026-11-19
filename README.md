@@ -127,7 +127,7 @@ Not scheduled through `pg_cron`: set the cadence under
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (1295 tests, 95.68% line coverage) + Playwright |
+| Testing | Vitest 4 + Testing Library (1278 tests, 95.67% line coverage) + Playwright |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -505,9 +505,9 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1295 passing across 59 test files |
+| Test count | 1278 passing across 60 test files |
 | Line coverage | 95.31% on `lib/**` |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
-| Last phase | Phase 31 — Major finance categories with a one-time Tidy up and suggested budgets, plus a Finance colour pass |
+| Last phase | Phase 32 — Budgets as settings: standing monthly limits edited in one Budget settings dialog |

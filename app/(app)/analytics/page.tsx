@@ -10,9 +10,10 @@ import type { TaskPriority, TaskStatus } from "@/components/analytics/tasks-char
 import { CrmCharts } from "@/components/analytics/crm-charts"
 import { KnowledgeCharts } from "@/components/analytics/knowledge-charts"
 import type { Transaction, Budget, Habit, HabitLog, JournalEntry, FocusSession, Goal, Task, Contact, Interaction, Note } from "@/lib/types/database"
+import { spentInRange, standingBudgets } from "@/lib/finance/budgets"
 
 type AnalyticsTransaction = Pick<Transaction, "type" | "amount" | "category" | "date">
-type AnalyticsBudget = Pick<Budget, "category" | "amount">
+type AnalyticsBudget = Pick<Budget, "category" | "amount" | "period_start" | "created_at">
 type AnalyticsHabit = Pick<Habit, "id" | "name" | "icon" | "target_days">
 type AnalyticsHabitLog = Pick<HabitLog, "habit_id" | "logged_date" | "completed">
 type AnalyticsJournalEntry = Pick<JournalEntry, "date" | "mood">
@@ -82,14 +83,12 @@ function buildCategorySpend(txns: AnalyticsTransaction[]) {
   ]
 }
 
+// Budgets are standing monthly settings: one per category (the latest set
+// wins), compared with this month's spending in that category, any case.
 function buildBudgetActual(budgets: AnalyticsBudget[], txns: AnalyticsTransaction[], monthStart: string, monthEnd: string) {
-  const actualMap = new Map<string, number>()
-  for (const t of txns.filter((t) => t.type === "expense" && t.date >= monthStart && t.date <= monthEnd)) {
-    actualMap.set(t.category, (actualMap.get(t.category) ?? 0) + t.amount)
-  }
-  return budgets
+  return standingBudgets(budgets)
     .filter((b) => b.amount > 0)
-    .map((b) => ({ category: b.category, budget: b.amount, actual: Math.round(actualMap.get(b.category) ?? 0) }))
+    .map((b) => ({ category: b.category, budget: b.amount, actual: Math.round(spentInRange(txns, b.category, monthStart, monthEnd)) }))
 }
 
 function buildHabitRates(habits: AnalyticsHabit[], logs: AnalyticsHabitLog[], today: Date) {
@@ -259,8 +258,8 @@ export default async function AnalyticsPage() {
   ] = await Promise.all([
     supabase.from("transactions").select("type,amount,category,date")
     .is("deleted_at", null).gte("date", sixMonthsAgo).order("date"),
-    supabase.from("budgets").select("category,amount")
-    .is("deleted_at", null).eq("period", "monthly").gte("period_start", monthStart).lte("period_end", monthEnd),
+    supabase.from("budgets").select("category,amount,period_start,created_at")
+    .is("deleted_at", null).eq("period", "monthly"),
     supabase.from("habits").select("id,name,icon,target_days")
     .is("deleted_at", null).eq("active", true),
     supabase.from("habit_logs").select("habit_id,logged_date,completed")

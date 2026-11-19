@@ -29,11 +29,20 @@ import { AttentionCard, MonthCard } from "@/components/finance/finance-home";
 import { ActivityView } from "@/components/finance/activity-view";
 import { BudgetsView } from "@/components/finance/budgets-view";
 import { DebtsView } from "@/components/finance/debts-view";
-import { TidyCategoriesDialog } from "@/components/finance/tidy-categories-dialog";
-import { KEEP, collectLabels, needsTidyUp, suggestMajor, type TidyPlan } from "@/lib/finance/categories";
-import { applyTidyUp, TidyUpError, type BudgetTarget } from "@/lib/data/tidy-categories";
+import { BudgetSettingsDialog, type BudgetHint } from "@/components/finance/budget-settings-dialog";
+import {
+  averageMonthlySpend,
+  budgetLines,
+  budgetSettingRows,
+  standingBudgets,
+  summarizeBudgets,
+  unbudgetedSpend,
+  type BudgetChanges,
+} from "@/lib/finance/budgets";
+import { normalizeLabel } from "@/lib/finance/categories";
+import { saveBudgetChanges } from "@/lib/data/budgets";
 import { summarizeNetWorth } from "@/lib/finance/net-worth";
-import { monthBounds, spentByCategory, summarizeMonth } from "@/lib/finance/month";
+import { monthBounds, summarizeMonth } from "@/lib/finance/month";
 import { needsAttention } from "@/lib/finance/attention";
 import { isOpenDebt, sortByDueDate } from "@/lib/finance/debts";
 import {
@@ -46,15 +55,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { ChevronLeft, Loader2, Pencil, Plus, Sparkles, Trash2, Wallet } from "lucide-react";
+import { ChevronLeft, Loader2, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import {
   startOfMonth,
   endOfMonth,
@@ -63,10 +65,6 @@ import {
   subMonths,
 } from "date-fns";
 import { toast } from "sonner";
-
-function isBudgetPeriod(value: unknown): value is Budget["period"] {
-  return value === "monthly" || value === "quarterly" || value === "yearly";
-}
 
 const FINANCE_TABS_ID = "finance-views";
 
@@ -109,8 +107,8 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
   const [deactivateWalletId, setDeactivateWalletId] = useState<string | null>(null);
 
   // Budget dialogs
-  const [budgetOpen, setBudgetOpen] = useState(false);
-  const [editBudget, setEditBudget] = useState<Budget | null>(null);
+  // Budget settings: open, and which category's box gets focus
+  const [budgetSettings, setBudgetSettings] = useState<{ focus?: string } | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
 
   // Debt dialogs
@@ -121,14 +119,11 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
 
   const {
     categories,
-    fetchCategories,
     createCategory,
     updateCategory,
     deleteCategory,
   } = useCategories(initial.categories);
 
-  // One-time category tidy-up (Budgets tab and Categories screen)
-  const [tidyOpen, setTidyOpen] = useState(false);
 
   // Quick-add intent: ?add=transfer (the dashboard tile) or any other entry
   // kind opens the Add dialog on that tab.
@@ -164,7 +159,7 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
 
   const fetchData = useCallback(async () => {
     try {
-      const data = await loadFinanceData(createClient(), todayISO());
+      const data = await loadFinanceData(createClient());
       setAllTransactions(data.transactions);
       setBudgets(data.budgets);
       setDebts(data.debts);
@@ -194,16 +189,25 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     () => summarizeMonth(allTransactions, monthStart, monthEnd),
     [allTransactions, monthStart, monthEnd]
   );
-  const spendingByCategory = useMemo(
-    () => spentByCategory(allTransactions, monthStart, monthEnd),
-    [allTransactions, monthStart, monthEnd]
+
+  // Budgets are settings: one standing limit per category, set once and
+  // repeated every month (lib/finance/budgets.ts).
+  const standing = useMemo(() => standingBudgets(budgets), [budgets]);
+  const lines = useMemo(() => budgetLines(standing, allTransactions, monthStart), [standing, allTransactions, monthStart]);
+  const current = monthBounds(today);
+  const budgetSummary = useMemo(
+    () => summarizeBudgets(lines, monthEnd, today, monthStart === current.start),
+    [lines, monthEnd, today, monthStart, current.start]
+  );
+  const unbudgeted = useMemo(
+    () => unbudgetedSpend(allTransactions, standing, monthStart, monthEnd),
+    [allTransactions, standing, monthStart, monthEnd]
   );
 
-  // "Needs attention" always looks at the current month, whatever is on screen.
-  const current = monthBounds(today);
+  // "Needs attention" always looks at the current period, whatever is on screen.
   const spentThisMonth = useMemo(
-    () => spentByCategory(allTransactions, current.start, current.end),
-    [allTransactions, current.start, current.end]
+    () => Object.fromEntries(budgetLines(standing, allTransactions, today).map((l) => [l.category, l.spent])),
+    [standing, allTransactions, today]
   );
 
   const openDebts = useMemo(() => sortByDueDate(debts.filter(isOpenDebt)), [debts]);
@@ -216,8 +220,8 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
   );
 
   const attention = useMemo(
-    () => needsAttention({ debts: openDebts, budgets, spent: spentThisMonth, today }),
-    [openDebts, budgets, spentThisMonth, today]
+    () => needsAttention({ debts: openDebts, budgets: standing, spent: spentThisMonth, today }),
+    [openDebts, standing, spentThisMonth, today]
   );
 
   // A dot on the Budgets / Debts tab when something there needs a look — red
@@ -229,14 +233,6 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     }
     return alerts;
   }, [attention]);
-
-  // Small categories the tidy-up would fold into major ones; the Budgets tab
-  // offers it only while there is something to do.
-  const showTidyUp = useMemo(() => needsTidyUp(categories, allTransactions), [categories, allTransactions]);
-  const tidyUpCount = useMemo(
-    () => collectLabels(categories, allTransactions).filter((l) => suggestMajor(l.kind, l.name) !== KEEP).length,
-    [categories, allTransactions]
-  );
 
   // Wallets, in the order the user arranged them.
   const sortedWallets = useMemo(
@@ -279,36 +275,27 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
-  async function handleTidyUp({ plan, budgets: targets }: { plan: TidyPlan; budgets: BudgetTarget[] }) {
+  async function handleSaveBudgets(changes: BudgetChanges) {
     const userId = await currentUserId();
     if (!userId) {
       toast.error("Your session expired. Please sign in again.");
       throw new Error("No session");
     }
-    // This month in Dubai, like every other date on the page.
-    const period = monthBounds(today);
     try {
-      const result = await applyTidyUp(createClient(), {
+      // New budgets record this month (Dubai) as when they were set.
+      await saveBudgetChanges(createClient(), {
         userId,
-        plan,
-        budgets: targets,
-        existingBudgets: budgets,
-        periodStart: period.start,
-        periodEnd: period.end,
+        changes,
+        periodStart: current.start,
+        periodEnd: current.end,
       });
-      toast.success(
-        `Categories tidied · ${result.relabelled} ${result.relabelled === 1 ? "transaction" : "transactions"} re-labelled, ${result.budgetsSet} ${result.budgetsSet === 1 ? "budget" : "budgets"} set`
-      );
+      toast.success("Budgets saved");
     } catch (error) {
-      console.error("[finance] tidy-up failed:", error instanceof Error ? error.message : error);
-      toast.error(
-        error instanceof TidyUpError
-          ? `Stopped while updating ${error.step}. Nothing was lost — run Tidy up again to finish.`
-          : "Could not tidy up categories. Please try again."
-      );
+      console.error("[finance] budget save failed:", error instanceof Error ? error.message : error);
+      toast.error("Could not save the budgets. Please try again.");
       throw error;
     } finally {
-      await Promise.all([fetchData(), fetchCategories()]);
+      await fetchData();
     }
   }
 
@@ -565,12 +552,7 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
               <Button variant="ghost" className="-ml-3 gap-1" onClick={() => setShowCategories(false)}>
                 <ChevronLeft aria-hidden="true" /> Budgets
               </Button>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-h2 font-semibold">Categories</h2>
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setTidyOpen(true)}>
-                  <Sparkles aria-hidden="true" /> Tidy up
-                </Button>
-              </div>
+              <h2 className="text-h2 font-semibold">Categories</h2>
               <div className="space-y-4">
                 {(["expense", "income"] as const).map((catType) => {
                   const typeCats = categories.filter((c) => c.type === catType);
@@ -714,22 +696,14 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
           ) : (
             <BudgetsView
               monthLabel={monthLabel}
-              budgets={budgets}
-              spent={spendingByCategory}
-              onAdd={() => {
-                setEditBudget(null);
-                setBudgetOpen(true);
-              }}
-              onEdit={(budget) => {
-                setEditBudget(budget);
-                setBudgetOpen(true);
-              }}
-              onDelete={setDeleteBudgetId}
-              onCategories={() => setShowCategories(true)}
+              lines={lines}
+              summary={budgetSummary}
+              unbudgeted={unbudgeted}
               onPrevMonth={() => setSelectedMonth((m) => subMonths(m, 1))}
               onNextMonth={() => setSelectedMonth((m) => addMonths(m, 1))}
-              onTidyUp={showTidyUp ? () => setTidyOpen(true) : undefined}
-              tidyUpCount={tidyUpCount}
+              onSettings={(focus) => setBudgetSettings({ focus })}
+              onDelete={setDeleteBudgetId}
+              onCategories={() => setShowCategories(true)}
             />
           )}
         </TabsContent>
@@ -803,15 +777,17 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
         }}
       />
 
-      {tidyOpen && (
-        <TidyCategoriesDialog
-          open={tidyOpen}
-          onOpenChange={setTidyOpen}
-          categories={categories}
-          transactions={allTransactions}
-          budgets={budgets}
-          today={today}
-          onApply={handleTidyUp}
+      {budgetSettings && (
+        <BudgetSettingsDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setBudgetSettings(null);
+          }}
+          rows={budgetSettingRows(categories, budgets)}
+          hints={budgetHints(allTransactions, current.start, current.end, today)}
+          monthName={format(new Date(`${today}T12:00:00`), "MMMM")}
+          focusCategory={budgetSettings.focus}
+          onSave={handleSaveBudgets}
         />
       )}
 
@@ -835,21 +811,6 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
           await adjustBalance(id, current, target, reason);
           toast.success("Balance adjusted");
           await fetchData();
-        }}
-      />
-
-      <BudgetForm
-        open={budgetOpen}
-        onOpenChange={(v) => {
-          setBudgetOpen(v);
-          if (!v) setEditBudget(null);
-        }}
-        initial={editBudget}
-        expenseCategories={categories.filter((c) => c.type === "expense")}
-        createCategory={createCategory}
-        onSaved={() => {
-          fetchData();
-          toast.success(editBudget ? "Budget updated" : "Budget created");
         }}
       />
 
@@ -933,229 +894,25 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
   );
 }
 
-// ─── Budget Form ──────────────────────────────────────────────────────────────
+// ─── Budget settings hints ────────────────────────────────────────────────────
 
-function BudgetForm({
-  open,
-  onOpenChange,
-  initial,
-  onSaved,
-  expenseCategories,
-  createCategory,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  initial: Budget | null;
-  onSaved: () => void;
-  expenseCategories: Category[];
-  createCategory: (
-    name: string,
-    type: "income" | "expense"
-  ) => Promise<Category | null>;
-}) {
-  const [category, setCategory] = useState("");
-  const [amount, setAmount] = useState("");
-  const [period, setPeriod] = useState<Budget["period"]>("monthly");
-  const [saving, setSaving] = useState(false);
-  const [showNewCat, setShowNewCat] = useState(false);
-  const [newCatName, setNewCatName] = useState("");
-  const [creatingCat, setCreatingCat] = useState(false);
-
-  useEffect(() => {
-    if (initial) {
-      setCategory(initial.category);
-      setAmount(String(initial.amount));
-      setPeriod(initial.period);
-    } else {
-      setCategory("");
-      setAmount("");
-      setPeriod("monthly");
-    }
-    setShowNewCat(false);
-    setNewCatName("");
-  }, [initial, open]);
-
-  async function handleBudgetCreateCategory() {
-    if (!newCatName.trim() || creatingCat) return;
-    setCreatingCat(true);
-    try {
-      const created = await createCategory(newCatName.trim(), "expense");
-      if (created) {
-        setCategory(created.name);
-        setNewCatName("");
-        setShowNewCat(false);
-      } else {
-        toast.error("Could not create category");
-      }
-    } finally {
-      setCreatingCat(false);
-    }
+/** This month's spending and the monthly average, per category (normalised name). */
+function budgetHints(
+  transactions: readonly Transaction[],
+  monthStart: string,
+  monthEnd: string,
+  today: string
+): Record<string, BudgetHint> {
+  const averages = averageMonthlySpend(transactions, today);
+  const hints: Record<string, BudgetHint> = {};
+  for (const t of transactions) {
+    if (t.type !== "expense") continue;
+    const key = normalizeLabel(t.category);
+    const hint = hints[key] ?? { thisMonth: 0, average: averages[key] ?? 0 };
+    if (t.date >= monthStart && t.date <= monthEnd) hint.thisMonth = Math.round((hint.thisMonth + t.amount) * 100) / 100;
+    hints[key] = hint;
   }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!category || !amount) return;
-    setSaving(true);
-    const supabase = createClient();
-
-    const today = new Date();
-    const periodStart = format(startOfMonth(today), "yyyy-MM-dd");
-    const periodEnd = format(endOfMonth(today), "yyyy-MM-dd");
-
-    let errorMessage: string | null = null;
-    if (initial) {
-      const { error } = await supabase
-        .from("budgets")
-        .update({ category, amount: parseFloat(amount), period })
-        .eq("id", initial.id);
-      errorMessage = error?.message ?? null;
-    } else {
-      const userId = await currentUserId();
-      if (!userId) {
-        setSaving(false);
-        toast.error("Your session expired. Please sign in again.");
-        return;
-      }
-      const { error } = await supabase.from("budgets").insert({
-        user_id: userId,
-        category,
-        amount: parseFloat(amount),
-        period,
-        period_start: periodStart,
-        period_end: periodEnd,
-      });
-      errorMessage = error?.message ?? null;
-    }
-    if (errorMessage) {
-      console.error("[finance] budget save failed:", errorMessage);
-      toast.error("Could not save the budget. Please try again.");
-      setSaving(false);
-      return;
-    }
-
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{initial ? "Edit Budget" : "New Budget"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Category</Label>
-            <Select
-              value={showNewCat ? "__new__" : category || ""}
-              onValueChange={(v) => {
-                if (!v) return;
-                if (v === "__new__") {
-                  setShowNewCat(true);
-                  setCategory("");
-                } else {
-                  setCategory(v);
-                  setShowNewCat(false);
-                  setNewCatName("");
-                }
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue
-                  placeholder={
-                    expenseCategories.length === 0
-                      ? "No categories yet"
-                      : "Select category"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {expenseCategories.map((c) => (
-                  <SelectItem key={c.id} value={c.name}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-                <SelectItem value="__new__">+ New category…</SelectItem>
-              </SelectContent>
-            </Select>
-            {showNewCat && (
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Category name"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleBudgetCreateCategory();
-                    }
-                  }}
-                  className="h-11 text-sm"
-                  autoFocus
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  className="min-h-11 shrink-0"
-                  disabled={creatingCat || !newCatName.trim()}
-                  onClick={handleBudgetCreateCategory}
-                >
-                  Add
-                </Button>
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Amount (AED)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Period</Label>
-              <Select
-                items={{ monthly: "Monthly", quarterly: "Quarterly", yearly: "Yearly" }}
-                value={period}
-                onValueChange={(value) => {
-                  if (isBudgetPeriod(value)) setPeriod(value);
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : initial ? "Update" : "Add Budget"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+  return hints;
 }
 
 // ─── Debt Form ────────────────────────────────────────────────────────────────

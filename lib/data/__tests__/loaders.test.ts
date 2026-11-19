@@ -126,7 +126,7 @@ describe("loadFinanceData", () => {
       debts: { data: [{ id: "d1" }] },
     });
 
-    const data = await loadFinanceData(client, "2026-06-23");
+    const data = await loadFinanceData(client);
 
     expect(data).toEqual({
       transactions: [{ id: "t1" }],
@@ -134,7 +134,9 @@ describe("loadFinanceData", () => {
       debts: [{ id: "d1" }],
     });
     expect(callsOf("transactions")).toContainEqual(["is", ["deleted_at", null]]);
-    expect(callsOf("budgets")).toContainEqual(["gte", ["period_end", "2026-06-23"]]);
+    // Budgets are standing settings: none is dropped because its month ended.
+    expect(callsOf("budgets")).toContainEqual(["is", ["deleted_at", null]]);
+    expect(callsOf("budgets").some(([method]) => method === "gte" || method === "lte")).toBe(false);
     expect(callsOf("debts")).toContainEqual(["order", ["created_at", { ascending: false }]]);
   });
 
@@ -146,7 +148,7 @@ describe("loadFinanceData", () => {
       debts: { data: [] },
     });
 
-    const data = await loadFinanceData(client, "2026-06-23");
+    const data = await loadFinanceData(client);
 
     expect(data.transactions).toHaveLength(TRANSACTION_PAGE_SIZE + 1);
     expect(callsOf("transactions", 0)).toContainEqual(["range", [0, TRANSACTION_PAGE_SIZE - 1]]);
@@ -163,12 +165,12 @@ describe("loadFinanceData", () => {
       debts: { data: [] },
       [table]: fail,
     });
-    await expect(loadFinanceData(client, "2026-06-23")).rejects.toThrow("db down");
+    await expect(loadFinanceData(client)).rejects.toThrow("db down");
   });
 
   it("treats null rows as empty lists", async () => {
     const { client } = mockClient({});
-    expect(await loadFinanceData(client, "2026-06-23")).toEqual({
+    expect(await loadFinanceData(client)).toEqual({
       transactions: [],
       budgets: [],
       debts: [],

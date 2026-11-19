@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1295 tests, 95.68% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1278 tests, 95.67% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -300,7 +300,7 @@ components/
   analytics/                Isolated Recharts rendering structures per module
   finance/                  One page: net worth hero (wallet list, total available, owed each way),
                             then Activity | Wallet | Budget | Debt tabs (one colour each); no Home | Money switch;
-                            tidy-categories-dialog.tsx folds small categories into the majors and sets budgets
+                            budget-settings-dialog.tsx edits every standing budget in one place
   productivity/             Task entry forms and visualization cards
   pwa/                      Service Worker setup toasts, caching, and installation components
 
@@ -324,7 +324,7 @@ lib/
     upload-helpers.ts       File upload parsing and text/audio extraction for chat attachments
   data/
     snapshot.ts             ServerSnapshot { data, loadedAt } + takeSnapshot() / isFreshSnapshot() (15s)
-    tidy-categories.ts      applyTidyUp() — writes a reviewed tidy-up plan; every step idempotent, so a failed run is re-run
+    budgets.ts              saveBudgetChanges() — writes Budget settings; new budgets are monthly, removals are soft deletes
     finance.ts · tasks.ts · modules.ts
                             Initial-data loaders, one per module page. Shared by the server page and
                             the client view's refetch, so both run the same queries; they throw on error
@@ -351,8 +351,9 @@ lib/
     activity.ts             groupByDay() / dayLabel() / signedAmount() for the Activity list
     entries.ts              Add-dialog rows: buildTransferRows() (transfer + optional "Fees & Charges" expense, one INSERT),
                             planRepayment() / debtMovementRow() (signed "Debt" adjustment when a wallet is chosen)
-    categories.ts           MAJOR_CATEGORIES (10 expense, 3 income, in display order), suggestMajor() (unknown names → KEEP),
-                            planTidyUp() / suggestBudgets() for the Budget tab's Tidy up; sortCategories() used by use-categories
+    categories.ts           MAJOR_CATEGORIES (10 expense, 3 income, in display order), normalizeLabel(), sortCategories() (use-categories)
+    budgets.ts              Budgets are settings: standingBudgets() (one per category, latest wins — period dates never expire one),
+                            budgetLines() / summarizeBudgets() / unbudgetedSpend(), planBudgetChanges() for Budget settings
   types/
     database.ts             Single Source of Truth — 32 Supabase tables with Row/Insert/Update types
   format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + formatAEDWrappable, isPastDeadline, truncateLabel

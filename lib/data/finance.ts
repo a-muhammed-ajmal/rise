@@ -20,7 +20,10 @@ export type FinanceData = {
 export const TRANSACTION_PAGE_SIZE = 500;
 
 /**
- * Every live transaction, current and future budgets, and all debts.
+ * Every live transaction, every live budget, and all debts.
+ *
+ * Budgets are settings: a standing limit per category that repeats every
+ * period, so none is filtered out by its period dates (lib/finance/budgets.ts).
  *
  * Metrics and the Activity view need the complete history, so transactions are
  * paged through PostgREST rather than capped — accounts with more than one page
@@ -28,7 +31,6 @@ export const TRANSACTION_PAGE_SIZE = 500;
  */
 export async function loadFinanceData(
   supabase: SupabaseClient<Database>,
-  today: string,
 ): Promise<FinanceData> {
   const transactions: Transaction[] = [];
   for (let from = 0; ; from += TRANSACTION_PAGE_SIZE) {
@@ -48,7 +50,7 @@ export async function loadFinanceData(
       .from("budgets")
       .select("*")
       .is("deleted_at", null)
-      .gte("period_end", today),
+      .order("created_at", { ascending: true }),
     supabase
       .from("debts")
       .select("*")

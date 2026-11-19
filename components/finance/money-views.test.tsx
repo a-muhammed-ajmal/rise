@@ -4,6 +4,7 @@ import type { Budget, Debt, Transaction } from "@/lib/types/database";
 import { ACTIVITY_PAGE, ActivityView } from "./activity-view";
 import { BudgetsView } from "./budgets-view";
 import { DebtsView } from "./debts-view";
+import { budgetLines, summarizeBudgets, unbudgetedSpend } from "@/lib/finance/budgets";
 import { formatAED } from "@/lib/format";
 
 afterEach(cleanup);
@@ -116,62 +117,114 @@ describe("ActivityView", () => {
   });
 });
 
-function budget(id: string, category: string, amount: number, period: Budget["period"] = "monthly"): Budget {
-  return { id, user_id: "u1", category, amount, period, period_start: "2026-11-01", period_end: "2026-11-30", deleted_at: null, created_at: "2026-11-01T00:00:00Z" };
+const budget = (id: string, category: string, amount: number, period: Budget["period"] = "monthly"): Budget => ({
+  id,
+  user_id: "u1",
+  category,
+  amount,
+  period,
+  period_start: "2026-11-01",
+  period_end: "2026-11-30",
+  deleted_at: null,
+  created_at: "2026-11-01T00:00:00Z",
+});
+
+function renderBudgets(extra: Partial<Parameters<typeof BudgetsView>[0]> = {}, budgets: Budget[] = [], spending: Transaction[] = []) {
+  const lines = budgetLines(budgets, spending, "2026-11-01");
+  const props = {
+    monthLabel: "November 2026",
+    lines,
+    summary: summarizeBudgets(lines, "2026-11-30", "2026-11-20", true),
+    unbudgeted: unbudgetedSpend(spending, budgets, "2026-11-01", "2026-11-30"),
+    onPrevMonth: noop,
+    onNextMonth: noop,
+    onSettings: noop,
+    onDelete: noop,
+    onCategories: noop,
+    ...extra,
+  };
+  return render(<BudgetsView {...props} />);
 }
 
 describe("BudgetsView", () => {
-  it("offers the category tidy-up only when asked to", () => {
-    const onTidyUp = vi.fn();
-    const props = { monthLabel: "November 2026", budgets: [], spent: {}, onAdd: noop, onEdit: noop, onDelete: noop, onCategories: noop };
-    const { rerender } = render(<BudgetsView {...props} />);
-    expect(screen.queryByRole("heading", { name: /Organise your categories/ })).toBeNull();
+  const budgets = [budget("b1", "Food & Dining", 500), budget("b2", "Groceries", 100), budget("b3", "Transport", 300, "quarterly")];
+  const spending = [
+    txn({ category: "food & dining", amount: 125, date: "2026-11-04" }),
+    txn({ category: "Groceries", amount: 120, date: "2026-11-05" }),
+    txn({ category: "Transport", amount: 230, date: "2026-10-05" }),
+    txn({ category: "Afridi", amount: 2000, date: "2026-11-06" }),
+  ];
 
-    rerender(<BudgetsView {...props} onTidyUp={onTidyUp} tidyUpCount={18} />);
-    expect(screen.getByText(/Fold 18 small categories into 10 major ones/)).toBeDefined();
-    fireEvent.click(screen.getByRole("button", { name: /Tidy up/ }));
-    expect(onTidyUp).toHaveBeenCalledTimes(1);
-
-    rerender(<BudgetsView {...props} onTidyUp={onTidyUp} tidyUpCount={0} />);
-    expect(screen.getByText(/Add the 10 major categories/)).toBeDefined();
+  it("summarises the month: total, spent, left, states and a daily allowance", () => {
+    renderBudgets({}, budgets, spending);
+    const summary = within(screen.getByRole("region", { name: /Monthly budget/ }));
+    // Only monthly budgets count toward the month: 500 + 100.
+    expect(summary.getByText(aed(600))).toBeDefined();
+    expect(summary.getByText(aed(245))).toBeDefined();
+    expect(summary.getByText("Left")).toBeDefined();
+    expect(summary.getByText(aed(355))).toBeDefined();
+    expect(summary.getByText(/1 on track/)).toBeDefined();
+    expect(summary.getByText(/1 close to the limit/)).toBeDefined();
+    expect(summary.getByText(/1 over/)).toBeDefined();
+    expect(summary.getByText(/About AED.*a day for the 11 days left this month/)).toBeDefined();
   });
 
-  it("shows each budget's use, the total, and spending with no budget", () => {
-    render(
-      <BudgetsView
-        monthLabel="November 2026"
-        budgets={[budget("b1", "Food", 1000), budget("b2", "Fuel", 200, "yearly")]}
-        spent={{ Food: 1100, Fuel: 50, Gifts: 75 }}
-        onAdd={noop}
-        onEdit={noop}
-        onDelete={noop}
-        onCategories={noop}
-      />,
-    );
-    expect(screen.getByText("110%")).toBeDefined();
-    expect(screen.getByText(`over by ${aed(100)}`)).toBeDefined();
-    expect(screen.getByText("25%")).toBeDefined();
-    expect(screen.getByText("· yearly")).toBeDefined();
-    // One bar for the total and one per budget, each read out as words.
-    const meters = screen.getAllByRole("meter");
-    expect(meters).toHaveLength(3);
-    expect(meters.map((m) => m.getAttribute("aria-valuetext"))).toEqual(["95% used", "110% used", "25% used"]);
-    const unbudgeted = within(screen.getByRole("region", { name: "Spent without a budget" }));
-    expect(unbudgeted.getByText("Gifts")).toBeDefined();
-    expect(unbudgeted.queryByText("Food")).toBeNull();
+  it("shows each budget with what is left or how much it is over, matching categories in any case", () => {
+    renderBudgets({}, budgets, spending);
+    const rows = within(screen.getByRole("list", { name: "Budgets" })).getAllByRole("listitem");
+    expect(within(rows[0]).getByText("Food & Dining")).toBeDefined();
+    expect(within(rows[0]).getByText(`${aed(125)} of ${aed(500)}`)).toBeDefined();
+    expect(within(rows[0]).getByText(`${aed(375)} left`)).toBeDefined();
+    expect(within(rows[0]).getByText("25%")).toBeDefined();
+    expect(within(rows[1]).getByText(`${aed(20)} over`)).toBeDefined();
+    expect(within(rows[1]).getByText("Over")).toBeDefined();
+    // The quarterly budget counts October too.
+    expect(within(rows[2]).getByText(/per quarter/)).toBeDefined();
+    expect(within(rows[2]).getByText(`${aed(70)} left`)).toBeDefined();
   });
 
-  it("shows an empty state and opens categories", () => {
+  it("lists spending with no budget and opens the settings from it", () => {
+    const onSettings = vi.fn();
+    renderBudgets({ onSettings }, budgets, spending);
+    const section = within(screen.getByRole("region", { name: "Spent without a budget" }));
+    expect(section.getByText("Afridi")).toBeDefined();
+    expect(section.getByText(aed(2000))).toBeDefined();
+    fireEvent.click(section.getByRole("button", { name: "Set budgets" }));
+    expect(onSettings).toHaveBeenCalledWith();
+  });
+
+  it("opens the settings from the header and focused on a budget from its menu", async () => {
+    const onSettings = vi.fn();
+    const onDelete = vi.fn();
+    renderBudgets({ onSettings, onDelete }, budgets, spending);
+    fireEvent.click(screen.getByRole("button", { name: /Edit budgets/ }));
+    expect(onSettings).toHaveBeenLastCalledWith();
+
+    fireEvent.click(screen.getByRole("button", { name: "Actions for Groceries budget" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Edit amount/ }));
+    expect(onSettings).toHaveBeenLastCalledWith("Groceries");
+
+    fireEvent.click(screen.getByRole("button", { name: "Actions for Groceries budget" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Remove budget/ }));
+    expect(onDelete).toHaveBeenCalledWith("b2");
+  });
+
+  it("has an empty state that sets budgets, and opens categories", () => {
+    const onSettings = vi.fn();
     const onCategories = vi.fn();
-    const onAdd = vi.fn();
-    render(
-      <BudgetsView monthLabel="November 2026" budgets={[]} spent={{}} onAdd={onAdd} onEdit={noop} onDelete={noop} onCategories={onCategories} />,
-    );
+    renderBudgets({ onSettings, onCategories });
     expect(screen.getByText("No budgets yet")).toBeDefined();
-    fireEvent.click(screen.getByRole("button", { name: "Categories" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add budget" }));
+    expect(screen.queryByRole("region", { name: /Monthly budget/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Set budgets/ }));
+    expect(onSettings).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: /Categories/ }));
     expect(onCategories).toHaveBeenCalledTimes(1);
-    expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer the removed tidy-up", () => {
+    renderBudgets({}, budgets, spending);
+    expect(screen.queryByText(/Tidy up/)).toBeNull();
+    expect(screen.queryByText(/Organise your categories/)).toBeNull();
   });
 });
 

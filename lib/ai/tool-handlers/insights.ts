@@ -67,12 +67,13 @@ export const insightHandlers = {
         .is("deleted_at", null)
         .eq("status", "active")
         .limit(5),
+      // Budgets are standing settings that repeat every month, so a live
+      // budget counts whatever its period dates say.
       supabase
         .from("budgets")
         .select("category, amount")
         .eq("user_id", userId)
-        .is("deleted_at", null)
-        .gte("period_end", today),
+        .is("deleted_at", null),
       supabase
         .from("transactions")
         .select("category, amount")
