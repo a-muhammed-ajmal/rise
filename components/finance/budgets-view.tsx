@@ -13,6 +13,7 @@ import {
 import { budgetLevel, budgetPercent, type BudgetLevel } from "@/lib/finance/month";
 import { formatAED } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { MonthSwitcher } from "./finance-home";
 
 const PILL: Record<BudgetLevel, string> = {
   ok: "finance-pill--ok",
@@ -51,6 +52,8 @@ export function BudgetsView({
   onEdit,
   onDelete,
   onCategories,
+  onPrevMonth,
+  onNextMonth,
 }: {
   monthLabel: string;
   budgets: readonly Budget[];
@@ -60,6 +63,9 @@ export function BudgetsView({
   onEdit: (budget: Budget) => void;
   onDelete: (id: string) => void;
   onCategories: () => void;
+  /** With both month handlers, the month name gets arrows to change it. */
+  onPrevMonth?: () => void;
+  onNextMonth?: () => void;
 }) {
   const budgeted = new Set(budgets.map((b) => b.category));
   const unbudgeted = Object.entries(spent)
@@ -71,9 +77,13 @@ export function BudgetsView({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{monthLabel}</span> · in AED
-        </p>
+        {onPrevMonth && onNextMonth ? (
+          <MonthSwitcher monthLabel={monthLabel} onPrevMonth={onPrevMonth} onNextMonth={onNextMonth} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{monthLabel}</span> · in AED
+          </p>
+        )}
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={onCategories}>
             <Tags aria-hidden="true" /> Categories
@@ -85,13 +95,13 @@ export function BudgetsView({
       </div>
 
       {budgets.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
+        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-10 text-center">
           <p className="text-sm font-medium">No budgets yet</p>
           <p className="mt-1 text-sm text-muted-foreground">Set a monthly limit for a category to see how much is left.</p>
         </div>
       ) : (
         <>
-          <section aria-label="Budget total" className="rounded-lg border border-border bg-card p-4 shadow-card">
+          <section aria-label="Budget total" className="finance-card p-3 md:p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <p className="text-sm text-muted-foreground">Spent of all budgets</p>
               <p className="text-sm font-semibold tabular-nums">
@@ -103,13 +113,13 @@ export function BudgetsView({
             </div>
           </section>
 
-          <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card shadow-card">
+          <ul className="finance-card divide-y divide-border overflow-hidden">
             {budgets.map((budget) => {
               const used = spent[budget.category] ?? 0;
               const level = budgetLevel(used, budget.amount);
               const gap = Math.abs(budget.amount - used);
               return (
-                <li key={budget.id} className="flex items-start gap-2 py-3 pl-4">
+                <li key={budget.id} className="flex items-start gap-2 py-2.5 pl-3 md:pl-4">
                   <div className="min-w-0 flex-1 space-y-2 pt-1">
                     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <p className="min-w-0 text-sm font-medium break-words">
@@ -155,13 +165,13 @@ export function BudgetsView({
       )}
 
       {unbudgeted.length > 0 && (
-        <section aria-labelledby="unbudgeted-title" className="rounded-lg border border-border bg-card shadow-card">
-          <h3 id="unbudgeted-title" className="px-4 pt-4 pb-1 text-sm font-semibold">
+        <section aria-labelledby="unbudgeted-title" className="finance-card overflow-hidden">
+          <h3 id="unbudgeted-title" className="px-3 pt-3 pb-1 text-sm font-semibold md:px-4">
             Spent without a budget
           </h3>
           <ul className="divide-y divide-border">
             {unbudgeted.map(([category, amount]) => (
-              <li key={category} className="flex items-baseline justify-between gap-3 px-4 py-2.5 text-sm">
+              <li key={category} className="flex items-baseline justify-between gap-3 px-3 py-2.5 text-sm md:px-4">
                 <span className="min-w-0 break-words">{category}</span>
                 <span className="shrink-0 font-medium tabular-nums">{formatAED(amount)}</span>
               </li>

@@ -5,6 +5,7 @@ import {
   ArrowDownLeft,
   ArrowLeftRight,
   ArrowUpRight,
+  HandCoins,
   Minus,
   MoreVertical,
   Pencil,
@@ -22,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { dayLabel, flowOf, groupByDay, signedAmount } from "@/lib/finance/activity";
+import { DEBT_CATEGORY } from "@/lib/finance/entries";
 import { cn } from "@/lib/utils";
 
 /** Rows shown before "Show more". */
@@ -35,7 +37,8 @@ const FLOW_TEXT = {
 
 function RowIcon({ txn }: { txn: Transaction }) {
   if (txn.type === "transfer" || txn.type === "adjustment") {
-    const Icon = txn.type === "transfer" ? ArrowLeftRight : SlidersHorizontal;
+    const Icon =
+      txn.type === "transfer" ? ArrowLeftRight : txn.category === DEBT_CATEGORY ? HandCoins : SlidersHorizontal;
     return (
       <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground" aria-hidden="true">
         <Icon className="size-4" />
@@ -61,6 +64,11 @@ function describeRow(txn: Transaction, walletName: (id: string | null) => string
     const route = `${walletName(txn.from_payment_method_id) ?? "Unknown"} → ${walletName(txn.to_payment_method_id) ?? "Unknown"}`;
     const note = txn.description && txn.description !== route ? txn.description : null;
     return { title: note ?? "Transfer", subtitle: note ? `Transfer · ${route}` : route };
+  }
+  if (txn.type === "adjustment" && txn.category === DEBT_CATEGORY) {
+    // Money lent, borrowed or repaid — see lib/finance/entries.ts.
+    const wallet = walletName(txn.payment_method_id) ?? txn.payment_method;
+    return { title: txn.description ?? "Debt", subtitle: ["Debt", wallet].filter(Boolean).join(" · ") };
   }
   if (txn.type === "adjustment") {
     const wallet = walletName(txn.payment_method_id);
@@ -120,7 +128,7 @@ export function ActivityView({
       </div>
 
       {groups.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
+        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-10 text-center">
           <p className="text-sm font-medium">No activity yet</p>
           <p className="mt-1 text-sm text-muted-foreground">Add your first expense or income to see it here.</p>
         </div>
@@ -128,12 +136,12 @@ export function ActivityView({
         groups.map(([date, rows]) => (
           <section key={date} aria-label={dayLabel(date, today)} className="space-y-1.5">
             <h3 className="px-1 text-label font-medium tracking-wide text-muted-foreground uppercase">{dayLabel(date, today)}</h3>
-            <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card shadow-card">
+            <ul className="finance-card divide-y divide-border overflow-hidden">
               {rows.map((txn) => {
                 const { title, subtitle } = describeRow(txn, walletName);
                 const editable = txn.type === "income" || txn.type === "expense";
                 return (
-                  <li key={txn.id} className="flex min-h-16 items-center gap-3 py-2 pl-3">
+                  <li key={txn.id} className="flex min-h-14 items-center gap-2.5 py-1.5 pl-3">
                     <RowIcon txn={txn} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium break-words">{title}</p>

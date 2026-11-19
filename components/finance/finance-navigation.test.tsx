@@ -3,70 +3,64 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
-  FinanceSectionList,
   MONEY_VIEWS,
   MoneyViewList,
-  isFinanceSection,
   isMoneyView,
-  type FinanceSection,
   type MoneyView,
+  type ViewAlert,
 } from "./finance-navigation";
 
 afterEach(cleanup);
 
-function NavigationHarness() {
-  const [section, setSection] = useState<FinanceSection>("home");
+function NavigationHarness({ alerts }: { alerts?: Partial<Record<MoneyView, ViewAlert>> }) {
   const [view, setView] = useState<MoneyView>("activity");
   return (
-    <Tabs value={section} onValueChange={(v) => isFinanceSection(v) && setSection(v)}>
-      <FinanceSectionList />
-      <TabsContent value="home">Home panel</TabsContent>
-      <TabsContent value="money">
-        <Tabs value={view} onValueChange={(v) => isMoneyView(v) && setView(v)}>
-          <MoneyViewList />
-          {MONEY_VIEWS.map((v) => (
-            <TabsContent key={v.value} value={v.value}>
-              {v.label} panel
-            </TabsContent>
-          ))}
-        </Tabs>
-      </TabsContent>
+    <Tabs value={view} onValueChange={(v) => isMoneyView(v) && setView(v)}>
+      <MoneyViewList alerts={alerts} />
+      {MONEY_VIEWS.map((v) => (
+        <TabsContent key={v.value} value={v.value}>
+          {v.label} panel
+        </TabsContent>
+      ))}
     </Tabs>
   );
 }
 
 describe("Finance navigation", () => {
-  it("opens on Home and switches to Money", () => {
+  it("opens on Activity, with no Home | Money switch", () => {
     render(<NavigationHarness />);
-    expect(screen.getByRole("tab", { name: "Home" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText("Home panel")).toBeDefined();
-
-    fireEvent.click(screen.getByRole("tab", { name: "Money" }));
-    expect(screen.getByRole("tab", { name: "Money" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Activity" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByText("Activity panel")).toBeDefined();
-    expect(screen.queryByText("Home panel")).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Home" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Money" })).toBeNull();
+    expect(screen.getAllByRole("tab")).toHaveLength(4);
   });
 
-  it.each(["Activity", "Wallets", "Budgets", "Debts"])("opens the %s view inside Money", (label) => {
+  it.each(["Activity", "Wallets", "Budgets", "Debts"])("opens the %s view", (label) => {
     render(<NavigationHarness />);
-    fireEvent.click(screen.getByRole("tab", { name: "Money" }));
     fireEvent.click(screen.getByRole("tab", { name: label }));
     expect(screen.getByRole("tab", { name: label }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByText(`${label} panel`)).toBeDefined();
   });
 
-  it("names both tab lists for screen readers", () => {
+  it("names the tab list for screen readers", () => {
     render(<NavigationHarness />);
-    expect(screen.getByRole("tablist", { name: "Finance sections" })).toBeDefined();
-    fireEvent.click(screen.getByRole("tab", { name: "Money" }));
-    expect(screen.getByRole("tablist", { name: "Money views" })).toBeDefined();
+    expect(screen.getByRole("tablist", { name: "Finance views" })).toBeDefined();
   });
 
-  it("accepts only known section and view names", () => {
-    expect(isFinanceSection("home")).toBe(true);
-    expect(isFinanceSection("money")).toBe(true);
-    expect(isFinanceSection("overview")).toBe(false);
+  it("marks a view that needs attention in words as well as colour", () => {
+    render(<NavigationHarness alerts={{ debts: "danger", budgets: "warning" }} />);
+    expect(screen.getByRole("tab", { name: /Debts.*needs attention/ })).toBeDefined();
+    expect(screen.getByRole("tab", { name: /Budgets.*needs attention/ })).toBeDefined();
+    expect(screen.getByRole("tab", { name: "Activity" })).toBeDefined();
+    expect(document.querySelector(".finance-dot--danger")).not.toBeNull();
+    expect(document.querySelector(".finance-dot--warning")).not.toBeNull();
+  });
+
+  it("accepts only known view names", () => {
     expect(isMoneyView("debts")).toBe(true);
+    expect(isMoneyView("wallets")).toBe(true);
+    expect(isMoneyView("home")).toBe(false);
     expect(isMoneyView("categories")).toBe(false);
     expect(isMoneyView(null)).toBe(false);
   });

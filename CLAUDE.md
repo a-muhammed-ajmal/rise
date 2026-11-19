@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1209 tests, 95.31% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1242 tests, 95.37% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -275,7 +275,8 @@ app/
                             A snapshot older than 15s (a Router Cache revisit) refetches on mount
     page.tsx                Central OS Executive Dashboard (async RSC, 11 parallel Supabase queries, no Suspense)
     productivity/           Task orchestration and project boards
-    finance/                Income, expense, transfer and adjustment ledgers; wallet/payment method balance tracking (Strict AED)
+    finance/                Income, expense, transfer and adjustment ledgers; wallet/payment method balance tracking (Strict AED).
+                            The Add button opens add-entry-dialog.tsx: Expense | Income | Transfer (optional fee) | Debt
     wellness/               Habit tracker with reminder_time scheduling, done/not-done marking, streak logic
     goals/                  Strategic goal tracking and milestone matrices
     crm/                    Contact lifecycle managers and interaction logs
@@ -297,8 +298,8 @@ components/
   ui/                       Core design architecture primitive assets (@base-ui/react)
   layout/                   Universal frame shells: Sidebar (Desktop), BottomNav (Mobile, max 5 items), Topbar
   analytics/                Isolated Recharts rendering structures per module
-  finance/                  Finance Home (net worth hero, month card, Needs attention) and the Money
-                            tabs (Activity, Budgets, Debts views); Home | Money navigation
+  finance/                  One page: net worth hero (wallet list, total available, owed each way),
+                            then Activity | Wallets | Budgets | Debts tabs; no Home | Money switch
   productivity/             Task entry forms and visualization cards
   pwa/                      Service Worker setup toasts, caching, and installation components
 
@@ -345,7 +346,9 @@ lib/
     month.ts                summarizeMonth() / savingRate() / spentByCategory() / budgetLevel() — 75% and 100% bands
     debts.ts                isOverdue() / isDueSoon() (7 days) / dueLabel() / sortByDueDate() — Dubai date strings
     attention.ts            needsAttention() — overdue debts → over budgets → due soon → budgets at 75–100%
-    activity.ts             groupByDay() / dayLabel() / signedAmount() for the Money → Activity list
+    activity.ts             groupByDay() / dayLabel() / signedAmount() for the Activity list
+    entries.ts              Add-dialog rows: buildTransferRows() (transfer + optional fee expense, one INSERT),
+                            planRepayment() / debtMovementRow() (signed "Debt" adjustment when a wallet is chosen)
   types/
     database.ts             Single Source of Truth — 32 Supabase tables with Row/Insert/Update types
   format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + formatAEDWrappable, isPastDeadline, truncateLabel

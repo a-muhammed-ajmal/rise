@@ -805,6 +805,38 @@
   outline-offset: -1px;
 }
 
+/* Finance content boxes: neutral border plus a soft two-step shadow so every
+   box reads as a distinct, bordered card on the graph-paper shell. Tiles are
+   the small tinted in/out boxes inside them, with a border in their own hue.
+   In a layer so utilities on the same element still win. */
+@layer components {
+  .finance-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    box-shadow:
+      0 1px 2px rgba(26, 26, 46, 0.05),
+      0 6px 16px -8px rgba(26, 26, 46, 0.14);
+  }
+  .dark .finance-card {
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 8px 20px -10px rgba(0, 0, 0, 0.65);
+  }
+  .finance-tile {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-input);
+  }
+  .finance-tile--in {
+    background: var(--color-success-tint);
+    border-color: color-mix(in srgb, var(--color-success) 26%, transparent);
+  }
+  .finance-tile--out {
+    background: var(--color-danger-tint);
+    border-color: color-mix(in srgb, var(--color-danger) 26%, transparent);
+  }
+}
+
 /* Add button — same green, white "+" at 5.5:1 in both themes. */
 .finance-fab { background: #047857; color: #FFFFFF; box-shadow: var(--shadow-popup); }
 .finance-fab:hover { background: #065F46; }

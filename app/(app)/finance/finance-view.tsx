@@ -10,7 +10,7 @@ import { useCategories } from "@/lib/hooks/use-categories";
 import { formatAEDWrappable, todayISO } from "@/lib/format";
 import { usePaymentMethods } from "@/lib/hooks/use-payment-methods";
 import { TransactionForm } from "./transaction-form";
-import { TransferForm } from "./transfer-form";
+import { AddEntryDialog, isEntryKind, type EntryKind } from "./add-entry-dialog";
 import { WalletForm } from "./wallet-form";
 import { AdjustBalanceForm } from "./adjust-balance-form";
 import { WalletCard } from "./wallet-card";
@@ -19,14 +19,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { PageShell } from "@/components/layout/page-shell";
 import {
-  FinanceSectionList,
   MoneyViewList,
-  isFinanceSection,
   isMoneyView,
-  type FinanceSection,
   type MoneyView,
+  type ViewAlert,
 } from "@/components/finance/finance-navigation";
-import { FinanceHome } from "@/components/finance/finance-home";
+import { NetWorthCard } from "@/components/finance/net-worth-card";
+import { AttentionCard, MonthCard } from "@/components/finance/finance-home";
 import { ActivityView } from "@/components/finance/activity-view";
 import { BudgetsView } from "@/components/finance/budgets-view";
 import { DebtsView } from "@/components/finance/debts-view";
@@ -66,6 +65,8 @@ function isBudgetPeriod(value: unknown): value is Budget["period"] {
   return value === "monthly" || value === "quarterly" || value === "yearly";
 }
 
+const FINANCE_TABS_ID = "finance-views";
+
 // One snapshot per source, so a partial server failure only refetches the part
 // that failed. Each is a stable prop reference for the life of the view.
 export type FinanceInitial = {
@@ -75,7 +76,6 @@ export type FinanceInitial = {
 };
 
 export function FinanceView({ initial }: { initial: FinanceInitial }) {
-  const [section, setSection] = useState<FinanceSection>("home");
   const [moneyView, setMoneyView] = useState<MoneyView>("activity");
   const [showCategories, setShowCategories] = useState(false);
 
@@ -89,14 +89,15 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
   // Monthly view state
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
-  // Transaction dialogs
+  // Add dialog — Expense | Income | Transfer | Debt
+  const [entryOpen, setEntryOpen] = useState(false);
+  const [entryKind, setEntryKind] = useState<EntryKind>("expense");
+
+  // Edit transaction dialog
   const [txnOpen, setTxnOpen] = useState(false);
   const [txnType, setTxnType] = useState<"income" | "expense">("expense");
   const [editTxn, setEditTxn] = useState<Transaction | null>(null);
   const [deleteTxnId, setDeleteTxnId] = useState<string | null>(null);
-
-  // Transfer dialog
-  const [transferOpen, setTransferOpen] = useState(false);
 
   // Wallet dialogs
   const [walletFormOpen, setWalletFormOpen] = useState(false);
@@ -122,11 +123,14 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     deleteCategory,
   } = useCategories(initial.categories);
 
-  // Quick-add intent: open the transfer form via ?add=transfer.
+  // Quick-add intent: ?add=transfer (the dashboard tile) or any other entry
+  // kind opens the Add dialog on that tab.
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.get("add") === "transfer") {
-      setTransferOpen(true);
+    const add = url.searchParams.get("add");
+    if (isEntryKind(add)) {
+      setEntryKind(add);
+      setEntryOpen(true);
       url.searchParams.delete("add");
       window.history.replaceState(null, "", url.pathname + url.search);
     }
@@ -209,8 +213,22 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     [openDebts, budgets, spentThisMonth, today]
   );
 
-  // Wallet totals
-  const activeWallets = paymentMethods.filter((m) => m.is_active);
+  // A dot on the Budgets / Debts tab when something there needs a look — red
+  // wins over amber.
+  const viewAlerts = useMemo(() => {
+    const alerts: Partial<Record<MoneyView, ViewAlert>> = {};
+    for (const item of attention) {
+      if (alerts[item.target] !== "danger") alerts[item.target] = item.level;
+    }
+    return alerts;
+  }, [attention]);
+
+  // Wallets, in the order the user arranged them.
+  const sortedWallets = useMemo(
+    () => [...paymentMethods].sort((a, b) => a.display_order - b.display_order),
+    [paymentMethods]
+  );
+  const activeWallets = sortedWallets.filter((m) => m.is_active);
   const totalWalletBalance = activeWallets.reduce((s, m) => s + m.balance, 0);
 
   // Net worth = wallets + money owed to you − money you owe (open debts only).
@@ -225,16 +243,23 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     return map;
   }, [paymentMethods]);
 
-  function openMoney(view: MoneyView) {
+  /** Switch to a view and bring the tabs into sight. */
+  function openView(view: MoneyView) {
     setMoneyView(view);
     setShowCategories(false);
-    setSection("money");
+    const tabs = document.getElementById(FINANCE_TABS_ID);
+    if (!tabs) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    tabs.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
   }
 
-  function openTransactionForm(type: "income" | "expense") {
-    setEditTxn(null);
-    setTxnType(type);
-    setTxnOpen(true);
+  function openEntry(kind: EntryKind) {
+    setEntryKind(kind);
+    setEntryOpen(true);
+  }
+
+  async function refreshAll() {
+    await Promise.all([fetchData(), refreshWallets()]);
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -254,7 +279,7 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     }
     setDeleteTxnId(null);
     toast.success("Transaction moved to the recycle bin");
-    await Promise.all([fetchData(), refreshWallets()]);
+    await refreshAll();
   }
 
   async function handleDeleteBudget() {
@@ -329,16 +354,13 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
   }
 
   function handleWalletReorder(id: string, direction: "up" | "down") {
-    const sorted = [...paymentMethods].sort(
-      (a, b) => a.display_order - b.display_order
-    );
-    const idx = sorted.findIndex((m) => m.id === id);
+    const idx = sortedWallets.findIndex((m) => m.id === id);
     if (direction === "up" && idx > 0) {
-      const swapped = [...sorted];
+      const swapped = [...sortedWallets];
       [swapped[idx - 1], swapped[idx]] = [swapped[idx], swapped[idx - 1]];
       reorderPaymentMethods(swapped.map((m) => m.id));
-    } else if (direction === "down" && idx < sorted.length - 1) {
-      const swapped = [...sorted];
+    } else if (direction === "down" && idx < sortedWallets.length - 1) {
+      const swapped = [...sortedWallets];
       [swapped[idx], swapped[idx + 1]] = [swapped[idx + 1], swapped[idx]];
       reorderPaymentMethods(swapped.map((m) => m.id));
     }
@@ -375,332 +397,339 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     );
   }
 
-  const sortedWallets = [...paymentMethods].sort(
-    (a, b) => a.display_order - b.display_order
-  );
-
   return (
     <PageShell>
       <h1 className="sr-only">Financial</h1>
 
-      <Tabs
-        value={section}
-        onValueChange={(value) => {
-          if (isFinanceSection(value)) setSection(value);
-        }}
-        className="gap-4"
-      >
-        <div className="animate-rise-in stagger-1">
-          <FinanceSectionList />
-        </div>
+      <div className="animate-rise-in stagger-1 min-w-0">
+        <NetWorthCard
+          summary={netWorth}
+          wallets={activeWallets}
+          onViewDebts={() => openView("debts")}
+        />
+      </div>
 
-        <TabsContent value="home">
-          <FinanceHome
-            netWorth={netWorth}
-            monthLabel={monthLabel}
-            month={month}
-            onPrevMonth={() => setSelectedMonth((m) => subMonths(m, 1))}
-            onNextMonth={() => setSelectedMonth((m) => addMonths(m, 1))}
-            attention={attention}
-            onOpen={openMoney}
+      <Tabs
+        id={FINANCE_TABS_ID}
+        value={moneyView}
+        onValueChange={(value) => {
+          if (isMoneyView(value)) {
+            setMoneyView(value);
+            setShowCategories(false);
+          }
+        }}
+        className="slide-up stagger-2 scroll-mt-20 gap-4"
+      >
+        <MoneyViewList alerts={viewAlerts} />
+
+        <TabsContent value="activity" className="slide-up stagger-1 space-y-4">
+          <div className="grid min-w-0 items-start gap-4 md:grid-cols-2">
+            <MonthCard
+              monthLabel={monthLabel}
+              summary={month}
+              onPrevMonth={() => setSelectedMonth((m) => subMonths(m, 1))}
+              onNextMonth={() => setSelectedMonth((m) => addMonths(m, 1))}
+            />
+            {attention.length > 0 && <AttentionCard items={attention} onOpen={openView} />}
+          </div>
+          <ActivityView
+            transactions={allTransactions}
+            walletNameById={walletNameById}
+            today={today}
+            onAddExpense={() => openEntry("expense")}
+            onAddIncome={() => openEntry("income")}
+            onTransfer={() => openEntry("transfer")}
+            onEdit={(txn) => {
+              setEditTxn(txn);
+              setTxnType(txn.type === "income" ? "income" : "expense");
+              setTxnOpen(true);
+            }}
+            onDelete={setDeleteTxnId}
           />
         </TabsContent>
 
-        <TabsContent value="money">
-          <Tabs
-            value={moneyView}
-            onValueChange={(value) => {
-              if (isMoneyView(value)) {
-                setMoneyView(value);
-                setShowCategories(false);
-              }
-            }}
-            className="gap-4"
+        <TabsContent value="wallets" className="slide-up stagger-1 space-y-4">
+          <section
+            aria-label="Total balance"
+            className="finance-card flex flex-wrap items-end justify-between gap-3 p-3 md:p-4"
           >
-            <MoneyViewList />
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Wallet className="size-4 shrink-0 text-mod-finance" aria-hidden="true" />
+                Total balance
+              </p>
+              <p className={`mt-1.5 text-lg font-semibold tabular-nums break-words ${totalWalletBalance < 0 ? "text-[var(--color-danger)]" : ""}`}>
+                {formatAEDWrappable(totalWalletBalance)}
+              </p>
+              <p className="mt-0.5 text-label text-muted-foreground">
+                {activeWallets.length === 1 ? "1 active wallet" : `${activeWallets.length} active wallets`}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                setEditWallet(null);
+                setWalletFormOpen(true);
+              }}
+            >
+              <Plus aria-hidden="true" /> Add wallet
+            </Button>
+          </section>
 
-            <TabsContent value="activity" className="slide-up stagger-1">
-              <ActivityView
-                transactions={allTransactions}
-                walletNameById={walletNameById}
-                today={today}
-                onAddExpense={() => openTransactionForm("expense")}
-                onAddIncome={() => openTransactionForm("income")}
-                onTransfer={() => setTransferOpen(true)}
-                onEdit={(txn) => {
-                  setEditTxn(txn);
-                  setTxnType(txn.type === "income" ? "income" : "expense");
-                  setTxnOpen(true);
-                }}
-                onDelete={setDeleteTxnId}
-              />
-            </TabsContent>
-
-            <TabsContent value="wallets" className="slide-up stagger-1 space-y-4">
-              <section
-                aria-label="Total balance"
-                className="flex flex-wrap items-end justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-card"
-              >
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Wallet className="size-4 shrink-0 text-mod-finance" aria-hidden="true" />
-                    Total balance
-                  </p>
-                  <p className={`text-metric mt-2 font-semibold break-words ${totalWalletBalance < 0 ? "text-[var(--color-danger)]" : ""}`}>
-                    {formatAEDWrappable(totalWalletBalance)}
-                  </p>
-                  <p className="mt-1 text-label text-muted-foreground">
-                    {activeWallets.length === 1 ? "1 active wallet" : `${activeWallets.length} active wallets`}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => {
-                    setEditWallet(null);
+          {sortedWallets.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-card px-4 py-10 text-center">
+              <p className="text-sm font-medium">No wallets yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Add a bank account, card or cash wallet to track its balance.</p>
+            </div>
+          ) : (
+            <ul aria-label="Wallets" className="finance-card divide-y divide-border overflow-hidden">
+              {sortedWallets.map((wallet, idx) => (
+                <WalletCard
+                  key={wallet.id}
+                  paymentMethod={wallet}
+                  isFirst={idx === 0}
+                  isLast={idx === sortedWallets.length - 1}
+                  onEdit={() => {
+                    setEditWallet(wallet);
                     setWalletFormOpen(true);
                   }}
-                >
-                  <Plus aria-hidden="true" /> Add wallet
-                </Button>
-              </section>
-
-              {sortedWallets.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
-                  <p className="text-sm font-medium">No wallets yet</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Add a bank account, card or cash wallet to track its balance.</p>
-                </div>
-              ) : (
-                <ul aria-label="Wallets" className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card shadow-card">
-                  {sortedWallets.map((wallet, idx) => (
-                    <WalletCard
-                      key={wallet.id}
-                      paymentMethod={wallet}
-                      isFirst={idx === 0}
-                      isLast={idx === sortedWallets.length - 1}
-                      onEdit={() => {
-                        setEditWallet(wallet);
-                        setWalletFormOpen(true);
-                      }}
-                      onAdjust={() => setAdjustWallet(wallet)}
-                      onToggleActive={() => {
-                        if (wallet.is_active) {
-                          setDeactivateWalletId(wallet.id);
-                        } else {
-                          setActiveStatus(wallet.id, true);
-                          toast.success("Wallet activated");
-                        }
-                      }}
-                      onMoveUp={() => handleWalletReorder(wallet.id, "up")}
-                      onMoveDown={() => handleWalletReorder(wallet.id, "down")}
-                    />
-                  ))}
-                </ul>
-              )}
-            </TabsContent>
-
-            <TabsContent value="budgets" className="slide-up stagger-1">
-              {showCategories ? (
-                <div className="space-y-4">
-                  <Button variant="ghost" className="-ml-3 gap-1" onClick={() => setShowCategories(false)}>
-                    <ChevronLeft aria-hidden="true" /> Budgets
-                  </Button>
-                  <h2 className="text-h2 font-semibold">Categories</h2>
-                  <div className="space-y-4">
-                    {(["expense", "income"] as const).map((catType) => {
-                      const typeCats = categories.filter((c) => c.type === catType);
-                      const atLimit = typeCats.length >= 10;
-                      return (
-                        <Card key={catType}>
-                          <CardHeader className="pb-2">
-                            <div className="flex items-center justify-between">
-                              <CardTitle className="text-sm capitalize">
-                                {catType} Categories
-                              </CardTitle>
-                              {!atLimit && addCatType !== catType && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="min-h-11 text-xs gap-1"
-                                  onClick={() => {
-                                    setAddCatType(catType);
-                                    setAddCatName("");
-                                    setEditCatId(null);
-                                  }}
-                                >
-                                  <Plus className="w-3 h-3" /> Add
-                                </Button>
-                              )}
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-1.5">
-                            {typeCats.length === 0 && addCatType !== catType && (
-                              <p className="text-sm text-muted-foreground">
-                                No categories yet.
-                              </p>
-                            )}
-                            {typeCats.map((cat) =>
-                              editCatId === cat.id ? (
-                                <div key={cat.id} className="flex items-center gap-2">
-                                  <Input
-                                    className="h-11 text-sm flex-1"
-                                    value={editCatName}
-                                    onChange={(e) => setEditCatName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        handleCategoryUpdate();
-                                      }
-                                      if (e.key === "Escape") setEditCatId(null);
-                                    }}
-                                    autoFocus
-                                  />
-                                  <Button
-                                    size="sm"
-                                    className="min-h-11 text-xs shrink-0"
-                                    disabled={!editCatName.trim()}
-                                    onClick={handleCategoryUpdate}
-                                  >
-                                    Save
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="min-h-11 text-xs shrink-0"
-                                    onClick={() => setEditCatId(null)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div
-                                  key={cat.id}
-                                  className="flex items-center gap-2 py-0.5"
-                                >
-                                  <span className="flex-1 text-sm">{cat.name}</span>
-                                  <button
-                                    type="button"
-                                    aria-label="Rename category"
-                                    className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-muted-foreground"
-                                    onClick={() => {
-                                      setEditCatId(cat.id);
-                                      setEditCatName(cat.name);
-                                      setAddCatType(null);
-                                    }}
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    aria-label="Delete category"
-                                    className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-destructive"
-                                    onClick={() => setDeleteCatId(cat.id)}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              )
-                            )}
-                            {addCatType === catType && (
-                              <div className="flex items-center gap-2 pt-1">
-                                <Input
-                                  className="h-11 text-sm flex-1"
-                                  placeholder="Category name"
-                                  value={addCatName}
-                                  onChange={(e) => setAddCatName(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      handleCategoryAdd(catType);
-                                    }
-                                    if (e.key === "Escape") setAddCatType(null);
-                                  }}
-                                  autoFocus
-                                />
-                                <Button
-                                  size="sm"
-                                  className="min-h-11 text-xs shrink-0"
-                                  disabled={!addCatName.trim()}
-                                  onClick={() => handleCategoryAdd(catType)}
-                                >
-                                  Add
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="min-h-11 text-xs shrink-0"
-                                  onClick={() => setAddCatType(null)}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            )}
-                            {atLimit && (
-                              <p className="text-xs text-muted-foreground pt-1">
-                                Limit of 10 reached.
-                              </p>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <BudgetsView
-                  monthLabel={monthLabel}
-                  budgets={budgets}
-                  spent={spendingByCategory}
-                  onAdd={() => {
-                    setEditBudget(null);
-                    setBudgetOpen(true);
+                  onAdjust={() => setAdjustWallet(wallet)}
+                  onToggleActive={() => {
+                    if (wallet.is_active) {
+                      setDeactivateWalletId(wallet.id);
+                    } else {
+                      setActiveStatus(wallet.id, true);
+                      toast.success("Wallet activated");
+                    }
                   }}
-                  onEdit={(budget) => {
-                    setEditBudget(budget);
-                    setBudgetOpen(true);
-                  }}
-                  onDelete={setDeleteBudgetId}
-                  onCategories={() => setShowCategories(true)}
+                  onMoveUp={() => handleWalletReorder(wallet.id, "up")}
+                  onMoveDown={() => handleWalletReorder(wallet.id, "down")}
                 />
-              )}
-            </TabsContent>
+              ))}
+            </ul>
+          )}
+        </TabsContent>
 
-            <TabsContent value="debts" className="slide-up stagger-1">
-              <DebtsView
-                openDebts={openDebts}
-                settledDebts={settledDebts}
-                owedToYou={netWorth.owedToYou}
-                youOwe={netWorth.youOwe}
-                owedToYouCount={netWorth.owedToYouCount}
-                youOweCount={netWorth.youOweCount}
-                today={today}
-                onAdd={() => {
-                  setEditDebt(null);
-                  setDebtOpen(true);
-                }}
-                onMarkPaid={setMarkPaidDebtId}
-                onEdit={(debt) => {
-                  setEditDebt(debt);
-                  setDebtOpen(true);
-                }}
-                onDelete={setDeleteDebtId}
-              />
-            </TabsContent>
-          </Tabs>
+        <TabsContent value="budgets" className="slide-up stagger-1">
+          {showCategories ? (
+            <div className="space-y-4">
+              <Button variant="ghost" className="-ml-3 gap-1" onClick={() => setShowCategories(false)}>
+                <ChevronLeft aria-hidden="true" /> Budgets
+              </Button>
+              <h2 className="text-h2 font-semibold">Categories</h2>
+              <div className="space-y-4">
+                {(["expense", "income"] as const).map((catType) => {
+                  const typeCats = categories.filter((c) => c.type === catType);
+                  const atLimit = typeCats.length >= 10;
+                  return (
+                    <Card key={catType}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm capitalize">
+                            {catType} Categories
+                          </CardTitle>
+                          {!atLimit && addCatType !== catType && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="min-h-11 text-xs gap-1"
+                              onClick={() => {
+                                setAddCatType(catType);
+                                setAddCatName("");
+                                setEditCatId(null);
+                              }}
+                            >
+                              <Plus className="w-3 h-3" /> Add
+                            </Button>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-1.5">
+                        {typeCats.length === 0 && addCatType !== catType && (
+                          <p className="text-sm text-muted-foreground">
+                            No categories yet.
+                          </p>
+                        )}
+                        {typeCats.map((cat) =>
+                          editCatId === cat.id ? (
+                            <div key={cat.id} className="flex items-center gap-2">
+                              <Input
+                                className="h-11 text-sm flex-1"
+                                value={editCatName}
+                                onChange={(e) => setEditCatName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleCategoryUpdate();
+                                  }
+                                  if (e.key === "Escape") setEditCatId(null);
+                                }}
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                className="min-h-11 text-xs shrink-0"
+                                disabled={!editCatName.trim()}
+                                onClick={handleCategoryUpdate}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="min-h-11 text-xs shrink-0"
+                                onClick={() => setEditCatId(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div
+                              key={cat.id}
+                              className="flex items-center gap-2 py-0.5"
+                            >
+                              <span className="flex-1 text-sm">{cat.name}</span>
+                              <button
+                                type="button"
+                                aria-label="Rename category"
+                                className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-muted-foreground"
+                                onClick={() => {
+                                  setEditCatId(cat.id);
+                                  setEditCatName(cat.name);
+                                  setAddCatType(null);
+                                }}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Delete category"
+                                className="h-11 w-11 inline-flex shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent text-destructive"
+                                onClick={() => setDeleteCatId(cat.id)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )
+                        )}
+                        {addCatType === catType && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <Input
+                              className="h-11 text-sm flex-1"
+                              placeholder="Category name"
+                              value={addCatName}
+                              onChange={(e) => setAddCatName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleCategoryAdd(catType);
+                                }
+                                if (e.key === "Escape") setAddCatType(null);
+                              }}
+                              autoFocus
+                            />
+                            <Button
+                              size="sm"
+                              className="min-h-11 text-xs shrink-0"
+                              disabled={!addCatName.trim()}
+                              onClick={() => handleCategoryAdd(catType)}
+                            >
+                              Add
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="min-h-11 text-xs shrink-0"
+                              onClick={() => setAddCatType(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        )}
+                        {atLimit && (
+                          <p className="text-xs text-muted-foreground pt-1">
+                            Limit of 10 reached.
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <BudgetsView
+              monthLabel={monthLabel}
+              budgets={budgets}
+              spent={spendingByCategory}
+              onAdd={() => {
+                setEditBudget(null);
+                setBudgetOpen(true);
+              }}
+              onEdit={(budget) => {
+                setEditBudget(budget);
+                setBudgetOpen(true);
+              }}
+              onDelete={setDeleteBudgetId}
+              onCategories={() => setShowCategories(true)}
+              onPrevMonth={() => setSelectedMonth((m) => subMonths(m, 1))}
+              onNextMonth={() => setSelectedMonth((m) => addMonths(m, 1))}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="debts" className="slide-up stagger-1">
+          <DebtsView
+            openDebts={openDebts}
+            settledDebts={settledDebts}
+            owedToYou={netWorth.owedToYou}
+            youOwe={netWorth.youOwe}
+            owedToYouCount={netWorth.owedToYouCount}
+            youOweCount={netWorth.youOweCount}
+            today={today}
+            onAdd={() => {
+              setEditDebt(null);
+              setDebtOpen(true);
+            }}
+            onMarkPaid={setMarkPaidDebtId}
+            onEdit={(debt) => {
+              setEditDebt(debt);
+              setDebtOpen(true);
+            }}
+            onDelete={setDeleteDebtId}
+          />
         </TabsContent>
       </Tabs>
 
-      {/* Add button — opens the entry form (type selector inside, expense first) */}
+      {/* Add button — Expense | Income | Transfer | Debt, expense first */}
       <button
         type="button"
-        onClick={() => openTransactionForm("expense")}
+        onClick={() => openEntry("expense")}
         className="finance-fab fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full transition-all active:scale-95 md:bottom-6 md:right-6"
-        aria-label="Add expense or income"
+        aria-label="Add expense, income, transfer or debt"
       >
         <Plus className="h-6 w-6" aria-hidden="true" />
       </button>
 
       {/* Dialogs */}
+      <AddEntryDialog
+        open={entryOpen}
+        onOpenChange={setEntryOpen}
+        kind={entryKind}
+        onKindChange={setEntryKind}
+        paymentMethods={paymentMethods}
+        findOrCreateByName={findOrCreateByName}
+        categories={categories}
+        createCategory={createCategory}
+        openDebts={openDebts}
+        onTransactionSaved={async () => {
+          await refreshAll();
+          toast.success("Transaction saved");
+        }}
+        onSaved={refreshAll}
+      />
+
       <TransactionForm
         open={txnOpen}
         onOpenChange={(v) => {
@@ -714,17 +743,8 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
         categories={categories}
         createCategory={createCategory}
         onSaved={async () => {
-          await Promise.all([fetchData(), refreshWallets()]);
+          await refreshAll();
           toast.success(editTxn ? "Transaction updated" : "Transaction saved");
-        }}
-      />
-
-      <TransferForm
-        open={transferOpen}
-        onOpenChange={setTransferOpen}
-        paymentMethods={paymentMethods}
-        onSaved={async () => {
-          await Promise.all([fetchData(), refreshWallets()]);
         }}
       />
 

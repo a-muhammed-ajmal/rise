@@ -37,7 +37,8 @@ function buildMonthlyFlow(txns: AnalyticsTransaction[], today: Date) {
     const entry = map.get(key)
     if (entry) {
       if (t.type === "income") entry.income += t.amount
-      else entry.expense += t.amount
+      // Transfers and adjustments (incl. debt movements) are not spending.
+      else if (t.type === "expense") entry.expense += t.amount
     }
   }
   return Array.from(map.entries()).map(([month, v]) => ({
@@ -56,7 +57,8 @@ function buildDailyFlow(txns: AnalyticsTransaction[], today: Date) {
     const entry = map.get(t.date)
     if (entry) {
       if (t.type === "income") entry.income += t.amount
-      else entry.expense += t.amount
+      // Transfers and adjustments (incl. debt movements) are not spending.
+      else if (t.type === "expense") entry.expense += t.amount
     }
   }
   return Array.from(map.entries()).map(([date, v]) => ({

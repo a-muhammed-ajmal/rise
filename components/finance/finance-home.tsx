@@ -2,8 +2,6 @@
 
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { NetWorthCard } from "./net-worth-card";
-import type { NetWorthSummary } from "@/lib/finance/net-worth";
 import type { MonthSummary } from "@/lib/finance/month";
 import type { AttentionItem, AttentionTarget } from "@/lib/finance/attention";
 import { formatAED, formatAEDWrappable } from "@/lib/format";
@@ -14,6 +12,41 @@ function savingPill(rate: number | null): { label: string; tone: string } {
   if (rate >= 20) return { label: `Saving ${rate}%`, tone: "finance-pill--ok" };
   if (rate >= 0) return { label: `Saving ${rate}%`, tone: "finance-pill--warn" };
   return { label: `Overspent ${-rate}%`, tone: "finance-pill--over" };
+}
+
+/** Month arrows around the month name; shared by the month card and Budgets. */
+export function MonthSwitcher({
+  monthLabel,
+  onPrevMonth,
+  onNextMonth,
+  headingId,
+}: {
+  monthLabel: string;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  /** When set, the month name is a heading with this id. */
+  headingId?: string;
+}) {
+  const name = headingId ? (
+    <h2 id={headingId} className="text-sm font-semibold whitespace-nowrap" aria-live="polite">
+      {monthLabel}
+    </h2>
+  ) : (
+    <p className="text-sm font-semibold whitespace-nowrap" aria-live="polite">
+      {monthLabel}
+    </p>
+  );
+  return (
+    <div className="flex min-w-0 items-center">
+      <Button size="icon" variant="ghost" className="-ml-2.5" onClick={onPrevMonth} aria-label="Previous month">
+        <ChevronLeft aria-hidden="true" />
+      </Button>
+      {name}
+      <Button size="icon" variant="ghost" onClick={onNextMonth} aria-label="Next month">
+        <ChevronRight aria-hidden="true" />
+      </Button>
+    </div>
+  );
 }
 
 /** This month: money in, money out, net and the saving rate. */
@@ -32,42 +65,37 @@ export function MonthCard({
   const saved = summary.net >= 0;
 
   return (
-    <section aria-labelledby="month-card-title" className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center">
-          <Button size="icon" variant="ghost" className="-ml-3" onClick={onPrevMonth} aria-label="Previous month">
-            <ChevronLeft aria-hidden="true" />
-          </Button>
-          <h2 id="month-card-title" className="text-h2 font-semibold" aria-live="polite">
-            {monthLabel}
-          </h2>
-          <Button size="icon" variant="ghost" onClick={onNextMonth} aria-label="Next month">
-            <ChevronRight aria-hidden="true" />
-          </Button>
-        </div>
+    <section aria-labelledby="month-card-title" className="finance-card min-w-0 p-3 md:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <MonthSwitcher
+          monthLabel={monthLabel}
+          onPrevMonth={onPrevMonth}
+          onNextMonth={onNextMonth}
+          headingId="month-card-title"
+        />
         <span className={cn("finance-pill", pill.tone)}>{pill.label}</span>
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-3">
-        <div className="min-w-0 rounded-md bg-[var(--color-success-tint)] p-3">
+      <div className="mt-2 grid grid-cols-2 gap-2.5">
+        <div className="finance-tile finance-tile--in min-w-0 px-3 py-2.5">
           <p className="text-label text-[var(--color-success)]">Money in</p>
-          <p className="mt-1 text-base font-semibold tabular-nums break-words text-[var(--color-success)]">
+          <p className="mt-0.5 text-sm font-semibold tabular-nums break-words text-[var(--color-success)]">
             {summary.moneyIn === 0 ? formatAED(0) : `+${formatAEDWrappable(summary.moneyIn)}`}
           </p>
         </div>
-        <div className="min-w-0 rounded-md bg-[var(--color-danger-tint)] p-3">
+        <div className="finance-tile finance-tile--out min-w-0 px-3 py-2.5">
           <p className="text-label text-[var(--color-danger)]">Money out</p>
-          <p className="mt-1 text-base font-semibold tabular-nums break-words text-[var(--color-danger)]">
+          <p className="mt-0.5 text-sm font-semibold tabular-nums break-words text-[var(--color-danger)]">
             {summary.moneyOut === 0 ? formatAED(0) : `−${formatAEDWrappable(summary.moneyOut)}`}
           </p>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-border pt-3">
-        <p className="text-sm text-muted-foreground">Net · {saved ? "Saved" : "Deficit"}</p>
+      <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-border pt-2.5">
+        <p className="text-label text-muted-foreground">Net · {saved ? "Saved" : "Deficit"}</p>
         <p
           className={cn(
-            "text-base font-semibold tabular-nums break-words",
+            "text-sm font-semibold tabular-nums break-words",
             saved ? "text-[var(--color-success)]" : "text-[var(--color-danger)]",
           )}
         >
@@ -87,15 +115,15 @@ export function AttentionCard({
   onOpen: (target: AttentionTarget) => void;
 }) {
   return (
-    <section aria-labelledby="attention-title" className="min-w-0 rounded-lg border border-border bg-card shadow-card">
-      <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-2">
-        <h2 id="attention-title" className="text-h2 font-semibold">
+    <section aria-labelledby="attention-title" className="finance-card min-w-0 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-1.5 md:px-4">
+        <h2 id="attention-title" className="text-sm font-semibold">
           Needs attention
         </h2>
         {items.length > 0 && <span className="finance-pill finance-pill--muted">{items.length}</span>}
       </div>
       {items.length === 0 ? (
-        <p className="flex items-center gap-2 px-4 pb-4 text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 px-3 pb-3 text-sm text-muted-foreground md:px-4">
           <CheckCircle2 className="size-4 shrink-0 text-[var(--color-success)]" aria-hidden="true" />
           All clear — nothing needs you right now.
         </p>
@@ -106,7 +134,7 @@ export function AttentionCard({
               <button
                 type="button"
                 onClick={() => onOpen(item.target)}
-                className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                className="flex min-h-12 w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring md:px-4"
               >
                 <span className={cn("finance-dot", item.level === "danger" ? "finance-dot--danger" : "finance-dot--warning")} aria-hidden="true" />
                 <span className="min-w-0 flex-1">
@@ -121,38 +149,5 @@ export function AttentionCard({
         </ul>
       )}
     </section>
-  );
-}
-
-/** Finance home: net worth hero, this month, and what needs attention. */
-export function FinanceHome({
-  netWorth,
-  monthLabel,
-  month,
-  onPrevMonth,
-  onNextMonth,
-  attention,
-  onOpen,
-}: {
-  netWorth: NetWorthSummary;
-  monthLabel: string;
-  month: MonthSummary;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
-  attention: readonly AttentionItem[];
-  onOpen: (target: AttentionTarget) => void;
-}) {
-  return (
-    <div className="grid min-w-0 items-start gap-4 md:grid-cols-2">
-      <div className="slide-up stagger-1 min-w-0 md:col-span-2">
-        <NetWorthCard summary={netWorth} onViewDebts={() => onOpen("debts")} />
-      </div>
-      <div className="slide-up stagger-2 min-w-0">
-        <MonthCard monthLabel={monthLabel} summary={month} onPrevMonth={onPrevMonth} onNextMonth={onNextMonth} />
-      </div>
-      <div className="slide-up stagger-3 min-w-0">
-        <AttentionCard items={attention} onOpen={onOpen} />
-      </div>
-    </div>
   );
 }

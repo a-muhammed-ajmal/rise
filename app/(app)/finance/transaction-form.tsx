@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { currentUserId } from "@/lib/supabase/current-user";
 import type { Transaction, PaymentMethod, Category } from "@/lib/types/database";
@@ -26,21 +26,17 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export function TransactionForm({
-  open,
-  onOpenChange,
-  defaultType,
-  initial,
-  onSaved,
-  paymentMethods,
-  findOrCreateByName,
-  categories,
-  createCategory,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  defaultType: "income" | "expense";
+export type TransactionKind = "income" | "expense";
+
+type TransactionFieldsProps = {
+  /** Which kind of row is being written. Controlled by the parent. */
+  type: TransactionKind;
+  /** When given, an Expense | Income switch is rendered above the fields. */
+  onTypeChange?: (type: TransactionKind) => void;
   initial: Transaction | null;
+  /** Fields reset whenever this flips to true, like the original dialog. */
+  open: boolean;
+  onCancel: () => void;
   onSaved: () => void;
   paymentMethods: PaymentMethod[];
   findOrCreateByName: (name: string) => Promise<string | null>;
@@ -49,8 +45,26 @@ export function TransactionForm({
     name: string,
     type: "income" | "expense"
   ) => Promise<Category | null>;
-}) {
-  const [type, setType] = useState<"income" | "expense">(defaultType);
+};
+
+/**
+ * The expense / income form body, without its dialog — shared by
+ * TransactionForm (edit and the dashboard quick-add) and the Finance "Add"
+ * dialog's Expense and Income tabs.
+ */
+export function TransactionFields({
+  type,
+  onTypeChange,
+  initial,
+  open,
+  onCancel,
+  onSaved,
+  paymentMethods,
+  findOrCreateByName,
+  categories,
+  createCategory,
+}: TransactionFieldsProps) {
+  const uid = useId();
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -81,7 +95,6 @@ export function TransactionForm({
 
   useEffect(() => {
     if (initial) {
-      setType(initial.type === "income" ? "income" : "expense");
       setAmount(String(initial.amount));
       setCategory(initial.category);
       setDescription(initial.description ?? "");
@@ -89,7 +102,6 @@ export function TransactionForm({
       setPaymentMethodId(initial.payment_method_id ?? "");
       setOtherName("");
     } else {
-      setType(defaultType);
       setAmount("");
       setCategory("");
       setDescription("");
@@ -99,10 +111,11 @@ export function TransactionForm({
     }
     setShowNewCat(false);
     setNewCatName("");
-  }, [initial, defaultType, open]);
+  }, [initial, open]);
 
-  function changeType(newType: "income" | "expense") {
-    setType(newType);
+  function changeType(newType: TransactionKind) {
+    if (newType === type) return;
+    onTypeChange?.(newType);
     setCategory("");
     setShowNewCat(false);
     setNewCatName("");
@@ -188,7 +201,7 @@ export function TransactionForm({
         }
       }
 
-      onOpenChange(false);
+      onCancel();
       onSaved();
     } finally {
       setSaving(false);
@@ -198,8 +211,234 @@ export function TransactionForm({
   const showOtherInput = paymentMethodId === "__other__";
 
   return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {onTypeChange && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            aria-pressed={type === "expense"}
+            onClick={() => changeType("expense")}
+            className={cn(
+              type === "expense" &&
+                "border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
+            )}
+          >
+            Expense
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            aria-pressed={type === "income"}
+            onClick={() => changeType("income")}
+            className={cn(
+              isIncome &&
+                "border-mod-finance bg-mod-finance text-white hover:bg-mod-finance/90 hover:text-white dark:text-background dark:hover:text-background"
+            )}
+          >
+            Income
+          </Button>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor={`${uid}-amount`}>Amount (AED)</Label>
+        <Input
+          id={`${uid}-amount`}
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          min="0.01"
+          placeholder="0.00"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          required
+          autoFocus
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0 space-y-2">
+          <Label>Category</Label>
+          <Select
+            items={categoryItems}
+            value={showNewCat ? "__new__" : category || ""}
+            onValueChange={(v) => {
+              if (!v) return;
+              if (v === "__new__") {
+                setShowNewCat(true);
+                setCategory("");
+              } else {
+                setCategory(v);
+                setShowNewCat(false);
+                setNewCatName("");
+              }
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue
+                placeholder={
+                  typeCategories.length === 0 ? "No categories yet" : "Select"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {typeCategories.map((c) => (
+                <SelectItem key={c.id} value={c.name}>
+                  {c.name}
+                </SelectItem>
+              ))}
+              <SelectItem value="__new__">+ New category…</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="min-w-0 space-y-2">
+          <Label>Wallet</Label>
+          <Select
+            items={walletItems}
+            value={paymentMethodId || "none"}
+            onValueChange={(v) =>
+              setPaymentMethodId(v == null || v === "none" ? "" : v)
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Optional" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">—</SelectItem>
+              {activeWallets.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.name}
+                </SelectItem>
+              ))}
+              <SelectItem value="__other__">Other…</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {showNewCat && (
+        <div className="flex gap-2">
+          <Input
+            aria-label="New category name"
+            placeholder="Category name"
+            value={newCatName}
+            onChange={(e) => setNewCatName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleCreateCategory();
+              }
+            }}
+            className="h-11 text-sm"
+            autoFocus
+          />
+          <Button
+            type="button"
+            className="min-h-11 shrink-0"
+            disabled={creatingCat || !newCatName.trim()}
+            onClick={handleCreateCategory}
+          >
+            Add
+          </Button>
+        </div>
+      )}
+
+      {showOtherInput && (
+        <div className="space-y-2">
+          <Label htmlFor={`${uid}-wallet`}>New wallet name</Label>
+          <Input
+            id={`${uid}-wallet`}
+            placeholder="e.g. Apple Pay"
+            value={otherName}
+            onChange={(e) => setOtherName(e.target.value)}
+            required={showOtherInput}
+          />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor={`${uid}-desc`}>Description (optional)</Label>
+        <Textarea
+          id={`${uid}-desc`}
+          placeholder="What was this for?"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${uid}-date`}>Date</Label>
+        <Input
+          id={`${uid}-date`}
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={saving || !category}
+          className={
+            isIncome
+              ? "bg-mod-finance text-white hover:bg-mod-finance/90 dark:text-background"
+              : "bg-destructive text-white hover:bg-destructive/90"
+          }
+        >
+          {saving
+            ? "Saving…"
+            : initial
+            ? "Update"
+            : isIncome
+            ? "Save income"
+            : "Save expense"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+export function TransactionForm({
+  open,
+  onOpenChange,
+  defaultType,
+  initial,
+  onSaved,
+  paymentMethods,
+  findOrCreateByName,
+  categories,
+  createCategory,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  defaultType: TransactionKind;
+  initial: Transaction | null;
+  onSaved: () => void;
+  paymentMethods: PaymentMethod[];
+  findOrCreateByName: (name: string) => Promise<string | null>;
+  categories: Category[];
+  createCategory: (
+    name: string,
+    type: "income" | "expense"
+  ) => Promise<Category | null>;
+}) {
+  const [type, setType] = useState<TransactionKind>(defaultType);
+  const isIncome = type === "income";
+
+  useEffect(() => {
+    if (initial) setType(initial.type === "income" ? "income" : "expense");
+    else setType(defaultType);
+  }, [initial, defaultType, open]);
+
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto md:max-w-md">
         <DialogHeader>
           <DialogTitle
             className={isIncome ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}
@@ -211,188 +450,18 @@ export function TransactionForm({
               : "Record Expense"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              aria-pressed={type === "expense"}
-              onClick={() => changeType("expense")}
-              className={cn(
-                type === "expense" &&
-                  "border-destructive bg-destructive text-white hover:bg-destructive/90 hover:text-white"
-              )}
-            >
-              Expense
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              aria-pressed={type === "income"}
-              onClick={() => changeType("income")}
-              className={cn(
-                isIncome &&
-                  "border-mod-finance bg-mod-finance text-white hover:bg-mod-finance/90 hover:text-white dark:text-background dark:hover:text-background"
-              )}
-            >
-              Income
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Amount (AED)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select
-                items={categoryItems}
-                value={showNewCat ? "__new__" : category || ""}
-                onValueChange={(v) => {
-                  if (!v) return;
-                  if (v === "__new__") {
-                    setShowNewCat(true);
-                    setCategory("");
-                  } else {
-                    setCategory(v);
-                    setShowNewCat(false);
-                    setNewCatName("");
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue
-                    placeholder={
-                      typeCategories.length === 0
-                        ? "No categories yet"
-                        : "Select"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {typeCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="__new__">+ New category…</SelectItem>
-                </SelectContent>
-              </Select>
-              {showNewCat && (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Category name"
-                    value={newCatName}
-                    onChange={(e) => setNewCatName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleCreateCategory();
-                      }
-                    }}
-                    className="h-8 text-sm"
-                    autoFocus
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-8 shrink-0"
-                    disabled={creatingCat || !newCatName.trim()}
-                    onClick={handleCreateCategory}
-                  >
-                    Add
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Wallet</Label>
-              <Select
-                items={walletItems}
-                value={paymentMethodId || "none"}
-                onValueChange={(v) =>
-                  setPaymentMethodId(v == null || v === "none" ? "" : v)
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Optional" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">—</SelectItem>
-                  {activeWallets.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="__other__">Other…</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {showOtherInput && (
-            <div className="space-y-2">
-              <Label>New wallet name</Label>
-              <Input
-                placeholder="e.g. Apple Pay"
-                value={otherName}
-                onChange={(e) => setOtherName(e.target.value)}
-                required={showOtherInput}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label>Description (optional)</Label>
-            <Textarea
-              placeholder="What was this for?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Date</Label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={saving || !category}
-              className={
-                isIncome
-                  ? "bg-mod-finance text-white hover:bg-mod-finance/90 dark:text-background"
-                  : "bg-destructive text-white hover:bg-destructive/90"
-              }
-            >
-              {saving ? "Saving…" : initial ? "Update" : "Save"}
-            </Button>
-          </DialogFooter>
-        </form>
+        <TransactionFields
+          type={type}
+          onTypeChange={setType}
+          initial={initial}
+          open={open}
+          onCancel={() => onOpenChange(false)}
+          onSaved={onSaved}
+          paymentMethods={paymentMethods}
+          findOrCreateByName={findOrCreateByName}
+          categories={categories}
+          createCategory={createCategory}
+        />
       </DialogContent>
     </Dialog>
   );

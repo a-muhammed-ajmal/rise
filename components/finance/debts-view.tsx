@@ -40,14 +40,9 @@ function DueLine({ debt, today }: { debt: Debt; today: string }) {
 function Total({ label, amount, count, tone }: { label: string; amount: number; count: number; tone: "in" | "out" }) {
   const colour = tone === "in" ? "text-[var(--color-success)]" : "text-[var(--color-danger)]";
   return (
-    <div
-      className={cn(
-        "min-w-0 rounded-lg border border-border p-4 shadow-card",
-        tone === "in" ? "bg-[var(--color-success-tint)]" : "bg-[var(--color-danger-tint)]",
-      )}
-    >
-      <p className={cn("text-label font-medium", colour)}>{label}</p>
-      <p className={cn("mt-1 text-base font-semibold tabular-nums break-words", colour)}>{formatAEDWrappable(amount)}</p>
+    <div className={cn("finance-tile min-w-0 px-3 py-2.5 shadow-card", tone === "in" ? "finance-tile--in" : "finance-tile--out")}>
+      <p className={cn("text-xs font-medium", colour)}>{label}</p>
+      <p className={cn("mt-0.5 text-sm font-semibold tabular-nums break-words", colour)}>{formatAEDWrappable(amount)}</p>
       <p className="mt-0.5 text-label text-muted-foreground">
         {count} open
       </p>
@@ -87,7 +82,7 @@ export function DebtsView({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2.5">
         <Total label="Owed to me" amount={owedToYou} count={owedToYouCount} tone="in" />
         <Total label="I owe" amount={youOwe} count={youOweCount} tone="out" />
       </div>
@@ -97,16 +92,16 @@ export function DebtsView({
       </Button>
 
       {openDebts.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
+        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-10 text-center">
           <p className="text-sm font-medium">Nothing owed either way</p>
           <p className="mt-1 text-sm text-muted-foreground">Add money you lent or borrowed to keep track of it.</p>
         </div>
       ) : (
-        <ul aria-label="Open debts" className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card shadow-card">
+        <ul aria-label="Open debts" className="finance-card divide-y divide-border overflow-hidden">
           {openDebts.map((debt) => {
             const mine = debt.type === "i_owe";
             return (
-              <li key={debt.id} className="flex items-center gap-3 py-3 pl-4">
+              <li key={debt.id} className="flex items-center gap-2.5 py-2.5 pl-3 md:pl-4">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium break-words">{debt.creditor}</p>
                   {debt.description && <p className="text-label text-muted-foreground break-words">{debt.description}</p>}
@@ -155,9 +150,9 @@ export function DebtsView({
             {showSettled ? "Hide settled" : `Show settled (${settledDebts.length})`}
           </Button>
           {showSettled && (
-            <ul aria-label="Settled debts" className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+            <ul aria-label="Settled debts" className="finance-card divide-y divide-border overflow-hidden">
               {settledDebts.map((debt) => (
-                <li key={debt.id} className="flex items-baseline justify-between gap-3 px-4 py-3 text-sm">
+                <li key={debt.id} className="flex items-baseline justify-between gap-3 px-3 py-2.5 text-sm md:px-4">
                   <div className="min-w-0">
                     <p className="break-words text-muted-foreground">{debt.creditor}</p>
                     {debt.paid_at && (

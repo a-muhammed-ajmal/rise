@@ -3,10 +3,11 @@ import { format, parseISO, subDays } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, AlertTriangle, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { CheckSquare, Heart, DollarSign, Target, Users, Phone, Mail, AlertTriangle, ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
 import { RiseLogo } from "@/components/brand/rise-logo";
 import Link from "next/link";
-import { formatAED, formatDate, todayISO, todayDOW, currentHourDubai } from "@/lib/format";
+import { formatDate, todayISO, todayDOW, currentHourDubai } from "@/lib/format";
+import { flowOf, signedAmount } from "@/lib/finance/activity";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TodayDataProvider } from "@/components/dashboard/today-data-provider";
@@ -371,10 +372,12 @@ export default async function HomePage() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center bg-mod-finance-tint shrink-0">
-                    {txn.type === "income" ? (
+                    {flowOf(txn) === "in" ? (
                       <ArrowUpRight className="w-4 h-4 text-mod-finance" aria-hidden="true" />
-                    ) : (
+                    ) : flowOf(txn) === "out" ? (
                       <ArrowDownLeft className="w-4 h-4 text-destructive" aria-hidden="true" />
+                    ) : (
+                      <ArrowLeftRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                     )}
                   </div>
                   <div className="min-w-0">
@@ -386,11 +389,11 @@ export default async function HomePage() {
                 </div>
                 <span
                   className={`text-sm font-semibold font-mono shrink-0 ${
-                    txn.type === "income" ? "text-mod-finance" : "text-destructive"
+                    flowOf(txn) === "in" ? "text-mod-finance" : flowOf(txn) === "out" ? "text-destructive" : "text-muted-foreground"
                   }`}
                 >
-                  {txn.type === "income" ? "+" : "−"}
-                  {formatAED(txn.amount)}
+                  {/* Transfers and adjustments keep their own sign, never a blanket "−". */}
+                  {signedAmount(txn)}
                 </span>
               </div>
             ))}

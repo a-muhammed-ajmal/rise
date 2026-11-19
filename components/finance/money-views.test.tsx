@@ -98,6 +98,22 @@ describe("ActivityView", () => {
     expect(screen.getAllByRole("button", { name: /^Actions for/ })).toHaveLength(ACTIVITY_PAGE + 5);
     expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
   });
+
+  it("names debt movements and transfer fees instead of calling them adjustments", () => {
+    renderActivity([
+      txn({ type: "adjustment", amount: -450, category: "Debt", description: "Lent to Ahmed", payment_method_id: "w1" }),
+      txn({ type: "adjustment", amount: 200, category: "Debt", description: "Repayment from Ahmed", payment_method_id: "w2" }),
+      txn({ type: "expense", amount: 5, category: "Transfer fee", description: "Fee · Mashreq → Savings" }),
+    ]);
+    expect(screen.getByText("Lent to Ahmed")).toBeDefined();
+    expect(screen.getByText("Debt · Mashreq")).toBeDefined();
+    expect(screen.getByText(`−${aed(450)}`)).toBeDefined();
+    expect(screen.getByText("Repayment from Ahmed")).toBeDefined();
+    expect(screen.getByText(`+${aed(200)}`)).toBeDefined();
+    expect(screen.getByText("Fee · Mashreq → Savings")).toBeDefined();
+    expect(screen.getByText(`−${aed(5)}`)).toBeDefined();
+    expect(screen.queryByText("Balance adjusted")).toBeNull();
+  });
 });
 
 function budget(id: string, category: string, amount: number, period: Budget["period"] = "monthly"): Budget {

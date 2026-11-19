@@ -65,7 +65,12 @@ function renderForm(initial: Transaction | null) {
 describe("TransactionForm", () => {
   it("shows the selected wallet by name, not its id", () => {
     renderForm(txn);
-    expect(screen.getByText("Mashreq")).toBeTruthy();
+    // Scope to the triggers: Base UI may pre-mount a closed, hidden option
+    // list, which also contains the wallet's name.
+    const shown = screen
+      .getAllByRole("combobox")
+      .map((t) => t.querySelector('[data-slot="select-value"]')?.textContent);
+    expect(shown).toContain("Mashreq");
     expect(screen.queryByText(WALLET_ID)).toBeNull();
   });
 
