@@ -1,6 +1,6 @@
 ---
 name: add-tool
-description: Scaffold a new AI tool in RISE — definition in tools.ts, handler in execute-tool.ts, test in execute-tool.test.ts
+description: Scaffold a new AI tool in RISE — definition in tools.ts, schema + handler in its lib/ai/tool-handlers/ domain module, test in execute-tool.test.ts
 ---
 
 # /add-tool [tool-name]
@@ -10,14 +10,14 @@ Scaffold a new AI tool end-to-end following the RISE tool pattern.
 ## Steps
 
 ### 1. Determine tier
-Ask: "Is this tool destructive (delete, bulk-update, bulk-delete)?"
+Ask: "Does this tool destroy data for good, or act on many rows at once?"
 - Yes → `APPROVAL_TOOLS` in `lib/ai/tools.ts`
-- No → `AUTO_TOOLS` in `lib/ai/tools.ts`
+- A soft delete (`delete_*`, recoverable with `restore_record`) → `REVERSIBLE_TOOLS`
+  — also follow "Adding a new delete tool" in CLAUDE.md
+- Neither → `AUTO_TOOLS` in `lib/ai/tools.ts`
 
 ### 2. Add tool definition to lib/ai/tools.ts
 
-Validate input with a zod schema next to the others in `execute-tool.ts`, then
-`safeParse` it in the handler and return `badInput()` on failure.
 ```ts
 // Gemini FunctionDeclaration — NOT Anthropic input_schema, NOT OpenAI format.
 // Import { Type } from '@google/genai'.
@@ -37,43 +37,67 @@ Validate input with a zod schema next to the others in `execute-tool.ts`, then
 }
 ```
 
-### 3. Add handler to lib/ai/execute-tool.ts
-Inside the `switch (name)` block, add:
+### 3. Add the schema and handler to its domain module
+
+Pick the module in `lib/ai/tool-handlers/` (tasks, projects, goals, wellness,
+finance, crm, knowledge, reflection, insights, personal-memory, recycle-bin,
+whatsapp). Declare the zod schema at the top of that module — or reuse a
+primitive from `./schemas` — and add an entry to the module's handler map:
+
 ```ts
-case "$TOOL_NAME": {
-  const { field, date } = input as { field: string; date?: string };
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Not authenticated" };
+const $ToolNameInput = z.object({
+  field: z.string().min(1),
+  date: dateStr.optional(),
+});
 
-  const targetDate = date ?? new Date().toISOString().slice(0, 10);
+export const domainHandlers = {
+  // …existing handlers…
+  $TOOL_NAME: async ({ input, supabase, userId, today }) => {
+    const p = $ToolNameInput.safeParse(input);
+    if (!p.success) return badInput();
 
-  const { data, error } = await supabase
-    .from("target_table")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("some_field", field);
+    const { data, error } = await supabase
+      .from("target_table")
+      .select("*")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .eq("some_field", p.data.field)
+      .eq("date", p.data.date ?? today);
+    if (error) return dbErr("$TOOL_NAME", error);
 
-  if (error) return { success: false, message: error.message };
-  return { success: true, message: `Done: ${data?.length ?? 0} items`, data };
-}
+    return { success: true, message: `Done: ${data?.length ?? 0} items`, data };
+  },
+} satisfies ToolHandlers;
 ```
 
+`executeTool` has already resolved the user — the handler receives `userId`,
+the `supabase` client and `today` (the Dubai date). No `getUser()` call, no
+`as` casts, no `toISOString().slice(0, 10)`. Every query filters by `user_id`
+itself (the MCP path uses a service-role client), every read filters
+`deleted_at IS NULL`, and every foreign key from input passes `isOwnedBy()`.
+The registry in `index.ts` picks the handler up from the module's map — there
+is nothing else to register.
+
 ### 4. Write tests FIRST in lib/ai/__tests__/execute-tool.test.ts
+
 Add a `describe("$TOOL_NAME")` block covering:
+
 - Happy path (returns correct data)
 - Not authenticated (returns `{ success: false }`)
-- Supabase error (returns `{ success: false, message: error.message }`)
+- Supabase error (returns the generic `dbErr()` message)
 - Optional: edge cases (empty result, date defaulting to today)
+
+`lib/ai/__tests__/tool-handlers.test.ts` fails until the declaration and the
+handler both exist.
 
 ### 5. Run /verify
 All 3 gates must pass before done.
 
 ## Checklist
-- [ ] Tool in correct tier (AUTO vs APPROVAL)
-- [ ] Description is specific enough for Claude to call it at the right time
-- [ ] Handler calls `getUser()` and returns early if no user
-- [ ] All queries filter by `user_id`
+- [ ] Tool in correct tier (AUTO / REVERSIBLE / APPROVAL)
+- [ ] Description is specific enough for the model to call it at the right time
+- [ ] Input validated with `safeParse`; `badInput()` on failure
+- [ ] All queries filter by `user_id` and `deleted_at IS NULL`
 - [ ] Tests written before handler (TDD)
 - [ ] Tool count assertion in `lib/ai/__tests__/tools.test.ts` updated
 - [ ] `/verify` passes (≥85% coverage, 0 lint warnings, build clean)

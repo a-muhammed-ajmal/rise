@@ -4,33 +4,31 @@ import { useState, useEffect, useCallback, useId } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { currentUserId } from "@/lib/supabase/current-user";
 import type { Project, ProjectCategory } from "@/lib/types/database";
+import { loadProjects } from "@/lib/data/tasks";
+import { isFreshSnapshot, type ServerSnapshot } from "@/lib/data/snapshot";
 
-export function useProjects() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+/** `initial` is a server-loaded snapshot, used only while fresh. */
+export function useProjects(initial?: ServerSnapshot<Project[]> | null) {
+  // Captured once: the snapshot only describes the first render.
+  const [snapshot] = useState(initial);
+  const [projects, setProjects] = useState<Project[]>(snapshot?.data ?? []);
+  const [loading, setLoading] = useState(!snapshot);
   const [error, setError] = useState<string | null>(null);
   const id = useId();
   const channelName = `projects-${id.replace(/:/g, "")}`;
 
   const fetchProjects = useCallback(async () => {
-    const supabase = createClient();
-    const { data, error: queryError } = await supabase
-      .from("projects")
-      .select("*")
-      .is("deleted_at", null)
-      .eq("status", "active")
-      .order("name");
-    if (queryError) {
-      setError(queryError.message);
-    } else {
-      setProjects(data ?? []);
+    try {
+      setProjects(await loadProjects(createClient()));
       setError(null);
+    } catch (queryError) {
+      setError(queryError instanceof Error ? queryError.message : String(queryError));
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchProjects();
+    if (!isFreshSnapshot(snapshot)) fetchProjects();
 
     const supabase = createClient();
     const channel = supabase
@@ -39,7 +37,7 @@ export function useProjects() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [fetchProjects, channelName]);
+  }, [fetchProjects, channelName, snapshot]);
 
   async function createProject(
     name: string,

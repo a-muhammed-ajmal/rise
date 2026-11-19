@@ -227,29 +227,123 @@ describe("compactMessages", () => {
     delete process.env.VOYAGE_API_KEY;
   });
 
-  it("does nothing when messages below threshold", async () => {
-    const query = createMockQuery();
-    setupMockSupabase({ queries: { ai_memory: query } });
-
-    await compactMessages("user-1", [{ role: "user", content: "hi" }]);
-    expect(query.insert).not.toHaveBeenCalled();
-  });
-
-  it("stores summary when messages exceed threshold", async () => {
-    const query = createMockQuery();
-    setupMockSupabase({ queries: { ai_memory: query } });
-
-    const messages = Array.from({ length: 25 }, (_, i) => ({
+  const conversation = (length: number) =>
+    Array.from({ length }, (_, i) => ({
       role: i % 2 === 0 ? "user" : "assistant",
       content: `Message ${i}`,
     }));
 
-    await compactMessages("user-1", messages);
-    expect(query.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: expect.stringContaining("Conversation summary"),
-      }),
+  // An ai_memory table that remembers what was inserted, so the duplicate
+  // check behaves like the real one across calls.
+  function setupStatefulMemory() {
+    const stored: string[] = [];
+    const from = vi.fn(() => {
+      let contentFilter: unknown = null;
+      const q: Record<string, unknown> = {};
+      q.select = vi.fn(() => q);
+      q.eq = vi.fn((column: string, value: unknown) => {
+        if (column === "content") contentFilter = value;
+        return q;
+      });
+      q.limit = vi.fn(() =>
+        Promise.resolve({
+          data: stored
+            .filter((content) => content === contentFilter)
+            .map(() => ({ id: "existing" })),
+          error: null,
+        }),
+      );
+      q.insert = vi.fn((row: { content: string }) => {
+        stored.push(row.content);
+        return Promise.resolve({ error: null });
+      });
+      return q;
+    });
+    vi.mocked(createClient).mockResolvedValue({ from } as never);
+    return stored;
+  }
+
+  it("does nothing until a full block is older than the recent messages", async () => {
+    const query = createMockQuery();
+    setupMockSupabase({ queries: { ai_memory: query } });
+
+    await compactMessages("user-1", conversation(19));
+
+    expect(query.select).not.toHaveBeenCalled();
+    expect(query.insert).not.toHaveBeenCalled();
+  });
+
+  it("stores the first block of ten once twenty messages exist", async () => {
+    const query = createMockQuery();
+    setupMockSupabase({ queries: { ai_memory: query } });
+
+    await compactMessages("user-1", conversation(20));
+
+    expect(query.insert).toHaveBeenCalledTimes(1);
+    const row = query.insert.mock.calls[0][0];
+    expect(row.memory_type).toBe("summary");
+    expect(row.content).toContain("Earlier conversation:");
+    expect(row.content).toContain("Message 0");
+    expect(row.content).toContain("Message 9");
+    expect(row.content).not.toContain("Message 10");
+    expect(row.metadata).toMatchObject({ summary: true, block_index: 0 });
+  });
+
+  it("numbers blocks by absolute position once the window has slid", async () => {
+    const query = createMockQuery();
+    setupMockSupabase({ queries: { ai_memory: query } });
+
+    // The client left out 13 earlier messages: the window is 13..52.
+    await compactMessages("user-1", conversation(53).slice(13), 13);
+
+    // The oldest complete block still in the window is 20..29.
+    const row = query.insert.mock.calls[0][0];
+    expect(row.content).toContain("Message 20");
+    expect(row.content).toContain("Message 29");
+    expect(row.content).not.toContain("Message 19");
+    expect(row.content).not.toContain("Message 30");
+    expect(row.metadata).toMatchObject({ block_index: 2 });
+  });
+
+  it("skips a block that is already stored", async () => {
+    const query = createMockQuery([{ id: "existing" }]);
+    setupMockSupabase({ queries: { ai_memory: query } });
+
+    await compactMessages("user-1", conversation(25));
+
+    expect(query.select).toHaveBeenCalledWith("id");
+    expect(query.eq).toHaveBeenCalledWith("memory_type", "summary");
+    expect(query.insert).not.toHaveBeenCalled();
+  });
+
+  it("stores each block exactly once across a long sliding conversation", async () => {
+    const stored = setupStatefulMemory();
+    const full: { role: string; content: string }[] = [];
+
+    // 40 exchanges, sending the last 40 messages each time like the client.
+    for (let i = 0; i < 40; i++) {
+      full.push({ role: "user", content: `Message ${full.length}` });
+      const window = full.slice(-40);
+      await compactMessages("user-1", window, full.length - window.length);
+      full.push({ role: "assistant", content: `Message ${full.length}` });
+    }
+
+    expect(stored).toHaveLength(5);
+    expect(new Set(stored).size).toBe(5);
+    stored.forEach((content, block) => {
+      expect(content).toContain(`Message ${block * 10}\n`);
+      expect(content).toContain(`Message ${block * 10 + 9}`);
+    });
+  });
+
+  it("throws when the duplicate check fails", async () => {
+    const query = createMockQuery(null, { message: "db down" });
+    setupMockSupabase({ queries: { ai_memory: query } });
+
+    await expect(compactMessages("user-1", conversation(20))).rejects.toThrow(
+      "Could not check stored memory: db down",
     );
+    expect(query.insert).not.toHaveBeenCalled();
   });
 });
 

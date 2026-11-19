@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act, waitFor, cleanup } from "@testing-library/react";
 
 const mockChannel = {
   on: vi.fn().mockReturnThis(),
@@ -206,5 +206,82 @@ describe("useTasks", () => {
     const { result } = renderHook(() => useTasks("all"));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(typeof result.current.refresh).toBe("function");
+  });
+});
+
+describe("useTasks with a server snapshot", () => {
+  const serverTask = {
+    id: "t-srv",
+    title: "From the server",
+    status: "todo",
+    is_completed: false,
+    labels: [],
+    subtasks: [],
+    attachments: [],
+  };
+
+  function snapshot(
+    filter: "today" | "all",
+    loadedAt: number = Date.now(),
+  ) {
+    return {
+      data: { filter, projectId: null, tasks: [serverTask] },
+      loadedAt,
+    } as never;
+  }
+
+  beforeEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+    setupQueryResolve([]);
+  });
+
+  it("captures the snapshot once, so an inline snapshot does not refetch every render", async () => {
+    const { rerender } = renderHook(() =>
+      useTasks("all", undefined, snapshot("today")),
+    );
+    await waitFor(() => expect(mockSupabase.from).toHaveBeenCalledTimes(1));
+    rerender();
+    rerender();
+    expect(mockSupabase.from).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders a fresh snapshot for its own view without fetching", () => {
+    const { result } = renderHook(() =>
+      useTasks("today", undefined, snapshot("today")),
+    );
+    expect(result.current.loading).toBe(false);
+    expect(result.current.tasks).toEqual([serverTask]);
+    expect(mockSupabase.from).not.toHaveBeenCalled();
+    // Realtime still subscribes, so later changes keep arriving.
+    expect(mockSupabase.channel).toHaveBeenCalled();
+  });
+
+  it("fetches when the snapshot is stale", async () => {
+    renderHook(() =>
+      useTasks("today", undefined, snapshot("today", Date.now() - 60_000)),
+    );
+    await waitFor(() => expect(mockSupabase.from).toHaveBeenCalledWith("tasks"));
+  });
+
+  it("fetches when the snapshot answers a different view", async () => {
+    renderHook(() => useTasks("all", undefined, snapshot("today")));
+    await waitFor(() => expect(mockSupabase.from).toHaveBeenCalledWith("tasks"));
+  });
+
+  it("refetches on returning to the snapshot's view instead of trusting it again", async () => {
+    const snap = snapshot("today");
+    const { rerender } = renderHook(
+      ({ filter }: { filter: "today" | "all" }) => useTasks(filter, undefined, snap),
+      { initialProps: { filter: "today" } },
+    );
+    expect(mockSupabase.from).not.toHaveBeenCalled();
+
+    rerender({ filter: "all" });
+    await waitFor(() => expect(mockSupabase.from).toHaveBeenCalledTimes(1));
+
+    rerender({ filter: "today" });
+    await waitFor(() => expect(mockSupabase.from).toHaveBeenCalledTimes(2));
+    expect(mockQueryChain.or).toHaveBeenCalled();
   });
 });

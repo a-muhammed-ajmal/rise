@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { GEMINI_MODEL } from "@/lib/ai/models";
 import type { ChatAttachment, ChatAttachmentCategory } from "@/lib/types/database";
 
 // ─── MIME allowlists ───────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export async function transcribeAudio(
   const audioB64 = buf.toString("base64");
 
   const result = await genai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: GEMINI_MODEL,
     contents: [
       {
         role: "user",

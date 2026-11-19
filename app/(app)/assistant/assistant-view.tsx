@@ -1,0 +1,1234 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { AttachmentChip } from "@/components/assistant/attachment-chip";
+import { AudioRecorder } from "@/components/assistant/audio-recorder";
+import type { AttachmentStatus } from "@/components/assistant/attachment-chip";
+import type { ChatAttachment, Database, Json } from "@/lib/types/database";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  Send,
+  AlertTriangle,
+  CheckCircle,
+  X,
+  Loader2,
+  Paperclip,
+  Mic,
+  FileText,
+  Music,
+  SquarePen,
+} from "lucide-react";
+import { RiseLogo } from "@/components/brand/rise-logo";
+import { cn } from "@/lib/utils";
+import { loadLatestConversation, type ConversationData } from "@/lib/data/modules";
+import { isFreshSnapshot, type ServerSnapshot } from "@/lib/data/snapshot";
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+// `context` is the server's compact summary of what a tool returned (ids
+// included). It is kept with the message and sent back as history so later
+// turns can refer to those records ("delete the second one").
+type ToolResultEntry = {
+  tool: string;
+  message: string;
+  success: boolean;
+  context?: string;
+};
+
+type MessageParam = {
+  role: "user" | "assistant" | "model";
+  content: string;
+  attachments?: ChatAttachment[];
+  toolResults?: { tool: string; success: boolean; context?: string }[];
+};
+
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  toolResults?: ToolResultEntry[];
+  attachments?: ChatAttachment[];
+};
+
+type PendingApproval = {
+  tool: { id: string; name: string; input: Record<string, unknown> };
+  token: string;
+  // Why the server gated an otherwise automatic tool (amount, attachment).
+  reason?: string;
+};
+
+type PendingAttachment = {
+  id: string;
+  file: File;
+  status: AttachmentStatus;
+  progress: number;
+  errorMessage?: string;
+  previewUrl?: string;
+  result?: ChatAttachment;
+};
+
+const UploadAttachmentSchema = z.object({
+  storage_path: z.string().min(1),
+  filename: z.string().min(1),
+  mime_type: z.string().min(1),
+  size_bytes: z.number().int().nonnegative(),
+  category: z.enum(["image", "file", "audio"]),
+  extracted_text: z.string().optional(),
+  transcript: z.string().optional(),
+});
+
+const ChatAttachmentSchema = UploadAttachmentSchema.extend({
+  id: z.string().min(1),
+});
+
+const ToolResultSchema = z.object({
+  tool: z.string(),
+  message: z.string(),
+  success: z.boolean(),
+  context: z.string().optional(),
+});
+
+const MessageSchema = z.object({
+  id: z.string().min(1),
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+  toolResults: z.array(ToolResultSchema).optional(),
+  attachments: z.array(ChatAttachmentSchema).optional(),
+});
+
+const MessagesSchema = z.array(MessageSchema);
+
+const ApprovalToolSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  input: z.record(z.string(), z.unknown()),
+});
+
+const StreamEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({
+    type: z.literal("tool_result"),
+    tool: z.string(),
+    result: z.object({ message: z.string(), success: z.boolean() }),
+    context: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("error"),
+    message: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("approval_required"),
+    tool: ApprovalToolSchema,
+    token: z.string().min(1),
+    reason: z.string().optional(),
+  }),
+]);
+
+const ApprovalResponseSchema = z.object({
+  result: z.object({ message: z.string(), success: z.boolean() }),
+  context: z.string().optional(),
+});
+
+/** A chat request the server refused before streaming anything. */
+class ChatRequestError extends Error {
+  constructor(readonly status: number) {
+    super(`Chat request failed with status ${status}`);
+  }
+}
+
+function chatErrorMessage(status: number): string {
+  if (status === 429)
+    return "You're sending messages too quickly. Wait a moment, then try again.";
+  if (status === 401)
+    return "Your session has expired. Sign in again to keep chatting.";
+  return "Sorry, something went wrong. Please try again.";
+}
+
+// A 403 on the approval leg means the signed token was rejected: it expired
+// (they last two minutes) or was already used.
+function approvalErrorMessage(status: number): string {
+  if (status === 403)
+    return "That approval expired or was already used. Ask RISE again to redo it.";
+  if (status === 401)
+    return "Your session has expired. Sign in again, then ask RISE to redo it.";
+  return "That action didn't run. Please ask RISE again.";
+}
+
+function attachmentsToJson(attachments: ChatAttachment[]): Json[] {
+  return attachments.map((attachment) => {
+    const result: { [key: string]: Json } = {
+      id: attachment.id,
+      storage_path: attachment.storage_path,
+      filename: attachment.filename,
+      mime_type: attachment.mime_type,
+      size_bytes: attachment.size_bytes,
+      category: attachment.category,
+    };
+    if (attachment.extracted_text !== undefined) {
+      result.extracted_text = attachment.extracted_text;
+    }
+    if (attachment.transcript !== undefined) {
+      result.transcript = attachment.transcript;
+    }
+    return result;
+  });
+}
+
+function messagesToJson(messages: Message[]): Json {
+  return messages.map((message) => {
+    const result: { [key: string]: Json } = {
+      id: message.id,
+      role: message.role,
+      content: message.content,
+    };
+    if (message.toolResults) {
+      result.toolResults = message.toolResults.map((toolResult) => {
+        const entry: { [key: string]: Json } = {
+          tool: toolResult.tool,
+          message: toolResult.message,
+          success: toolResult.success,
+        };
+        if (toolResult.context !== undefined) entry.context = toolResult.context;
+        return entry;
+      });
+    }
+    if (message.attachments) {
+      result.attachments = attachmentsToJson(message.attachments);
+    }
+    return result;
+  });
+}
+
+// ─── Constants ──────────────────────────────────────────────────────────────
+
+const TOOL_LABELS: Record<string, string> = {
+  restore_record: "Restore deleted record",
+  purge_record: "Permanently destroy record",
+  bulk_delete_records: "Delete multiple records",
+  forget_user_fact: "Forget a stored fact",
+  delete_task: "Delete task",
+  bulk_complete_tasks: "Complete multiple tasks",
+  delete_project: "Delete project",
+  delete_goal: "Delete goal",
+  delete_milestone: "Delete milestone",
+  delete_habit: "Delete habit",
+  update_transaction: "Update transaction",
+  delete_transaction: "Delete transaction",
+  delete_budget: "Delete budget",
+  update_debt: "Update debt record",
+  delete_debt: "Delete debt record",
+  delete_contact: "Delete contact",
+  delete_interaction: "Delete interaction",
+  delete_note: "Delete note",
+  delete_document: "Delete document",
+  delete_journal_entry: "Delete journal entry",
+  delete_review: "Delete review",
+  delete_link: "Delete link",
+  delete_habit_log: "Undo habit log",
+  delete_focus_session: "Delete focus session",
+  log_expense: "Log expense",
+  log_income: "Log income",
+  bulk_update_task_priority: "Change priority on multiple tasks",
+  create_transfer: "Transfer between wallets",
+  create_adjustment: "Adjust wallet balance",
+};
+
+const ACCEPTED_TYPES =
+  ".jpg,.jpeg,.png,.webp,.heic,.pdf,.doc,.docx,.csv,.xlsx";
+
+// How many messages to send in full to the API (older ones rely on memory retrieval)
+const API_HISTORY_LIMIT = 40;
+
+// ─── Attachment helpers ──────────────────────────────────────────────────────
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ─── Message attachment display ──────────────────────────────────────────────
+
+function MessageAttachments({ attachments }: { attachments: ChatAttachment[] }) {
+  const supabase = createClient();
+
+  if (!attachments.length) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {attachments.map((att) => {
+        if (att.category === "image") {
+          return (
+            <ImageAttachmentView
+              key={att.id}
+              att={att}
+              supabase={supabase}
+            />
+          );
+        }
+        if (att.category === "audio") {
+          return (
+            <AudioAttachmentView
+              key={att.id}
+              att={att}
+              supabase={supabase}
+            />
+          );
+        }
+        return (
+          <FileAttachmentView
+            key={att.id}
+            att={att}
+            supabase={supabase}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function ImageAttachmentView({
+  att,
+  supabase,
+}: {
+  att: ChatAttachment;
+  supabase: SupabaseClient<Database>;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.storage
+      .from("chat-attachments")
+      .createSignedUrl(att.storage_path, 3600)
+      .then(({ data }: { data: { signedUrl: string } | null }) => {
+        if (data?.signedUrl) setUrl(data.signedUrl);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [att.storage_path]);
+
+  return (
+    <div className="rounded-lg overflow-hidden border border-border">
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt={att.filename}
+          className="max-w-[200px] max-h-[200px] object-cover"
+        />
+      ) : (
+        <div className="w-16 h-16 bg-muted flex items-center justify-center rounded-lg">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FileAttachmentView({
+  att,
+  supabase,
+}: {
+  att: ChatAttachment;
+  supabase: SupabaseClient<Database>;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.storage
+      .from("chat-attachments")
+      .createSignedUrl(att.storage_path, 3600)
+      .then(({ data }: { data: { signedUrl: string } | null }) => {
+        if (data?.signedUrl) setUrl(data.signedUrl);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [att.storage_path]);
+
+  return (
+    <a
+      href={url ?? "#"}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border-[1.5px] border-border shadow-card text-xs hover:border-[var(--border-brand)] transition-colors"
+    >
+      <FileText className="w-4 h-4 shrink-0 text-muted-foreground" />
+      <span className="truncate max-w-[140px]">{att.filename}</span>
+      <span className="text-muted-foreground shrink-0">
+        {formatBytes(att.size_bytes)}
+      </span>
+    </a>
+  );
+}
+
+function AudioAttachmentView({
+  att,
+  supabase,
+}: {
+  att: ChatAttachment;
+  supabase: SupabaseClient<Database>;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
+
+  useEffect(() => {
+    supabase.storage
+      .from("chat-attachments")
+      .createSignedUrl(att.storage_path, 3600)
+      .then(({ data }: { data: { signedUrl: string } | null }) => {
+        if (data?.signedUrl) setUrl(data.signedUrl);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [att.storage_path]);
+
+  return (
+    <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border-[1.5px] border-border shadow-card text-xs">
+        <Music className="w-4 h-4 shrink-0 text-brand-text" />
+        {url ? (
+          <audio controls className="h-8 flex-1" title={att.filename}>
+            <source src={url} type={att.mime_type} />
+          </audio>
+        ) : (
+          <span className="text-muted-foreground">{att.filename}</span>
+        )}
+      </div>
+      {att.transcript && (
+        <div className="px-3">
+          <button
+            type="button"
+            onClick={() => setShowTranscript((v) => !v)}
+            className="text-xs text-brand-text hover:underline"
+          >
+            {showTranscript ? "Hide transcript" : "Show transcript"}
+          </button>
+          {showTranscript && (
+            <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+              {att.transcript}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
+
+function storedMessages(conversation: ConversationData | undefined): Message[] {
+  const stored = MessagesSchema.safeParse(conversation?.messages);
+  return stored.success ? stored.data : [];
+}
+
+function AssistantContent({ initial }: { initial: ServerSnapshot<ConversationData> | null }) {
+  const searchParams = useSearchParams();
+  const initialQ = searchParams.get("q");
+  const supabase = createClient();
+
+  // Decided once, at mount. Both the first loading state and the reload effect
+  // read it: if they disagreed, a `?q=` deep link — which auto-sends when
+  // history finishes loading — could be sent twice.
+  const [snapshotFresh] = useState(() => isFreshSnapshot(initial));
+  const [messages, setMessages] = useState<Message[]>(() =>
+    storedMessages(initial?.data),
+  );
+  const [conversationId, setConversationId] = useState<string | null>(
+    initial?.data?.id ?? null,
+  );
+  const [historyLoading, setHistoryLoading] = useState(!snapshotFresh);
+  const [input, setInput] = useState(initialQ ?? "");
+  const [loading, setLoading] = useState(false);
+  // One message can gate several actions (e.g. three delete_task calls), so
+  // approvals queue and are confirmed one at a time, oldest first.
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(
+    [],
+  );
+  const pendingApproval = pendingApprovals[0] ?? null;
+
+  // Attachment state
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
+  const [sessionId] = useState(() => crypto.randomUUID());
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // ── Load or create the conversation on mount ───────────────────────────────
+
+  // The server snapshot covers the first paint; reload only when it is stale
+  // (a Router Cache revisit) or missing (the server load failed).
+  useEffect(() => {
+    if (snapshotFresh) return;
+    async function loadConversation() {
+      setHistoryLoading(true);
+      try {
+        const userId = await currentUserId();
+        if (!userId) return;
+        const conversation = await loadLatestConversation(supabase, userId);
+        if (conversation) {
+          setConversationId(conversation.id);
+          const stored = storedMessages(conversation);
+          if (stored.length > 0) setMessages(stored);
+        }
+      } catch (error) {
+        console.error("[assistant] conversation load failed:", error);
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+    void loadConversation();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-send if query param provided (only after history loaded)
+  useEffect(() => {
+    if (!historyLoading && initialQ) {
+      void sendMessage(initialQ);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyLoading]);
+
+  // ── Persist messages to Supabase (debounced 800ms) ────────────────────────
+
+  const persistMessages = useCallback(async (msgs: Message[], convId: string | null) => {
+    const userId = await currentUserId();
+    if (!userId) return;
+
+    if (convId) {
+      const { error } = await supabase
+        .from("ai_conversations")
+        .update({ messages: messagesToJson(msgs) })
+        .eq("id", convId)
+        .eq("user_id", userId);
+      if (error) console.error("[assistant] conversation update failed:", error.message);
+    } else {
+      const { data, error } = await supabase
+        .from("ai_conversations")
+        .insert({
+          user_id: userId,
+          messages: messagesToJson(msgs),
+        })
+        .select("id")
+        .single();
+      if (error) {
+        console.error("[assistant] conversation create failed:", error.message);
+        return;
+      }
+      if (data) setConversationId(data.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function scheduleSave(msgs: Message[], convId: string | null) {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void persistMessages(msgs, convId);
+    }, 800);
+  }
+
+  // ── New Chat ───────────────────────────────────────────────────────────────
+
+  async function startNewChat() {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    setMessages([]);
+    setConversationId(null);
+    setPendingApprovals([]);
+    setPendingAttachments([]);
+    setInput("");
+  }
+
+  // ── File upload ────────────────────────────────────────────────────────────
+
+  async function uploadFile(file: File, pendingId: string) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("session_id", sessionId);
+
+    try {
+      const res = await fetch("/api/ai/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        setPendingAttachments((prev) =>
+          prev.map((a) =>
+            a.id === pendingId
+              ? { ...a, status: "error", errorMessage: errText }
+              : a,
+          ),
+        );
+        return;
+      }
+
+      const result = UploadAttachmentSchema.safeParse(await res.json());
+      if (!result.success) {
+        setPendingAttachments((prev) =>
+          prev.map((attachment) =>
+            attachment.id === pendingId
+              ? {
+                  ...attachment,
+                  status: "error",
+                  errorMessage: "The upload response was invalid. Please try again.",
+                }
+              : attachment,
+          ),
+        );
+        return;
+      }
+      setPendingAttachments((prev) =>
+        prev.map((a) =>
+          a.id === pendingId
+            ? {
+                ...a,
+                status: "done",
+                progress: 100,
+                result: { ...result.data, id: pendingId },
+              }
+            : a,
+        ),
+      );
+    } catch {
+      setPendingAttachments((prev) =>
+        prev.map((a) =>
+          a.id === pendingId
+            ? {
+                ...a,
+                status: "error",
+                errorMessage: "Upload failed. Please try again.",
+              }
+            : a,
+        ),
+      );
+    }
+  }
+
+  function handleFilesSelected(files: FileList) {
+    const newPending: PendingAttachment[] = Array.from(files).map((file) => {
+      const id = crypto.randomUUID();
+      const previewUrl =
+        file.type.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : undefined;
+      return { id, file, status: "uploading", progress: 0, previewUrl };
+    });
+
+    setPendingAttachments((prev) => [...prev, ...newPending]);
+
+    for (const pending of newPending) {
+      void uploadFile(pending.file, pending.id);
+    }
+  }
+
+  function handleAudioComplete(blob: Blob, mimeType: string) {
+    setShowAudioRecorder(false);
+    const id = crypto.randomUUID();
+    const file = new File([blob], `recording-${Date.now()}.webm`, {
+      type: mimeType,
+    });
+    setPendingAttachments((prev) => [
+      ...prev,
+      { id, file, status: "uploading", progress: 0 },
+    ]);
+    void uploadFile(file, id);
+  }
+
+  function removeAttachment(id: string) {
+    setPendingAttachments((prev) => {
+      const removed = prev.find((a) => a.id === id);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter((a) => a.id !== id);
+    });
+  }
+
+  // ── Send message ───────────────────────────────────────────────────────────
+
+  async function sendMessage(userText: string) {
+    const readyAttachments = pendingAttachments
+      .flatMap((attachment) =>
+        attachment.status === "done" && attachment.result
+          ? [attachment.result]
+          : [],
+      );
+
+    const hasContent = userText.trim() || readyAttachments.length > 0;
+    if (!hasContent || loading) return;
+
+    setInput("");
+    setPendingAttachments([]);
+    setLoading(true);
+
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: userText,
+      attachments: readyAttachments.length ? readyAttachments : undefined,
+    };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+
+    // Send only last N messages to keep payload bounded
+    const apiMessages: MessageParam[] = newMessages.slice(-API_HISTORY_LIMIT).map((m) => ({
+      role: m.role,
+      content: m.content,
+      attachments: m.attachments,
+      toolResults: m.toolResults?.map(({ tool, success, context }) => ({
+        tool,
+        success,
+        context,
+      })),
+    }));
+
+    const assistantId = crypto.randomUUID();
+    let assistantText = "";
+    const toolResults: Message["toolResults"] = [];
+
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: apiMessages,
+          historyOffset: newMessages.length - apiMessages.length,
+        }),
+      });
+
+      // A refusal (rate limit, expired session) has no SSE stream to read.
+      if (!res.ok || !res.body) throw new ChatRequestError(res.status);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split("\n");
+        sseBuffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6);
+          if (raw === "[DONE]") continue;
+
+          let rawEvent: unknown;
+          try {
+            rawEvent = JSON.parse(raw);
+          } catch {
+            continue;
+          }
+          const parsedEvent = StreamEventSchema.safeParse(rawEvent);
+          if (!parsedEvent.success) continue;
+          const event = parsedEvent.data;
+
+          if (event.type === "text") {
+            assistantText += event.text;
+            setMessages((prev) => {
+              const updated = [...prev];
+              const idx = updated.findIndex((m) => m.id === assistantId);
+              if (idx >= 0) {
+                updated[idx] = { ...updated[idx], content: assistantText };
+              } else {
+                updated.push({
+                  id: assistantId,
+                  role: "assistant",
+                  content: assistantText,
+                  toolResults: [],
+                });
+              }
+              return updated;
+            });
+          }
+
+          if (event.type === "tool_result") {
+            toolResults.push({
+              tool: event.tool,
+              message: event.result.message,
+              success: event.result.success,
+              context: event.context,
+            });
+            setMessages((prev) => {
+              const updated = [...prev];
+              const idx = updated.findIndex((m) => m.id === assistantId);
+              if (idx >= 0) {
+                updated[idx] = {
+                  ...updated[idx],
+                  toolResults: [...toolResults],
+                };
+              } else {
+                updated.push({
+                  id: assistantId,
+                  role: "assistant",
+                  content: "",
+                  toolResults: [...toolResults],
+                });
+              }
+              return updated;
+            });
+          }
+
+          if (event.type === "error") {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: assistantId,
+                role: "assistant",
+                content: event.message ?? "Sorry, something went wrong. Please try again.",
+              },
+            ]);
+          }
+
+          if (event.type === "approval_required") {
+            const approval: PendingApproval = {
+              tool: event.tool,
+              token: event.token,
+              reason: event.reason,
+            };
+            setPendingApprovals((prev) => [...prev, approval]);
+          }
+        }
+      }
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantId,
+          role: "assistant",
+          content:
+            err instanceof ChatRequestError
+              ? chatErrorMessage(err.status)
+              : "Sorry, something went wrong. Please try again.",
+        },
+      ]);
+    }
+
+    setLoading(false);
+
+    // Persist final state after response completes
+    setMessages((finalMsgs) => {
+      scheduleSave(finalMsgs, conversationId);
+      return finalMsgs;
+    });
+  }
+
+  function dismissApproval(token: string) {
+    setPendingApprovals((prev) => prev.filter((a) => a.token !== token));
+  }
+
+  async function handleApprove() {
+    const approval = pendingApproval;
+    if (!approval) return;
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [],
+          approvalToken: approval.token,
+        }),
+      });
+
+      // Rate limiting runs before the token is checked, so a 429 leaves the
+      // token unused: keep the approval queued so it can be retried.
+      if (res.status === 429) {
+        toast.error("Too many requests. Wait a moment, then approve again.");
+        return;
+      }
+      dismissApproval(approval.token);
+      if (!res.ok) {
+        toast.error(approvalErrorMessage(res.status));
+        return;
+      }
+
+      const data = ApprovalResponseSchema.safeParse(await res.json());
+      if (!data.success) {
+        toast.error(
+          "RISE couldn't confirm that action ran. Check the record before asking again.",
+        );
+        return;
+      }
+      setMessages((prev) => {
+        const updated = [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant" as const,
+            content: data.data.result.message,
+            toolResults: [
+              {
+                tool: approval.tool.name,
+                message: data.data.result.message,
+                success: data.data.result.success,
+                context: data.data.context,
+              },
+            ],
+          },
+        ];
+        scheduleSave(updated, conversationId);
+        return updated;
+      });
+    } catch {
+      // The request may or may not have reached the server, and the token is
+      // single-use either way, so the approval cannot be retried as-is.
+      dismissApproval(approval.token);
+      toast.error(
+        "Couldn't reach RISE to confirm that action. Check the record, then ask again if needed.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const QUICK_PROMPTS = [
+    "What should I focus on today?",
+    "Show my daily briefing",
+    "How are my goals progressing?",
+    "Log AED 30 expense for lunch",
+  ];
+
+  const isUploading = pendingAttachments.some((a) => a.status === "uploading");
+  const hasReadyContent =
+    input.trim() ||
+    pendingAttachments.some((a) => a.status === "done");
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] max-w-2xl mx-auto">
+      {/* Messages */}
+      <ScrollArea className="flex-1 p-4">
+        {historyLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full space-y-4 py-12 slide-up">
+            <RiseLogo
+              plate
+              className="w-16 h-16 rounded-2xl shadow-md logo-float"
+            />
+            <div className="text-center space-y-1">
+              <h2 className="font-semibold text-lg">RISE AI Assistant</h2>
+              <p className="text-sm text-muted-foreground">
+                Ask me anything. I can read and act on all your data.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 w-full max-w-md">
+              {QUICK_PROMPTS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => void sendMessage(p)}
+                  className="bg-card border-[1.5px] border-border shadow-card card-hover tappable text-left text-sm px-3 py-2.5 rounded-xl"
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 pb-4">
+            {/* New Chat button — shown inline above messages when history exists */}
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => void startNewChat()}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted"
+              >
+                <SquarePen className="w-3.5 h-3.5" />
+                New chat
+              </button>
+            </div>
+
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={cn(
+                  "flex",
+                  msg.role === "user" ? "justify-end" : "justify-start",
+                )}
+              >
+                <div
+                  className={cn(
+                    "max-w-[85%] space-y-2",
+                    msg.role === "user" ? "items-end" : "items-start",
+                  )}
+                >
+                  {msg.role === "assistant" && (
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <RiseLogo className="w-4 h-4" />
+                      <span className="text-xs font-medium text-brand-text">
+                        RISE
+                      </span>
+                    </div>
+                  )}
+                  {msg.content && (
+                    <div
+                      className={cn(
+                        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground rounded-br-sm"
+                          : "bg-card border-[1.5px] border-border shadow-card text-foreground rounded-bl-sm",
+                      )}
+                    >
+                      {msg.content}
+                    </div>
+                  )}
+                  {/* Attachments in message bubbles */}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <MessageAttachments attachments={msg.attachments} />
+                  )}
+                  {msg.toolResults && msg.toolResults.length > 0 && (
+                    <div className="space-y-1">
+                      {msg.toolResults.map((r, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            "flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg",
+                            r.success ? "tool-result-success" : "tool-result-failed",
+                          )}
+                        >
+                          {r.success ? (
+                            <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                          ) : (
+                            <X className="w-3.5 h-3.5 shrink-0" />
+                          )}
+                          {r.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {loading &&
+              !messages.find(
+                (m) =>
+                  m.role === "assistant" &&
+                  messages.indexOf(m) === messages.length - 1,
+              ) && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <RiseLogo className="w-4 h-4" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span className="text-xs">Thinking…</span>
+                </div>
+              )}
+            <div ref={bottomRef} />
+          </div>
+        )}
+      </ScrollArea>
+
+      {/* Approval banner */}
+      {pendingApproval && (
+        <div className="mx-4 mb-2 p-3 rounded-xl tool-approval-banner space-y-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-[var(--color-warning)] shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-[var(--color-warning)]">
+                {TOOL_LABELS[pendingApproval.tool.name] ??
+                  pendingApproval.tool.name}{" "}
+                — confirmation required
+              </p>
+              {pendingApproval.reason && (
+                <p className="text-xs text-[var(--color-warning)] mt-0.5">
+                  {pendingApproval.reason}
+                </p>
+              )}
+              <p className="text-xs text-[var(--color-warning)]/70 mt-0.5">
+                {JSON.stringify(pendingApproval.tool.input)}
+              </p>
+              {pendingApprovals.length > 1 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {pendingApprovals.length - 1} more waiting after this one
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={handleApprove}
+              disabled={loading}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={loading}
+              onClick={() => dismissApproval(pendingApproval.token)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Input area */}
+      <div
+        className={cn(
+          "p-4 border-t border-border transition-all",
+          loading ? "ai-input-active" : "bg-background",
+        )}
+      >
+        {/* Audio recorder (inline, above chips) */}
+        {showAudioRecorder && (
+          <div className="mb-2">
+            <AudioRecorder
+              onRecordingComplete={handleAudioComplete}
+              onCancel={() => setShowAudioRecorder(false)}
+            />
+          </div>
+        )}
+
+        {/* Pending attachment chips */}
+        {pendingAttachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {pendingAttachments.map((a) => (
+              <AttachmentChip
+                key={a.id}
+                id={a.id}
+                filename={a.file.name}
+                size_bytes={a.file.size}
+                category={
+                  a.file.type.startsWith("image/")
+                    ? "image"
+                    : a.file.type.startsWith("audio/")
+                      ? "audio"
+                      : "file"
+                }
+                mime_type={a.file.type}
+                status={a.status}
+                progress={a.progress}
+                errorMessage={a.errorMessage}
+                previewUrl={a.previewUrl}
+                onRemove={removeAttachment}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Input row */}
+        <div className="flex gap-2 items-end">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            aria-label="Attach files"
+            accept={ACCEPTED_TYPES}
+            multiple
+            onChange={(e) => {
+              if (e.target.files?.length) {
+                handleFilesSelected(e.target.files);
+                e.target.value = "";
+              }
+            }}
+          />
+
+          {/* Paperclip button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Attach file"
+            disabled={loading}
+            onClick={() => fileInputRef.current?.click()}
+            className="shrink-0 h-11 w-11 text-muted-foreground hover:text-foreground"
+          >
+            <Paperclip className="w-4 h-4" />
+          </Button>
+
+          {/* Mic button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={showAudioRecorder ? "Cancel recording" : "Record audio"}
+            disabled={loading}
+            onClick={() => setShowAudioRecorder((v) => !v)}
+            className={cn(
+              "shrink-0 h-11 w-11",
+              showAudioRecorder
+                ? "text-destructive hover:text-destructive"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Mic className="w-4 h-4" />
+          </Button>
+
+          {/* Textarea */}
+          <Textarea
+            ref={textareaRef}
+            placeholder="Ask RISE anything…"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void sendMessage(input);
+              }
+            }}
+            rows={1}
+            className="resize-none min-h-[44px] max-h-[120px]"
+            style={{ height: "auto" }}
+          />
+
+          {/* Send button */}
+          <Button
+            onClick={() => void sendMessage(input)}
+            disabled={loading || !hasReadyContent || isUploading}
+            size="icon"
+            className="shrink-0 h-11 w-11"
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground text-center mt-2">
+          Press Enter to send · Shift+Enter for new line
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function AssistantView({
+  initial,
+}: {
+  initial: ServerSnapshot<ConversationData> | null;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="w-6 h-6 animate-spin" />
+        </div>
+      }
+    >
+      <AssistantContent initial={initial} />
+    </Suspense>
+  );
+}

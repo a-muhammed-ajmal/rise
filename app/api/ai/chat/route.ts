@@ -1,7 +1,8 @@
-import { GoogleGenAI, type Content, type Part } from "@google/genai";
+import { GoogleGenAI, type Chat, type Content, type Part } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
 import { ALL_TOOLS, APPROVAL_TOOL_NAMES } from "@/lib/ai/tools";
 import { executeTool } from "@/lib/ai/execute-tool";
+import { GEMINI_MODEL } from "@/lib/ai/models";
 import {
   retrieveMemories,
   retrieveUserFacts,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/ai/memory";
 import type { ChatAttachment } from "@/lib/types/database";
 import { format, parseISO } from "date-fns";
-import { todayISO, todayDOW } from "@/lib/format";
+import { formatDate, todayISO, todayDOW } from "@/lib/format";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { evaluateFinancialGate, isMoneyTool } from "@/lib/ai/financial-safety";
 import { signApprovalToken, verifyApprovalToken } from "@/lib/ai/approval";
@@ -23,10 +24,17 @@ import {
 } from "@/lib/ai/deletable";
 import {
   buildUntrustedAttachmentContext,
-  isWithinToolCallBudget,
+  canRunToolRound,
   MAX_TOOL_CALLS_PER_TURN,
+  MAX_TOOL_ROUNDS,
   requiresAttachmentApproval,
 } from "@/lib/ai/chat-safety";
+import {
+  buildToolHistoryContext,
+  MAX_TOOL_CONTEXT_CHARS,
+  summarizeToolResult,
+  toolContextIndices,
+} from "@/lib/ai/chat-history";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 
@@ -52,10 +60,25 @@ const ChatRequestBody = z.object({
         role: z.enum(["user", "assistant", "model"]),
         content: z.string().max(100_000),
         attachments: z.array(AttachmentSchema).max(10).optional(),
+        // What this turn's tools returned, as summarized by the server when it
+        // streamed them (summarizeToolResult). Replayed for recent turns only.
+        toolResults: z
+          .array(
+            z.object({
+              tool: z.string().max(100),
+              success: z.boolean(),
+              context: z.string().max(MAX_TOOL_CONTEXT_CHARS + 20).optional(),
+            }),
+          )
+          .max(20)
+          .optional(),
       }),
     )
     .max(200),
   approvalToken: z.string().optional(),
+  // How many earlier messages of this conversation the client left out of
+  // `messages`. Lets memory compaction number blocks by absolute position.
+  historyOffset: z.number().int().nonnegative().max(1_000_000).optional(),
 });
 
 // Simple message type used by frontend (compatible with what we send over the wire)
@@ -63,6 +86,7 @@ export type MessageParam = {
   role: "user" | "assistant" | "model";
   content: string;
   attachments?: ChatAttachment[];
+  toolResults?: { tool: string; success: boolean; context?: string }[];
 };
 
 // ─── Approval token (HMAC-signed, 2-minute expiry) ────────────────────────────
@@ -234,6 +258,7 @@ Key rules:
 - Deleting a parent never deletes its history: a deleted project keeps its tasks (they are just unassigned), and a deleted habit or contact keeps its logs and interactions.
 - Logging money (log_expense, log_income) runs immediately for small, fully-specified amounts, but the system will ask the user to confirm large or ambiguous amounts. Always include a category, and call list_payment_methods first when the user has more than one wallet.
 - When updating or deleting by name (e.g. "delete my dentist contact"), always call the relevant list_* or search_data tool first to resolve the name to an id. Never guess an id.
+- Your earlier replies may begin with an <untrusted-tool-results> block: the records your tools returned in that turn, ids included. Use it to resolve references such as "the second one" or "that task", and call a list_* tool again if the record may have changed since.
 - After using tools, report back clearly: what was created/updated/found.
 - If the user asks "what should I do today?" — call get_daily_briefing first, then summarize.
 - When the user tells you something personal (name, job, location, preferences, family, habits) — call remember_user_fact() to save it for future conversations.
@@ -263,12 +288,16 @@ async function buildContext(
     memories,
     userFacts,
   ] = await Promise.all([
+    // Open tasks due today or already overdue, newest due date first. This
+    // used to match `status = inbox`, a status migration 013 retired, so
+    // overdue work never reached the assistant's context.
     supabase
       .from("tasks")
       .select("title, priority, due_date, status")
       .is("deleted_at", null)
       .neq("status", "done")
-      .or(`due_date.eq.${today},status.eq.inbox`)
+      .lte("due_date", today)
+      .order("due_date", { ascending: false })
       .limit(10),
     supabase
       .from("habits")
@@ -317,7 +346,15 @@ async function buildContext(
   const lines: string[] = [];
   if (tasks?.length)
     lines.push(
-      `Today's tasks (${tasks.length}): ${tasks.map((t) => `"${t.title}" [${t.priority}]`).join(", ")}`,
+      `Open tasks due today or overdue (${tasks.length}): ${tasks
+        .map((t) => {
+          const overdue =
+            t.due_date && t.due_date < today
+              ? `, overdue since ${formatDate(t.due_date)}`
+              : "";
+          return `"${t.title}" [${t.priority}${overdue}]`;
+        })
+        .join(", ")}`,
     );
   if (habits?.length)
     lines.push(`Habits due today: ${habits.map((h) => h.name).join(", ")}`);
@@ -348,8 +385,12 @@ function buildGeminiParts(
   attachments: ChatAttachment[] | undefined,
   imageData: Map<string, { base64: string; mimeType: string }>,
   isCurrentMessage: boolean,
+  toolContext: string | null = null,
 ): Part[] {
   const parts: Part[] = [];
+
+  // Tools ran before the reply was written, so their results come first.
+  if (toolContext) parts.push({ text: toolContext });
 
   const attachmentContext = buildUntrustedAttachmentContext(attachments ?? []);
   if (attachmentContext) parts.push({ text: attachmentContext });
@@ -385,10 +426,54 @@ async function toGeminiHistory(messages: MessageParam[]): Promise<Content[]> {
   // History messages never get image inlineData (empty map) to avoid
   // re-downloading binaries on every request.
   const emptyImageData = new Map<string, { base64: string; mimeType: string }>();
-  return messages.map((m) => ({
+  const withToolContext = toolContextIndices(messages);
+  return messages.map((m, i) => ({
     role: m.role === "assistant" || m.role === "model" ? "model" : "user",
-    parts: buildGeminiParts(m.content, m.attachments, emptyImageData, false),
+    parts: buildGeminiParts(
+      m.content,
+      m.attachments,
+      emptyImageData,
+      false,
+      withToolContext.has(i) ? buildToolHistoryContext(m.toolResults) : null,
+    ),
   }));
+}
+
+type FunctionCall = {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+};
+
+/**
+ * Streams one model turn, forwarding text as it arrives, and returns the tool
+ * calls the turn asked for. An empty result means the model gave its final
+ * reply.
+ */
+async function streamModelTurn(
+  chat: Chat,
+  message: Part[],
+  onText: (text: string) => void,
+): Promise<FunctionCall[]> {
+  const calls: FunctionCall[] = [];
+  for await (const chunk of await chat.sendMessageStream({ message })) {
+    const candidate = chunk.candidates?.[0];
+    if (!candidate) continue;
+    for (const part of candidate.content?.parts ?? []) {
+      if (part.text) onText(part.text);
+      if (part.functionCall) {
+        const parsedArgs = z
+          .record(z.string(), z.unknown())
+          .safeParse(part.functionCall.args ?? {});
+        calls.push({
+          id: part.functionCall.id ?? randomUUID(),
+          name: part.functionCall.name ?? "",
+          args: parsedArgs.success ? parsedArgs.data : {},
+        });
+      }
+    }
+  }
+  return calls;
 }
 
 export async function POST(request: Request) {
@@ -409,7 +494,7 @@ export async function POST(request: Request) {
   if (!bodyParsed.success)
     return new Response("Bad Request", { status: 400 });
 
-  const { messages, approvalToken } = bodyParsed.data;
+  const { messages, approvalToken, historyOffset } = bodyParsed.data;
 
   // If user approved a pending tool, verify the signed token and execute
   if (approvalToken) {
@@ -431,7 +516,11 @@ export async function POST(request: Request) {
       return new Response("Invalid or expired approval", { status: 403 });
     }
     const result = await executeTool(verified.toolName, verified.input);
-    return Response.json({ type: "tool_result", result });
+    return Response.json({
+      type: "tool_result",
+      result,
+      context: summarizeToolResult(verified.toolName, result),
+    });
   }
 
   // Extract latest user message for memory retrieval
@@ -443,7 +532,9 @@ export async function POST(request: Request) {
   const plainMessages = messages
     .filter((m) => typeof m.content === "string")
     .map((m) => ({ role: m.role, content: m.content }));
-  compactMessages(user.id, plainMessages).catch(() => {});
+  compactMessages(user.id, plainMessages, historyOffset ?? 0).catch((err) => {
+    console.error("[ai/chat] memory compaction failed:", err);
+  });
 
   const { context, profileContext, userName } = await buildContext(user.id, latestText);
   const today = format(parseISO(todayISO()), "dd/MM/yyyy");
@@ -496,8 +587,8 @@ export async function POST(request: Request) {
         if (!process.env.GEMINI_API_KEY) {
           throw new Error("GEMINI_API_KEY is not configured");
         }
-        const model = genai.chats.create({
-          model: "gemini-2.5-flash",
+        const chat = genai.chats.create({
+          model: GEMINI_MODEL,
           config: {
             systemInstruction: systemPrompt,
             tools: [{ functionDeclarations: ALL_TOOLS }],
@@ -505,60 +596,39 @@ export async function POST(request: Request) {
           },
           history: await toGeminiHistory(history),
         });
+        const emitText = (text: string) =>
+          controller.enqueue(sseChunk({ type: "text", text }));
 
-        // Build parts for the current user message (with image inlineData)
-        const currentParts = buildGeminiParts(
+        // The first turn carries the user's message (with image inlineData).
+        // Every later turn carries the results of the tools the model asked
+        // for, so it can chain steps, e.g. list_contacts to find an id, then
+        // delete_contact. The loop ends when the model replies without tool
+        // calls, when a call needs approval, or when the budget runs out.
+        let message = buildGeminiParts(
           userInput,
           currentMsg?.attachments,
           imageData,
           true,
         );
+        let roundsCompleted = 0;
+        let totalCalls = 0;
 
-        // First turn: stream the response
-        const stream = model.sendMessageStream({ message: currentParts });
+        for (;;) {
+          const functionCalls = await streamModelTurn(chat, message, emitText);
+          if (functionCalls.length === 0) break;
 
-        const functionCalls: Array<{
-          id: string;
-          name: string;
-          args: Record<string, unknown>;
-        }> = [];
-
-        for await (const chunk of await stream) {
-          const candidate = chunk.candidates?.[0];
-          if (!candidate) continue;
-
-          for (const part of candidate.content?.parts ?? []) {
-            if (part.text) {
-              controller.enqueue(sseChunk({ type: "text", text: part.text }));
-            }
-            if (part.functionCall) {
-              const parsedArgs = z
-                .record(z.string(), z.unknown())
-                .safeParse(part.functionCall.args ?? {});
-              functionCalls.push({
-                id: part.functionCall.id ?? crypto.randomUUID(),
-                name: part.functionCall.name ?? "",
-                args: parsedArgs.success ? parsedArgs.data : {},
-              });
-            }
+          totalCalls += functionCalls.length;
+          if (!canRunToolRound(roundsCompleted, totalCalls)) {
+            controller.enqueue(
+              sseChunk({
+                type: "error",
+                message: `That request needed more than ${MAX_TOOL_CALLS_PER_TURN} actions or ${MAX_TOOL_ROUNDS} steps. Please split it into smaller requests.`,
+                requestId,
+              }),
+            );
+            break;
           }
-        }
 
-        if (!isWithinToolCallBudget(functionCalls.length)) {
-          controller.enqueue(
-            sseChunk({
-              type: "error",
-              message: `The assistant requested more than ${MAX_TOOL_CALLS_PER_TURN} actions at once. Please split the request into smaller steps.`,
-              requestId,
-            }),
-          );
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
-          return;
-        }
-
-        // Process function calls
-        if (functionCalls.length > 0) {
           const toolResultParts: Part[] = [];
           let hasApproval = false;
 
@@ -638,7 +708,14 @@ export async function POST(request: Request) {
 
             const result = await executeTool(fc.name, fc.args);
             controller.enqueue(
-              sseChunk({ type: "tool_result", tool: fc.name, result }),
+              sseChunk({
+                type: "tool_result",
+                tool: fc.name,
+                result,
+                // Stored by the client with the message and sent back as
+                // history, so later turns can refer to these records.
+                context: summarizeToolResult(fc.name, result),
+              }),
             );
             toolResultParts.push({
               functionResponse: {
@@ -648,25 +725,12 @@ export async function POST(request: Request) {
               },
             });
           }
+          roundsCompleted++;
 
-          // Follow-up turn: send tool results back for a natural-language reply
-          if (!hasApproval) {
-            const followupStream = model.sendMessageStream({
-              message: toolResultParts,
-            });
-
-            for await (const chunk of await followupStream) {
-              const candidate = chunk.candidates?.[0];
-              if (!candidate) continue;
-              for (const part of candidate.content?.parts ?? []) {
-                if (part.text) {
-                  controller.enqueue(
-                    sseChunk({ type: "text", text: part.text }),
-                  );
-                }
-              }
-            }
-          }
+          // A gated call ends this message: the user decides, and the approved
+          // action runs on the second leg of the approval flow.
+          if (hasApproval) break;
+          message = toolResultParts;
         }
 
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));

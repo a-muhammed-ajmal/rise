@@ -130,23 +130,65 @@ export async function retrieveMemories(
   }));
 }
 
+// Older turns are saved to long-term memory in fixed blocks so the assistant can
+// still recall them once they fall out of the history window the client sends.
+export const COMPACT_BLOCK_SIZE = 10;
+// The most recent messages are always in the request itself; never save those.
+export const COMPACT_KEEP_RECENT = 10;
+
+/**
+ * Saves at most one block of older conversation turns per request, and never
+ * the same block twice.
+ *
+ * Blocks are numbered by absolute position in the conversation, not position in
+ * the window, because the client sends a sliding window (the last 40
+ * messages). `historyOffset` is how many earlier messages the client left out.
+ * Without it every request saw a different "first 10 messages" and stored
+ * another overlapping copy, which then crowded real memories out of retrieval.
+ *
+ * Only the oldest complete block still in the window is considered: it is the
+ * next to fall out, and the window moves by about two messages per turn, so
+ * every block gets its turn before it leaves.
+ */
 export async function compactMessages(
   userId: string,
   messages: { role: string; content: string }[],
-  threshold: number = 20,
+  historyOffset: number = 0,
+  client?: SupabaseClient<Database>,
 ): Promise<void> {
-  if (messages.length < threshold) return;
+  const offset = Math.max(0, Math.floor(historyOffset));
+  const firstBlock = Math.ceil(offset / COMPACT_BLOCK_SIZE);
+  const start = firstBlock * COMPACT_BLOCK_SIZE - offset;
+  const end = start + COMPACT_BLOCK_SIZE;
+  if (end > messages.length - COMPACT_KEEP_RECENT) return;
 
-  const oldMessages = messages.slice(0, threshold - 10);
-  const summaryText = oldMessages
+  const block = messages.slice(start, end);
+  const content = `Earlier conversation:\n${block
     .map((m) => `${m.role}: ${m.content.slice(0, 200)}`)
-    .join("\n");
+    .join("\n")}`;
+
+  const supabase = client ?? (await createClient());
+  const { data: existing, error } = await supabase
+    .from("ai_memory")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("memory_type", "summary")
+    .eq("content", content)
+    .limit(1);
+  if (error) throw new Error(`Could not check stored memory: ${error.message}`);
+  if (existing?.length) return;
 
   await storeMemory(
     userId,
-    `Conversation summary:\n${summaryText}`,
-    { role: "assistant", summary: true, turn_count: oldMessages.length },
+    content,
+    {
+      role: "assistant",
+      summary: true,
+      turn_count: block.length,
+      block_index: firstBlock,
+    },
     "summary",
+    supabase,
   );
 }
 

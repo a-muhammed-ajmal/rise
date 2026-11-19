@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { GEMINI_MODEL } from "@/lib/ai/models";
 import { addDaysISO, formatAED, toDubaiISODate } from "@/lib/format";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types/database";
@@ -161,7 +162,7 @@ ${activeGoals.map((goal) => `- ${goal.title}: ${goal.progress}%`).join("\n") || 
 
   const genAI = ai ?? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const response = await genAI.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: GEMINI_MODEL,
     contents: [
       {
         role: "user",

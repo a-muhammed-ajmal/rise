@@ -8,12 +8,12 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1111 passing across 48 test files |
-| Line coverage | 94.82% on `lib/**` |
+| Test count | 1209 passing across 54 test files |
+| Line coverage | 95.31% on `lib/**` |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 65 AUTO + 17 REVERSIBLE + 9 APPROVAL = 91 total |
-| Last feature shipped | Phase 27 — Finance Home and Money: a net worth hero, month card with saving rate and a Needs attention list on Finance Home, and Activity / Wallets / Budgets / Debts tabs under Money (2026-11-18) |
+| Last feature shipped | Phase 29 — Tool results carried into chat history, the AI tool executor split into per-domain handler modules, and module pages that load their first screen of data on the server (2026-11-19) |
 
 _Update this table each time a phase completes or metrics change._
 
@@ -101,21 +101,25 @@ Canonical specification: [.claude/skills/frontend-design/DESIGN_SYSTEM.md](.clau
 
 ```http
 POST /api/ai/chat
-Body: { messages: MessageParam[], approvalToken?: string }
+Body: { messages: MessageParam[], approvalToken?: string, historyOffset?: number }
+      MessageParam.toolResults?: { tool, success, context? }[] — the `context` each tool_result carried
+      historyOffset: how many earlier messages of the conversation the client left out of `messages`
       MessageParam: { role: "user" | "assistant" | "model", content: string, attachments?: ChatAttachment[] }
       (Gemini uses "model" for assistant turns in stateful chat sessions)
 
 SSE events:
   { type: "text",              text: string }
-  { type: "tool_result",       tool: string, result: { success, message, data? } }
-  { type: "approval_required", tool: { id, name, input } }
+  { type: "tool_result",       tool: string, result: { success, message, data? }, context: string }
+  { type: "approval_required", tool: { id, name, input }, token: string, reason?: string }
   { type: "error",             message: string }
   data: [DONE]
 ```
 
 Second leg for approved tools: same endpoint with the signed `approvalToken`, returns `Response.json({ type: "tool_result", result })`. Tokens are user-bound, expire after two minutes, and are consumed once in Postgres.
 
-**Gemini streaming internals:** The route establishes a stateful Gemini chat session via `GoogleGenAI`. Each streamed chunk yields `.candidates[0].content.parts[]`. Text parts emit `{ type: "text" }` SSE events; function-call parts accumulate and are processed after the stream ends. After tool execution, a follow-up `sendMessageStream` passes `functionResponse` parts back to the model. Approval-gated tools skip follow-up — the stream ends after `approval_required`.
+**Gemini streaming internals:** The route establishes a stateful Gemini chat session via `GoogleGenAI`, using the model id from `lib/ai/models.ts` (`GEMINI_MODEL` env override, default `gemini-2.5-flash`). Each streamed chunk yields `.candidates[0].content.parts[]`. Text parts emit `{ type: "text" }` SSE events; function-call parts accumulate and are processed after the turn's stream ends. Tool results go back to the model as `functionResponse` parts in the next `sendMessageStream`, and the loop repeats, so the model can chain steps (look a record up, then act on it) until it replies without tool calls. A message is capped at `MAX_TOOL_ROUNDS` (4) rounds and `MAX_TOOL_CALLS_PER_TURN` (8) calls in total (`lib/ai/chat-safety.ts`); exceeding either emits an `error` event. A gated call ends the loop — the stream ends after its `approval_required` events, one per gated call, which the client queues and confirms one at a time.
+
+**Tool results in history:** each `tool_result` carries `context`, a compact summary of what the tool returned (ids and short fields; owner, timestamp and embedding columns dropped; 25 rows and 1,500 characters at most — `lib/ai/chat-history.ts`). The client stores it with the message and sends it back; the route replays it as an `<untrusted-tool-results>` block at the start of the model turn, for the last 5 assistant turns only, so a follow-up such as "delete the second one" can resolve an id. The approval leg returns the same `context`.
 
 ### AI tool set
 
@@ -210,7 +214,7 @@ pgvector function: `match_memories(query_embedding, match_user_id, match_count?,
 
 ### AI memory
 
-Explicit user facts and compact conversation summaries are embedded via Voyage AI (1024-dim) and stored in `ai_memory`; raw messages remain in the conversation record rather than being duplicated into long-term memory. On each request, up to eight relevant memories are retrieved by cosine similarity (`match_threshold: 0.7`) and injected into the system prompt. Keyword ILIKE fallback activates when `VOYAGE_API_KEY` is absent.
+Explicit user facts and blocks of older conversation turns are embedded via Voyage AI (1024-dim) and stored in `ai_memory`. Older turns are saved in fixed blocks of 10 numbered by absolute position in the conversation (the client's `historyOffset` locates its 40-message window), at most one block per request and never the same block twice, so the sliding window no longer writes overlapping copies; the most recent 10 messages are never saved because they are always in the request. On each request, up to eight relevant memories are retrieved by cosine similarity (`match_threshold: 0.7`) and injected into the system prompt. Keyword ILIKE fallback activates when `VOYAGE_API_KEY` is absent.
 
 ### PWA specification
 
@@ -366,3 +370,5 @@ Candidate areas (not prioritized):
 | 25 | Visual consistency across Home and Finance | 2026-09-20 | `.claude/skills/frontend-design/DESIGN_SYSTEM.md` (canonical navy/gold specification), `app/globals.css` (body token fix, typography, contrast and calmer surfaces), `components/layout/page-shell.tsx` (shared page/header), `app/(app)/page.tsx` (tasks first, compact habits), `components/finance/finance-navigation.tsx` (all seven views with regression tests), `app/(app)/finance/` (wallet and monthly layout, visible transaction type selector); 1041 tests across 37 files, 94.39% line coverage |
 | 26 | Startup performance + Finance net worth | 2026-11-09 | `lib/supabase/jwks.ts` + `lib/supabase/current-user.ts` (new; `getClaims()` verifies the access token locally against a module-scope JWKS cache, replacing every `auth.getUser()` round trip in the proxy, the app layout and the shared hooks), `vercel.json` (functions pinned to `bom1` Mumbai, next to the Supabase project — they had defaulted to `iad1` Washington), `components/dashboard/today-data-provider.tsx` (new; one `useTasks`/`useProjects` instance for both dashboard sections instead of four duplicate queries and Realtime channels) + `app/(app)/loading.tsx` (new; dashboard skeleton streams immediately), `lib/finance/net-worth.ts` + `components/finance/net-worth-card.tsx` (new; Net worth = active wallets + owed to you − you owe, open debts only, shown as a total plus its three parts on the Finance Overview), `app/(app)/finance/` (equal wallet tiles, intrinsic columns from md, 44px wallet-list controls, wrapping rows, layout-matched skeleton), `lib/format.ts` (`formatAEDWrappable` — long amounts wrap between "AED" and the number); dead Tiptap, `@supabase/server` and `chrome-devtools-mcp` dependencies and the published `public/stitch/` design mockups removed; 1071 tests across 42 files, 94.56% line coverage |
 | 27 | Finance Home and Money | 2026-11-18 | `lib/finance/month.ts`, `debts.ts`, `attention.ts`, `activity.ts` (new, pure and unit-tested: month summary and saving rate, budget bands, due/overdue rules, Needs attention ordering, day grouping), `components/finance/finance-home.tsx`, `activity-view.tsx`, `budgets-view.tsx`, `debts-view.tsx` (new), `components/finance/finance-navigation.tsx` (Home | Money and the four Money tabs on the shared Tabs primitive), `components/finance/net-worth-card.tsx` (green hero), `app/(app)/finance/page.tsx` (rewired; settled debts now loaded for the history list; every form and ConfirmDialog kept), `app/(app)/finance/wallet-card.tsx` (single actions menu), `app/(app)/finance/loading.tsx`, `app/globals.css` (`.finance-hero`, `.finance-bar`, `.finance-pill`, `--fill-warning`, `text-hero`) |
+| 28 | Assistant reliability | 2026-11-19 | `app/api/ai/chat/route.ts` (**fix:** the follow-up turn read only text, so any tool call the model made after its first round — the `list_*` → act chain the system prompt and tool descriptions ask for — was silently dropped; now a bounded multi-round loop, `MAX_TOOL_ROUNDS` 4 with the 8-call budget counted across rounds; **fix:** the context query matched `status = inbox`, retired in migration 013, so overdue tasks never reached the assistant — now `due_date <= today`, overdue items labelled), `app/(app)/assistant/page.tsx` (**fix:** one approval slot, so with several gated calls in one message only the last survived — now a queue confirmed oldest first; **fix:** a failed approval was swallowed with `catch { // ignore }` — expired/used tokens, 401s and network errors now toast, and a 429 keeps the approval queued because its token is still unused; refused chat requests show a message instead of nothing; the server's gate `reason` is shown), `lib/ai/memory.ts` (**fix:** `compactMessages` stored the window's first 10 messages on every request past 20, writing duplicate and overlapping rows that crowded the 8 retrieval slots — now absolute-numbered blocks stored once each), `lib/ai/models.ts` (new; one `GEMINI_MODEL` for chat, digest and transcription with an env override), `lib/ai/chat-safety.ts` (`canRunToolRound`), `app/api/ai/chat/__tests__/route.test.ts` (new; first tests for the chat route — tool chaining, approvals, budgets, context, approval leg); 1134 tests across 50 files, 94.86% line coverage |
+| 29 | Tool-result history, tool handler modules, server-loaded module pages | 2026-11-19 | `lib/ai/chat-history.ts` (new; **fix:** history carried only message text, so a list shown one turn earlier was gone by the next and "delete the second one" had no id — tool results are now summarized, stored with the message, and replayed for the last 5 assistant turns as untrusted content), `lib/ai/tool-handlers/` (new; the 3,303-line `execute-tool.ts` switch split into 12 domain modules plus `shared.ts`, `schemas.ts` and a `Map` registry in `index.ts` — case bodies moved verbatim, schemas co-located with the one module that uses them; `execute-tool.ts` is now a 40-line dispatcher, and `tool-handlers.test.ts` asserts registry/declaration parity and that `toString`-style names never resolve), `lib/data/` (new; `snapshot.ts` + per-module loaders shared by the server pages and the client refetch), all 9 client module pages (`page.tsx` → `<module>-view.tsx` named-export client view + an async server `page.tsx` that loads the first screen of data; a snapshot older than 15s — a Router Cache revisit — refetches, so `staleTimes` cannot show stale data), `lib/hooks/use-tasks.ts` · `use-projects.ts` · `use-payment-methods.ts` · `use-categories.ts` (optional snapshot, captured once at mount; `useTasks` uses it only for the first run of the view it was loaded for), `app/(app)/projects/loading.tsx` (new); 1209 tests across 54 files, 95.31% line coverage |

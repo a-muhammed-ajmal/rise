@@ -100,7 +100,7 @@ Find the line `Current: N tests, X%` and update it with the new test count and c
 **Conditional updates:**
 
 - `NEW_MODULE` → **Complete File Structure**: add the new directory under `app/(app)/` with a one-line description matching the existing indentation and comment style.
-- `NEW_AI_TOOL` → **AI Tool System**: update the AUTO/APPROVAL counts if they appear in prose. If the new tool has non-obvious behavior (fuzzy match, upsert, dual-write, special logic found in `execute-tool.ts`), add a bullet under **Non-obvious behaviors in `execute-tool.ts`** describing what is surprising.
+- `NEW_AI_TOOL` → **AI Tool System**: update the AUTO/APPROVAL counts if they appear in prose. If the new tool has non-obvious behavior (fuzzy match, upsert, dual-write, special logic found in `lib/ai/tool-handlers/`), add a bullet under **Non-obvious behaviors in the tool handlers** describing what is surprising.
 - `HOOK_CHANGE` → **Complete File Structure**: add or update the file entry under `lib/hooks/` with a one-line description.
 - `NEW_TABLE` → **Complete File Structure**: update the `database.ts` comment to reflect the new table count (e.g. `25 Supabase tables`).
 - `NEW_MIGRATION` → **Complete File Structure**: update the migration range (e.g. `001 through 016`).

@@ -5,29 +5,32 @@ import { createClient } from "@/lib/supabase/client";
 import { currentUserId } from "@/lib/supabase/current-user";
 import type { PaymentMethod } from "@/lib/types/database";
 import { todayISO } from "@/lib/format";
+import { loadPaymentMethods } from "@/lib/data/finance";
+import { isFreshSnapshot, type ServerSnapshot } from "@/lib/data/snapshot";
 import { toast } from "sonner";
 
-export function usePaymentMethods() {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [loading, setLoading] = useState(true);
+/** `initial` is a server-loaded snapshot, used only while fresh. */
+export function usePaymentMethods(initial?: ServerSnapshot<PaymentMethod[]> | null) {
+  // Captured once: the snapshot only describes the first render.
+  const [snapshot] = useState(initial);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(
+    snapshot?.data ?? [],
+  );
+  const [loading, setLoading] = useState(!snapshot);
 
   const fetchPaymentMethods = useCallback(async () => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("payment_methods")
-      .select("*")
-      .order("display_order", { ascending: true });
-    if (error) {
+    try {
+      setPaymentMethods(await loadPaymentMethods(createClient()));
+    } catch {
       toast.error("Failed to load payment methods");
       return;
     }
-    setPaymentMethods(data ?? []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchPaymentMethods();
-  }, [fetchPaymentMethods]);
+    if (!isFreshSnapshot(snapshot)) fetchPaymentMethods();
+  }, [fetchPaymentMethods, snapshot]);
 
   async function createPaymentMethod(data: {
     name: string;

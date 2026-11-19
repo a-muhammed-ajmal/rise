@@ -1,0 +1,849 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/current-user";
+import type { Habit, HabitLog } from "@/lib/types/database";
+import { todayISO, todayDOW, display12h } from "@/lib/format";
+import { loadWellnessData, type WellnessData } from "@/lib/data/modules";
+import { isFreshSnapshot, type ServerSnapshot } from "@/lib/data/snapshot";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { AffirmationDialog } from "@/components/wellness/affirmation-dialog";
+import {
+  Plus,
+  Flame,
+  Timer,
+  Loader2,
+  Heart,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Archive,
+  Check,
+  X,
+  Undo2,
+  Clock,
+} from "lucide-react";
+import { subDays, format } from "date-fns";
+import { toast } from "sonner";
+
+const DAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Ordered Mon–Sun for the specific-days compact picker (matching calendar convention)
+const DAY_PICKER_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAY_PICKER_DOW    = [1,   2,   3,   4,   5,   6,   0]; // Mon=1 … Sun=0
+
+const COLOR_SWATCHES = [
+  "#6366f1", // indigo (default)
+  "#f59e0b", // amber
+  "#10b981", // emerald
+  "#3b82f6", // blue
+  "#ef4444", // red
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#64748b", // slate
+];
+
+type RepeatMode = "daily" | "weekdays" | "weekends" | "specific";
+
+function isRepeatMode(value: unknown): value is RepeatMode {
+  return (
+    value === "daily" ||
+    value === "weekdays" ||
+    value === "weekends" ||
+    value === "specific"
+  );
+}
+
+function detectRepeatMode(h: Habit): RepeatMode {
+  const sorted = [...h.target_days].sort((a, b) => a - b).join(",");
+  if (sorted === "0,1,2,3,4,5,6") return "daily";
+  if (sorted === "1,2,3,4,5") return "weekdays";
+  if (sorted === "0,6") return "weekends";
+  return "specific";
+}
+
+export function WellnessView({ initial }: { initial: ServerSnapshot<WellnessData> | null }) {
+  const [habits, setHabits] = useState<Habit[]>(initial?.data.habits ?? []);
+  const [logs, setLogs] = useState<HabitLog[]>(initial?.data.logs ?? []);
+  const [loading, setLoading] = useState(!initial);
+  const [habitDialogOpen, setHabitDialogOpen] = useState(false);
+  const [editHabit, setEditHabit] = useState<Habit | null>(null);
+  const [focusOpen, setFocusOpen] = useState(false);
+  const [deleteHabitId, setDeleteHabitId] = useState<string | null>(null);
+  const [viewHabit, setViewHabit] = useState<Habit | null>(null);
+  const today = todayISO();
+  const todayDow = todayDOW();
+
+  const fetchData = useCallback(async () => {
+    try {
+      const data = await loadWellnessData(createClient(), today);
+      setHabits(data.habits);
+      setLogs(data.logs);
+    } catch (error) {
+      console.error("[wellness] fetch failed:", error);
+      toast.error("Could not load habits. Please refresh and try again.");
+    }
+    setLoading(false);
+  }, [today]);
+
+  // The server snapshot covers the first paint; refetch only when it is stale
+  // (a Router Cache revisit, or the day rolled over) or missing.
+  useEffect(() => {
+    if (!isFreshSnapshot(initial)) fetchData();
+  }, [fetchData, initial]);
+
+  // Quick-add intent: open the add-habit dialog when arriving with ?add=habit.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("add") === "habit") {
+      setEditHabit(null);
+      setHabitDialogOpen(true);
+      url.searchParams.delete("add");
+      window.history.replaceState(null, "", url.pathname + url.search);
+    }
+  }, []);
+
+  async function markDone(habitId: string) {
+    const supabase = createClient();
+    const userId = await currentUserId();
+    if (!userId) return;
+    const { error } = await supabase.from("habit_logs").upsert(
+      {
+        user_id: userId,
+        habit_id: habitId,
+        logged_date: today,
+        completed: true,
+        deleted_at: null,
+      },
+      { onConflict: "habit_id,logged_date" },
+    );
+    if (error) {
+      console.error("[wellness] mark done failed:", error.message);
+      toast.error("Could not mark this habit done. Please try again.");
+      return;
+    }
+    await fetchData();
+  }
+
+  async function markNotDone(habitId: string) {
+    const supabase = createClient();
+    const userId = await currentUserId();
+    if (!userId) return;
+    const { error } = await supabase.from("habit_logs").upsert(
+      {
+        user_id: userId,
+        habit_id: habitId,
+        logged_date: today,
+        completed: false,
+        deleted_at: null,
+      },
+      { onConflict: "habit_id,logged_date" },
+    );
+    if (error) {
+      console.error("[wellness] mark not done failed:", error.message);
+      toast.error("Could not update this habit. Please try again.");
+      return;
+    }
+    await fetchData();
+  }
+
+  async function undoMark(habitId: string) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("habit_logs")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("habit_id", habitId)
+      .eq("logged_date", today)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[wellness] undo mark failed:", error.message);
+      toast.error("Could not undo this habit mark. Please try again.");
+      return;
+    }
+    await fetchData();
+  }
+
+  async function handleArchiveHabit(id: string) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("habits")
+      .update({ active: false })
+      .eq("id", id);
+    if (error) {
+      console.error("[wellness] archive failed:", error.message);
+      toast.error("Could not archive the habit. Please try again.");
+      return;
+    }
+    toast.success("Habit archived");
+    await fetchData();
+  }
+
+  async function handleDeleteHabit() {
+    if (!deleteHabitId) return;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("habits")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteHabitId)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[wellness] habit soft delete failed:", error.message);
+      toast.error("Could not delete the habit. Please try again.");
+      return;
+    }
+    setDeleteHabitId(null);
+    toast.success("Habit moved to the recycle bin");
+    await fetchData();
+  }
+
+  // Streak counts consecutive completed scheduled days backward from yesterday.
+  // Non-scheduled days (not in target_days) are skipped — only scheduled days
+  // with no log or completed=false break the streak.
+  function getStreak(habitId: string, habit: Habit): number {
+    const logMap = new Map(
+      logs.filter((l) => l.habit_id === habitId).map((l) => [l.logged_date, l.completed]),
+    );
+    let streak = 0;
+    let d = subDays(new Date(), 1); // today is not over; start from yesterday
+    const created = new Date(habit.created_at);
+
+    while (d >= created) {
+      const dow = d.getDay();
+      if (habit.target_days.includes(dow)) {
+        const completed = logMap.get(format(d, "yyyy-MM-dd"));
+        if (completed === true) {
+          streak++;
+        } else {
+          break; // no log or completed:false on a scheduled day → streak ends
+        }
+      }
+      d = subDays(d, 1);
+    }
+    return streak;
+  }
+
+  const todayHabits = habits.filter((h) => h.target_days.includes(todayDow));
+  // Map habit_id → completed (true/false) for today's logs (includes both states)
+  const todayLogMap = new Map(
+    logs.filter((l) => l.logged_date === today).map((l) => [l.habit_id, l.completed]),
+  );
+  const completedToday = todayHabits.filter((h) => todayLogMap.get(h.id) === true).length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-6 h-6 animate-spin text-mod-wellness" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 md:p-5 max-w-2xl space-y-3">
+      <div className="flex items-center justify-between slide-up stagger-1">
+        <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-mod-wellness-tint flex items-center justify-center">
+            <Heart className="w-4 h-4 text-mod-wellness" />
+          </div>
+          Wellness
+        </h1>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setFocusOpen(true)} className="gap-1.5">
+            <Timer className="w-4 h-4" /> Focus
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => { setEditHabit(null); setHabitDialogOpen(true); }}
+            className="gap-1.5"
+          >
+            <Plus className="w-4 h-4" /> Habit
+          </Button>
+        </div>
+      </div>
+
+      {todayHabits.length > 0 && (
+        <Card className="slide-up stagger-2 border-t-4 border-mod-wellness">
+          <CardContent className="p-3 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium">Today&apos;s habits</span>
+              <span className="text-muted-foreground">{completedToday}/{todayHabits.length}</span>
+            </div>
+            <Progress
+              value={todayHabits.length > 0 ? (completedToday / todayHabits.length) * 100 : 0}
+              className="h-2"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-2 slide-up stagger-3">
+        {habits.length === 0 ? (
+          <div className="text-center py-12 space-y-2">
+            <div className="w-16 h-16 rounded-2xl bg-mod-wellness-tint flex items-center justify-center mx-auto mb-3">
+              <Heart className="w-8 h-8 text-mod-wellness" />
+            </div>
+            <p className="text-muted-foreground text-sm">No habits yet. Add one to get started.</p>
+          </div>
+        ) : (
+          habits.map((habit) => {
+            const isDueToday = habit.target_days.includes(todayDow);
+            const logCompleted = todayLogMap.get(habit.id);
+            const markState =
+              logCompleted === true ? "done" : logCompleted === false ? "notDone" : "none";
+            const streak = getStreak(habit.id, habit);
+
+            const cardBorderClass =
+              markState === "done"
+                ? "border-[var(--color-success)]/25 bg-[var(--color-success-tint)]"
+                : markState === "notDone"
+                  ? "border-[var(--color-danger)]/25 bg-[var(--color-danger-tint)]"
+                  : "";
+
+            const cardLeftBorder =
+              markState === "done"
+                ? "border-l-[3px] border-l-[var(--color-success)]"
+                : markState === "notDone"
+                  ? "border-l-[3px] border-l-[var(--color-danger)]"
+                  : "border-l-[3px] border-l-mod-wellness";
+
+            return (
+              <Card key={habit.id} className={`card-hover ${cardBorderClass} ${cardLeftBorder}`}>
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div
+                    className={`flex-1 min-w-0 ${habit.description ? "cursor-pointer" : ""}`}
+                    onClick={() => { if (habit.description) setViewHabit(habit); }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: habit.color ?? "var(--brand)" }}
+                      />
+                      <span className="text-sm font-medium truncate">{habit.name}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                      {habit.target_days.length === 7
+                        ? "Every day"
+                        : habit.target_days.map((d) => DAYS_LONG[d]).join(", ")}
+                      {habit.reminder_time && (
+                        <span className="flex items-center gap-0.5 ml-1">
+                          <Clock className="w-3 h-3" />
+                          {display12h(habit.reminder_time)}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {streak > 0 && (
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        <Flame className="w-3 h-3 text-[var(--color-warning)]" />
+                        {streak}
+                      </Badge>
+                    )}
+
+                    {/* Mark buttons — right side, next to ⋮ */}
+                    {markState === "none" && isDueToday ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => markDone(habit.id)}
+                          className="w-7 h-7 rounded-full border-2 border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-tint)] active:scale-95"
+                          aria-label="Mark done"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => markNotDone(habit.id)}
+                          className="w-7 h-7 rounded-full border-2 border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-tint)] active:scale-95"
+                          aria-label="Mark not done"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : markState === "done" ? (
+                      <>
+                        <div className="w-7 h-7 rounded-full bg-[var(--color-success)] flex items-center justify-center">
+                          <Check className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => undoMark(habit.id)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="Undo"
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : markState === "notDone" ? (
+                      <>
+                        <div className="w-7 h-7 rounded-full bg-[var(--color-danger)] flex items-center justify-center">
+                          <X className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => undoMark(habit.id)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="Undo"
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : null}
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-accent">
+                        <MoreVertical className="w-4 h-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => { setEditHabit(habit); setHabitDialogOpen(true); }}>
+                          <Pencil className="w-4 h-4 mr-2" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleArchiveHabit(habit.id)}>
+                          <Archive className="w-4 h-4 mr-2" /> Archive
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => setDeleteHabitId(habit.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => { setEditHabit(null); setHabitDialogOpen(true); }}
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 rounded-full bg-brand-action text-white shadow-brand transition-all hover:bg-brand-hover active:scale-95 flex items-center justify-center z-40"
+        aria-label="Add habit"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      <HabitDialog
+        open={habitDialogOpen}
+        onOpenChange={(v) => { setHabitDialogOpen(v); if (!v) setEditHabit(null); }}
+        habit={editHabit}
+        onSaved={() => { fetchData(); toast.success(editHabit ? "Habit updated" : "Habit added"); }}
+      />
+      <FocusTimerDialog open={focusOpen} onOpenChange={setFocusOpen} />
+      <AffirmationDialog habit={viewHabit} onClose={() => setViewHabit(null)} />
+
+      <ConfirmDialog
+        open={!!deleteHabitId}
+        onOpenChange={(v) => { if (!v) setDeleteHabitId(null); }}
+        title="Delete habit?"
+        description="This habit will move to the recycle bin. Its history stays intact and can be restored."
+        onConfirm={handleDeleteHabit}
+      />
+    </div>
+  );
+}
+
+// ─── Habit Dialog (create + edit) ────────────────────────────────────────────
+
+function HabitDialog({
+  open,
+  onOpenChange,
+  habit,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  habit: Habit | null;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("daily");
+  const [targetDays, setTargetDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [reminderTime, setReminderTime] = useState("");
+  const [color, setColor] = useState("#6366f1");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (habit) {
+      setName(habit.name);
+      setDescription(habit.description ?? "");
+      const mode = detectRepeatMode(habit);
+      setRepeatMode(mode);
+      setTargetDays(habit.target_days);
+      setReminderTime(habit.reminder_time?.slice(0, 5) ?? "");
+      setColor(habit.color ?? "#6366f1");
+    } else {
+      setName("");
+      setDescription("");
+      setRepeatMode("daily");
+      setTargetDays([0, 1, 2, 3, 4, 5, 6]);
+      setReminderTime("");
+      setColor("#6366f1");
+    }
+  }, [habit, open]);
+
+  function handleRepeatModeChange(mode: RepeatMode) {
+    setRepeatMode(mode);
+    if (mode === "daily") setTargetDays([0, 1, 2, 3, 4, 5, 6]);
+    else if (mode === "weekdays") setTargetDays([1, 2, 3, 4, 5]);
+    else if (mode === "weekends") setTargetDays([0, 6]);
+    // "specific": keep current targetDays so user can refine from the previous selection
+  }
+
+  function toggleDay(dow: number) {
+    setTargetDays((prev) =>
+      prev.includes(dow)
+        ? prev.filter((x) => x !== dow)
+        : [...prev, dow].sort((a, b) => a - b),
+    );
+  }
+
+  const repeatModeFrequency: Record<RepeatMode, "daily" | "weekly" | "custom"> = {
+    daily: "daily",
+    weekdays: "custom",
+    weekends: "custom",
+    specific: "custom",
+  };
+
+  const repeatModeTargetDays: Record<RepeatMode, number[]> = {
+    daily: [0, 1, 2, 3, 4, 5, 6],
+    weekdays: [1, 2, 3, 4, 5],
+    weekends: [0, 6],
+    specific: targetDays,
+  };
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const frequency = repeatModeFrequency[repeatMode];
+    const target_days = repeatModeTargetDays[repeatMode];
+    if (!name.trim() || target_days.length === 0) return;
+
+    setSaving(true);
+    const supabase = createClient();
+    const payload = {
+      name: name.trim(),
+      description: description.trim() || null,
+      frequency,
+      target_days,
+      color,
+      reminder_time: reminderTime || null,
+    };
+
+    let errorMessage: string | null = null;
+    if (habit) {
+      const { error } = await supabase
+        .from("habits")
+        .update(payload)
+        .eq("id", habit.id);
+      errorMessage = error?.message ?? null;
+    } else {
+      const userId = await currentUserId();
+      if (!userId) { setSaving(false); return; }
+      const { error } = await supabase
+        .from("habits")
+        .insert({ ...payload, user_id: userId, active: true, icon: "⭐" });
+      errorMessage = error?.message ?? null;
+    }
+    if (errorMessage) {
+      console.error("[wellness] habit save failed:", errorMessage);
+      toast.error("Could not save the habit. Please try again.");
+      setSaving(false);
+      return;
+    }
+
+    setSaving(false);
+    onOpenChange(false);
+    onSaved();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="md:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{habit ? "Edit Habit" : "New Habit"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 1. Name */}
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input
+              placeholder="e.g. Morning run"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              required
+            />
+          </div>
+
+          {/* 2. Description (optional) */}
+          <div className="space-y-2">
+            <Label>
+              Description{" "}
+              <span className="text-muted-foreground text-xs font-normal">(optional)</span>
+            </Label>
+            <Textarea
+              placeholder="What this habit means to you…"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="resize-none"
+            />
+          </div>
+
+          {/* 3. Repeat */}
+          <div className="space-y-2">
+            <Label>Repeat</Label>
+            <Select
+              value={repeatMode}
+              onValueChange={(value) => {
+                if (isRepeatMode(value)) handleRepeatModeChange(value);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Every day</SelectItem>
+                <SelectItem value="weekdays">Weekdays (Mon–Fri)</SelectItem>
+                <SelectItem value="weekends">Weekends (Sat–Sun)</SelectItem>
+                <SelectItem value="specific">Specific days</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {repeatMode === "specific" && (
+              <div className="flex gap-1 pt-1">
+                {DAY_PICKER_LABELS.map((label, i) => {
+                  const dow = DAY_PICKER_DOW[i];
+                  return (
+                    <button
+                      key={`${dow}-${i}`}
+                      type="button"
+                      onClick={() => toggleDay(dow)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        targetDays.includes(dow)
+                          ? "bg-brand-action text-white"
+                          : "bg-accent text-accent-foreground"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 4. Reminder time (optional) */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              Reminder time{" "}
+              <span className="text-muted-foreground text-xs font-normal">(optional)</span>
+            </Label>
+            <Input
+              type="time"
+              value={reminderTime}
+              onChange={(e) => setReminderTime(e.target.value)}
+              className="w-36"
+            />
+          </div>
+
+          {/* 5. Color */}
+          <div className="space-y-2">
+            <Label>Color</Label>
+            <div className="flex gap-2 flex-wrap">
+              {COLOR_SWATCHES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`w-7 h-7 rounded-full transition-transform active:scale-95 ${
+                    color === c ? "ring-2 ring-offset-2 ring-white/60 scale-110" : "hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: c }}
+                  aria-label={`Color ${c}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving || (repeatMode === "specific" && targetDays.length === 0)}>
+              {saving ? "Saving…" : habit ? "Update" : "Add Habit"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Focus Timer Dialog ───────────────────────────────────────────────────────
+
+function FocusTimerDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [minutes, setMinutes] = useState(25);
+  const [running, setRunning] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(25 * 60);
+  const [startedAt, setStartedAt] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (!running) return;
+    if (secondsLeft <= 0) {
+      setRunning(false);
+      saveSession();
+      return;
+    }
+    const id = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, secondsLeft]);
+
+  async function saveSession() {
+    if (!startedAt) return;
+    const supabase = createClient();
+    const userId = await currentUserId();
+    if (!userId) return;
+    const { error } = await supabase.from("focus_sessions").insert({
+      user_id: userId,
+      duration_minutes: minutes,
+      started_at: startedAt.toISOString(),
+      ended_at: new Date().toISOString(),
+      notes: null,
+    });
+    if (error) {
+      console.error("[wellness] focus session save failed:", error.message);
+      toast.error("Could not save the focus session. Please try again.");
+      return;
+    }
+    toast.success(`${minutes}min focus session saved!`);
+  }
+
+  function start() {
+    setSecondsLeft(minutes * 60);
+    setStartedAt(new Date());
+    setRunning(true);
+  }
+  function pause() { setRunning(false); }
+  function reset() {
+    if (running && startedAt) {
+      const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 60000);
+      if (elapsed >= 1) saveSession();
+    }
+    setRunning(false);
+    setStartedAt(null);
+    setSecondsLeft(minutes * 60);
+  }
+
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const ss = String(secondsLeft % 60).padStart(2, "0");
+  const pct = ((minutes * 60 - secondsLeft) / (minutes * 60)) * 100;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) {
+          if (running && startedAt) {
+            const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 60000);
+            if (elapsed >= 1) saveSession();
+          }
+          setRunning(false);
+          setStartedAt(null);
+          setSecondsLeft(minutes * 60);
+        }
+        onOpenChange(v);
+      }}
+    >
+      <DialogContent className="md:max-w-xs text-center">
+        <DialogHeader>
+          <DialogTitle>Focus Timer</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6 py-4">
+          <div className="relative w-40 h-40 mx-auto">
+            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
+              <circle
+                cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8"
+                className="text-mod-wellness"
+                strokeDasharray={`${2 * Math.PI * 45}`}
+                strokeDashoffset={`${2 * Math.PI * 45 * (1 - pct / 100)}`}
+                strokeLinecap="round"
+                style={{ transition: "stroke-dashoffset 1s linear" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-metric font-mono font-medium">{mm}:{ss}</span>
+            </div>
+          </div>
+          {!running && (
+            <div className="flex justify-center gap-2">
+              {[15, 25, 45, 60].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => { setMinutes(m); setSecondsLeft(m * 60); }}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${minutes === m ? "bg-brand-action text-white" : "bg-accent"}`}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-center gap-3">
+            {!running ? (
+              <Button onClick={start} className="w-24">Start</Button>
+            ) : (
+              <>
+                <Button onClick={pause} variant="outline" className="w-24">Pause</Button>
+                <Button onClick={reset} variant="ghost" className="w-24">Reset</Button>
+              </>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

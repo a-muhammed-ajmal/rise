@@ -75,7 +75,7 @@ End with: "Safe to merge" or "Changes required before merge"
 TDD scaffold for a new AI tool.
 1. Ask: tool name, AUTO or APPROVAL tier, entity, required parameters
 2. Write FunctionDeclaration in lib/ai/tools.ts (correct tier array)
-3. Write handler in lib/ai/execute-tool.ts
+3. Write the schema and handler in its domain module under lib/ai/tool-handlers/
 4. Write tests in lib/ai/__tests__/ covering success + error paths
 5. Run /verify
 6. Report: test count before → after, coverage before → after

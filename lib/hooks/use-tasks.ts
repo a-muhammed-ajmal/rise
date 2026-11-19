@@ -1,63 +1,52 @@
 'use client'
 
-import { useState, useEffect, useCallback, useId } from 'react'
+import { useState, useEffect, useCallback, useId, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { currentUserId } from '@/lib/supabase/current-user'
-import type { Database, Task } from '@/lib/types/database'
+import type { Task } from '@/lib/types/database'
 import { todayISO } from '@/lib/format'
+import { loadTasks, type TaskFilter, type TaskSnapshotData } from '@/lib/data/tasks'
+import { isFreshSnapshot, type ServerSnapshot } from '@/lib/data/snapshot'
 
-export type TaskFilter = 'today' | 'all' | 'project' | 'completed'
+export type { TaskFilter } from '@/lib/data/tasks'
 
-function hydrateTask(t: Database['public']['Tables']['tasks']['Row']): Task {
-  return {
-    ...t,
-    is_completed: t.completed_at !== null && t.completed_at !== undefined,
-    labels: Array.isArray(t.labels) ? t.labels : [],
-    subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
-    attachments: Array.isArray(t.attachments) ? t.attachments : [],
-  }
-}
-
-export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [loading, setLoading] = useState(true)
+/**
+ * `initial` is a server-loaded snapshot. It stands in for the first fetch only
+ * — for the view it was loaded for, while fresh. Every later run fetches: by
+ * then `tasks` may hold another filter's rows (Today → All → Today), so
+ * trusting the snapshot again would show the wrong list.
+ */
+export function useTasks(
+  filter: TaskFilter = 'today',
+  projectId?: string,
+  initial?: ServerSnapshot<TaskSnapshotData> | null,
+) {
+  // Captured once: the snapshot only ever describes the first render, and a
+  // caller passing a new object each render must not re-trigger the effect.
+  const [snapshot] = useState(initial)
+  const [tasks, setTasks] = useState<Task[]>(snapshot?.data.tasks ?? [])
+  const [loading, setLoading] = useState(!snapshot)
+  const snapshotConsumed = useRef(false)
   const channelName = `tasks-${useId().replace(/:/g, '')}`
 
   const fetchTasks = useCallback(async () => {
-    const supabase = createClient()
-    let query = supabase
-      .from('tasks')
-      .select('*')
-      .is("deleted_at", null)
-      .order('is_starred', { ascending: false })
-      .order('due_date', { ascending: true, nullsFirst: false })
-      .order('due_time', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false })
-
-    if (filter === 'completed') {
-      query = query.eq('status', 'done')
-    } else {
-      query = query.neq('status', 'done')
-      if (filter === 'today') {
-        const today = todayISO()
-        query = query.or(`due_date.eq.${today},due_date.lt.${today}`)
-      } else if (filter === 'project' && projectId) {
-        query = query.eq('project_id', projectId)
-      }
-    }
-
-    const { data, error } = await query
-    if (error) {
-      console.error('[use-tasks] fetch error:', error.message)
+    try {
+      setTasks(await loadTasks(createClient(), filter, todayISO(), projectId))
+    } catch (error) {
+      console.error('[use-tasks] fetch error:', error)
+    } finally {
       setLoading(false)
-      return
     }
-    setTasks((data ?? []).map(hydrateTask))
-    setLoading(false)
   }, [filter, projectId])
 
   useEffect(() => {
-    fetchTasks()
+    const useSnapshot =
+      !snapshotConsumed.current &&
+      snapshot?.data.filter === filter &&
+      snapshot.data.projectId === (projectId ?? null) &&
+      isFreshSnapshot(snapshot)
+    snapshotConsumed.current = true
+    if (!useSnapshot) fetchTasks()
 
     const supabase = createClient()
     const channel = supabase
@@ -66,7 +55,7 @@ export function useTasks(filter: TaskFilter = 'today', projectId?: string) {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [fetchTasks, channelName])
+  }, [fetchTasks, channelName, snapshot, filter, projectId])
 
   async function createTask(data: Partial<Task>): Promise<string | null> {
     const supabase = createClient()

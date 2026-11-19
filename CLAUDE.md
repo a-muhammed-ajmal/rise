@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1111 tests, 94.82% lines — target met. The largest remaining gaps are `use-tasks.ts` (49.45%) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1209 tests, 95.31% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -109,7 +109,8 @@ that every delete reachable over MCP is paired with an exposed `restore_record`.
 
 **Adding a new delete tool:** add it to `REVERSIBLE_TOOLS`, add its entity to
 `DELETABLE` and its name to `DELETE_TOOL_TARGETS` in `lib/ai/deletable.ts`, and add
-a `case` that delegates to `softDeleteRecord()`. The chat route's
+a handler to its domain module in `lib/ai/tool-handlers/` that delegates to
+`softDeleteRecord()`. The chat route's
 `APPROVAL_RESOURCES` and the ownership preflight derive from the registry
 automatically — there is no second list to update.
 
@@ -144,7 +145,7 @@ the confirmation prompt is shown, via the `APPROVAL_RESOURCES` lookup table in
 **MCP endpoint** (`/api/mcp`): Defaults to read-only list/get/search/recall tools. Reversible writes require explicit `MCP_ENABLE_WRITES=true`; irreversible, bulk, financial, and WhatsApp-reminder tools are never reachable via MCP. Auth accepts the static `MCP_ACCESS_TOKEN` (Claude Code) **or** OAuth 2.1. OAuth codes/tokens are stored hashed, authorization codes and refresh tokens are atomically single-use/rotated, and access is audience-bound (RFC 8707). Every call is rate-limited and audit-logged.
 
 **Service-role isolation:** the MCP path injects a service-role client, which bypasses
-RLS entirely. Every query in `execute-tool.ts` must therefore carry `.eq("user_id", userId)`
+RLS entirely. Every query in the tool handlers (`lib/ai/tool-handlers/`) must therefore carry `.eq("user_id", userId)`
 itself, and every foreign key taken from tool input must pass `isOwnedBy()` before it is
 written (`goal_id`, `contact_id`, `task_id`, `project_id`, `payment_method_id`). RLS is a
 backstop here, not the boundary.
@@ -207,7 +208,7 @@ Embedding a query as a document measurably degrades retrieval, which is what
 report `offset` for the next page in the result message, so a truncated list is never
 mistaken for a complete one. Helpers: `pageOf` / `pagedResult` / `rangeFor`.
 
-**Non-obvious behaviors in `execute-tool.ts`:**
+**Non-obvious behaviors in the tool handlers (`lib/ai/tool-handlers/`):**
 
 - `log_habit`: Uses fuzzy `ilike` name match, not ID lookup. First result wins — can silently log the wrong habit if names are similar. Upserts on `(habit_id, logged_date)`; accepts an optional `logged_date` (backdating), `note`, and `completed: false` for logging an explicit miss.
 - `create_journal_entry`: Upserts on `(user_id, date)` — one entry per day. Calling it twice on the same date updates, never duplicates.
@@ -218,7 +219,9 @@ mistaken for a complete one. Helpers: `pageOf` / `pagedResult` / `rangeFor`.
 - `update_habit_log` is the only handler that branches on a Postgres error code: a `23505` on a `logged_date` move (colliding with another live log for the same habit/day) returns a friendly message instead of the generic `dbErr()`.
 - `create_transfer`/`create_adjustment` insert into `transactions` with the exact shape the wallet UI already writes (`transfer-form.tsx`, `use-payment-methods.ts`'s `adjustBalance`) — `type: "transfer"` moves a positive `amount` between two owned `payment_methods` (self-transfer rejected by a zod `.refine()`); `type: "adjustment"` writes a signed delta with a required `reason` as `description`.
 
-**`executeTool` contract:** Always returns `{ success: boolean; message: string; data?: unknown }`. Every handler calls `getUser()` and returns early if no user. Every query filters by `user_id`.
+**`executeTool` contract:** Always returns `{ success: boolean; message: string; data?: unknown }`. It resolves the caller once — the cookie client's `getUser()` (returning "Not authenticated" with no user) or an injected `ToolContext` — then looks the handler up in `TOOL_HANDLERS` (a `Map`, so prototype names such as `toString` are unknown tools) and calls it with `{ input, supabase, userId, today }`. Every query filters by `user_id`. `lib/ai/__tests__/tool-handlers.test.ts` fails if a declared tool has no handler or a handler has no declaration.
+
+**Tool results in history:** every `tool_result` carries a compact `context` (`summarizeToolResult()` in `lib/ai/chat-history.ts`); the client stores it with the message and the route replays it for the last 5 assistant turns as `<untrusted-tool-results>`. It is database content — never an instruction channel.
 
 ## Testing Patterns
 
@@ -258,7 +261,7 @@ Each tool requires: happy path + not-authenticated + supabase-error + edge cases
 
 - `/verify` — runs test:coverage (≥85% lib/**), lint (0 errors + 0 warnings), build (exit 0). All three must pass.
 - `/review` — code quality review
-- `/add-tool` — TDD-first recipe: write tests first, add FunctionDeclaration to tools.ts, add case to execute-tool.ts switch block
+- `/add-tool` — TDD-first recipe: write tests first, add FunctionDeclaration to tools.ts, add the schema and handler to the tool's domain module in `lib/ai/tool-handlers/`
 - `/new-module` — scaffold recipe: page.tsx → Sidebar link → BottomNav link → database.ts types → spec.md update
 
 ## Complete File Structure
@@ -267,6 +270,9 @@ Each tool requires: happy path + not-authenticated + supabase-error + edge cases
 app/
   (auth)/                   Login page routes and Google OAuth handler pipelines
   (app)/                    Authenticated core workspace shell (layout.tsx handles auth protection)
+                            Each module: page.tsx is an async server component that loads the first
+                            screen of data (lib/data/) and renders <module>-view.tsx, the client view.
+                            A snapshot older than 15s (a Router Cache revisit) refetches on mount
     page.tsx                Central OS Executive Dashboard (async RSC, 11 parallel Supabase queries, no Suspense)
     productivity/           Task orchestration and project boards
     finance/                Income, expense, transfer and adjustment ledgers; wallet/payment method balance tracking (Strict AED)
@@ -301,19 +307,32 @@ lib/
     tools.ts                AUTO_TOOLS + REVERSIBLE_TOOLS + APPROVAL_TOOLS + ALL_TOOLS
                             + APPROVAL_TOOL_NAMES (chat gate) + MCP_TOOL_SOURCE (MCP surface)
     deletable.ts            DELETABLE registry (17 soft-deletable entities) + DELETE_TOOL_TARGETS
-    execute-tool.ts         executeTool(name, input, ctx?) — switch-case, returns ToolResult
-                            softDeleteRecord / restoreRecord / detachChildren live here
+    execute-tool.ts         executeTool(name, input, ctx?) — resolves the caller, dispatches via TOOL_HANDLERS
+    tool-handlers/          One module per domain (tasks, projects, goals, wellness, finance, crm,
+                            knowledge, reflection, insights, personal-memory, recycle-bin, whatsapp):
+                            input schemas + a `{ tool_name: handler }` map. index.ts builds the Map
+                            registry; shared.ts holds ToolResult/ToolEnv, ownership checks,
+                            pagination and softDeleteRecord / restoreRecord / detachChildren;
+                            schemas.ts holds the zod primitives used by more than one module
+    chat-history.ts         summarizeToolResult() / buildToolHistoryContext() — tool results replayed into history
     memory.ts               Voyage AI (1024-dim pgvector) tracking logic with keyword fallback
+    models.ts               GEMINI_MODEL — the one Gemini model id (chat, digest, transcription); env override
     mcp.ts                  MCP registry (read-only by default; optional reversible writes), auth guard, service-role ToolContext
     mcp-schema.ts           Gemini FunctionDeclaration → JSON Schema converter for MCP tools/list
     upload-helpers.ts       File upload parsing and text/audio extraction for chat attachments
+  data/
+    snapshot.ts             ServerSnapshot { data, loadedAt } + takeSnapshot() / isFreshSnapshot() (15s)
+    finance.ts · tasks.ts · modules.ts
+                            Initial-data loaders, one per module page. Shared by the server page and
+                            the client view's refetch, so both run the same queries; they throw on error
   hooks/
-    use-tasks.ts            Task CRUD with Supabase Realtime subscription; DB sort: starred → due_date → due_time NULLS LAST → created_at
-    use-projects.ts         Project CRUD with Supabase Realtime subscription
+    use-tasks.ts            Task CRUD with Supabase Realtime subscription; DB sort: starred → due_date → due_time NULLS LAST → created_at.
+                            Optional server snapshot — used for the first run of its own view only
+    use-projects.ts         Project CRUD with Supabase Realtime subscription; optional server snapshot
     use-push-subscription.ts Push notification subscription management
-    use-payment-methods.ts  Wallet balance state and CRUD operations
+    use-payment-methods.ts  Wallet balance state and CRUD operations; optional server snapshot
     use-is-desktop.ts       Returns true when viewport ≥ 768px (md breakpoint); SSR-safe
-    use-categories.ts       Finance category state and CRUD
+    use-categories.ts       Finance category state and CRUD; optional server snapshot
     use-theme.tsx           Dark/light mode toggle; persists to localStorage
   supabase/
     client.ts               Client-side client initializations for browser interactions

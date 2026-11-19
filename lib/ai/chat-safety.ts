@@ -2,6 +2,10 @@ import type { ChatAttachment } from "@/lib/types/database";
 import { isReadOnlyMcpToolName } from "@/lib/ai/mcp-schema";
 
 export const MAX_TOOL_CALLS_PER_TURN = 8;
+// One user message may take several model turns: look a record up, act on it,
+// then reply. Each round is a separate Gemini request, so the cap bounds both
+// runaway loops and free-tier quota per message.
+export const MAX_TOOL_ROUNDS = 4;
 export const MAX_ATTACHMENT_CONTEXT_CHARS = 60_000;
 
 type AttachmentText = Pick<
@@ -51,4 +55,19 @@ export function requiresAttachmentApproval(
 
 export function isWithinToolCallBudget(callCount: number): boolean {
   return callCount <= MAX_TOOL_CALLS_PER_TURN;
+}
+
+/**
+ * Whether another round of tool calls may run for the same user message.
+ * `roundsCompleted` counts rounds already executed; `totalCalls` includes the
+ * round being considered, so the 8-call budget spans the whole message rather
+ * than resetting on every round.
+ */
+export function canRunToolRound(
+  roundsCompleted: number,
+  totalCalls: number,
+): boolean {
+  return (
+    roundsCompleted < MAX_TOOL_ROUNDS && isWithinToolCallBudget(totalCalls)
+  );
 }

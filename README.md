@@ -127,7 +127,7 @@ Not scheduled through `pg_cron`: set the cadence under
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (1071 tests, 94.56% line coverage) + Playwright |
+| Testing | Vitest 4 + Testing Library (1209 tests, 95.31% line coverage) + Playwright |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -174,19 +174,23 @@ POST /api/ai/chat
 Content-Type: application/json
 
 Body: {
-  messages: { role: "user" | "assistant" | "model", content: string, attachments?: ChatAttachment[] }[],
-  approvalToken?: string
+  messages: {
+    role: "user" | "assistant" | "model", content: string, attachments?: ChatAttachment[],
+    toolResults?: { tool: string, success: boolean, context?: string }[]   // replayed for recent turns
+  }[],
+  approvalToken?: string,
+  historyOffset?: number   // earlier messages the client left out of `messages`
 }
 
 SSE events:
   { type: "text",              text: string }
-  { type: "tool_result",       tool: string, result: { success, message, data? } }
-  { type: "approval_required", tool: { id, name, input } }
+  { type: "tool_result",       tool: string, result: { success, message, data? }, context: string }
+  { type: "approval_required", tool: { id, name, input }, token: string, reason?: string }
   { type: "error",             message: string }
   data: [DONE]
 ```
 
-Destructive, bulk, material financial, and attachment-inferred write calls halt streaming and emit `approval_required`. The client shows a `<ConfirmDialog>`; on approval a second POST sends the signed, user-bound token. Its nonce is consumed once in Postgres and expires after two minutes.
+One message can take several model turns: tool results go back to the model, so it can look a record up and then act on it, up to 4 rounds and 8 tool calls per message. Destructive, bulk, material financial, and attachment-inferred write calls halt streaming and emit one `approval_required` each. The client queues them in a confirmation banner, oldest first; on approval a second POST sends the signed, user-bound token. Its nonce is consumed once in Postgres and expires after two minutes — an expired or reused token is reported to the user, not silently dropped.
 
 ---
 
@@ -501,9 +505,9 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1071 passing across 42 test files |
-| Line coverage | 94.56% on `lib/**` |
+| Test count | 1209 passing across 54 test files |
+| Line coverage | 95.31% on `lib/**` |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
-| Last phase | Phase 26 — Startup performance and Finance net worth: local JWT verification with a cached JWKS, functions pinned to Mumbai next to the database, a shared dashboard data source, and a Net worth card on the Finance Overview |
+| Last phase | Phase 29 — Tool results carried into chat history, the AI tool executor split into per-domain handler modules, and module pages that load their first screen of data on the server |

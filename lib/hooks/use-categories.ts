@@ -4,29 +4,31 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { currentUserId } from "@/lib/supabase/current-user";
 import type { Category } from "@/lib/types/database";
+import { loadCategories } from "@/lib/data/finance";
+import { isFreshSnapshot, type ServerSnapshot } from "@/lib/data/snapshot";
 
-export function useCategories() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+/** `initial` is a server-loaded snapshot, used only while fresh. */
+export function useCategories(initial?: ServerSnapshot<Category[]> | null) {
+  // Captured once: the snapshot only describes the first render.
+  const [snapshot] = useState(initial);
+  const [categories, setCategories] = useState<Category[]>(snapshot?.data ?? []);
+  const [loading, setLoading] = useState(!snapshot);
 
   const fetchCategories = useCallback(async () => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .order("name", { ascending: true });
-    if (error) {
-      console.error("[use-categories] fetch failed", error.message);
-      setLoading(false);
-      return;
+    try {
+      setCategories(await loadCategories(createClient()));
+    } catch (error) {
+      console.error(
+        "[use-categories] fetch failed",
+        error instanceof Error ? error.message : error,
+      );
     }
-    setCategories(data ?? []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    if (!isFreshSnapshot(snapshot)) fetchCategories();
+  }, [fetchCategories, snapshot]);
 
   async function createCategory(
     name: string,

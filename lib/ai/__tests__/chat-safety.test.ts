@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildUntrustedAttachmentContext,
+  canRunToolRound,
   isWithinToolCallBudget,
   MAX_ATTACHMENT_CONTEXT_CHARS,
+  MAX_TOOL_CALLS_PER_TURN,
+  MAX_TOOL_ROUNDS,
   requiresAttachmentApproval,
 } from "../chat-safety";
 
@@ -58,5 +61,14 @@ describe("chat attachment safety", () => {
   it("rejects oversized tool batches", () => {
     expect(isWithinToolCallBudget(8)).toBe(true);
     expect(isWithinToolCallBudget(9)).toBe(false);
+  });
+
+  it("allows another tool round only within the round and call budgets", () => {
+    expect(canRunToolRound(0, 1)).toBe(true);
+    expect(canRunToolRound(MAX_TOOL_ROUNDS - 1, MAX_TOOL_CALLS_PER_TURN)).toBe(
+      true,
+    );
+    expect(canRunToolRound(MAX_TOOL_ROUNDS, 1)).toBe(false);
+    expect(canRunToolRound(1, MAX_TOOL_CALLS_PER_TURN + 1)).toBe(false);
   });
 });
