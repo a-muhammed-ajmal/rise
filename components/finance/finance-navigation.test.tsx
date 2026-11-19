@@ -33,10 +33,10 @@ describe("Finance navigation", () => {
     expect(screen.getByText("Activity panel")).toBeDefined();
     expect(screen.queryByRole("tab", { name: "Home" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Money" })).toBeNull();
-    expect(screen.getAllByRole("tab")).toHaveLength(4);
+    expect(screen.getAllByRole("tab")).toHaveLength(5);
   });
 
-  it.each(["Activity", "Wallet", "Budget", "Debt"])("opens the %s view", (label) => {
+  it.each(["Activity", "Wallet", "Budget", "Debt", "Alerts"])("opens the %s view", (label) => {
     render(<NavigationHarness />);
     fireEvent.click(screen.getByRole("tab", { name: label }));
     expect(screen.getByRole("tab", { name: label }).getAttribute("aria-selected")).toBe("true");
@@ -60,6 +60,7 @@ describe("Finance navigation", () => {
   it("accepts only known view names", () => {
     expect(isMoneyView("debts")).toBe(true);
     expect(isMoneyView("wallets")).toBe(true);
+    expect(isMoneyView("alerts")).toBe(true);
     expect(isMoneyView("home")).toBe(false);
     expect(isMoneyView("categories")).toBe(false);
     expect(isMoneyView(null)).toBe(false);
@@ -71,5 +72,6 @@ describe("Finance navigation", () => {
     expect(screen.getByRole("tab", { name: "Wallet" }).className).toContain("finance-tab--wallets");
     expect(screen.getByRole("tab", { name: "Budget" }).className).toContain("finance-tab--budgets");
     expect(screen.getByRole("tab", { name: "Debt" }).className).toContain("finance-tab--debts");
+    expect(screen.getByRole("tab", { name: "Alerts" }).className).toContain("finance-tab--alerts");
   });
 });

@@ -43,9 +43,6 @@ function renderActivity(transactions: Transaction[], extra: Partial<Parameters<t
       transactions={transactions}
       walletNameById={wallets}
       today={TODAY}
-      onAddExpense={noop}
-      onAddIncome={noop}
-      onTransfer={noop}
       onEdit={noop}
       onDelete={noop}
       {...extra}
@@ -77,16 +74,12 @@ describe("ActivityView", () => {
     expect(screen.getAllByRole("button", { name: /^Actions for/ })).toHaveLength(2);
   });
 
-  it("wires the add, income and transfer buttons", () => {
-    const onAddExpense = vi.fn();
-    const onAddIncome = vi.fn();
-    const onTransfer = vi.fn();
-    renderActivity([], { onAddExpense, onAddIncome, onTransfer });
+  it("shows the empty state when there are no transactions", () => {
+    renderActivity([]);
     expect(screen.getByText("No activity yet")).toBeDefined();
-    fireEvent.click(screen.getByRole("button", { name: "Add expense" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add income" }));
-    fireEvent.click(screen.getByRole("button", { name: "New transfer" }));
-    expect([onAddExpense, onAddIncome, onTransfer].map((f) => f.mock.calls.length)).toEqual([1, 1, 1]);
+    expect(screen.queryByRole("button", { name: "Add expense" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add income" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "New transfer" })).toBeNull();
   });
 
   it("shows the first page and loads more on request", () => {

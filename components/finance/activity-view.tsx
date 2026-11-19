@@ -6,10 +6,8 @@ import {
   ArrowLeftRight,
   ArrowUpRight,
   HandCoins,
-  Minus,
   MoreVertical,
   Pencil,
-  Plus,
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
@@ -114,9 +112,6 @@ export function ActivityView({
   transactions,
   walletNameById,
   today,
-  onAddExpense,
-  onAddIncome,
-  onTransfer,
   onEdit,
   onDelete,
 }: {
@@ -124,9 +119,6 @@ export function ActivityView({
   walletNameById: Readonly<Record<string, string>>;
   /** Today's Dubai date, "yyyy-MM-dd". */
   today: string;
-  onAddExpense: () => void;
-  onAddIncome: () => void;
-  onTransfer: () => void;
   onEdit: (txn: Transaction) => void;
   onDelete: (id: string) => void;
 }) {
@@ -137,21 +129,6 @@ export function ActivityView({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
-        <Button variant="outline" className="finance-action finance-action--out gap-1.5 px-2" onClick={onAddExpense} aria-label="Add expense">
-          <Minus aria-hidden="true" />
-          Expense
-        </Button>
-        <Button variant="outline" className="finance-action finance-action--in gap-1.5 px-2" onClick={onAddIncome} aria-label="Add income">
-          <Plus aria-hidden="true" />
-          Income
-        </Button>
-        <Button variant="outline" className="finance-action gap-1.5 px-2" onClick={onTransfer} aria-label="New transfer">
-          <ArrowLeftRight aria-hidden="true" />
-          Transfer
-        </Button>
-      </div>
-
       {groups.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card px-4 py-10 text-center">
           <p className="text-sm font-medium">No activity yet</p>

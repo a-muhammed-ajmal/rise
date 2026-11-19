@@ -863,6 +863,7 @@
 .finance-tab--wallets { --tab: var(--mod-finance);   --tab-tint: var(--mod-finance-tint); }
 .finance-tab--budgets { --tab: var(--mod-goals);     --tab-tint: var(--mod-goals-tint); }
 .finance-tab--debts   { --tab: var(--mod-knowledge); --tab-tint: var(--mod-knowledge-tint); }
+.finance-tab--alerts  { --tab: var(--color-warning);  --tab-tint: var(--color-warning-tint); }
 .finance-tab svg { color: var(--tab); }
 .finance-tab:hover { background: var(--tab-tint); color: var(--tab); }
 .finance-tab[data-active] {

@@ -224,12 +224,15 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     [openDebts, standing, spentThisMonth, today]
   );
 
-  // A dot on the Budgets / Debts tab when something there needs a look — red
+  // A dot on Budgets / Debts / Alerts when something there needs a look — red
   // wins over amber.
   const viewAlerts = useMemo(() => {
     const alerts: Partial<Record<MoneyView, ViewAlert>> = {};
     for (const item of attention) {
       if (alerts[item.target] !== "danger") alerts[item.target] = item.level;
+    }
+    if (attention.length > 0) {
+      alerts["alerts"] = attention.some((i) => i.level === "danger") ? "danger" : "warning";
     }
     return alerts;
   }, [attention]);
@@ -458,22 +461,16 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
         <MoneyViewList alerts={viewAlerts} />
 
         <TabsContent value="activity" className="slide-up stagger-1 space-y-4">
-          <div className="grid min-w-0 items-start gap-4 md:grid-cols-2">
-            <MonthCard
-              monthLabel={monthLabel}
-              summary={month}
-              onPrevMonth={() => setSelectedMonth((m) => subMonths(m, 1))}
-              onNextMonth={() => setSelectedMonth((m) => addMonths(m, 1))}
-            />
-            {attention.length > 0 && <AttentionCard items={attention} onOpen={openView} />}
-          </div>
+          <MonthCard
+            monthLabel={monthLabel}
+            summary={month}
+            onPrevMonth={() => setSelectedMonth((m) => subMonths(m, 1))}
+            onNextMonth={() => setSelectedMonth((m) => addMonths(m, 1))}
+          />
           <ActivityView
             transactions={allTransactions}
             walletNameById={walletNameById}
             today={today}
-            onAddExpense={() => openEntry("expense")}
-            onAddIncome={() => openEntry("income")}
-            onTransfer={() => openEntry("transfer")}
             onEdit={(txn) => {
               setEditTxn(txn);
               setTxnType(txn.type === "income" ? "income" : "expense");
@@ -728,6 +725,10 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
             }}
             onDelete={setDeleteDebtId}
           />
+        </TabsContent>
+
+        <TabsContent value="alerts" className="slide-up stagger-1">
+          <AttentionCard items={attention} onOpen={openView} />
         </TabsContent>
       </Tabs>
 
