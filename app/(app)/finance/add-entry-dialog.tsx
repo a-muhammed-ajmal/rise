@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TransactionFields } from "./transaction-form";
 import { TransferFields } from "./transfer-form";
-import { DebtEntryFields } from "./debt-entry-fields";
+import { DebtEntryFields, type DebtPreset } from "./debt-entry-fields";
 
 /** The four things the Finance Add button can record, in tab order. */
 export type EntryKind = "expense" | "income" | "transfer" | "debt";
@@ -72,6 +72,7 @@ export function AddEntryDialog({
   categories,
   createCategory,
   openDebts,
+  debtPreset = null,
   onTransactionSaved,
   onSaved,
 }: {
@@ -85,6 +86,8 @@ export function AddEntryDialog({
   createCategory: (name: string, type: "income" | "expense") => Promise<Category | null>;
   /** Outstanding debts, already sorted by due date. */
   openDebts: readonly Debt[];
+  /** Start the Debt tab on a repayment of this debt. */
+  debtPreset?: DebtPreset | null;
   /** After an expense or income is saved (the caller shows the toast). */
   onTransactionSaved: () => void;
   /** After a transfer or debt entry is saved (those forms toast themselves). */
@@ -152,6 +155,8 @@ export function AddEntryDialog({
           </TabsContent>
           <TabsContent value="debt">
             <DebtEntryFields
+              key={debtPreset?.debtId ?? "new"}
+              preset={debtPreset}
               openDebts={openDebts}
               paymentMethods={paymentMethods}
               onCancel={close}

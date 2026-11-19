@@ -60,7 +60,7 @@ export function DebtsView({
   youOweCount,
   today,
   onAdd,
-  onMarkPaid,
+  onRepay,
   onEdit,
   onDelete,
 }: {
@@ -73,8 +73,10 @@ export function DebtsView({
   youOweCount: number;
   /** Today's Dubai date, "yyyy-MM-dd". */
   today: string;
+  /** Opens the shared debt form (Add dialog, Debt tab). */
   onAdd: () => void;
-  onMarkPaid: (id: string) => void;
+  /** Opens the same form on a repayment of this debt. */
+  onRepay: (debt: Debt) => void;
   onEdit: (debt: Debt) => void;
   onDelete: (id: string) => void;
 }) {
@@ -126,8 +128,8 @@ export function DebtsView({
                     <MoreVertical className="size-4" aria-hidden="true" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onMarkPaid(debt.id)}>
-                      <CheckCircle2 className="mr-2 size-4" aria-hidden="true" /> Mark as paid
+                    <DropdownMenuItem onClick={() => onRepay(debt)}>
+                      <CheckCircle2 className="mr-2 size-4" aria-hidden="true" /> Record repayment
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onEdit(debt)}>
                       <Pencil className="mr-2 size-4" aria-hidden="true" /> Edit

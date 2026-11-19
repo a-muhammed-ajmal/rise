@@ -16,7 +16,14 @@ import {
   type DebtDirection,
 } from "@/lib/finance/entries";
 import { Button } from "@/components/ui/button";
-import { DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +38,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export type DebtEntryMode = "new" | "repay";
+
+/** Open the form on a repayment of this debt, prefilled with its whole balance. */
+export type DebtPreset = { mode: "repay"; debtId: string };
 
 const NO_WALLET = "none";
 
@@ -74,37 +84,44 @@ function Switch<T extends string>({
 }
 
 /**
- * The Debt tab of the Finance "Add" dialog: record money lent or borrowed, or
- * a repayment against an open debt. Choosing a wallet also moves its balance
- * (a signed adjustment — not income or spending); leaving it empty only
- * changes the debt, exactly like the Debts tab form.
+ * The only debt form. Records money lent or borrowed, or a repayment against
+ * an open debt; choosing a wallet also moves its balance (a signed adjustment
+ * — not income or spending), leaving it on None changes the debt only. With
+ * `editing` it edits that debt's record and never moves a wallet.
  */
 export function DebtEntryFields({
   openDebts,
   paymentMethods,
   onCancel,
   onSaved,
+  preset = null,
+  editing = null,
 }: {
   /** Outstanding debts, already sorted by due date. */
   openDebts: readonly Debt[];
   paymentMethods: PaymentMethod[];
   onCancel: () => void;
   onSaved: () => void;
+  preset?: DebtPreset | null;
+  editing?: Debt | null;
 }) {
   const uid = useId();
-  const [mode, setMode] = useState<DebtEntryMode>("new");
+  const presetDebt = preset ? openDebts.find((d) => d.id === preset.debtId) ?? null : null;
+  const [mode, setMode] = useState<DebtEntryMode>(presetDebt ? "repay" : "new");
 
-  // New debt
-  const [direction, setDirection] = useState<DebtDirection>("they_owe");
-  const [name, setName] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [note, setNote] = useState("");
+  // New debt (or the debt being edited)
+  const [direction, setDirection] = useState<DebtDirection>(editing?.type ?? "they_owe");
+  const [name, setName] = useState(editing?.creditor ?? "");
+  const [dueDate, setDueDate] = useState(editing?.due_date ?? "");
+  const [note, setNote] = useState(editing?.description ?? "");
 
   // Repayment
-  const [debtId, setDebtId] = useState("");
+  const [debtId, setDebtId] = useState(presetDebt?.id ?? "");
 
   // Shared
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(
+    editing ? String(editing.amount) : presetDebt ? String(presetDebt.amount) : ""
+  );
   const [walletId, setWalletId] = useState(NO_WALLET);
   const [date, setDate] = useState(todayISO());
   const [saving, setSaving] = useState(false);
@@ -236,6 +253,27 @@ export function DebtEntryFields({
     return true;
   }
 
+  async function saveEdit(original: Debt, value: number) {
+    const { error } = await createClient()
+      .from("debts")
+      .update({
+        creditor: name.trim(),
+        type: direction,
+        amount: value,
+        description: note.trim() || null,
+        due_date: dueDate || null,
+      })
+      .eq("id", original.id)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[finance] debt update failed:", error.message);
+      toast.error("Could not save the debt. Please try again.");
+      return false;
+    }
+    toast.success("Debt updated");
+    return true;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (parsedAmount === null) {
@@ -253,17 +291,22 @@ export function DebtEntryFields({
 
     setSaving(true);
     try {
-      const userId = await currentUserId();
-      if (!userId) {
-        toast.error("Your session expired. Please sign in again.");
-        return;
+      let saved: boolean;
+      if (editing) {
+        saved = await saveEdit(editing, parsedAmount);
+      } else {
+        const userId = await currentUserId();
+        if (!userId) {
+          toast.error("Your session expired. Please sign in again.");
+          return;
+        }
+        saved =
+          mode === "new"
+            ? await saveNewDebt(userId, parsedAmount)
+            : debt
+            ? await saveRepayment(userId, debt, parsedAmount)
+            : false;
       }
-      const saved =
-        mode === "new"
-          ? await saveNewDebt(userId, parsedAmount)
-          : debt
-          ? await saveRepayment(userId, debt, parsedAmount)
-          : false;
       if (!saved) return;
       onCancel();
       onSaved();
@@ -307,15 +350,17 @@ export function DebtEntryFields({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Switch
-        label="Debt entry type"
-        value={mode}
-        onChange={switchMode}
-        options={[
-          { value: "new", label: "Lend / Borrow" },
-          { value: "repay", label: "Repayment" },
-        ]}
-      />
+      {!editing && (
+        <Switch
+          label="Debt entry type"
+          value={mode}
+          onChange={switchMode}
+          options={[
+            { value: "new", label: "Lend / Borrow" },
+            { value: "repay", label: "Repayment" },
+          ]}
+        />
+      )}
 
       {mode === "new" ? (
         <>
@@ -368,8 +413,16 @@ export function DebtEntryFields({
               />
             </div>
           </div>
-          {walletField}
-          {dateField}
+          {editing ? (
+            <p className="text-label text-muted-foreground">
+              Editing changes this record only — no wallet moves. To log money paid back, use Record repayment.
+            </p>
+          ) : (
+            <>
+              {walletField}
+              {dateField}
+            </>
+          )}
           <div className="space-y-2">
             <Label htmlFor={`${uid}-note`}>Note (optional)</Label>
             <Textarea
@@ -457,9 +510,43 @@ export function DebtEntryFields({
           type="submit"
           disabled={saving || (mode === "repay" && (!debt || (plan !== null && !plan.ok)))}
         >
-          {saving ? "Saving…" : mode === "new" ? "Save debt" : "Record repayment"}
+          {saving ? "Saving…" : editing ? "Save changes" : mode === "new" ? "Save debt" : "Record repayment"}
         </Button>
       </DialogFooter>
     </form>
+  );
+}
+
+/** Edit an open debt's record: who, which way, how much, due date and note. */
+export function EditDebtDialog({
+  open,
+  onOpenChange,
+  debt,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  debt: Debt | null;
+  onSaved: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto md:max-w-md">
+        <DialogHeader className="gap-1 pr-8">
+          <DialogTitle>Edit debt</DialogTitle>
+          <DialogDescription className="text-xs">Change who, how much or when it is due.</DialogDescription>
+        </DialogHeader>
+        {debt && (
+          <DebtEntryFields
+            key={debt.id}
+            editing={debt}
+            openDebts={[]}
+            paymentMethods={[]}
+            onCancel={() => onOpenChange(false)}
+            onSaved={onSaved}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

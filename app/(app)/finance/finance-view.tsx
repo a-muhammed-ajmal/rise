@@ -11,6 +11,7 @@ import { formatAEDWrappable, todayISO } from "@/lib/format";
 import { usePaymentMethods } from "@/lib/hooks/use-payment-methods";
 import { TransactionForm } from "./transaction-form";
 import { AddEntryDialog, isEntryKind, type EntryKind } from "./add-entry-dialog";
+import { EditDebtDialog, type DebtPreset } from "./debt-entry-fields";
 import { WalletForm } from "./wallet-form";
 import { AdjustBalanceForm } from "./adjust-balance-form";
 import { WalletCard } from "./wallet-card";
@@ -45,16 +46,7 @@ import { summarizeNetWorth } from "@/lib/finance/net-worth";
 import { monthBounds, summarizeMonth } from "@/lib/finance/month";
 import { needsAttention } from "@/lib/finance/attention";
 import { isOpenDebt, sortByDueDate } from "@/lib/finance/debts";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ChevronLeft, Loader2, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import {
@@ -93,6 +85,7 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
   // Add dialog — Expense | Income | Transfer | Debt
   const [entryOpen, setEntryOpen] = useState(false);
   const [entryKind, setEntryKind] = useState<EntryKind>("expense");
+  const [debtPreset, setDebtPreset] = useState<DebtPreset | null>(null);
 
   // Edit transaction dialog
   const [txnOpen, setTxnOpen] = useState(false);
@@ -111,11 +104,10 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
   const [budgetSettings, setBudgetSettings] = useState<{ focus?: string } | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<string | null>(null);
 
-  // Debt dialogs
-  const [debtOpen, setDebtOpen] = useState(false);
+  // Debt dialogs — adding and repaying go through the Add dialog's Debt tab
   const [editDebt, setEditDebt] = useState<Debt | null>(null);
+  const [editDebtOpen, setEditDebtOpen] = useState(false);
   const [deleteDebtId, setDeleteDebtId] = useState<string | null>(null);
-  const [markPaidDebtId, setMarkPaidDebtId] = useState<string | null>(null);
 
   const {
     categories,
@@ -267,8 +259,9 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     tabs.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
   }
 
-  function openEntry(kind: EntryKind) {
+  function openEntry(kind: EntryKind, preset: DebtPreset | null = null) {
     setEntryKind(kind);
+    setDebtPreset(preset);
     setEntryOpen(true);
   }
 
@@ -353,23 +346,6 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
     }
     setDeleteDebtId(null);
     toast.success("Debt moved to the recycle bin");
-    await fetchData();
-  }
-
-  async function handleMarkPaid() {
-    if (!markPaidDebtId) return;
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("debts")
-      .update({ paid_at: new Date().toISOString() })
-      .eq("id", markPaidDebtId);
-    if (error) {
-      console.error("[finance] mark paid failed:", error.message);
-      toast.error("Could not mark this debt as paid. Please try again.");
-      return;
-    }
-    setMarkPaidDebtId(null);
-    toast.success("Marked as paid");
     await fetchData();
   }
 
@@ -714,14 +690,11 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
             owedToYouCount={netWorth.owedToYouCount}
             youOweCount={netWorth.youOweCount}
             today={today}
-            onAdd={() => {
-              setEditDebt(null);
-              setDebtOpen(true);
-            }}
-            onMarkPaid={setMarkPaidDebtId}
+            onAdd={() => openEntry("debt")}
+            onRepay={(debt) => openEntry("debt", { mode: "repay", debtId: debt.id })}
             onEdit={(debt) => {
               setEditDebt(debt);
-              setDebtOpen(true);
+              setEditDebtOpen(true);
             }}
             onDelete={setDeleteDebtId}
           />
@@ -753,6 +726,7 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
         categories={categories}
         createCategory={createCategory}
         openDebts={openDebts}
+        debtPreset={debtPreset}
         onTransactionSaved={async () => {
           await refreshAll();
           toast.success("Transaction saved");
@@ -815,17 +789,11 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
         }}
       />
 
-      <DebtForm
-        open={debtOpen}
-        onOpenChange={(v) => {
-          setDebtOpen(v);
-          if (!v) setEditDebt(null);
-        }}
-        initial={editDebt}
-        onSaved={() => {
-          fetchData();
-          toast.success(editDebt ? "Debt updated" : "Debt added");
-        }}
+      <EditDebtDialog
+        open={editDebtOpen}
+        onOpenChange={setEditDebtOpen}
+        debt={editDebt}
+        onSaved={fetchData}
       />
 
       <ConfirmDialog
@@ -854,17 +822,6 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
         title="Delete debt?"
         description="This debt record will move to the recycle bin and can be restored."
         onConfirm={handleDeleteDebt}
-      />
-      <ConfirmDialog
-        open={!!markPaidDebtId}
-        onOpenChange={(v) => {
-          if (!v) setMarkPaidDebtId(null);
-        }}
-        title="Mark as paid?"
-        description="This debt will be marked as settled and removed from your outstanding list."
-        confirmLabel="Mark paid"
-        destructive={false}
-        onConfirm={handleMarkPaid}
       />
       <ConfirmDialog
         open={!!deleteCatId}
@@ -914,170 +871,4 @@ function budgetHints(
     hints[key] = hint;
   }
   return hints;
-}
-
-// ─── Debt Form ────────────────────────────────────────────────────────────────
-
-function DebtForm({
-  open,
-  onOpenChange,
-  initial,
-  onSaved,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  initial: Debt | null;
-  onSaved: () => void;
-}) {
-  const [creditor, setCreditor] = useState("");
-  const [type, setType] = useState<Debt["type"]>("i_owe");
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (initial) {
-      setCreditor(initial.creditor);
-      setType(initial.type);
-      setAmount(String(initial.amount));
-      setDescription(initial.description ?? "");
-      setDueDate(initial.due_date ?? "");
-    } else {
-      setCreditor("");
-      setType("i_owe");
-      setAmount("");
-      setDescription("");
-      setDueDate("");
-    }
-  }, [initial, open]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!creditor.trim() || !amount) return;
-    setSaving(true);
-    const supabase = createClient();
-
-    let errorMessage: string | null = null;
-    if (initial) {
-      const { error } = await supabase
-        .from("debts")
-        .update({
-          creditor: creditor.trim(),
-          type,
-          amount: parseFloat(amount),
-          description: description || null,
-          due_date: dueDate || null,
-        })
-        .eq("id", initial.id);
-      errorMessage = error?.message ?? null;
-    } else {
-      const userId = await currentUserId();
-      if (!userId) {
-        setSaving(false);
-        toast.error("Your session expired. Please sign in again.");
-        return;
-      }
-      const { error } = await supabase.from("debts").insert({
-        user_id: userId,
-        creditor: creditor.trim(),
-        type,
-        amount: parseFloat(amount),
-        description: description || null,
-        due_date: dueDate || null,
-      });
-      errorMessage = error?.message ?? null;
-    }
-    if (errorMessage) {
-      console.error("[finance] debt save failed:", errorMessage);
-      toast.error("Could not save the debt. Please try again.");
-      setSaving(false);
-      return;
-    }
-
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{initial ? "Edit Debt" : "Add Debt / Loan"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={type === "i_owe" ? "default" : "outline"}
-              onClick={() => setType("i_owe")}
-            >
-              I owe
-            </Button>
-            <Button
-              type="button"
-              variant={type === "they_owe" ? "default" : "outline"}
-              onClick={() => setType("they_owe")}
-            >
-              They owe
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <Label>{type === "i_owe" ? "Creditor / Lender" : "Debtor name"}</Label>
-            <Input
-              placeholder="Name or institution"
-              value={creditor}
-              onChange={(e) => setCreditor(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Amount (AED)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Due date</Label>
-              <Input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Notes (optional)</Label>
-            <Textarea
-              placeholder="Reason or details"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : initial ? "Update" : "Add"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
 }

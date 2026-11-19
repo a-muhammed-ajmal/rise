@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { useState } from "react";
 import type { Category, Debt, PaymentMethod } from "@/lib/types/database";
 import { AddEntryDialog, ENTRY_KINDS, isEntryKind, type EntryKind } from "./add-entry-dialog";
+import { EditDebtDialog, type DebtPreset } from "./debt-entry-fields";
 
 type Call = { table: string; op: "insert" | "update" | "delete"; payload: unknown };
 
@@ -83,11 +84,13 @@ const debt = (over: Partial<Debt>): Debt => ({
 function Harness({
   initialKind = "expense",
   openDebts = [],
+  debtPreset = null,
   onSaved = vi.fn(),
   onTransactionSaved = vi.fn(),
 }: {
   initialKind?: EntryKind;
   openDebts?: Debt[];
+  debtPreset?: DebtPreset | null;
   onSaved?: () => void;
   onTransactionSaved?: () => void;
 }) {
@@ -104,6 +107,7 @@ function Harness({
       categories={CATEGORIES}
       createCategory={vi.fn()}
       openDebts={openDebts}
+      debtPreset={debtPreset}
       onTransactionSaved={onTransactionSaved}
       onSaved={onSaved}
     />
@@ -273,10 +277,89 @@ describe("AddEntryDialog", () => {
     expect(screen.getByRole("button", { name: "Record repayment" }).hasAttribute("disabled")).toBe(true);
   });
 
+  it("opens on a repayment of a chosen debt and settles it into a wallet", async () => {
+    const onSaved = vi.fn();
+    render(
+      <Harness
+        initialKind="debt"
+        openDebts={[debt({ id: "d2", creditor: "Nawaz", amount: 300 })]}
+        debtPreset={{ mode: "repay", debtId: "d2" }}
+        onSaved={onSaved}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Repayment" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByLabelText("Amount received (AED)")).toHaveProperty("value", "300");
+    expect(screen.getByText(/the debt will be settled/)).toBeDefined();
+
+    await choose("Received into wallet", "Mashreq");
+    expect(screen.getByText(/Mashreq goes up by this amount/)).toBeDefined();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Record repayment" }));
+    });
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+
+    expect(of("debts", "update")[0].payload).toEqual({ paid_at: expect.any(String) });
+    expect(of("transactions", "insert")[0].payload).toMatchObject({
+      type: "adjustment",
+      amount: 300,
+      category: "Debt",
+      payment_method_id: "w-mashreq",
+    });
+  });
+
+  it("falls back to a new debt when the preset debt is no longer open", () => {
+    render(<Harness initialKind="debt" openDebts={[]} debtPreset={{ mode: "repay", debtId: "gone" }} />);
+    expect(screen.getByRole("button", { name: "Lend / Borrow" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByLabelText("Lent to")).toBeDefined();
+  });
+
   it("knows its entry kinds", () => {
     expect(ENTRY_KINDS.map((k) => k.value)).toEqual(["expense", "income", "transfer", "debt"]);
     expect(isEntryKind("transfer")).toBe(true);
     expect(isEntryKind("adjustment")).toBe(false);
     expect(isEntryKind(null)).toBe(false);
+  });
+});
+
+describe("EditDebtDialog", () => {
+  const existing = debt({ id: "d9", creditor: "Rijil M", amount: 150, description: "Dinner", due_date: "2026-12-01" });
+
+  it("edits the record with the same fields and never moves a wallet", async () => {
+    const onSaved = vi.fn();
+    render(<EditDebtDialog open onOpenChange={vi.fn()} debt={existing} onSaved={onSaved} />);
+    expect(screen.getByRole("heading", { name: "Edit debt" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Repayment" })).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.getByText(/no wallet moves/)).toBeDefined();
+    expect(screen.getByLabelText("Lent to")).toHaveProperty("value", "Rijil M");
+
+    fireEvent.click(screen.getByRole("button", { name: "I borrowed" }));
+    fireEvent.change(screen.getByLabelText("Amount (AED)"), { target: { value: "120" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    });
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+
+    expect(of("debts", "update")[0].payload).toEqual({
+      creditor: "Rijil M",
+      type: "i_owe",
+      amount: 120,
+      description: "Dinner",
+      due_date: "2026-12-01",
+    });
+    expect(of("transactions", "insert")).toHaveLength(0);
+  });
+
+  it("keeps the dialog open when the update fails", async () => {
+    h.failTable = "debts";
+    const onSaved = vi.fn();
+    const onOpenChange = vi.fn();
+    render(<EditDebtDialog open onOpenChange={onOpenChange} debt={existing} onSaved={onSaved} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    });
+    await waitFor(() => expect(of("debts", "update")).toHaveLength(1));
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 });

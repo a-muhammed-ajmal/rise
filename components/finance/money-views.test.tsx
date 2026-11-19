@@ -240,7 +240,7 @@ describe("DebtsView", () => {
         youOweCount={1}
         today={TODAY}
         onAdd={noop}
-        onMarkPaid={noop}
+        onRepay={noop}
         onEdit={noop}
         onDelete={noop}
       />,
@@ -259,10 +259,22 @@ describe("DebtsView", () => {
     expect(screen.getByText("Paid 09/11/2026")).toBeDefined();
   });
 
+  it("opens the repayment form for a debt from its menu", async () => {
+    const onRepay = vi.fn();
+    const nawaz = debt({ id: "n", creditor: "Nawaz", type: "they_owe", amount: 300 });
+    render(
+      <DebtsView openDebts={[nawaz]} settledDebts={[]} owedToYou={300} youOwe={0} owedToYouCount={1} youOweCount={0} today={TODAY} onAdd={noop} onRepay={onRepay} onEdit={noop} onDelete={noop} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Actions for Nawaz" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Record repayment/ }));
+    expect(onRepay).toHaveBeenCalledWith(nawaz);
+    expect(screen.queryByText(/Mark as paid/)).toBeNull();
+  });
+
   it("shows an empty state when nothing is owed", () => {
     const onAdd = vi.fn();
     render(
-      <DebtsView openDebts={[]} settledDebts={[]} owedToYou={0} youOwe={0} owedToYouCount={0} youOweCount={0} today={TODAY} onAdd={onAdd} onMarkPaid={noop} onEdit={noop} onDelete={noop} />,
+      <DebtsView openDebts={[]} settledDebts={[]} owedToYou={0} youOwe={0} owedToYouCount={0} youOweCount={0} today={TODAY} onAdd={onAdd} onRepay={noop} onEdit={noop} onDelete={noop} />,
     );
     expect(screen.getByText("Nothing owed either way")).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "Add a debt" }));

@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1278 tests, 95.67% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1284 tests, 95.67% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -277,6 +277,8 @@ app/
     productivity/           Task orchestration and project boards
     finance/                Income, expense, transfer and adjustment ledgers; wallet/payment method balance tracking (Strict AED).
                             The Add button opens add-entry-dialog.tsx: Expense | Income | Transfer (optional fee) | Debt
+                            debt-entry-fields.tsx is the only debt form (wallet optional): the Debt tab's "Add a debt"
+                            and "Record repayment" open the same dialog; EditDebtDialog reuses it and never moves a wallet
     wellness/               Habit tracker with reminder_time scheduling, done/not-done marking, streak logic
     goals/                  Strategic goal tracking and milestone matrices
     crm/                    Contact lifecycle managers and interaction logs
