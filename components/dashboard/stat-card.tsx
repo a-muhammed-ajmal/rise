@@ -19,8 +19,10 @@ const ACCENT: Record<StatAccent, { icon: string }> = {
 type StatCardProps = {
   href: string
   label: string
-  /** Pre-formatted display value, e.g. "4", "2/5", "AED 145" */
+  /** Pre-formatted display value, e.g. "4", "2/5", "12,346" */
   value: string
+  /** Small unit shown before the value, e.g. "AED" */
+  prefix?: string
   icon: LucideIcon
   accent: StatAccent
   /** Small context line under the value, e.g. "2 overdue" */
@@ -37,6 +39,7 @@ export function StatCard({
   value,
   icon: Icon,
   accent,
+  prefix,
   context,
   contextTone = "muted",
   progress,
@@ -60,7 +63,12 @@ export function StatCard({
               aria-hidden="true"
             />
           </div>
-          <p className="text-h1 md:text-metric font-semibold tabular-nums">
+          <p className="text-h1 md:text-metric font-semibold tabular-nums break-words">
+            {prefix && (
+              <span className="text-label font-medium text-muted-foreground">
+                {prefix}{" "}
+              </span>
+            )}
             {value}
           </p>
           {typeof progress === "number" ? (

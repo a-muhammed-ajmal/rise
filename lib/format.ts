@@ -1,13 +1,13 @@
-import { format, parseISO, isToday, isYesterday, isTomorrow } from 'date-fns'
+import { format, parseISO, isToday, isYesterday, isTomorrow } from "date-fns";
 
 // AED currency — per spec, all amounts in UAE Dirham
 export function formatAED(amount: number): string {
-  return new Intl.NumberFormat('en-AE', {
-    style: 'currency',
-    currency: 'AED',
+  return new Intl.NumberFormat("en-AE", {
+    style: "currency",
+    currency: "AED",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount)
+  }).format(amount);
 }
 
 // formatAED for narrow tiles. Intl joins "AED" and the number with a
@@ -15,30 +15,40 @@ export function formatAED(amount: number): string {
 // mid-number ("AED 123,45" / "6.78"). A plain space lets it wrap cleanly as
 // "AED" / "123,456.78" instead; on one line the two look identical.
 export function formatAEDWrappable(amount: number): string {
-  return formatAED(amount).replace(/\s+/g, ' ')
+  return formatAED(amount).replace(/\s+/g, " ");
+}
+
+// A whole-dirham figure with thousands grouping and no currency code — for a
+// summary tile that shows "AED" as its own small label. Rounds to the nearest
+// dirham and folds -0 into 0, so a balanced total never reads "-0".
+export function formatWholeAmount(amount: number): string {
+  const rounded = Math.round(amount);
+  return new Intl.NumberFormat("en-AE", { maximumFractionDigits: 0 }).format(
+    rounded === 0 ? 0 : rounded,
+  );
 }
 
 // DD/MM/YYYY — per spec date format
 export function formatDate(dateStr: string): string {
-  return format(parseISO(dateStr), 'dd/MM/yyyy')
+  return format(parseISO(dateStr), "dd/MM/yyyy");
 }
 
 // 12-hour time — per spec time format
 export function formatTime(dateStr: string): string {
-  return format(parseISO(dateStr), 'hh:mm a')
+  return format(parseISO(dateStr), "hh:mm a");
 }
 
 export function formatDateTime(dateStr: string): string {
-  return format(parseISO(dateStr), 'dd/MM/yyyy hh:mm a')
+  return format(parseISO(dateStr), "dd/MM/yyyy hh:mm a");
 }
 
 // Human-friendly relative date labels
 export function formatRelativeDate(dateStr: string): string {
-  const date = parseISO(dateStr)
-  if (isToday(date)) return 'Today'
-  if (isYesterday(date)) return 'Yesterday'
-  if (isTomorrow(date)) return 'Tomorrow'
-  return format(date, 'dd/MM/yyyy')
+  const date = parseISO(dateStr);
+  if (isToday(date)) return "Today";
+  if (isYesterday(date)) return "Yesterday";
+  if (isTomorrow(date)) return "Tomorrow";
+  return format(date, "dd/MM/yyyy");
 }
 
 // Any instant as YYYY-MM-DD in Asia/Dubai timezone (UTC+4, no DST).
@@ -46,77 +56,82 @@ export function formatRelativeDate(dateStr: string): string {
 // TZ — unlike adding 4h and formatting in local time, which only works on a
 // UTC machine.
 export function toDubaiISODate(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en', {
-    timeZone: 'Asia/Dubai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date)
-  const y = parts.find(p => p.type === 'year')!.value
-  const m = parts.find(p => p.type === 'month')!.value
-  const d = parts.find(p => p.type === 'day')!.value
-  return `${y}-${m}-${d}`
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Dubai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const y = parts.find((p) => p.type === "year")!.value;
+  const m = parts.find((p) => p.type === "month")!.value;
+  const d = parts.find((p) => p.type === "day")!.value;
+  return `${y}-${m}-${d}`;
 }
 
 // Shift a Dubai calendar date (YYYY-MM-DD) by whole days, staying in Dubai time.
 export function addDaysISO(isoDate: string, days: number): string {
-  const [y, m, d] = isoDate.split('-').map(Number)
-  const shifted = new Date(Date.UTC(y, m - 1, d + days))
-  return shifted.toISOString().slice(0, 10)
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d + days));
+  return shifted.toISOString().slice(0, 10);
 }
 
 // Today as YYYY-MM-DD in Asia/Dubai timezone (UTC+4, no DST)
 export function todayISO(): string {
-  return toDubaiISODate(new Date())
+  return toDubaiISODate(new Date());
 }
 
 // Day of week (0=Sun…6=Sat) in Asia/Dubai timezone
 export function todayDOW(): number {
-  const [y, mo, d] = todayISO().split('-').map(Number)
-  return new Date(Date.UTC(y, mo - 1, d)).getUTCDay()
+  const [y, mo, d] = todayISO().split("-").map(Number);
+  return new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
 }
 
 // Current hour (0–23) in Asia/Dubai timezone
 export function currentHourDubai(): number {
-  const parts = new Intl.DateTimeFormat('en', {
-    timeZone: 'Asia/Dubai',
-    hour: 'numeric',
-    hourCycle: 'h23',
-  }).formatToParts(new Date())
-  return parseInt(parts.find(p => p.type === 'hour')!.value, 10)
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Dubai",
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  return parseInt(parts.find((p) => p.type === "hour")!.value, 10);
 }
 
 // Convert YYYY-MM-DD → Date object
 export function parseDate(dateStr: string): Date {
-  return parseISO(dateStr)
+  return parseISO(dateStr);
 }
 
 // True when a task's due moment has passed (Asia/Dubai, UTC+4, no DST).
 // With a due_time, compares against the exact deadline instant.
 // Date-only: past only once the due day has fully ended (i.e. due_date is before today).
-export function isPastDeadline(dueDate: string, dueTime?: string | null): boolean {
+export function isPastDeadline(
+  dueDate: string,
+  dueTime?: string | null,
+): boolean {
   if (dueTime) {
     // Postgres `time` columns return "HH:MM:SS"; the picker writes "HH:MM".
     // Normalise to HH:MM so the ISO string stays valid either way.
-    const deadline = new Date(`${dueDate}T${dueTime.slice(0, 5)}:00+04:00`).getTime()
-    if (!Number.isNaN(deadline)) return Date.now() > deadline
+    const deadline = new Date(
+      `${dueDate}T${dueTime.slice(0, 5)}:00+04:00`,
+    ).getTime();
+    if (!Number.isNaN(deadline)) return Date.now() > deadline;
     // Unparseable time — fall through to the date-only comparison.
   }
-  return dueDate < todayISO()
+  return dueDate < todayISO();
 }
 
 // Clip a label to `max` characters, appending an ellipsis when it overflows.
 // Used for project names on task cards, where space is fixed.
 export function truncateLabel(text: string, max = 15): string {
-  return text.length > max ? `${text.slice(0, max)}...` : text
+  return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 
 // Convert HH:MM (24h stored format) → "h:mm AM/PM" display
 export function display12h(time: string): string {
-  const [hStr, mStr] = time.split(':')
-  const h24 = parseInt(hStr, 10)
-  const m = parseInt(mStr, 10)
-  const ampm = h24 >= 12 ? 'PM' : 'AM'
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12
-  return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`
+  const [hStr, mStr] = time.split(":");
+  const h24 = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  const ampm = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
 }

@@ -1,17 +1,20 @@
-import { describe, it, expect, afterEach, vi } from "vitest"
-import { render, screen, cleanup } from "@testing-library/react"
-import { CheckSquare } from "lucide-react"
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+import { CheckSquare } from "lucide-react";
 
 vi.mock("next/link", () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  default: ({ href, children, className }: any) =>
-    <a href={href} className={className}>{children}</a>,
-}))
+  default: ({ href, children, className }: any) => (
+    <a href={href} className={className}>
+      {children}
+    </a>
+  ),
+}));
 
-import { StatCard } from "./stat-card"
+import { StatCard } from "./stat-card";
 
 describe("StatCard", () => {
-  afterEach(cleanup)
+  afterEach(cleanup);
 
   it("renders label, value, and links to the module page", () => {
     render(
@@ -22,11 +25,11 @@ describe("StatCard", () => {
         icon={CheckSquare}
         accent="tasks"
       />,
-    )
-    expect(screen.getByText("Tasks")).toBeDefined()
-    expect(screen.getByText("4")).toBeDefined()
-    expect(screen.getByRole("link").getAttribute("href")).toBe("/productivity")
-  })
+    );
+    expect(screen.getByText("Tasks")).toBeDefined();
+    expect(screen.getByText("4")).toBeDefined();
+    expect(screen.getByRole("link").getAttribute("href")).toBe("/productivity");
+  });
 
   it("renders a muted context line by default", () => {
     render(
@@ -38,10 +41,10 @@ describe("StatCard", () => {
         accent="finance"
         context="3 expenses"
       />,
-    )
-    const context = screen.getByText("3 expenses")
-    expect(context.className).toContain("text-muted-foreground")
-  })
+    );
+    const context = screen.getByText("3 expenses");
+    expect(context.className).toContain("text-muted-foreground");
+  });
 
   it("renders danger context tone for alerts", () => {
     render(
@@ -54,10 +57,10 @@ describe("StatCard", () => {
         context="2 overdue"
         contextTone="danger"
       />,
-    )
-    const context = screen.getByText("2 overdue")
-    expect(context.className).toContain("text-destructive")
-  })
+    );
+    const context = screen.getByText("2 overdue");
+    expect(context.className).toContain("text-destructive");
+  });
 
   it("renders a progress bar instead of context when progress is given", () => {
     render(
@@ -70,10 +73,10 @@ describe("StatCard", () => {
         progress={40}
         context="should not render"
       />,
-    )
-    expect(screen.getByRole("progressbar")).toBeDefined()
-    expect(screen.queryByText("should not render")).toBeNull()
-  })
+    );
+    expect(screen.getByRole("progressbar")).toBeDefined();
+    expect(screen.queryByText("should not render")).toBeNull();
+  });
 
   it("renders progress bar even at 0%", () => {
     render(
@@ -85,7 +88,23 @@ describe("StatCard", () => {
         accent="wellness"
         progress={0}
       />,
-    )
-    expect(screen.getByRole("progressbar")).toBeDefined()
-  })
-})
+    );
+    expect(screen.getByRole("progressbar")).toBeDefined();
+  });
+
+  it("shows a small unit before the value when given a prefix", () => {
+    render(
+      <StatCard
+        href="/finance"
+        label="Net worth"
+        value="12,346"
+        prefix="AED"
+        icon={CheckSquare}
+        accent="finance"
+      />,
+    );
+    const unit = screen.getByText("AED");
+    expect(unit.className).toContain("text-muted-foreground");
+    expect(unit.parentElement?.textContent).toBe("AED 12,346");
+  });
+});

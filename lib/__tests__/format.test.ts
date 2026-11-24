@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   formatAED,
   formatAEDWrappable,
+  formatWholeAmount,
   formatDate,
   formatTime,
   formatDateTime,
@@ -43,10 +44,28 @@ describe("formatAED", () => {
   });
 });
 
+describe("formatWholeAmount", () => {
+  it("rounds to whole dirhams with thousands grouping and no currency code", () => {
+    expect(formatWholeAmount(12345.67)).toBe("12,346");
+    expect(formatWholeAmount(999.49)).toBe("999");
+    expect(formatWholeAmount(0)).toBe("0");
+  });
+
+  it("keeps the sign of a negative total", () => {
+    expect(formatWholeAmount(-1500.2)).toBe("-1,500");
+  });
+
+  it("never shows -0 for a total that rounds to zero", () => {
+    expect(formatWholeAmount(-0.4)).toBe("0");
+  });
+});
+
 describe("formatAEDWrappable", () => {
   it("matches formatAED except for a breakable space after the currency", () => {
     expect(formatAEDWrappable(123456.78)).toBe("AED 123,456.78");
-    expect(formatAEDWrappable(123456.78)).toBe(formatAED(123456.78).replace(/\s+/g, " "));
+    expect(formatAEDWrappable(123456.78)).toBe(
+      formatAED(123456.78).replace(/\s+/g, " "),
+    );
   });
 
   it("contains no no-break spaces", () => {

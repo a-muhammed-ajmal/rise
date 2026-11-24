@@ -273,7 +273,10 @@ app/
                             Each module: page.tsx is an async server component that loads the first
                             screen of data (lib/data/) and renders <module>-view.tsx, the client view.
                             A snapshot older than 15s (a Router Cache revisit) refetches on mount
-    page.tsx                Central OS Executive Dashboard (async RSC, 11 parallel Supabase queries, no Suspense)
+    page.tsx                Home loader (async RSC, 6 parallel reads: habits→logs, goals, follow-ups,
+                            tasks + projects snapshots, loadHomeMoney) → home-view.tsx renders it:
+                            greeting, daily quote, Tasks / Habits / Net worth tiles, Focus + Tasks |
+                            Habits + Needs attention, Touch Base | Goals, AI strip
     productivity/           Task orchestration and project boards
     finance/                Income, expense, transfer and adjustment ledgers; wallet/payment method balance tracking (Strict AED).
                             The Add button opens add-entry-dialog.tsx: Expense | Income | Transfer (optional fee) | Debt
@@ -330,6 +333,8 @@ lib/
     finance.ts · tasks.ts · modules.ts
                             Initial-data loaders, one per module page. Shared by the server page and
                             the client view's refetch, so both run the same queries; they throw on error
+    home.ts                 loadHomeMoney() — Home's Net worth tile and Needs attention card: active wallets,
+                            open debts, standing budgets and only the expenses inside their periods (paged)
   hooks/
     use-tasks.ts            Task CRUD with Supabase Realtime subscription; DB sort: starred → due_date → due_time NULLS LAST → created_at.
                             Optional server snapshot — used for the first run of its own view only
@@ -358,7 +363,10 @@ lib/
                             budgetLines() / summarizeBudgets() / unbudgetedSpend(), planBudgetChanges() for Budget settings
   types/
     database.ts             Single Source of Truth — 32 Supabase tables with Row/Insert/Update types
-  format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + formatAEDWrappable, isPastDeadline, truncateLabel
+  format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + formatAEDWrappable, formatWholeAmount, isPastDeadline, truncateLabel
+  home.ts                   Home helpers: splitTodayTasks() (Overdue / Due today), lastContactLabel(), goalTargetLabel()
+  wellness/streak.ts        habitStreak() — consecutive completed scheduled days back from yesterday, Dubai dates;
+                            Home loads STREAK_WINDOW_DAYS (30) of logs, so a longer streak reads "30+"
   area-colors.ts            AREA_META / AREA_LIST / areaTint() — life-area colors as --area-* CSS tokens
   task-attachments.ts       Private-bucket attachment helpers: attachmentPath() recovers legacy object keys
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities

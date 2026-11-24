@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { CheckSquare, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckSquare, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +11,7 @@ import { TaskCard } from "@/components/productivity/task-card";
 
 import { useTodayData } from "@/components/dashboard/today-data-provider";
 import { todayISO } from "@/lib/format";
+import { splitTodayTasks } from "@/lib/home";
 
 import { toast } from "sonner";
 import type { Task } from "@/lib/types/database";
@@ -68,13 +69,20 @@ export function TasksDashboardSection() {
     [completeTask, updateTask, deleteTask, duplicateTask, openDetail, projectNameById],
   );
 
-  const regularTasks = useMemo(() => {
+  // Focus tasks have their own card; the rest split into Overdue, then Due
+  // today. The visible cap spans both groups, overdue first.
+  const { overdue, dueToday } = useMemo(() => {
     const today = todayISO();
-    return safeTasks.filter((task) => !(task.is_focus && task.focus_date === today));
+    return splitTodayTasks(
+      safeTasks.filter((task) => !(task.is_focus && task.focus_date === today)),
+      today,
+    );
   }, [safeTasks]);
 
-  const visibleRegularTasks = regularTasks.slice(0, VISIBLE_COUNT);
-  const remainingTasks = Math.max(0, regularTasks.length - visibleRegularTasks.length);
+  const visibleOverdue = overdue.slice(0, VISIBLE_COUNT);
+  const visibleDueToday = dueToday.slice(0, VISIBLE_COUNT - visibleOverdue.length);
+  const totalRegular = overdue.length + dueToday.length;
+  const remainingTasks = totalRegular - visibleOverdue.length - visibleDueToday.length;
 
   const handleCreateTask = useCallback(
     async (data: Parameters<typeof createTask>[0]) => {
@@ -122,15 +130,37 @@ export function TasksDashboardSection() {
               <Skeleton className="h-14 w-full rounded-xl" />
             </div>
           </div>
-        ) : regularTasks.length === 0 ? (
+        ) : totalRegular === 0 ? (
           <div className="rounded-md border border-dashed border-border bg-muted/20 p-4">
             <p className="text-sm text-muted-foreground">No tasks due today.</p>
           </div>
         ) : (
-          <section className="space-y-2">
-            {visibleRegularTasks.map((task) => (
-              <TaskCard key={task.id} {...getTaskCardProps(task)} view="list" />
-            ))}
+          <div className="space-y-4">
+            {overdue.length > 0 && (
+              <section aria-labelledby="today-tasks-overdue" className="space-y-2">
+                <h3
+                  id="today-tasks-overdue"
+                  className="flex items-center gap-1.5 text-label font-semibold text-destructive"
+                >
+                  <AlertTriangle className="size-3.5" aria-hidden="true" />
+                  Overdue · {overdue.length}
+                </h3>
+                {visibleOverdue.map((task) => (
+                  <TaskCard key={task.id} {...getTaskCardProps(task)} view="list" />
+                ))}
+              </section>
+            )}
+
+            {dueToday.length > 0 && visibleDueToday.length > 0 && (
+              <section aria-labelledby="today-tasks-due" className="space-y-2">
+                <h3 id="today-tasks-due" className="text-label font-semibold text-muted-foreground">
+                  Due today · {dueToday.length}
+                </h3>
+                {visibleDueToday.map((task) => (
+                  <TaskCard key={task.id} {...getTaskCardProps(task)} view="list" />
+                ))}
+              </section>
+            )}
 
             {remainingTasks > 0 && (
               <Link
@@ -140,7 +170,7 @@ export function TasksDashboardSection() {
                 +{remainingTasks} more task{remainingTasks === 1 ? "" : "s"}
               </Link>
             )}
-          </section>
+          </div>
         )}
       </CardContent>
 
