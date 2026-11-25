@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1338 tests, 95.78% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1340 tests, 95.78% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -363,10 +363,11 @@ lib/
                             budgetLines() / summarizeBudgets() / unbudgetedSpend(), planBudgetChanges() for Budget settings
   types/
     database.ts             Single Source of Truth — 32 Supabase tables with Row/Insert/Update types
-  format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + formatAEDWrappable, formatWholeAmount, isPastDeadline, truncateLabel
+  format.ts                 System formatting scripts (Strict AED, DD/MM/YYYY, 12h) + formatAEDWrappable, formatAmount, isPastDeadline, truncateLabel
   home.ts                   Home helpers: splitTodayTasks() (Overdue / Due today), lastContactLabel(), goalTargetLabel()
   wellness/streak.ts        habitStreak() — consecutive completed scheduled days back from yesterday, Dubai dates;
-                            Home loads STREAK_WINDOW_DAYS (30) of logs, so a longer streak reads "30+"
+                            used by Home and the Wellness page, which both load STREAK_WINDOW_DAYS (30) of logs,
+                            so a longer streak reads "30+"
   area-colors.ts            AREA_META / AREA_LIST / areaTint() — life-area colors as --area-* CSS tokens
   task-attachments.ts       Private-bucket attachment helpers: attachmentPath() recovers legacy object keys
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities

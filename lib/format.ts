@@ -18,14 +18,15 @@ export function formatAEDWrappable(amount: number): string {
   return formatAED(amount).replace(/\s+/g, " ");
 }
 
-// A whole-dirham figure with thousands grouping and no currency code — for a
-// summary tile that shows "AED" as its own small label. Rounds to the nearest
-// dirham and folds -0 into 0, so a balanced total never reads "-0".
-export function formatWholeAmount(amount: number): string {
-  const rounded = Math.round(amount);
-  return new Intl.NumberFormat("en-AE", { maximumFractionDigits: 0 }).format(
-    rounded === 0 ? 0 : rounded,
-  );
+// An exact amount (two decimals, thousands grouping) without the currency
+// code — for a summary tile that shows "AED" as its own small label. Rounds to
+// whole fils and folds -0 into 0, so a balanced total never reads "-0.00".
+export function formatAmount(amount: number): string {
+  const fils = Math.round(amount * 100) / 100;
+  return new Intl.NumberFormat("en-AE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(fils === 0 ? 0 : fils);
 }
 
 // DD/MM/YYYY — per spec date format

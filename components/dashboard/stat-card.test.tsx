@@ -92,6 +92,24 @@ describe("StatCard", () => {
     expect(screen.getByRole("progressbar")).toBeDefined();
   });
 
+  it("steps an amount value down on phones", () => {
+    render(
+      <StatCard
+        href="/finance"
+        label="Net worth"
+        value="1,977.41"
+        prefix="AED"
+        valueSize="amount"
+        icon={CheckSquare}
+        accent="finance"
+      />,
+    )
+    const value = screen.getByText("AED").parentElement
+    expect(value?.className).toContain("text-base")
+    expect(value?.className).toContain("md:text-metric")
+    expect(value?.className).not.toContain("text-h1")
+  })
+
   it("shows a small unit before the value when given a prefix", () => {
     render(
       <StatCard

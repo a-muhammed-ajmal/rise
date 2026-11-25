@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   formatAED,
   formatAEDWrappable,
-  formatWholeAmount,
+  formatAmount,
   formatDate,
   formatTime,
   formatDateTime,
@@ -44,19 +44,23 @@ describe("formatAED", () => {
   });
 });
 
-describe("formatWholeAmount", () => {
-  it("rounds to whole dirhams with thousands grouping and no currency code", () => {
-    expect(formatWholeAmount(12345.67)).toBe("12,346");
-    expect(formatWholeAmount(999.49)).toBe("999");
-    expect(formatWholeAmount(0)).toBe("0");
+describe("formatAmount", () => {
+  it("shows the exact amount with two decimals and no currency code", () => {
+    expect(formatAmount(1977.41)).toBe("1,977.41");
+    expect(formatAmount(12345.6)).toBe("12,345.60");
+    expect(formatAmount(0)).toBe("0.00");
+  });
+
+  it("rounds float noise to whole fils", () => {
+    expect(formatAmount(0.1 + 0.2)).toBe("0.30");
   });
 
   it("keeps the sign of a negative total", () => {
-    expect(formatWholeAmount(-1500.2)).toBe("-1,500");
+    expect(formatAmount(-1500.25)).toBe("-1,500.25");
   });
 
-  it("never shows -0 for a total that rounds to zero", () => {
-    expect(formatWholeAmount(-0.4)).toBe("0");
+  it("never shows -0.00 for a total that rounds to zero", () => {
+    expect(formatAmount(-0.004)).toBe("0.00");
   });
 });
 

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { RiseLogo } from "@/components/brand/rise-logo";
-import { formatWholeAmount } from "@/lib/format";
+import { formatAmount } from "@/lib/format";
 import { goalTargetLabel, lastContactLabel } from "@/lib/home";
 import type { ServerSnapshot } from "@/lib/data/snapshot";
 import type { TaskSnapshotData } from "@/lib/data/tasks";
@@ -82,14 +82,6 @@ export function HomeView({
   ).length;
 
   const netWorth = money?.data.netWorth ?? null;
-  const openDebts = netWorth ? netWorth.owedToYouCount + netWorth.youOweCount : 0;
-  const netWorthContext = !netWorth
-    ? "Unavailable"
-    : netWorth.netWorth < 0
-      ? "Below zero"
-      : openDebts === 0
-        ? "No open debts"
-        : `Incl. ${openDebts} open debt${openDebts === 1 ? "" : "s"}`;
 
   return (
     <PageShell>
@@ -120,9 +112,8 @@ export function HomeView({
             icon={Wallet}
             accent="finance"
             prefix={netWorth ? "AED" : undefined}
-            value={netWorth ? formatWholeAmount(netWorth.netWorth) : "—"}
-            context={netWorthContext}
-            contextTone={netWorth && netWorth.netWorth < 0 ? "danger" : "muted"}
+            value={netWorth ? formatAmount(netWorth.netWorth) : "—"}
+            valueSize="amount"
           />
         </div>
 

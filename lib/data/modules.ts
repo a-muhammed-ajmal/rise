@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { format, parseISO, subDays } from "date-fns";
+import { addDaysISO } from "@/lib/format";
+import { STREAK_WINDOW_DAYS } from "@/lib/wellness/streak";
 import type {
   Contact,
   Database,
@@ -103,7 +104,8 @@ export async function loadWellnessData(
   supabase: Client,
   today: string,
 ): Promise<WellnessData> {
-  const last30 = format(subDays(parseISO(today), 30), "yyyy-MM-dd");
+  // Same window as the streaks it feeds (lib/wellness/streak.ts).
+  const since = addDaysISO(today, -STREAK_WINDOW_DAYS);
   const [habits, logs] = await Promise.all([
     supabase
       .from("habits")
@@ -115,7 +117,7 @@ export async function loadWellnessData(
       .from("habit_logs")
       .select("*")
       .is("deleted_at", null)
-      .gte("logged_date", last30),
+      .gte("logged_date", since),
   ]);
   if (habits.error) throw new Error(habits.error.message);
   if (logs.error) throw new Error(logs.error.message);

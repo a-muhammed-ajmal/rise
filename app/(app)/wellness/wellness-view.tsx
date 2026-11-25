@@ -52,7 +52,7 @@ import {
   Undo2,
   Clock,
 } from "lucide-react";
-import { subDays, format } from "date-fns";
+import { habitStreak } from "@/lib/wellness/streak";
 import { toast } from "sonner";
 
 const DAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -225,30 +225,11 @@ export function WellnessView({ initial }: { initial: ServerSnapshot<WellnessData
     await fetchData();
   }
 
-  // Streak counts consecutive completed scheduled days backward from yesterday.
-  // Non-scheduled days (not in target_days) are skipped — only scheduled days
-  // with no log or completed=false break the streak.
-  function getStreak(habitId: string, habit: Habit): number {
-    const logMap = new Map(
-      logs.filter((l) => l.habit_id === habitId).map((l) => [l.logged_date, l.completed]),
-    );
-    let streak = 0;
-    let d = subDays(new Date(), 1); // today is not over; start from yesterday
-    const created = new Date(habit.created_at);
-
-    while (d >= created) {
-      const dow = d.getDay();
-      if (habit.target_days.includes(dow)) {
-        const completed = logMap.get(format(d, "yyyy-MM-dd"));
-        if (completed === true) {
-          streak++;
-        } else {
-          break; // no log or completed:false on a scheduled day → streak ends
-        }
-      }
-      d = subDays(d, 1);
-    }
-    return streak;
+  // Streaks use the same rule as Home (lib/wellness/streak.ts): consecutive
+  // completed scheduled days back from yesterday, in Dubai dates. The view
+  // loads STREAK_WINDOW_DAYS of logs, so a longer streak is shown as "30+".
+  function getStreak(habit: Habit) {
+    return habitStreak(habit, logs, today);
   }
 
   const todayHabits = habits.filter((h) => h.target_days.includes(todayDow));
@@ -318,7 +299,7 @@ export function WellnessView({ initial }: { initial: ServerSnapshot<WellnessData
             const logCompleted = todayLogMap.get(habit.id);
             const markState =
               logCompleted === true ? "done" : logCompleted === false ? "notDone" : "none";
-            const streak = getStreak(habit.id, habit);
+            const streak = getStreak(habit);
 
             const cardBorderClass =
               markState === "done"
@@ -362,10 +343,12 @@ export function WellnessView({ initial }: { initial: ServerSnapshot<WellnessData
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {streak > 0 && (
+                    {streak.days > 0 && (
                       <Badge variant="secondary" className="gap-1 text-xs">
-                        <Flame className="w-3 h-3 text-[var(--color-warning)]" />
-                        {streak}
+                        <Flame className="w-3 h-3 text-[var(--color-warning)]" aria-hidden="true" />
+                        {streak.days}
+                        {streak.capped && "+"}
+                        <span className="sr-only"> day streak</span>
                       </Badge>
                     )}
 

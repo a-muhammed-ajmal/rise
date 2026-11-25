@@ -127,7 +127,7 @@ Not scheduled through `pg_cron`: set the cadence under
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (1338 tests, 95.78% line coverage) + Playwright |
+| Testing | Vitest 4 + Testing Library (1340 tests, 95.78% line coverage) + Playwright |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -505,7 +505,7 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1338 passing across 64 test files |
+| Test count | 1340 passing across 64 test files |
 | Line coverage | 95.78% on `lib/**` |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |

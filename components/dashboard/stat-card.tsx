@@ -23,6 +23,8 @@ type StatCardProps = {
   value: string
   /** Small unit shown before the value, e.g. "AED" */
   prefix?: string
+  /** "amount" sizes the value down on phones so an exact AED figure fits a third-width tile */
+  valueSize?: "metric" | "amount"
   icon: LucideIcon
   accent: StatAccent
   /** Small context line under the value, e.g. "2 overdue" */
@@ -40,6 +42,7 @@ export function StatCard({
   icon: Icon,
   accent,
   prefix,
+  valueSize = "metric",
   context,
   contextTone = "muted",
   progress,
@@ -63,7 +66,12 @@ export function StatCard({
               aria-hidden="true"
             />
           </div>
-          <p className="text-h1 md:text-metric font-semibold tabular-nums break-words">
+          <p
+            className={cn(
+              valueSize === "amount" ? "text-base" : "text-h1",
+              "md:text-metric font-semibold tabular-nums break-words",
+            )}
+          >
             {prefix && (
               <span className="text-label font-medium text-muted-foreground">
                 {prefix}{" "}
