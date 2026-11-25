@@ -12,7 +12,7 @@ RISE is a single-user personal AI operating system that consolidates task manage
 
 - **Zero Regressions:** Ensure all 8 core functional modules render and operate error-free across updates.
 - **Architectural Parity:** Extend or remediate capabilities matching localized component and hook implementation styles.
-- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1340 tests, 95.78% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
+- **Testing Standard:** Maintain ≥ 85% Vitest line coverage strictly inside `lib/**` paths (excluding `lib/types/`). Current: 1346 tests, 95.80% lines — target met. The largest remaining gaps are `use-tasks.ts` (46.91%) and `use-is-desktop.ts` (0%).
 - **Authorization Verification:** Enforce explicit confirmation dialog gates for destructive AI assistant operations—never bypass `APPROVAL_TOOLS`.
 
 ## Tech Stack & Core Constraints
@@ -368,11 +368,12 @@ lib/
   wellness/streak.ts        habitStreak() — consecutive completed scheduled days back from yesterday, Dubai dates;
                             used by Home and the Wellness page, which both load STREAK_WINDOW_DAYS (30) of logs,
                             so a longer streak reads "30+"
+  avatar.ts                 Profile photo rules (types, 5 MB) shared with the `avatars` bucket + avatarUploadErrorMessage()
   area-colors.ts            AREA_META / AREA_LIST / areaTint() — life-area colors as --area-* CSS tokens
   task-attachments.ts       Private-bucket attachment helpers: attachmentPath() recovers legacy object keys
   utils.ts                  cn() utility (twMerge + clsx) and general class utilities
 
-supabase/migrations/        26 append-only migrations (001–023 plus timestamped hardening migrations)
+supabase/migrations/        27 append-only migrations (001–023 plus timestamped migrations; the latest creates the public `avatars` bucket)
 supabase/functions/
   send-push/                Deno edge function — VAPID JWT push delivery (hourly cron)
   send-whatsapp/            Deno edge function — WhatsApp Cloud API reminders (hourly cron)

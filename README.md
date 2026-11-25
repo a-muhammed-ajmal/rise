@@ -127,7 +127,7 @@ Not scheduled through `pg_cron`: set the cadence under
 | Auth | Google OAuth via Supabase; single-user gate via `ALLOWED_USER_EMAIL` |
 | PWA | Service worker (`sw.js`) + Web Push via Supabase Edge Function (Deno, SubtleCrypto VAPID) |
 | Charts | Recharts |
-| Testing | Vitest 4 + Testing Library (1340 tests, 95.78% line coverage) + Playwright |
+| Testing | Vitest 4 + Testing Library (1346 tests, 95.80% line coverage) + Playwright |
 | Hosting | Vercel (Fluid Compute) |
 
 ---
@@ -320,15 +320,16 @@ npm run dev   # Turbopack dev server → http://localhost:3000
 | --- | --- | --- | --- |
 | `chat-attachments` | **Private** | migration 020 | File/image/audio uploads in AI chat |
 | `task-attachments` | **Private** | migration 020 | File attachments on tasks |
-| `avatars` | Public | manual | User profile photos |
+| `avatars` | Public | migration 20261125090000 | User profile photos (5 MB, JPG / PNG / WebP / GIF) |
 
 Both attachment buckets are private by design: content is served through
 short-lived signed URLs, and RLS on `storage.objects` restricts every operation
 to objects under the caller's own `<user_uuid>/` path prefix. Making either
 bucket public would expose every attachment to anyone holding the object URL.
 
-Create `avatars` manually (**Dashboard → Storage → New bucket**, public) — it
-holds profile photos that are intentionally world-readable.
+`avatars` is created by migration `20261125090000` (run it in the SQL editor)
+and holds profile photos that are intentionally world-readable. Its three
+policies below are still a Dashboard step — without them every upload fails.
 
 #### Storage policies — Dashboard only
 
@@ -340,7 +341,7 @@ holds profile photos that are intentionally world-readable.
 only bucket creation and the private flag (`storage.buckets` does grant
 `postgres` DML).
 
-Create these six policies under **Dashboard → Storage → \<bucket\> → Policies**,
+Create these nine policies under **Dashboard → Storage → \<bucket\> → Policies**,
 all targeting the `authenticated` role. RLS is already enabled by Supabase.
 
 | Bucket | Operation | Expression |
@@ -351,6 +352,15 @@ all targeting the `authenticated` role. RLS is already enabled by Supabase.
 | `task-attachments` | INSERT (WITH CHECK) | `bucket_id = 'task-attachments' AND (storage.foldername(name))[1] = (select auth.uid())::text` |
 | `task-attachments` | SELECT (USING) | same expression |
 | `task-attachments` | DELETE (USING) | same expression |
+| `avatars` | INSERT (WITH CHECK) | `bucket_id = 'avatars' AND (storage.foldername(name))[1] = (select auth.uid())::text` |
+| `avatars` | SELECT (USING) | same expression (`remove()` needs it to delete the previous photo) |
+| `avatars` | DELETE (USING) | same expression |
+
+`avatars` is the one **public** bucket (migration `20261125090000`): the
+profile photo's URL is saved in the user's metadata and shown in the Topbar on
+every page, so it cannot be a short-lived signed URL. Object names are
+`<user-id>/avatar-<random uuid>.<ext>`, the bucket itself caps files at 5 MB and
+JPG / PNG / WebP / GIF, and writes still need the policies above.
 
 **Do not add an UPDATE policy.** With RLS on and no UPDATE policy, updates are
 denied outright. A USING-only UPDATE policy would constrain which rows may
@@ -419,11 +429,12 @@ for both notification senders, `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` /
 `send-whatsapp`. Use the same `CRON_SECRET` as Vercel; never copy these values
 into source control.
 
-**2. Migrations** — apply every file in `supabase/migrations/` in filename order. There are currently 26 files: `001` … `023` plus three timestamped hardening migrations.
+**2. Migrations** — apply every file in `supabase/migrations/` in filename order. There are currently 27 files: `001` … `023` plus four timestamped migrations (three hardening, one for the `avatars` bucket).
 Migrations are append-only; never edit an applied file.
 
-**3. Storage** — migration `020` creates both buckets and pins them private.
-The six object policies are a **Dashboard** step (see "Storage policies —
+**3. Storage** — migration `020` creates the two attachment buckets and pins
+them private; migration `20261125090000` creates the public `avatars` bucket
+for profile photos. The nine object policies are a **Dashboard** step (see "Storage policies —
 Dashboard only" above); they cannot be created from the SQL editor. Verify:
 
 ```sql
@@ -505,9 +516,9 @@ curl -s https://<your-app>/api/mcp \
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1340 passing across 64 test files |
-| Line coverage | 95.78% on `lib/**` |
+| Test count | 1346 passing across 65 test files |
+| Line coverage | 95.80% on `lib/**` |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
-| Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
+| Migrations | 27 files (001–023 plus 4 timestamped migrations: 3 hardening, 1 `avatars` bucket) |
 | Last phase | Phase 35 — Module page accents: every module page carries its colour on cards, hover glows and progress bars |

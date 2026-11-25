@@ -8,9 +8,9 @@ Living specification for the RISE codebase. Describes what is currently implemen
 
 | Metric | Value |
 | --- | --- |
-| Test count | 1340 passing across 64 test files |
-| Line coverage | 95.78% on `lib/**` |
-| Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
+| Test count | 1346 passing across 65 test files |
+| Line coverage | 95.80% on `lib/**` |
+| Migrations | 27 files (001–023 plus 4 timestamped migrations: 3 hardening, 1 `avatars` bucket) |
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 65 AUTO + 17 REVERSIBLE + 9 APPROVAL = 91 total |
 | Last feature shipped | Phase 32 — Budgets as settings: standing monthly limits per category that never expire, a clearer Budget tab with a summary and per-day allowance, and one Budget settings dialog to edit them any time (2026-11-20) |

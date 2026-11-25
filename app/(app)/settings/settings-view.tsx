@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import { todayISO } from "@/lib/format";
 import { loadProfile, type ProfileData } from "@/lib/data/modules";
 import { isFreshSnapshot, type ServerSnapshot } from "@/lib/data/snapshot";
+import { AVATAR_MIME_EXTENSIONS, MAX_AVATAR_BYTES, avatarUploadErrorMessage } from "@/lib/avatar";
 
 const MODULES = [
   { href: "/productivity", label: "Productivity", description: "Tasks, projects, kanban",          icon: CheckSquare, iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-tint" },
@@ -53,13 +54,6 @@ const MODULES = [
   { href: "/analytics",    label: "Analytics",    description: "Charts across all modules",        icon: BarChart2,   iconCls: "text-mod-tasks",    bgCls: "bg-mod-tasks-tint" },
 ];
 
-const AVATAR_MIME_EXTENSIONS: Readonly<Record<string, string>> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
-const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 function metadataString(
   metadata: Record<string, unknown>,
@@ -178,7 +172,11 @@ export function SettingsView({ initial }: { initial: ServerSnapshot<ProfileData>
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(path, file, { upsert: false, contentType: file.type });
-      if (uploadError) { toast.error("Upload failed — ensure the 'avatars' bucket exists in Supabase Storage"); return; }
+      if (uploadError) {
+        console.error("[settings] avatar upload failed:", uploadError.message);
+        toast.error(avatarUploadErrorMessage(uploadError.message));
+        return;
+      }
       const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
       const url = urlData.publicUrl;
       const { error: metadataError } = await supabase.auth.updateUser({
