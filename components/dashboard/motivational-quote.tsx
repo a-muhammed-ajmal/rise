@@ -104,15 +104,15 @@ export function MotivationalQuote({ date }: { date?: string }) {
   return (
     <section
       aria-label="Daily motivation"
-      className="slide-up stagger-1 flex items-center gap-3 rounded-lg border-[1.5px] border-border bg-card px-3 py-2.5 shadow-card"
+      className="home-quote slide-up stagger-1 flex items-center gap-3 rounded-lg border-[1.5px] px-3 py-2.5"
     >
       <span
-        className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-accent-tint text-brand-text"
+        className="home-quote__icon relative z-10 flex size-7 shrink-0 items-center justify-center rounded-md"
         aria-hidden="true"
       >
         <Quote className="size-3.5" aria-hidden="true" />
       </span>
-      <p className="text-sm leading-relaxed text-muted-foreground">{quote}</p>
+      <p className="relative z-10 text-sm font-medium leading-relaxed text-foreground/80">{quote}</p>
     </section>
   )
 }

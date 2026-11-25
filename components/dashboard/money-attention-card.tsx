@@ -24,7 +24,7 @@ export function MoneyAttentionCard({
   const remaining = items.length - visible.length;
 
   return (
-    <Card className="slide-up stagger-3" aria-label="Needs attention">
+    <Card className="home-card tone-finance slide-up stagger-3" aria-label="Needs attention">
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <div
@@ -51,7 +51,7 @@ export function MoneyAttentionCard({
             <li key={item.key}>
               <Link
                 href="/finance"
-                className="flex min-h-11 items-center gap-3 rounded-sm py-2.5 hover:bg-accent/50 active:opacity-80"
+                className="home-row -mx-2 flex min-h-11 items-center gap-3 rounded-md px-2 py-2.5 active:opacity-80"
               >
                 <span
                   className={cn(

@@ -91,7 +91,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
   const remaining = pending.length - VISIBLE_COUNT;
 
   return (
-    <Card className="slide-up stagger-3" aria-label="Habits">
+    <Card className="home-card tone-wellness slide-up stagger-3" aria-label="Habits">
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <div
@@ -174,7 +174,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                       <button
                         type="button"
                         onClick={() => mark(habit, true)}
-                        className="w-11 h-11 rounded-full border border-[var(--color-success)] text-[var(--color-success)] flex items-center justify-center transition-colors hover:bg-[var(--color-success-tint)] active:scale-95"
+                        className="habit-mark habit-mark--done w-11 h-11 rounded-full flex items-center justify-center"
                         aria-label={`Mark ${habit.name} done`}
                       >
                         <Check className="w-4 h-4" aria-hidden="true" />
@@ -182,7 +182,7 @@ export function HabitDashboardSection({ habits, logs }: Props) {
                       <button
                         type="button"
                         onClick={() => mark(habit, false)}
-                        className="w-11 h-11 rounded-full border border-[var(--color-danger)] text-[var(--color-danger)] flex items-center justify-center transition-colors hover:bg-[var(--color-danger-tint)] active:scale-95"
+                        className="habit-mark habit-mark--skip w-11 h-11 rounded-full flex items-center justify-center"
                         aria-label={`Mark ${habit.name} not done`}
                       >
                         <X className="w-4 h-4" aria-hidden="true" />

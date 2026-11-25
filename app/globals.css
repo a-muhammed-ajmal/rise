@@ -479,6 +479,214 @@
   box-shadow: 0 0 40px rgba(12, 36, 67, 0.15), 0 12px 32px rgba(26, 26, 46, 0.10);
 }
 
+/* ─── Home accents ───────────────────────────────────────────────────────── */
+/* Each Home tile and card carries its module colour through a tone class:
+   a 3px accent rule along the top, a soft tint wash behind the header, a
+   border and shadow mixed from the tone. Text keeps its normal colours. */
+
+.tone-tasks    { --tone: var(--mod-tasks);    --tone-tint: var(--mod-tasks-tint); }
+.tone-wellness { --tone: var(--mod-wellness); --tone-tint: var(--mod-wellness-tint); }
+.tone-finance  { --tone: var(--mod-finance);  --tone-tint: var(--mod-finance-tint); }
+.tone-goals    { --tone: var(--mod-goals);    --tone-tint: var(--mod-goals-tint); }
+.tone-crm      { --tone: var(--mod-crm);      --tone-tint: var(--mod-crm-tint); }
+.tone-brand    { --tone: var(--brand);        --tone-tint: var(--brand-tint); }
+.tone-danger   { --tone: var(--color-danger); --tone-tint: var(--color-danger-tint); }
+
+.home-card,
+.home-stat {
+  position: relative;
+  border-color: color-mix(in srgb, var(--tone) 20%, var(--border));
+  box-shadow:
+    0 1px 2px rgba(26, 26, 46, 0.04),
+    0 10px 28px -16px color-mix(in srgb, var(--tone) 45%, transparent);
+}
+.home-card::before,
+.home-stat::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 25%, transparent));
+  pointer-events: none;
+}
+.home-card {
+  background-image: linear-gradient(180deg, var(--tone-tint) 0, transparent 76px);
+}
+.home-stat {
+  background-image: linear-gradient(160deg, var(--tone-tint) 0%, transparent 62%);
+  transition:
+    border-color var(--dur-normal) var(--ease-smooth),
+    box-shadow   var(--dur-normal) var(--ease-smooth),
+    transform    var(--dur-normal) var(--ease-out);
+}
+@media (hover: hover) {
+  .home-stat:hover {
+    border-color: color-mix(in srgb, var(--tone) 45%, var(--border));
+    box-shadow:
+      0 1px 2px rgba(26, 26, 46, 0.04),
+      0 14px 30px -14px color-mix(in srgb, var(--tone) 60%, transparent);
+    transform: translateY(-2px);
+  }
+}
+.home-stat__value { color: var(--tone); }
+.home-chip {
+  background: var(--tone-tint);
+  color: var(--tone);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent);
+}
+
+/* Progress bars on Home take the tone and grow in from the left once. */
+.home-stat [data-slot="progress-indicator"],
+.home-card [data-slot="progress-indicator"] {
+  background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 65%, var(--surface-card)));
+  transform-origin: left center;
+  animation: bar-grow 900ms var(--ease-out) 300ms both;
+}
+.home-stat [data-slot="progress-track"],
+.home-card [data-slot="progress-track"] {
+  background: color-mix(in srgb, var(--tone) 12%, var(--muted));
+}
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* Daily quote: a gold-to-navy wash with one slow sheen as it arrives. */
+.home-quote {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--brand-accent) 35%, var(--border));
+  background: linear-gradient(100deg, var(--brand-accent-tint) 0%, var(--surface-card) 48%, var(--brand-tint) 100%);
+  box-shadow: 0 10px 28px -18px rgba(253, 179, 4, 0.55);
+}
+.home-quote::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: sheen 1400ms var(--ease-smooth) 500ms 1 both;
+  pointer-events: none;
+}
+.home-quote__icon {
+  background: var(--brand-accent);
+  color: #0C2443;
+  box-shadow: 0 4px 12px -4px rgba(253, 179, 4, 0.7);
+}
+@keyframes sheen {
+  to { transform: translateX(100%); }
+}
+.dark .home-quote::after {
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.08) 50%, transparent 70%);
+}
+
+/* Primary action inside a Home card ("Choose focus tasks"). */
+.home-cta {
+  background: linear-gradient(135deg, var(--brand-action), var(--brand-hover));
+  color: #FFFFFF;
+  box-shadow: 0 8px 20px -8px rgba(12, 36, 67, 0.6);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-smooth);
+}
+@media (hover: hover) {
+  .home-cta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px -8px rgba(12, 36, 67, 0.7);
+  }
+}
+.home-cta:active { transform: scale(0.97); }
+
+/* Habit marks: tinted at rest, solid with a glow on hover, a press on tap. */
+.habit-mark {
+  transition:
+    background-color var(--dur-fast) var(--ease-smooth),
+    color            var(--dur-fast) var(--ease-smooth),
+    box-shadow       var(--dur-fast) var(--ease-smooth),
+    transform        var(--dur-fast) var(--ease-out);
+}
+.habit-mark--done {
+  background: var(--color-success-tint);
+  color: var(--color-success);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-success) 55%, transparent);
+}
+.habit-mark--skip {
+  background: var(--color-danger-tint);
+  color: var(--color-danger);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-danger) 45%, transparent);
+}
+@media (hover: hover) {
+  .habit-mark--done:hover {
+    background: var(--color-success);
+    color: #FFFFFF;
+    box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--color-success) 80%, transparent);
+  }
+  .habit-mark--skip:hover {
+    background: var(--color-danger);
+    color: #FFFFFF;
+    box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--color-danger) 80%, transparent);
+  }
+}
+.habit-mark:active { transform: scale(0.9); }
+
+/* Rows inside a Home card: a tone wash on hover. */
+@media (hover: hover) {
+  .home-row { transition: background-color var(--dur-fast) var(--ease-smooth); }
+  .home-row:hover { background: color-mix(in srgb, var(--tone-tint) 70%, transparent); }
+}
+
+/* Contact initials: a solid tone disc; the letter takes the card colour so it
+   stays readable in both themes. */
+.home-avatar {
+  background: linear-gradient(135deg, var(--tone), color-mix(in srgb, var(--tone) 70%, var(--mod-tasks)));
+  color: var(--surface-card);
+  box-shadow: 0 0 0 3px var(--tone-tint);
+}
+
+/* Assistant prompts: outlined chips that lift on hover. */
+.home-prompt {
+  background: var(--surface-card);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 22%, var(--border));
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-smooth), background-color var(--dur-fast) var(--ease-smooth);
+}
+@media (hover: hover) {
+  .home-prompt:hover {
+    background: var(--tone-tint);
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--tone) 40%, var(--border)),
+      0 8px 18px -10px color-mix(in srgb, var(--tone) 55%, transparent);
+  }
+}
+
+/* Quick-add: navy gradient with a gold halo; the plus turns on hover. */
+.home-fab {
+  background: linear-gradient(135deg, var(--brand-action), var(--brand-hover));
+  box-shadow:
+    0 10px 24px -8px rgba(12, 36, 67, 0.65),
+    0 0 0 4px color-mix(in srgb, var(--brand-accent) 28%, transparent);
+}
+.home-fab svg { transition: transform var(--dur-normal) var(--ease-spring); }
+@media (hover: hover) {
+  .home-fab:hover svg { transform: rotate(90deg); }
+}
+
+/* Sidebar: the active page is a navy gradient pill with a gold marker. */
+.nav-active {
+  position: relative;
+  background: linear-gradient(135deg, var(--brand-action), var(--brand-hover));
+  color: #FFFFFF;
+  box-shadow: 0 8px 18px -10px rgba(12, 36, 67, 0.75);
+}
+.nav-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--brand-accent);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

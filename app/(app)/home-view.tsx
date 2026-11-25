@@ -134,7 +134,7 @@ export function HomeView({
       {/* People to contact, then goals. Either fills the row on its own. */}
       <div className="grid items-start gap-6 md:grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
         {followUps.length > 0 && (
-          <Card className="slide-up stagger-4" aria-label="Touch base">
+          <Card className="home-card tone-crm slide-up stagger-4" aria-label="Touch base">
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <div
@@ -159,10 +159,10 @@ export function HomeView({
                   className="rounded-lg border border-border bg-card p-3 flex items-center gap-3"
                 >
                   <div
-                    className="w-10 h-10 rounded-full bg-mod-crm-tint flex items-center justify-center shrink-0"
+                    className="home-avatar w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                     aria-hidden="true"
                   >
-                    <span className="text-mod-crm font-semibold">
+                    <span className="font-semibold">
                       {contact.name[0]?.toUpperCase()}
                     </span>
                   </div>
@@ -213,7 +213,7 @@ export function HomeView({
           </Card>
         )}
 
-        <Card className="slide-up stagger-4" aria-label="Goals">
+        <Card className="home-card tone-goals slide-up stagger-4" aria-label="Goals">
           <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div
@@ -281,7 +281,7 @@ export function HomeView({
 
       {/* AI Assistant — a slim strip at the end; the bottom bar's AI button
           is the main way in on a phone. */}
-      <Card className="slide-up stagger-4" aria-label="AI Assistant">
+      <Card className="home-card tone-brand slide-up stagger-4" aria-label="AI Assistant">
         <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
           <div className="min-w-0 space-y-1">
             <CardTitle className="text-base flex items-center gap-2">
@@ -302,7 +302,7 @@ export function HomeView({
               <Link
                 key={prompt}
                 href={`/assistant?q=${encodeURIComponent(prompt)}`}
-                className="flex min-h-11 items-center text-sm text-brand-text px-3 py-2 rounded-md bg-brand-tint/50 hover:bg-brand-tint active:opacity-80 transition-colors"
+                className="home-prompt flex min-h-11 items-center text-sm text-brand-text px-3 py-2 rounded-md active:opacity-80"
               >
                 &ldquo;{prompt}&rdquo;
               </Link>

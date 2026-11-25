@@ -7,13 +7,15 @@ import { cn } from "@/lib/utils"
 
 type StatAccent = "tasks" | "wellness" | "goals" | "finance" | "danger"
 
-// Tailwind can't compile dynamic class names — accents must be static strings
-const ACCENT: Record<StatAccent, { icon: string }> = {
-  tasks: { icon: "text-mod-tasks" },
-  wellness: { icon: "text-mod-wellness" },
-  goals: { icon: "text-mod-goals" },
-  finance: { icon: "text-mod-finance" },
-  danger: { icon: "text-destructive" },
+// Tailwind can't compile dynamic class names — tones must be static strings.
+// The tone class drives the tile's accent rule, wash, border, shadow, icon
+// chip, value colour and progress bar (app/globals.css, "Home accents").
+const TONE: Record<StatAccent, string> = {
+  tasks: "tone-tasks",
+  wellness: "tone-wellness",
+  goals: "tone-goals",
+  finance: "tone-finance",
+  danger: "tone-danger",
 }
 
 type StatCardProps = {
@@ -53,7 +55,8 @@ export function StatCard({
       <Card
         size="sm"
         className={cn(
-          "card-hover h-full cursor-pointer py-3 md:py-4",
+          "home-stat h-full cursor-pointer py-3 md:py-4",
+          TONE[accent],
         )}
       >
         <CardContent className="px-3 md:px-4 space-y-2">
@@ -61,15 +64,17 @@ export function StatCard({
             <p className="text-label font-medium text-muted-foreground">
               {label}
             </p>
-            <Icon
-              className={cn("w-3.5 h-3.5 shrink-0", ACCENT[accent].icon)}
+            <span
+              className="home-chip flex size-6 shrink-0 items-center justify-center rounded-md"
               aria-hidden="true"
-            />
+            >
+              <Icon className="size-3.5" aria-hidden="true" />
+            </span>
           </div>
           <p
             className={cn(
               valueSize === "amount" ? "text-base" : "text-h1",
-              "md:text-metric font-semibold tabular-nums break-words",
+              "home-stat__value md:text-metric font-semibold tabular-nums break-words",
             )}
           >
             {prefix && (

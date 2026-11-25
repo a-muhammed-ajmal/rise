@@ -64,7 +64,7 @@ export function FocusTasksSection() {
   );
 
   return (
-    <Card className="slide-up stagger-1" aria-label="Today's focus">
+    <Card className="home-card tone-tasks slide-up stagger-1" aria-label="Today's focus">
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <div
@@ -96,7 +96,7 @@ export function FocusTasksSection() {
             <p className="text-sm text-muted-foreground">
               Choose up to 3 tasks to focus on today.
             </p>
-            <Link href="/productivity" className="inline-flex min-h-11 items-center gap-2 rounded-sm border border-input px-3 text-sm font-medium text-brand-text hover:bg-brand-tint active:scale-95">
+            <Link href="/productivity" className="home-cta inline-flex min-h-11 items-center gap-2 rounded-md px-4 text-sm font-medium">
               <Star className="size-4" aria-hidden="true" /> Choose focus tasks
             </Link>
           </div>

@@ -97,7 +97,7 @@ export function TasksDashboardSection() {
   );
 
   return (
-    <Card className="slide-up stagger-2" aria-label="Today's tasks">
+    <Card className="home-card tone-tasks slide-up stagger-2" aria-label="Today's tasks">
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <div

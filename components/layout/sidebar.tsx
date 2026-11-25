@@ -31,7 +31,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 py-4 space-y-1 px-2">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon, tone }) => {
           const active =
             pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
@@ -43,13 +43,19 @@ export function Sidebar() {
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 w-full",
                       active
-                        ? "bg-brand-tint text-brand-text shadow-[inset_2px_0_0_var(--brand)]"
+                        ? "nav-active"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                     )}
                   />
                 }
               >
-                <Icon className="w-5 h-5 shrink-0" />
+                <span
+                  className="shrink-0"
+                  style={active ? undefined : { color: tone }}
+                  aria-hidden="true"
+                >
+                  <Icon className="w-5 h-5" />
+                </span>
                 <span className="hidden md:block">{label}</span>
               </TooltipTrigger>
               <TooltipContent side="right" className="md:hidden">
