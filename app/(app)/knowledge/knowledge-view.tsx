@@ -162,7 +162,7 @@ export function KnowledgeView({
 
   return (
     <div
-      className="p-3 md:p-5 max-w-2xl space-y-3"
+      className="module-tone tone-knowledge p-3 md:p-5 max-w-2xl space-y-3"
     >
       <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
@@ -229,7 +229,7 @@ export function KnowledgeView({
             </div>
           ) : (
             filteredNotes.map((note) => (
-              <Card key={note.id} className="card-hover group border-l-4 border-mod-knowledge">
+              <Card key={note.id} className="card-hover group">
                 <CardContent className="p-3 space-y-2">
                   <div className="flex justify-between items-start gap-2">
                     <p

@@ -185,7 +185,7 @@ export function GoalsView({ initial }: { initial: ServerSnapshot<GoalsData> | nu
   }
 
   return (
-    <div className="p-3 md:p-5 max-w-2xl space-y-3">
+    <div className="module-tone tone-goals p-3 md:p-5 max-w-2xl space-y-3">
       <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-goals-tint flex items-center justify-center">
@@ -232,7 +232,7 @@ export function GoalsView({ initial }: { initial: ServerSnapshot<GoalsData> | nu
             </div>
           ) : (
             active.map((goal) => (
-              <Card key={goal.id} className="card-hover border-t-4 border-mod-goals">
+              <Card key={goal.id} className="card-hover">
                 <CardContent className="p-3 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div

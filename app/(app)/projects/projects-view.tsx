@@ -122,7 +122,7 @@ export function ProjectsView({ initial }: { initial: ProjectsInitial }) {
   }
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="module-tone tone-tasks flex flex-col min-h-full">
       {/* Header */}
       <div className="px-3 md:px-5 pt-3 md:pt-5 pb-3 flex items-center justify-between slide-up stagger-1 shrink-0">
         <div className="flex items-center gap-2 min-w-0">

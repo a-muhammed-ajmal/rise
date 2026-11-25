@@ -360,7 +360,7 @@ export default async function AnalyticsPage() {
       </div>
 
       {/* Finance section */}
-      <section className="space-y-4 slide-up stagger-2">
+      <section className="module-tone tone-finance space-y-4 slide-up stagger-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-mod-finance-tint flex items-center justify-center">
@@ -376,7 +376,7 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* Wellness section */}
-      <section className="space-y-4 slide-up stagger-3">
+      <section className="module-tone tone-wellness space-y-4 slide-up stagger-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-mod-wellness-tint flex items-center justify-center">
@@ -392,7 +392,7 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* Goals section */}
-      <section className="space-y-4 slide-up stagger-4">
+      <section className="module-tone tone-goals space-y-4 slide-up stagger-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-mod-goals-tint flex items-center justify-center">
@@ -408,7 +408,7 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* Productivity section */}
-      <section className="space-y-4 slide-up stagger-4">
+      <section className="module-tone tone-tasks space-y-4 slide-up stagger-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-mod-tasks-tint flex items-center justify-center">
@@ -424,7 +424,7 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* CRM section */}
-      <section className="space-y-4 slide-up stagger-4">
+      <section className="module-tone tone-crm space-y-4 slide-up stagger-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-mod-crm-tint flex items-center justify-center">
@@ -440,7 +440,7 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* Knowledge section */}
-      <section className="space-y-4 slide-up stagger-4">
+      <section className="module-tone tone-knowledge space-y-4 slide-up stagger-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-mod-knowledge-tint flex items-center justify-center">

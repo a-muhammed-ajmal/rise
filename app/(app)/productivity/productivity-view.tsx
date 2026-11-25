@@ -305,7 +305,7 @@ export function ProductivityView({ initial }: { initial: ProductivityInitial }) 
   }
 
   return (
-    <div className="p-3 md:p-5 max-w-2xl space-y-3">
+    <div className="module-tone tone-tasks p-3 md:p-5 max-w-2xl space-y-3">
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">

@@ -412,7 +412,7 @@ export function FinanceView({ initial }: { initial: FinanceInitial }) {
   }
 
   return (
-    <PageShell>
+    <PageShell className="module-tone tone-finance">
       <h1 className="sr-only">Financial</h1>
 
       <div className="animate-rise-in stagger-1 min-w-0">

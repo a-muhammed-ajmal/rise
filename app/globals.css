@@ -687,6 +687,52 @@
   background: var(--brand-accent);
 }
 
+/* ─── Module page accents ────────────────────────────────────────────────── */
+/* A module page's root carries `module-tone tone-<module>`. Its top-level cards
+   take the same accent rule, tint wash and tone shadow as Home; their borders
+   stay neutral. Cards inside cards, and dialogs (portalled out of the page),
+   are left alone. Interactive cards glow in the tone on hover, and progress
+   bars take the tone and grow in once. */
+
+.tone-knowledge { --tone: var(--mod-knowledge); --tone-tint: var(--mod-knowledge-tint); }
+.tone-info      { --tone: var(--color-info);    --tone-tint: var(--color-info-tint); }
+
+.module-tone [data-slot="card"]:not([data-slot="card"] [data-slot="card"]) {
+  position: relative;
+  box-shadow:
+    0 1px 2px rgba(26, 26, 46, 0.04),
+    0 10px 28px -16px color-mix(in srgb, var(--tone) 40%, transparent);
+}
+/* List rows that already carry a coloured left edge (habit rows show their
+   done / missed state there) keep it and skip the strip and the wash. */
+.module-tone [data-slot="card"]:not([data-slot="card"] [data-slot="card"]):not([class*="border-l-"]) {
+  background-image: linear-gradient(180deg, var(--tone-tint) 0, transparent 76px);
+}
+.module-tone [data-slot="card"]:not([data-slot="card"] [data-slot="card"]):not([class*="border-l-"])::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 25%, transparent));
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .module-tone .card-hover:hover {
+    border-color: color-mix(in srgb, var(--tone) 45%, var(--border));
+    box-shadow:
+      0 1px 2px rgba(26, 26, 46, 0.04),
+      0 14px 30px -14px color-mix(in srgb, var(--tone) 55%, transparent);
+  }
+}
+.module-tone [data-slot="progress-indicator"] {
+  background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 65%, var(--surface-card)));
+  transform-origin: left center;
+  animation: bar-grow 900ms var(--ease-out) 300ms both;
+}
+.module-tone [data-slot="progress-track"] {
+  background: color-mix(in srgb, var(--tone) 12%, var(--muted));
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -510,4 +510,4 @@ curl -s https://<your-app>/api/mcp \
 | DB tables | 32 (RLS enabled on all) |
 | AI tools | 91 (65 AUTO + 17 REVERSIBLE + 9 APPROVAL) |
 | Migrations | 26 files (001–023 plus 3 timestamped hardening migrations) |
-| Last phase | Phase 34 — Home visual polish: module-toned tiles and cards, gold quote banner, navy sidebar pill, animated bars |
+| Last phase | Phase 35 — Module page accents: every module page carries its colour on cards, hover glows and progress bars |

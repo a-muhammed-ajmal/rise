@@ -237,7 +237,7 @@ export function SettingsView({ initial }: { initial: ServerSnapshot<ProfileData>
     : (email?.[0]?.toUpperCase() ?? "?");
 
   return (
-    <div className="p-3 md:p-5 max-w-2xl space-y-5">
+    <div className="module-tone tone-brand p-3 md:p-5 max-w-2xl space-y-5">
       <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2 slide-up stagger-1">
         <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
           <Settings className="w-4 h-4 text-muted-foreground" />

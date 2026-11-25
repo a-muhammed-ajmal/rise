@@ -248,7 +248,7 @@ export function WellnessView({ initial }: { initial: ServerSnapshot<WellnessData
   }
 
   return (
-    <div className="p-3 md:p-5 max-w-2xl space-y-3">
+    <div className="module-tone tone-wellness p-3 md:p-5 max-w-2xl space-y-3">
       <div className="flex items-center justify-between slide-up stagger-1">
         <h1 className="text-h1 font-heading tracking-tight flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-mod-wellness-tint flex items-center justify-center">
@@ -271,7 +271,7 @@ export function WellnessView({ initial }: { initial: ServerSnapshot<WellnessData
       </div>
 
       {todayHabits.length > 0 && (
-        <Card className="slide-up stagger-2 border-t-4 border-mod-wellness">
+        <Card className="slide-up stagger-2">
           <CardContent className="p-3 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="font-medium">Today&apos;s habits</span>
